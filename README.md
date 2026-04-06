@@ -48,6 +48,7 @@ See detailed model documentation:
 - `docs/wiki/operations-wiki.md`: operations wiki / runbook starter
 - `docs/api/rules-and-lineage-api.md`: API usage for rule/lineage management
 - `docs/product/data-checks-and-competitive-parity.md`: data check strategy and parity roadmap
+- `docs/product/enterprise-contract-playbook.md`: competitive positioning and contract-winning rollout playbook
 - `k8s/`: raw Kubernetes manifests for API, quality engine, and OTEL collector
 - `helm/dataobs/`: Helm chart for configurable Kubernetes deployments
 
@@ -73,3 +74,4 @@ Then open Kibana at `http://localhost:5601`.
 - Add Elasticsearch-backed repositories for API persistence
 - Add column distribution drift checks and dynamic thresholds
 - Add end-to-end integration tests for API + alert delivery paths
+- Expand `/strategy/enterprise-backlog` to persist account-level roadmap plans per customer

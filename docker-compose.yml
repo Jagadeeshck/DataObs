@@ -1,0 +1,142 @@
+version: '3.8'
+
+# DataObs - Full Stack Local Deployment
+# Includes: Elasticsearch, Kibana, OTEL Collector, DataObs API, DataObs Quality Engine
+
+services:
+
+  # ──────────────────────────────────────────────
+  # ELASTICSEARCH (Core telemetry store)
+  # ──────────────────────────────────────────────
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.0
+    container_name: dataobs-elasticsearch
+    environment:
+      - node.name=dataobs-es01
+      - cluster.name=dataobs-cluster
+      - discovery.type=single-node
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:-dataobs123}
+      - xpack.security.enabled=true
+      - xpack.security.http.ssl.enabled=false
+      - xpack.license.self_generated.type=trial
+      - ES_JAVA_OPTS=-Xms2g -Xmx2g
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - esdata:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s -u elastic:${ELASTIC_PASSWORD:-dataobs123} http://localhost:9200/_cluster/health | grep -q '\"status\":\"green\"\|\"status\":\"yellow\"'"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - dataobs-net
+
+  # ──────────────────────────────────────────────
+  # KIBANA (Visualization & Dashboards)
+  # ──────────────────────────────────────────────
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.13.0
+    container_name: dataobs-kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - ELASTICSEARCH_USERNAME=kibana_system
+      - ELASTICSEARCH_PASSWORD=${KIBANA_PASSWORD:-dataobs123}
+      - XPACK_FLEET_ENABLED=true
+      - XPACK_APM_ENABLED=true
+    ports:
+      - "5601:5601"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    volumes:
+      - ./kibana/kibana.yml:/usr/share/kibana/config/kibana.yml:ro
+    networks:
+      - dataobs-net
+
+  # ──────────────────────────────────────────────
+  # OPENTELEMETRY COLLECTOR
+  # ──────────────────────────────────────────────
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.98.0
+    container_name: dataobs-otel-collector
+    command: ["--config=/etc/otelcol-contrib/otel-collector-config.yaml"]
+    volumes:
+      - ./config/otel-collector-config.yaml:/etc/otelcol-contrib/otel-collector-config.yaml:ro
+    ports:
+      - "4317:4317"    # OTLP gRPC
+      - "4318:4318"    # OTLP HTTP
+      - "8888:8888"    # Collector metrics
+      - "8889:8889"    # Prometheus scrape endpoint
+      - "13133:13133"  # Health check
+    environment:
+      - ELASTIC_ENDPOINT=http://elasticsearch:9200
+      - ELASTIC_USER=elastic
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:-dataobs123}
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - dataobs-net
+
+  # ──────────────────────────────────────────────
+  # DATAOBS QUALITY ENGINE
+  # ──────────────────────────────────────────────
+  dataobs-quality:
+    build:
+      context: .
+      dockerfile: Dockerfile.quality
+    container_name: dataobs-quality-engine
+    environment:
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - ELASTICSEARCH_USER=elastic
+      - ELASTICSEARCH_PASSWORD=${ELASTIC_PASSWORD:-dataobs123}
+      - DATAOBS_CONFIG=/app/config/dataobs.yaml
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+      - OTEL_SERVICE_NAME=dataobs-quality-engine
+    volumes:
+      - ./config:/app/config:ro
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      otel-collector:
+        condition: service_started
+    networks:
+      - dataobs-net
+
+  # ──────────────────────────────────────────────
+  # DATAOBS REST API
+  # ──────────────────────────────────────────────
+  dataobs-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: dataobs-api
+    environment:
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - ELASTICSEARCH_USER=elastic
+      - ELASTICSEARCH_PASSWORD=${ELASTIC_PASSWORD:-dataobs123}
+      - DATAOBS_CONFIG=/app/config/dataobs.yaml
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+      - OTEL_SERVICE_NAME=dataobs-api
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./config:/app/config:ro
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - dataobs-net
+
+volumes:
+  esdata:
+    driver: local
+
+networks:
+  dataobs-net:
+    driver: bridge

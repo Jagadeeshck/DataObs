@@ -1,0 +1,293 @@
+# DataObs Configuration File
+# Copy to dataobs.yaml and fill in your values
+# All secrets should be passed via environment variables (${VAR_NAME} syntax)
+
+# ─────────────────────────────────────────────────────────
+# GLOBAL SETTINGS
+# ─────────────────────────────────────────────────────────
+global:
+  environment: production           # production | staging | development
+  team: platform-engineering
+  timezone: UTC
+  log_level: INFO
+
+# ─────────────────────────────────────────────────────────
+# ELASTICSEARCH CONNECTION
+# ─────────────────────────────────────────────────────────
+elasticsearch:
+  url: "${ELASTICSEARCH_URL}"
+  username: "${ELASTICSEARCH_USER}"
+  password: "${ELASTICSEARCH_PASSWORD}"
+  # Optional: use API key instead of username/password
+  # api_key: "${ELASTICSEARCH_API_KEY}"
+  indices:
+    metrics: "dataobs-metrics"
+    logs: "dataobs-logs"
+    traces: "dataobs-traces"
+    quality: "dataobs-quality-results"
+    lineage: "dataobs-lineage"
+    freshness: "dataobs-freshness"
+  ilm:
+    hot_phase_days: 7
+    warm_phase_days: 30
+    cold_phase_days: 90
+    delete_after_days: 365
+
+# ─────────────────────────────────────────────────────────
+# OPENTELEMETRY SETTINGS
+# ─────────────────────────────────────────────────────────
+opentelemetry:
+  endpoint: "${OTEL_EXPORTER_OTLP_ENDPOINT:-http://localhost:4317}"
+  service_name: "dataobs"
+  traces_enabled: true
+  metrics_enabled: true
+  logs_enabled: true
+  sampling_rate: 1.0   # 1.0 = 100%, reduce for high-volume services
+
+# ─────────────────────────────────────────────────────────
+# AWS CLOUD INTEGRATION
+# ─────────────────────────────────────────────────────────
+aws:
+  enabled: true
+  region: "${AWS_REGION:-eu-west-1}"
+  # Use IAM role in EKS/EC2; use access keys only for local dev
+  # access_key_id: "${AWS_ACCESS_KEY_ID}"
+  # secret_access_key: "${AWS_SECRET_ACCESS_KEY}"
+
+  # Services to monitor
+  services:
+    lambda:
+      enabled: true
+      collect_interval_seconds: 60
+      functions: []  # Empty = monitor all functions; or list specific ARNs
+      metrics:
+        - Invocations
+        - Errors
+        - Duration
+        - Throttles
+        - ConcurrentExecutions
+        - IteratorAge    # For Kinesis/DynamoDB stream triggers
+
+    glue:
+      enabled: true
+      collect_interval_seconds: 300
+      databases: []   # Empty = all databases
+      track_job_runs: true
+      sla_minutes: 60  # Alert if job takes longer than this
+
+    emr:
+      enabled: true
+      collect_interval_seconds: 120
+      track_step_failures: true
+      track_cluster_termination: true
+
+    rds:
+      enabled: true
+      collect_interval_seconds: 60
+      instances: []   # Empty = all instances
+      metrics:
+        - CPUUtilization
+        - DatabaseConnections
+        - FreeStorageSpace
+        - ReadLatency
+        - WriteLatency
+        - ReplicationLag
+
+    s3:
+      enabled: true
+      collect_interval_seconds: 3600
+      buckets: []     # List specific buckets to monitor
+      metrics:
+        - BucketSizeBytes
+        - NumberOfObjects
+
+    eks:
+      enabled: true
+      clusters: []    # Cluster names; empty = auto-discover
+      metrics:
+        - node_cpu_utilization
+        - node_memory_utilization
+        - pod_restart_count
+
+    athena:
+      enabled: true
+      collect_interval_seconds: 300
+      workgroups: ["primary"]
+      alert_on_query_failure: true
+      max_query_runtime_minutes: 30
+
+    kinesis:
+      enabled: true
+      streams: []
+      metrics:
+        - GetRecords.IteratorAgeMilliseconds
+        - IncomingRecords
+        - ReadProvisionedThroughputExceeded
+
+# ─────────────────────────────────────────────────────────
+# DATA SOURCES (for quality checks & lineage)
+# ─────────────────────────────────────────────────────────
+data_sources:
+  - name: "prod-rds-postgres"
+    type: postgresql
+    connection_string: "${PROD_RDS_CONNECTION_STRING}"
+    schema: public
+
+  - name: "prod-glue-catalog"
+    type: aws_glue_catalog
+    region: "${AWS_REGION}"
+    databases:
+      - analytics
+      - raw_data
+      - curated
+
+  - name: "prod-s3-datalake"
+    type: s3
+    bucket: "${S3_DATALAKE_BUCKET}"
+    prefix: "processed/"
+    format: parquet   # parquet | json | csv
+
+# ─────────────────────────────────────────────────────────
+# DATA QUALITY RULES
+# ─────────────────────────────────────────────────────────
+quality_rules:
+  # Orders table checks
+  - dataset: "prod-rds-postgres.public.orders"
+    schedule: "*/15 * * * *"   # every 15 minutes
+    checks:
+      - type: freshness
+        column: updated_at
+        max_age_minutes: 60
+        severity: critical
+
+      - type: row_count
+        min_rows: 1000
+        max_rows: 10000000
+        anomaly_detection: true   # ML-based baseline
+        severity: high
+
+      - type: null_check
+        columns: ["order_id", "customer_id", "status", "created_at"]
+        max_null_pct: 0.0
+        severity: critical
+
+      - type: uniqueness
+        columns: ["order_id"]
+        severity: critical
+
+      - type: value_range
+        column: total_amount
+        min_value: 0
+        max_value: 1000000
+        severity: high
+
+      - type: referential_integrity
+        column: customer_id
+        references: "prod-rds-postgres.public.customers.id"
+        severity: high
+
+  # Glue Parquet dataset checks
+  - dataset: "prod-glue-catalog.analytics.daily_sales"
+    schedule: "0 8 * * *"   # daily at 8am
+    checks:
+      - type: freshness
+        partition_column: dt
+        max_age_hours: 25   # Allow 1-hour SLA buffer
+        severity: critical
+
+      - type: schema_change
+        alert_on: ["column_removed", "type_changed"]
+        severity: critical
+
+      - type: row_count
+        anomaly_detection: true
+        stddev_threshold: 3.0
+        severity: high
+
+# ─────────────────────────────────────────────────────────
+# DATA LINEAGE
+# ─────────────────────────────────────────────────────────
+lineage:
+  enabled: true
+  auto_discover:
+    glue: true          # Parse Glue job scripts for lineage
+    dbt: true           # Parse dbt manifest.json
+    airflow: true       # Parse Airflow DAG task dependencies
+  storage:
+    backend: elasticsearch
+    index: "dataobs-lineage"
+  impact_analysis:
+    enabled: true       # Automatically compute downstream impact on schema change
+
+# ─────────────────────────────────────────────────────────
+# ALERTING & INTEGRATIONS
+# ─────────────────────────────────────────────────────────
+alerting:
+  # Global suppression window (maintenance)
+  suppression_windows: []
+
+  channels:
+    servicenow:
+      enabled: true
+      instance_url: "${SERVICENOW_INSTANCE_URL}"
+      username: "${SERVICENOW_USER}"
+      password: "${SERVICENOW_PASSWORD}"
+      # OR: oauth_token: "${SERVICENOW_TOKEN}"
+      default_assignment_group: "Data Engineering"
+      default_category: "Data Quality"
+      severity_mapping:
+        critical: "1"   # ServiceNow priority 1
+        high: "2"
+        medium: "3"
+        low: "4"
+      create_incident_on: [critical, high]
+      create_problem_on: [critical]    # Recurring critical issues
+
+    pagerduty:
+      enabled: true
+      routing_key: "${PAGERDUTY_ROUTING_KEY}"
+      severity_mapping:
+        critical: critical
+        high: error
+        medium: warning
+        low: info
+
+    slack:
+      enabled: true
+      webhook_url: "${SLACK_WEBHOOK_URL}"
+      default_channel: "#dataobs-alerts"
+      channels:
+        critical: "#dataobs-critical"
+        pipeline: "#pipeline-alerts"
+        data_quality: "#data-quality"
+
+    email:
+      enabled: true
+      smtp_host: "${SMTP_HOST}"
+      smtp_port: 587
+      from: "dataobs@yourcompany.com"
+      recipients:
+        critical: ["oncall@yourcompany.com", "data-lead@yourcompany.com"]
+        daily_digest: ["data-team@yourcompany.com"]
+
+# ─────────────────────────────────────────────────────────
+# SLOs (Service Level Objectives)
+# ─────────────────────────────────────────────────────────
+slos:
+  - name: "Orders Pipeline SLO"
+    description: "Daily orders data available by 08:00 UTC"
+    dataset: "prod-rds-postgres.public.orders"
+    target_percentage: 99.5
+    window_days: 30
+    objective:
+      type: freshness
+      max_age_minutes: 480   # Data not older than 8 hours
+
+  - name: "Sales Data Quality SLO"
+    description: "Daily sales data completeness > 99%"
+    dataset: "prod-glue-catalog.analytics.daily_sales"
+    target_percentage: 99.0
+    window_days: 30
+    objective:
+      type: completeness
+      min_completeness_pct: 99.0

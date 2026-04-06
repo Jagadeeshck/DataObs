@@ -1,0 +1,191 @@
+# DataObs OpenTelemetry Collector Configuration
+# Supports: AWS services, application traces/metrics/logs, data pipeline telemetry
+
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+  pprof:
+    endpoint: 0.0.0.0:1777
+
+receivers:
+  # ── OTLP Receiver (primary entry point for all instrumented services) ──
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+        cors:
+          allowed_origins: ["*"]
+
+  # ── Prometheus scrape (infrastructure metrics) ──
+  prometheus:
+    config:
+      scrape_configs:
+        - job_name: 'dataobs-collector'
+          static_configs:
+            - targets: ['localhost:8888']
+        - job_name: 'dataobs-quality-engine'
+          static_configs:
+            - targets: ['dataobs-quality:9090']
+
+  # ── Host Metrics (for local/EC2 infrastructure) ──
+  hostmetrics:
+    collection_interval: 30s
+    scrapers:
+      cpu:
+        metrics:
+          system.cpu.utilization:
+            enabled: true
+      memory:
+      disk:
+      filesystem:
+      network:
+      load:
+      processes:
+
+  # ── AWS CloudWatch Receiver (Lambda, EMR, Glue, etc.) ──
+  # Requires AWS credentials in environment or IAM role
+  awscloudwatch:
+    region: "${AWS_REGION}"
+    poll_interval: 1m
+    imds_endpoint: ""
+    named_profile: ""
+    logs:
+      poll_interval: 1m
+      groups:
+        autodiscover:
+          limit: 50
+          prefix: "/aws/lambda"
+          streams:
+            prefixes: [""]
+
+  # ── Filelog Receiver (for log files / container stdout) ──
+  filelog:
+    include:
+      - /var/log/dataobs/*.log
+    operators:
+      - type: json_parser
+        timestamp:
+          parse_from: attributes.timestamp
+          layout: '%Y-%m-%dT%H:%M:%S.%LZ'
+      - type: add
+        field: attributes.collector
+        value: dataobs
+
+processors:
+  # ── Memory limiter (prevent OOM) ──
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 1024
+    spike_limit_mib: 256
+
+  # ── Batch (improves throughput to Elasticsearch) ──
+  batch:
+    send_batch_size: 1000
+    timeout: 10s
+    send_batch_max_size: 2000
+
+  # ── Resource detection (auto-tag with cloud metadata) ──
+  resourcedetection:
+    detectors: [env, system, aws, docker]
+    timeout: 10s
+    override: false
+    aws:
+      tags: ["Name", "Environment", "Team", "Service", "dataobs:dataset"]
+
+  # ── Attribute processing (enrich telemetry with DataObs context) ──
+  attributes:
+    actions:
+      - key: dataobs.product
+        value: dataobs
+        action: insert
+      - key: dataobs.version
+        value: "1.0.0"
+        action: insert
+
+  # ── Resource enrichment for data pipeline signals ──
+  resource:
+    attributes:
+      - key: dataobs.environment
+        from_attribute: deployment.environment
+        action: insert
+      - key: dataobs.team
+        from_attribute: team
+        action: insert
+
+  # ── Filter: drop low-value health check noise ──
+  filter:
+    metrics:
+      exclude:
+        match_type: strict
+        metric_names:
+          - promhttp_metric_handler_requests_total
+
+  # ── Transform: normalize AWS Lambda metric names ──
+  transform:
+    metric_statements:
+      - context: metric
+        statements:
+          - set(description, "Lambda invocation count") where name == "aws.lambda.invocations"
+          - set(description, "Lambda error count") where name == "aws.lambda.errors"
+          - set(description, "Lambda duration in ms") where name == "aws.lambda.duration"
+
+exporters:
+  # ── Elasticsearch Exporter (primary sink) ──
+  elasticsearch:
+    endpoints: ["${ELASTIC_ENDPOINT}"]
+    auth:
+      authenticator: basicauth/elastic
+    traces_index: "dataobs-traces"
+    logs_index: "dataobs-logs"
+    metrics_index: "dataobs-metrics"
+    flush:
+      bytes: 5242880  # 5MB
+      interval: 30s
+    retry:
+      enabled: true
+      max_requests: 3
+      initial_interval: 1s
+      max_interval: 30s
+    mapping:
+      mode: ecs  # Elastic Common Schema
+
+  # ── Debug exporter (dev only) ──
+  debug:
+    verbosity: basic
+
+  # ── Prometheus exporter (for Kibana metrics source) ──
+  prometheus:
+    endpoint: "0.0.0.0:8889"
+    namespace: dataobs
+
+extensions:
+  basicauth/elastic:
+    client_auth:
+      username: "${ELASTIC_USER}"
+      password: "${ELASTIC_PASSWORD}"
+
+service:
+  extensions: [health_check, pprof, basicauth/elastic]
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, resourcedetection, attributes, resource, batch]
+      exporters: [elasticsearch]
+
+    metrics:
+      receivers: [otlp, prometheus, hostmetrics]
+      processors: [memory_limiter, resourcedetection, attributes, filter, transform, batch]
+      exporters: [elasticsearch, prometheus]
+
+    logs:
+      receivers: [otlp, filelog]
+      processors: [memory_limiter, resourcedetection, attributes, batch]
+      exporters: [elasticsearch]
+
+  telemetry:
+    logs:
+      level: info
+    metrics:
+      address: 0.0.0.0:8888

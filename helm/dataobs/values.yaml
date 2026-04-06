@@ -1,0 +1,91 @@
+global:
+  nameOverride: ""
+  fullnameOverride: ""
+  namespace: ""
+
+imagePullSecrets: []
+
+config:
+  dataobsYaml: |
+    global:
+      environment: production
+      team: platform-engineering
+      timezone: UTC
+      log_level: INFO
+    deployment:
+      telemetry_mode: external_otel
+      storage_mode: external_elasticsearch
+    external_otel:
+      enabled: true
+      endpoint: http://{{ .Release.Name }}-otel-collector:4317
+      protocol: grpc
+      tls_enabled: false
+      headers: {}
+    elasticsearch:
+      existing_cluster: true
+      url: "http://elasticsearch.default.svc.cluster.local:9200"
+      username: "elastic"
+      password: "change-me"
+      verify_certs: false
+      index_prefix: dataobs
+  otelCollectorYaml: |
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+    processors:
+      batch:
+        timeout: 10s
+    exporters:
+      debug:
+        verbosity: basic
+    service:
+      pipelines:
+        traces:
+          receivers: [otlp]
+          processors: [batch]
+          exporters: [debug]
+        metrics:
+          receivers: [otlp]
+          processors: [batch]
+          exporters: [debug]
+        logs:
+          receivers: [otlp]
+          processors: [batch]
+          exporters: [debug]
+
+api:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: ghcr.io/jagadeeshck/dataobs-api
+    tag: latest
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 8080
+  resources: {}
+
+quality:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: ghcr.io/jagadeeshck/dataobs-quality
+    tag: latest
+    pullPolicy: IfNotPresent
+  resources: {}
+
+otelCollector:
+  enabled: true
+  image:
+    repository: otel/opentelemetry-collector-contrib
+    tag: 0.98.0
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    grpcPort: 4317
+    httpPort: 4318
+  resources: {}

@@ -11,6 +11,8 @@ from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
+from src.core.enterprise_blueprint import enterprise_backlog
+
 from .store import LineageStore, RuleStore
 
 RULES = RuleStore()
@@ -55,6 +57,24 @@ class DataObsHandler(BaseHTTPRequestHandler):
             depth = int(qs.get("depth", ["5"])[0])
             impacted = LINEAGE.downstream(node_id, depth=depth)
             return self._send(HTTPStatus.OK, {"root_node_id": node_id, "downstream": impacted})
+
+        if path == "/strategy/enterprise-backlog":
+            qs = parse_qs(parsed.query)
+            implemented_param = qs.get("implemented", [""])[0]
+            implemented = [item for item in implemented_param.split(",") if item]
+            backlog = enterprise_backlog(implemented)
+            return self._send(
+                HTTPStatus.OK,
+                {
+                    "implemented": implemented,
+                    "recommended_backlog": backlog,
+                    "summary": {
+                        "total_capabilities": len(backlog) + len(implemented),
+                        "implemented_count": len(implemented),
+                        "remaining_count": len(backlog),
+                    },
+                },
+            )
 
         return self._send(HTTPStatus.NOT_FOUND, {"error": "not_found"})
 

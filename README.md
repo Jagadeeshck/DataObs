@@ -34,15 +34,20 @@ See detailed model documentation:
 - `src/quality/lineage.py`: lineage graph ingest and impact analysis
 - `src/quality/checks/*`: reusable data quality checks
 - `src/core/pillars.py`: pillar/capability model with maturity scoring
+- `src/api/main.py`: lightweight HTTP API for rules and lineage management
 
 ### Integrations
 - `src/alerting/servicenow.py`: ServiceNow incident client
+- `src/alerting/pagerduty.py`: PagerDuty Events API client
+- `src/alerting/slack.py`: Slack webhook alerting client
 - `docs/integrations/servicenow.md`: setup and operating guide
 - `src/analytics/elasticsearch_ml.py`: Elasticsearch native ML job helpers
 
 ### Production operations
 - `docs/production/production-guide.md`: production deployment patterns
 - `docs/wiki/operations-wiki.md`: operations wiki / runbook starter
+- `docs/api/rules-and-lineage-api.md`: API usage for rule/lineage management
+- `docs/product/data-checks-and-competitive-parity.md`: data check strategy and parity roadmap
 - `k8s/`: raw Kubernetes manifests for API, quality engine, and OTEL collector
 - `helm/dataobs/`: Helm chart for configurable Kubernetes deployments
 
@@ -65,6 +70,6 @@ Then open Kibana at `http://localhost:5601`.
 - **ML-ready detection** using Elasticsearch native ML jobs
 
 ## Next implementation steps
-- Add API service for rule and lineage management
-- Add PagerDuty/Slack channel modules similar to ServiceNow client
-- Add test suites for quality checks and integration clients
+- Add Elasticsearch-backed repositories for API persistence
+- Add column distribution drift checks and dynamic thresholds
+- Add end-to-end integration tests for API + alert delivery paths

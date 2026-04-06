@@ -42,6 +42,8 @@ See detailed model documentation:
 ### Production operations
 - `docs/production/production-guide.md`: production deployment patterns
 - `docs/wiki/operations-wiki.md`: operations wiki / runbook starter
+- `k8s/`: raw Kubernetes manifests for API, quality engine, and OTEL collector
+- `helm/dataobs/`: Helm chart for configurable Kubernetes deployments
 
 ## Quick Start
 
@@ -64,5 +66,4 @@ Then open Kibana at `http://localhost:5601`.
 ## Next implementation steps
 - Add API service for rule and lineage management
 - Add PagerDuty/Slack channel modules similar to ServiceNow client
-- Add Kubernetes manifests and Helm charts for production installs
 - Add test suites for quality checks and integration clients

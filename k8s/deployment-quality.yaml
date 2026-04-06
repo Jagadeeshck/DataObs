@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dataobs-quality
+  namespace: dataobs
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dataobs-quality
+  template:
+    metadata:
+      labels:
+        app: dataobs-quality
+    spec:
+      containers:
+        - name: quality
+          image: ghcr.io/jagadeeshck/dataobs-quality:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: DATAOBS_CONFIG
+              value: /app/config/dataobs.yaml
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://dataobs-otel-collector:4317
+            - name: OTEL_SERVICE_NAME
+              value: dataobs-quality
+            - name: ELASTICSEARCH_URL
+              value: http://elasticsearch.default.svc.cluster.local:9200
+          volumeMounts:
+            - name: dataobs-config
+              mountPath: /app/config
+              readOnly: true
+      volumes:
+        - name: dataobs-config
+          configMap:
+            name: dataobs-config

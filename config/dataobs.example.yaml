@@ -12,12 +12,29 @@ global:
   log_level: INFO
 
 # ─────────────────────────────────────────────────────────
+# DEPLOYMENT MODES
+# ─────────────────────────────────────────────────────────
+deployment:
+  telemetry_mode: embedded_collector      # embedded_collector | external_otel
+  storage_mode: embedded_elasticsearch    # embedded_elasticsearch | external_elasticsearch
+
+external_otel:
+  enabled: false
+  endpoint: "${EXTERNAL_OTEL_ENDPOINT}"   # e.g. https://otel-gateway.company.net:4317
+  protocol: grpc                          # grpc | http/protobuf
+  tls_enabled: true
+  headers: {}
+
+# ─────────────────────────────────────────────────────────
 # ELASTICSEARCH CONNECTION
 # ─────────────────────────────────────────────────────────
 elasticsearch:
+  existing_cluster: false
   url: "${ELASTICSEARCH_URL}"
   username: "${ELASTICSEARCH_USER}"
   password: "${ELASTICSEARCH_PASSWORD}"
+  verify_certs: true
+  index_prefix: "dataobs"
   # Optional: use API key instead of username/password
   # api_key: "${ELASTICSEARCH_API_KEY}"
   indices:
@@ -32,6 +49,22 @@ elasticsearch:
     warm_phase_days: 30
     cold_phase_days: 90
     delete_after_days: 365
+
+# ─────────────────────────────────────────────────────────
+# ELASTICSEARCH ML (ANOMALY DETECTION)
+# ─────────────────────────────────────────────────────────
+ml:
+  enabled: true
+  engine: elasticsearch_native   # elasticsearch_native | external
+  elasticsearch:
+    use_native_ml: true
+    start_jobs_on_bootstrap: false
+    severity_threshold: 50
+    jobs:
+      - job_id: "dataobs-freshness-age-anomaly"
+        enabled: true
+      - job_id: "dataobs-quality-rowcount-anomaly"
+        enabled: true
 
 # ─────────────────────────────────────────────────────────
 # OPENTELEMETRY SETTINGS

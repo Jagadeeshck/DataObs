@@ -37,6 +37,11 @@ See detailed model documentation:
 ### Integrations
 - `src/alerting/servicenow.py`: ServiceNow incident client
 - `docs/integrations/servicenow.md`: setup and operating guide
+- `src/analytics/elasticsearch_ml.py`: Elasticsearch native ML job helpers
+
+### Production operations
+- `docs/production/production-guide.md`: production deployment patterns
+- `docs/wiki/operations-wiki.md`: operations wiki / runbook starter
 
 ## Quick Start
 
@@ -54,6 +59,7 @@ Then open Kibana at `http://localhost:5601`.
 - **OpenTelemetry-native** telemetry contracts
 - **Fast onboarding** with declarative config
 - **ITSM-ready alerting** with ServiceNow and other channels
+- **ML-ready detection** using Elasticsearch native ML jobs
 
 ## Next implementation steps
 - Add API service for rule and lineage management

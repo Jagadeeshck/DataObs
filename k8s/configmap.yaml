@@ -1,0 +1,75 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dataobs-config
+  namespace: dataobs
+data:
+  dataobs.yaml: |
+    global:
+      environment: production
+      team: platform-engineering
+      timezone: UTC
+      log_level: INFO
+    deployment:
+      telemetry_mode: external_otel
+      storage_mode: external_elasticsearch
+    external_otel:
+      enabled: true
+      endpoint: http://dataobs-otel-collector:4317
+      protocol: grpc
+      tls_enabled: false
+      headers: {}
+    elasticsearch:
+      existing_cluster: true
+      url: "http://elasticsearch.default.svc.cluster.local:9200"
+      username: "elastic"
+      password: "change-me"
+      verify_certs: false
+      index_prefix: dataobs
+      indices:
+        metrics: dataobs-metrics
+        logs: dataobs-logs
+        traces: dataobs-traces
+        quality: dataobs-quality-results
+        lineage: dataobs-lineage
+        freshness: dataobs-freshness
+    ml:
+      enabled: true
+      engine: elasticsearch_native
+      elasticsearch:
+        use_native_ml: true
+        start_jobs_on_bootstrap: false
+        severity_threshold: 50
+        jobs:
+          - job_id: dataobs-freshness-age-anomaly
+            enabled: true
+          - job_id: dataobs-quality-rowcount-anomaly
+            enabled: true
+  otel-collector-config.yaml: |
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+    processors:
+      batch:
+        timeout: 10s
+    exporters:
+      debug:
+        verbosity: basic
+    service:
+      pipelines:
+        traces:
+          receivers: [otlp]
+          processors: [batch]
+          exporters: [debug]
+        metrics:
+          receivers: [otlp]
+          processors: [batch]
+          exporters: [debug]
+        logs:
+          receivers: [otlp]
+          processors: [batch]
+          exporters: [debug]

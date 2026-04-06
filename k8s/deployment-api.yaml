@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dataobs-api
+  namespace: dataobs
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: dataobs-api
+  template:
+    metadata:
+      labels:
+        app: dataobs-api
+    spec:
+      containers:
+        - name: api
+          image: ghcr.io/jagadeeshck/dataobs-api:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          env:
+            - name: DATAOBS_CONFIG
+              value: /app/config/dataobs.yaml
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://dataobs-otel-collector:4317
+            - name: OTEL_SERVICE_NAME
+              value: dataobs-api
+            - name: ELASTICSEARCH_URL
+              value: http://elasticsearch.default.svc.cluster.local:9200
+          volumeMounts:
+            - name: dataobs-config
+              mountPath: /app/config
+              readOnly: true
+      volumes:
+        - name: dataobs-config
+          configMap:
+            name: dataobs-config

@@ -1,0 +1,44 @@
+{{- if .Values.api.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "dataobs.fullname" . }}-api
+  labels:
+    app.kubernetes.io/name: {{ include "dataobs.name" . }}
+    app.kubernetes.io/component: api
+spec:
+  replicas: {{ .Values.api.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "dataobs.name" . }}
+      app.kubernetes.io/component: api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "dataobs.name" . }}
+        app.kubernetes.io/component: api
+    spec:
+      containers:
+        - name: dataobs-api
+          image: "{{ .Values.api.image.repository }}:{{ .Values.api.image.tag }}"
+          imagePullPolicy: {{ .Values.api.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.api.service.port }}
+          env:
+            - name: DATAOBS_CONFIG
+              value: /app/config/dataobs.yaml
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://{{ include "dataobs.fullname" . }}-otel-collector:{{ .Values.otelCollector.service.grpcPort }}
+            - name: OTEL_SERVICE_NAME
+              value: dataobs-api
+          volumeMounts:
+            - name: dataobs-config
+              mountPath: /app/config
+              readOnly: true
+          resources:
+{{ toYaml .Values.api.resources | indent 12 }}
+      volumes:
+        - name: dataobs-config
+          configMap:
+            name: {{ include "dataobs.fullname" . }}-config
+{{- end }}

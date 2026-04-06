@@ -1,174 +1,297 @@
-<p align="center">
-  <strong>DataObs</strong>
-</p>
+# DataObs — Enterprise Data Observability Platform
 
-<h1 align="center">DataObs</h1>
-<p align="center"><strong>Full-Stack Data Observability Platform</strong></p>
-<p align="center">
-  Built on <a href="https://opentelemetry.io/">OpenTelemetry</a> + <a href="https://www.elastic.co/">Elasticsearch</a> · Cloud Agnostic · Production-Ready
-</p>
+> **Unified observability from infrastructure to business impact — built on OpenTelemetry and Elasticsearch**
 
-<p align="center">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-01696f" alt="License"/></a>
-  <a href="docs/ARCHITECTURE.md"><img src="https://img.shields.io/badge/docs-architecture-blue" alt="Docs"/></a>
-  <a href="https://opentelemetry.io/"><img src="https://img.shields.io/badge/OpenTelemetry-OTEL-orange" alt="OTel"/></a>
-</p>
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![OpenTelemetry](https://img.shields.io/badge/OpenTelemetry-Powered-orange)](https://opentelemetry.io)
+[![Elasticsearch](https://img.shields.io/badge/Elasticsearch-8.x-green)](https://www.elastic.co)
+[![Cloud Agnostic](https://img.shields.io/badge/Cloud-Agnostic-blueviolet)](#cloud-integrations)
 
 ---
 
 ## What is DataObs?
 
-**DataObs** is an open, cloud-agnostic data observability platform that gives you end-to-end visibility across your entire data ecosystem — from cloud infrastructure and data pipelines to data quality, lineage, freshness, and business impact.
+**DataObs** is a cloud-agnostic, open-standards data observability platform that gives you complete visibility across your entire data estate — from raw infrastructure health all the way up to business KPI impact.
 
-Inspired by the observability pillars of Datadog, Dynatrace, Splunk, and Monte Carlo, DataObs consolidates everything into a **Four-Tower Architecture** built on OpenTelemetry (for collection) and Elasticsearch (for storage, search, and ML-driven alerting).
+Inspired by the observability approaches of **Datadog**, **Dynatrace**, **Splunk**, and **Monte Carlo**, DataObs goes further by unifying _infrastructure_, _pipeline_, _data quality_, and _business_ observability into a single coherent product — without vendor lock-in.
+
+**Core Technology Stack:**
+- 🔭 **OpenTelemetry** — universal telemetry collection (traces, metrics, logs, events)
+- 🔍 **Elasticsearch / Kibana** — central telemetry store, analytics, and visualization
+- ☁️ **Cloud-agnostic** — AWS, GCP, Azure, on-prem, hybrid
+- 🔔 **ServiceNow + PagerDuty + Slack** — built-in alerting integrations
 
 ---
 
-## The Four Towers
+## The Four-Tower Framework
+
+DataObs is organized around **four observability towers** — each answering a distinct question about your systems and data:
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                    TOWER 4: BUSINESS OBSERVABILITY                  │
-│          KPIs · Revenue Impact · Customer Experience · SLOs         │
-└────────────────────────┬───────────────────────────────────────────┘
-                         │
-         ┌───────────────┴────────────────┐
-         ▼                                ▼
-┌─────────────────────┐        ┌──────────────────────┐
-│  TOWER 1            │        │  TOWER 3              │
-│  FULL STACK OBS     │        │  DATA OBSERVABILITY   │
-│  Infra · APM · RUM  │        │  Freshness · Quality  │
-│  Traces · Logs      │        │  Lineage · Contracts  │
-└──────────┬──────────┘        └──────────┬────────────┘
-           │                              │
-           └──────────────┬───────────────┘
-                          ▼
-              ┌──────────────────────┐
-              │  TOWER 2             │
-              │  PIPELINE OBS        │
-              │  Lambda · EMR · Glue │
-              │  Airflow · Spark     │
-              └──────────────────────┘
-                          │
-         ┌────────────────▼───────────────────┐
-         │   UNIFIED TELEMETRY FOUNDATION      │
-         │   OpenTelemetry · Elasticsearch     │
-         └─────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                   BUSINESS OBSERVABILITY TOWER                  │
+│         Revenue · Customer Experience · KPIs · Decisions        │
+└───────────────────┬─────────────────────────────────────────────┘
+                    │ Depends on data quality, pipelines & system health
+     ┌──────────────▼──────────────┐  ┌─────────────────────────────┐
+     │  FULL STACK OBSERVABILITY   │  │   DATA OBSERVABILITY TOWER  │
+     │                             │  │                             │
+     │  · Infrastructure (EC2/EKS) │  │  · Data Freshness           │
+     │  · APM / Distributed Traces │  │  · Data Quality & Integrity │
+     │  · RUM / User Experience    │  │  · Schema Evolution         │
+     │  · Logs & Security Events   │  │  · Data Lineage             │
+     └─────────────▲───────────────┘  └──────────────▲──────────────┘
+                   │                                  │
+                   │    Relies on healthy pipelines   │
+                   └─────────────┬────────────────────┘
+                                 │
+                   PIPELINE OBSERVABILITY TOWER
+          (Lambda · EMR · Glue · Airflow · Kafka · dbt · CI/CD)
+                                 │
+                    Unified Telemetry Foundation
+          (Metrics · Logs · Traces · Events · Metadata · Lineage)
 ```
 
-| Tower | What it answers | Key signals |
-|-------|----------------|-------------|
-| **Full Stack** | "What is happening with our systems?" | CPU, memory, traces, logs, APM, RUM |
-| **Pipeline** | "Are our pipelines running reliably?" | Lambda duration, EMR job status, Glue runs, SLAs |
-| **Data** | "Is our data trustworthy?" | Freshness, quality scores, volume drift, schema changes |
-| **Business** | "What is the business impact?" | Revenue KPIs, SLA breaches, conversion, churn |
+| Tower | Core Question | Primary Users |
+|---|---|---|
+| **Full Stack** | What is happening with our systems? | SRE, Platform Eng |
+| **Pipeline** | Are our critical flows running on time? | Data Eng, DevOps |
+| **Data** | Is our data trustworthy? | Data Teams, Analytics |
+| **Business** | What is the business impact? | Execs, Product, BI |
 
 ---
 
 ## Key Capabilities
 
-| Capability | Description |
-|-----------|-------------|
-| 🔭 **Infrastructure Observability** | AWS EC2, EKS, ECS, RDS, S3 metrics via OTEL |
-| 🔄 **Pipeline Observability** | Lambda, EMR, Glue, Athena, Step Functions instrumentation |
-| 📊 **Data Quality** | Row counts, null rates, schema drift, custom rules |
-| 🕐 **Data Freshness** | Expected-vs-actual arrival SLAs, delay alerting |
-| 🗺️ **Data Lineage** | Automated lineage graph from S3 → Glue → Athena → BI |
-| ✅ **Data Validation** | Great Expectations-compatible rule engine |
-| 🔔 **Alerting** | ServiceNow, PagerDuty, Slack, OpsGenie, email |
-| 🤖 **ML Anomaly Detection** | Elasticsearch ML jobs for metric baselines |
-| 🌐 **Cloud Agnostic** | AWS, GCP, Azure, on-prem via OTEL Collector |
+### 🏗️ Full Stack Observability
+- Infrastructure monitoring: EC2, EKS, RDS, S3, Lambda, EMR, Glue, Athena
+- Kubernetes pod/node/namespace health
+- APM with distributed tracing (OpenTelemetry auto-instrumentation)
+- Log aggregation with ML anomaly detection
+- Cloud cost and capacity observability
+
+### 🔄 Pipeline Observability
+- AWS Glue job monitoring (run duration, DPU cost, error rates)
+- AWS Lambda invocations, cold starts, throttles, errors
+- EMR cluster health and stage-level metrics
+- Airflow / Step Functions workflow SLA tracking
+- Kafka / Kinesis stream lag and throughput
+- CI/CD pipeline health (DORA metrics)
+
+### 📊 Data Observability
+- **Data Freshness** — automatic staleness detection per table/dataset
+- **Data Volume** — row count anomaly detection with ML baselines
+- **Data Quality** — null rates, uniqueness, referential integrity, custom rules
+- **Schema Changes** — instant alerts on breaking schema evolution
+- **Data Lineage** — end-to-end lineage graph from source → transformation → consumer
+- **Data Contracts** — SLA/SLO definition and enforcement per dataset
+
+### 💼 Business Observability
+- Business KPI tracking tied to data and pipeline SLAs
+- Revenue impact estimation from data incidents
+- Customer journey observability
+- Compliance and audit evidence generation
+- Executive dashboards with cross-tower correlation
+
+---
+
+## Architecture
+
+```
+┌───────────────────────────────────────────────────────────────────────┐
+│                         DATA SOURCES                                  │
+│  AWS Lambda · EMR · Glue · Athena · RDS · S3 · EC2 · EKS · Kafka    │
+│  GCP BigQuery · Azure ADF · On-Prem Hadoop · dbt · Airflow            │
+└───────────────────────────────┬───────────────────────────────────────┘
+                                │
+            ┌───────────────────▼──────────────────┐
+            │     OPENTELEMETRY COLLECTOR LAYER     │
+            │  · OTEL Collectors (DaemonSet/Sidecar)│
+            │  · DataObs Receivers (custom)         │
+            │  · Processors (enrichment, sampling)  │
+            │  · Exporters (Elasticsearch, OTLP)    │
+            └───────────────────┬──────────────────┘
+                                │
+            ┌───────────────────▼──────────────────┐
+            │         ELASTICSEARCH CLUSTER         │
+            │  · Telemetry indices (metrics/logs)   │
+            │  · Data quality indices               │
+            │  · Lineage graph store                │
+            │  · ILM for cost-efficient retention   │
+            └───────────────────┬──────────────────┘
+                                │
+     ┌──────────────────────────▼─────────────────────────┐
+     │              DATAOBS CORE ENGINE                    │
+     │  · Quality Checker · Freshness Monitor              │
+     │  · Lineage Tracker · Schema Registry                │
+     │  · Anomaly Detector · Alert Manager                 │
+     └──────────────────────────┬─────────────────────────┘
+                                │
+     ┌──────────────────────────▼─────────────────────────┐
+     │           VISUALIZATION & INTEGRATIONS             │
+     │  Kibana Dashboards · DataObs UI                    │
+     │  ServiceNow · PagerDuty · Slack · Email            │
+     └─────────────────────────────────────────────────────┘
+```
 
 ---
 
 ## Quick Start
 
 ### Prerequisites
-
 - Docker & Docker Compose
 - Python 3.10+
-- AWS credentials (for AWS data sources, optional)
+- AWS credentials (for AWS integrations)
 
-### 1-Minute Deploy
+### 1. Clone & Start
 
 ```bash
-# Clone the repository
 git clone https://github.com/Jagadeeshck/DataObs.git
 cd DataObs
 
-# Start the full stack (Elasticsearch + Kibana + OTEL Collector + DataObs API)
-docker compose up -d
+# Copy and configure
+cp config/dataobs.example.yaml config/dataobs.yaml
+# Edit config/dataobs.yaml with your settings
 
-# Configure your first data source
-cp config/examples/aws-lambda.yaml config/sources/my-lambda.yaml
-# Edit my-lambda.yaml with your settings
-
-# Apply configuration
-./dataobs configure --source config/sources/my-lambda.yaml
-
-# Open Kibana
-open http://localhost:5601
+# Start the full stack
+docker-compose up -d
 ```
 
-### Python SDK
+### 2. Access Kibana
+Open [http://localhost:5601](http://localhost:5601) — pre-built DataObs dashboards load automatically.
 
-```python
-from dataobs import DataObsClient, DataSource, FreshnessRule
+### 3. Configure Your First Data Source
 
-client = DataObsClient(endpoint="http://localhost:8080")
+```yaml
+# config/dataobs.yaml
+sources:
+  - name: "production-glue"
+    type: aws_glue
+    region: eu-west-1
+    databases: ["analytics", "raw"]
+    
+  - name: "prod-rds"
+    type: aws_rds
+    connection_string: "${RDS_CONNECTION_STRING}"
+    tables: ["orders", "customers", "events"]
 
-# Register a data source
-source = DataSource(
-    name="sales_orders",
-    type="s3",
-    location="s3://my-bucket/sales/orders/",
-    owner="data-team@company.com"
-)
-client.register_source(source)
-
-# Define a freshness rule
-rule = FreshnessRule(
-    source="sales_orders",
-    expected_interval_hours=1,
-    alert_after_hours=2,
-    notify=["slack:#data-alerts", "servicenow:P2"]
-)
-client.add_rule(rule)
+quality_rules:
+  - dataset: "prod-rds.orders"
+    checks:
+      - type: freshness
+        max_age_minutes: 60
+      - type: row_count
+        min_rows: 1000
+      - type: null_check
+        columns: ["order_id", "customer_id"]
+        max_null_pct: 0.0
 ```
+
+### 4. Run Your First Quality Scan
+
+```bash
+python -m dataobs scan --source production-glue --output elasticsearch
+```
+
+---
+
+## Repository Structure
+
+```
+DataObs/
+├── README.md                       # This file
+├── docker-compose.yml              # Full stack local deployment
+├── config/
+│   ├── dataobs.example.yaml        # Main configuration template
+│   ├── otel-collector-config.yaml  # OpenTelemetry Collector config
+│   └── elasticsearch/
+│       ├── index-templates/        # ES index templates
+│       └── ilm-policies/           # ILM retention policies
+├── docs/
+│   ├── architecture/
+│   │   ├── overview.md             # Full architecture overview
+│   │   ├── four-tower-model.md     # The four-tower framework
+│   │   └── tech-stack.md           # Technology decisions
+│   ├── towers/
+│   │   ├── full-stack.md           # Full Stack Observability guide
+│   │   ├── pipeline.md             # Pipeline Observability guide
+│   │   ├── data-observability.md   # Data Obs guide (freshness, quality, lineage)
+│   │   └── business.md             # Business Observability guide
+│   ├── integrations/
+│   │   ├── aws.md                  # AWS services integration guide
+│   │   ├── servicenow.md           # ServiceNow integration
+│   │   └── alerting.md             # Alerting channels guide
+│   └── runbooks/
+│       ├── data-freshness-alert.md
+│       └── pipeline-failure.md
+├── src/
+│   ├── collectors/                 # Custom OTEL receivers
+│   │   ├── aws_glue_receiver/
+│   │   ├── aws_lambda_receiver/
+│   │   ├── aws_emr_receiver/
+│   │   └── aws_rds_receiver/
+│   ├── quality/                    # Data quality engine
+│   │   ├── checks/
+│   │   ├── freshness.py
+│   │   ├── lineage.py
+│   │   └── scheduler.py
+│   ├── alerting/                   # Alert routing & integrations
+│   │   ├── servicenow.py
+│   │   ├── pagerduty.py
+│   │   └── slack.py
+│   └── api/                        # DataObs REST API
+│       └── main.py
+├── kibana/
+│   ├── dashboards/                 # Kibana dashboard exports
+│   └── alerts/                     # Kibana alert rules
+├── terraform/                      # AWS infrastructure as code
+│   ├── modules/
+│   └── environments/
+└── tests/
+    ├── unit/
+    └── integration/
+```
+
+---
+
+## Integrations
+
+### Cloud Platforms
+| Platform | Services | Status |
+|---|---|---|
+| **AWS** | Lambda, EMR, Glue, Athena, RDS, S3, EC2, EKS, Kinesis | ✅ Supported |
+| **GCP** | BigQuery, Dataflow, Cloud Functions, GKE | 🚧 In Progress |
+| **Azure** | ADF, Synapse, AKS, Azure Functions | 🚧 In Progress |
+
+### Alerting & ITSM
+| System | Type | Status |
+|---|---|---|
+| **ServiceNow** | Incident, Problem, Change | ✅ Supported |
+| **PagerDuty** | On-call, Escalation | ✅ Supported |
+| **Slack** | Channel alerts, threads | ✅ Supported |
+| **Email** | SMTP, SES | ✅ Supported |
+| **Opsgenie** | Alert routing | 🚧 In Progress |
 
 ---
 
 ## Documentation
 
 | Document | Description |
-|----------|-------------|
-| [Architecture](docs/ARCHITECTURE.md) | Platform architecture & design decisions |
-| [Installation](docs/INSTALLATION.md) | Full deployment guide (Docker, Helm, bare metal) |
-| [AWS Integration](docs/AWS_INTEGRATION.md) | Lambda, EMR, Glue, Athena, RDS, S3 setup |
-| [Data Quality](docs/DATA_QUALITY.md) | Validation rules, quality scoring |
-| [Data Lineage](docs/DATA_LINEAGE.md) | Lineage tracking & impact analysis |
-| [Data Freshness](docs/DATA_FRESHNESS.md) | Freshness monitoring & SLAs |
-| [Alerting](docs/ALERTING.md) | ServiceNow, PagerDuty, Slack integration |
-
----
-
-## Tech Stack
-
-```
-Collection:    OpenTelemetry Collector + custom receivers
-Storage:       Elasticsearch 8.x (metrics, logs, traces, metadata)
-Visualization: Kibana (dashboards, ML, alerts)
-API:           Python FastAPI
-SDK:           Python, Java, Node.js
-Packaging:     Docker, Helm chart
-CI/CD:         GitHub Actions
-```
+|---|---|
+| [Architecture Overview](docs/architecture/overview.md) | System design and component interactions |
+| [Four-Tower Model](docs/architecture/four-tower-model.md) | Detailed tower framework documentation |
+| [AWS Integration Guide](docs/integrations/aws.md) | Complete AWS services setup |
+| [Data Observability Guide](docs/towers/data-observability.md) | Freshness, quality, lineage setup |
+| [ServiceNow Integration](docs/integrations/servicenow.md) | ITSM integration guide |
+| [Alerting Setup](docs/integrations/alerting.md) | All alerting channels configuration |
 
 ---
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). PRs welcome!
+See [CONTRIBUTING.md](CONTRIBUTING.md). All contributions welcome.
+
+---
 
 ## License
 

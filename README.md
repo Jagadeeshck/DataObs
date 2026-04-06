@@ -20,6 +20,7 @@ DataObs follows a 4-pillar model inspired by platforms like Datadog, Dynatrace, 
 See detailed model documentation:
 - [`docs/architecture/four-tower-model.md`](docs/architecture/four-tower-model.md)
 - [`docs/architecture/overview.md`](docs/architecture/overview.md)
+- [`docs/architecture/system-diagram.md`](docs/architecture/system-diagram.md)
 
 ## What is included in this repository
 

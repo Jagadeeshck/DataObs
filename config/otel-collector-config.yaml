@@ -60,6 +60,11 @@ receivers:
           streams:
             prefixes: [""]
 
+  # ── AWS X-Ray Receiver (AWS managed service traces) ──
+  awsxray:
+    endpoint: 0.0.0.0:2000
+    transport: udp
+
   # ── Filelog Receiver (for log files / container stdout) ──
   filelog:
     include:
@@ -170,17 +175,17 @@ service:
   extensions: [health_check, pprof, basicauth/elastic]
   pipelines:
     traces:
-      receivers: [otlp]
+      receivers: [otlp, awsxray]
       processors: [memory_limiter, resourcedetection, attributes, resource, batch]
       exporters: [elasticsearch]
 
     metrics:
-      receivers: [otlp, prometheus, hostmetrics]
+      receivers: [otlp, prometheus, hostmetrics, awscloudwatch]
       processors: [memory_limiter, resourcedetection, attributes, filter, transform, batch]
       exporters: [elasticsearch, prometheus]
 
     logs:
-      receivers: [otlp, filelog]
+      receivers: [otlp, filelog, awscloudwatch]
       processors: [memory_limiter, resourcedetection, attributes, batch]
       exporters: [elasticsearch]
 

@@ -95,3 +95,32 @@ ml:
 - Define SLOs per domain dataset.
 - Configure ServiceNow and on-call channels.
 - Enable backup/restore for DataObs index templates and saved objects.
+
+---
+
+## 5) AWS OTEL agent confirmation (metrics + logs + traces)
+
+For AWS service telemetry collection, confirm your OpenTelemetry Collector (or ADOT Collector) has:
+
+- `awscloudwatch` receiver connected to **metrics** and **logs** pipelines.
+- `awsxray` (UDP 2000) or OTLP receiver connected to the **traces** pipeline.
+- Valid AWS credentials from IAM role, IRSA, or environment variables.
+
+### Validation commands
+
+```bash
+# 1) Collector health
+kubectl -n dataobs port-forward deploy/dataobs-otel-collector 13133:13133
+curl -sf http://127.0.0.1:13133/
+
+# 2) Collector self metrics (scrape confirmation)
+kubectl -n dataobs port-forward deploy/dataobs-otel-collector 8888:8888
+curl -s http://127.0.0.1:8888/metrics | grep -E "otelcol_receiver_accepted_(metric_points|log_records|spans)"
+
+# 3) Data arriving in Elasticsearch
+curl -u "$ELASTIC_USER:$ELASTIC_PASSWORD" "$ELASTIC_ENDPOINT/dataobs-metrics*/_count"
+curl -u "$ELASTIC_USER:$ELASTIC_PASSWORD" "$ELASTIC_ENDPOINT/dataobs-logs*/_count"
+curl -u "$ELASTIC_USER:$ELASTIC_PASSWORD" "$ELASTIC_ENDPOINT/dataobs-traces*/_count"
+```
+
+If metrics/logs increase but traces do not, verify AWS X-Ray traffic reaches UDP/2000 and security groups/network policies allow the flow.

@@ -23,3 +23,4 @@ kubectl apply -f k8s/deployment-quality.yaml
 ## Notes
 - This setup assumes an existing Elasticsearch endpoint; update `ELASTICSEARCH_URL` env vars.
 - For production usage, use the Helm chart in `helm/dataobs/` and external Secrets.
+- AWS telemetry collection requires IAM permissions for CloudWatch/X-Ray and `AWS_REGION` on the collector pod.

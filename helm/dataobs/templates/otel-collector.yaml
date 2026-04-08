@@ -23,9 +23,14 @@ spec:
           image: "{{ .Values.otelCollector.image.repository }}:{{ .Values.otelCollector.image.tag }}"
           imagePullPolicy: {{ .Values.otelCollector.image.pullPolicy }}
           args: ["--config=/etc/otelcol-contrib/otel-collector-config.yaml"]
+          env:
+            - name: AWS_REGION
+              value: {{ .Values.otelCollector.awsRegion | quote }}
           ports:
             - containerPort: {{ .Values.otelCollector.service.grpcPort }}
             - containerPort: {{ .Values.otelCollector.service.httpPort }}
+            - containerPort: {{ .Values.otelCollector.service.xrayUdpPort }}
+              protocol: UDP
           volumeMounts:
             - name: otel-config
               mountPath: /etc/otelcol-contrib
@@ -59,4 +64,8 @@ spec:
     - name: otlp-http
       port: {{ .Values.otelCollector.service.httpPort }}
       targetPort: {{ .Values.otelCollector.service.httpPort }}
+    - name: aws-xray-udp
+      port: {{ .Values.otelCollector.service.xrayUdpPort }}
+      targetPort: {{ .Values.otelCollector.service.xrayUdpPort }}
+      protocol: UDP
 {{- end }}

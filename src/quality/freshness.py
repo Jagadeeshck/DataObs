@@ -8,18 +8,21 @@ Emits OpenTelemetry metrics and sends alerts when SLA thresholds are breached.
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass, field
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from typing import Optional
 
 import boto3
+import sqlalchemy
 from elasticsearch import Elasticsearch
 from opentelemetry import metrics, trace
 from opentelemetry.trace import Status, StatusCode
+from tenacity import retry, stop_after_attempt, wait_exponential, before_sleep_log
 
 logger = logging.getLogger(__name__)
 
-# ── OpenTelemetry instrumentation ──
+# ── OpenTelemetry instrumentation ──────────────────────────────────────────────
 tracer = trace.get_tracer("dataobs.freshness")
 meter = metrics.get_meter("dataobs.freshness")
 
@@ -32,6 +35,21 @@ freshness_breach_counter = meter.create_counter(
     name="dataobs.dataset.freshness_breach_total",
     description="Number of freshness SLA breaches",
 )
+
+# ── SQL identifier validation ──────────────────────────────────────────────────
+# Allows only alphanumeric, underscore, and dot (for schema.table notation).
+# This prevents SQL injection via config-supplied table/column names.
+_IDENTIFIER_RE = re.compile(r'^[A-Za-z_][A-Za-z0-9_.]*$')
+
+
+def _validate_sql_identifier(value: str, label: str) -> str:
+    """Raise ValueError if *value* is not a safe SQL identifier."""
+    if not _IDENTIFIER_RE.match(value):
+        raise ValueError(
+            f"Invalid SQL identifier for {label!r}: {value!r}. "
+            "Only letters, digits, underscores, and dots are allowed."
+        )
+    return value
 
 
 @dataclass
@@ -143,7 +161,6 @@ class FreshnessMonitor:
                     details={"source_type": config.source_type},
                 )
 
-                # Emit OTEL metrics
                 attrs = {
                     "dataobs.dataset": config.dataset_name,
                     "dataobs.source_type": config.source_type,
@@ -152,10 +169,13 @@ class FreshnessMonitor:
                 freshness_gauge.set(age_seconds, attrs)
                 if is_stale:
                     freshness_breach_counter.add(1, attrs)
-                    span.set_status(Status(StatusCode.ERROR, f"Freshness SLA breached: {age_seconds:.0f}s > {max_age_seconds:.0f}s"))
+                    span.set_status(
+                        Status(StatusCode.ERROR,
+                               f"Freshness SLA breached: {age_seconds:.0f}s > {max_age_seconds:.0f}s")
+                    )
                     logger.error(
                         "FRESHNESS BREACH: %s | age=%.1fm | max=%.1fm | severity=%s",
-                        config.dataset_name, age_seconds / 60, config.max_age_minutes, config.severity
+                        config.dataset_name, age_seconds / 60, config.max_age_minutes, config.severity,
                     )
                 else:
                     logger.info("Freshness OK: %s | age=%.1fm", config.dataset_name, age_seconds / 60)
@@ -225,12 +245,21 @@ class FreshnessMonitor:
             return None
 
     def _check_rds(self, config: FreshnessConfig) -> Optional[datetime]:
-        """Query max(timestamp_column) from a relational database table."""
-        import sqlalchemy
+        """Query max(timestamp_column) from a relational database table.
+
+        Both the table name and timestamp column name are validated against a
+        strict identifier regex before interpolation to prevent SQL injection.
+        """
         try:
+            # --- Security: validate identifiers before string interpolation ---
+            raw_table = config.dataset_name.split(".")[-1]
+            table_name = _validate_sql_identifier(raw_table, "table_name")
+            ts_col = _validate_sql_identifier(
+                config.timestamp_column or "updated_at", "timestamp_column"
+            )
+            # -------------------------------------------------------------------
+
             engine = sqlalchemy.create_engine(config.connection_string)
-            table_name = config.dataset_name.split(".")[-1]
-            ts_col = config.timestamp_column or "updated_at"
             with engine.connect() as conn:
                 result = conn.execute(
                     sqlalchemy.text(f"SELECT MAX({ts_col}) FROM {table_name}")
@@ -241,20 +270,33 @@ class FreshnessMonitor:
                     if hasattr(dt, 'tzinfo') and dt.tzinfo is None:
                         dt = dt.replace(tzinfo=timezone.utc)
                     return dt
+        except ValueError:
+            raise
         except Exception as e:
             logger.error("RDS freshness check error: %s", e)
         return None
 
     def _check_athena(self, config: FreshnessConfig) -> Optional[datetime]:
-        """Use Glue catalog metadata for Athena table freshness (same catalog)."""
+        """Use Glue catalog metadata for Athena table freshness (same catalog).
+
+        TODO: Replace with Athena-native query for partition-level freshness
+        accuracy when partition metadata differs from Glue table UpdateTime.
+        """
         return self._check_glue(config)
 
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=1, max=10),
+        before_sleep=before_sleep_log(logger, logging.WARNING),
+        reraise=False,
+    )
     def _index_result(self, result: FreshnessResult) -> None:
-        """Write the freshness check result to Elasticsearch."""
-        try:
-            self.es.index(
-                index="dataobs-freshness",
-                document=result.to_es_doc(),
-            )
-        except Exception as e:
-            logger.error("Failed to index freshness result: %s", e)
+        """Write the freshness check result to Elasticsearch.
+
+        Retries up to 3 times with exponential back-off on transient failures
+        so that a brief Elasticsearch hiccup does not silently drop results.
+        """
+        self.es.index(
+            index="dataobs-freshness",
+            document=result.to_es_doc(),
+        )

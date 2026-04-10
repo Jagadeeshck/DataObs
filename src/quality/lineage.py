@@ -10,13 +10,14 @@ from __future__ import annotations
 
 import json
 import logging
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
 from typing import List, Optional
 
 from elasticsearch import Elasticsearch
 from opentelemetry import trace
+from tenacity import retry, stop_after_attempt, wait_exponential, before_sleep_log
 
 logger = logging.getLogger(__name__)
 tracer = trace.get_tracer("dataobs.lineage")
@@ -97,15 +98,33 @@ class LineageTracker:
         self.es = es_client
         self._ensure_indices()
 
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=1, max=10),
+        before_sleep=before_sleep_log(logger, logging.WARNING),
+        reraise=False,
+    )
     def upsert_node(self, node: LineageNode) -> None:
-        """Insert or update a lineage node."""
+        """Insert or update a lineage node.
+
+        Uses the current elasticsearch-py 8.x keyword-argument API.
+        The deprecated body= parameter has been replaced with doc= and
+        doc_as_upsert= to prepare for the elasticsearch-py 9.x upgrade.
+        """
         self.es.update(
             index=self.NODE_INDEX,
             id=node.node_id,
-            body={"doc": node.to_es_doc(), "doc_as_upsert": True},
+            doc=node.to_es_doc(),
+            doc_as_upsert=True,
         )
         logger.debug("Upserted lineage node: %s", node.node_id)
 
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=1, max=10),
+        before_sleep=before_sleep_log(logger, logging.WARNING),
+        reraise=False,
+    )
     def record_edge(self, edge: LineageEdge) -> None:
         """Record a lineage edge (data flow between two nodes)."""
         self.es.index(
@@ -119,6 +138,9 @@ class LineageTracker:
         """
         BFS traversal to find all downstream nodes affected by a change to node_id.
         Returns a list of affected node IDs in order of distance.
+
+        Note: each hop fetches up to 100 edges. For nodes with >100 outgoing
+        edges consider replacing with search_after pagination.
         """
         span = trace.get_current_span()
         span.set_attribute("dataobs.lineage.root_node", node_id)
@@ -135,14 +157,11 @@ class LineageTracker:
                     continue
                 visited.add(current_node)
 
-                # Query ES for all edges where source = current_node
                 response = self.es.search(
                     index=self.EDGE_INDEX,
-                    body={
-                        "query": {"term": {"source_node_id.keyword": current_node}},
-                        "size": 100,
-                        "_source": ["target_node_id"],
-                    },
+                    query={"term": {"source_node_id.keyword": current_node}},
+                    size=100,
+                    source=["target_node_id"],
                 )
                 for hit in response["hits"]["hits"]:
                     target = hit["_source"]["target_node_id"]
@@ -174,11 +193,9 @@ class LineageTracker:
 
                 response = self.es.search(
                     index=self.EDGE_INDEX,
-                    body={
-                        "query": {"term": {"target_node_id.keyword": current_node}},
-                        "size": 100,
-                        "_source": ["source_node_id"],
-                    },
+                    query={"term": {"target_node_id.keyword": current_node}},
+                    size=100,
+                    source=["source_node_id"],
                 )
                 for hit in response["hits"]["hits"]:
                     source = hit["_source"]["source_node_id"]
@@ -207,7 +224,11 @@ class LineageTracker:
             if not node_key.startswith("model."):
                 continue
 
-            node_id = f"dbt.{node_data.get('database', 'unknown')}.{node_data.get('schema', 'unknown')}.{node_data.get('name', '')}"
+            node_id = (
+                f"dbt.{node_data.get('database', 'unknown')}"
+                f".{node_data.get('schema', 'unknown')}"
+                f".{node_data.get('name', '')}"
+            )
             node = LineageNode(
                 node_id=node_id,
                 node_type=NodeType.DBT_MODEL,
@@ -219,12 +240,15 @@ class LineageTracker:
             )
             self.upsert_node(node)
 
-            # Record edges from parent nodes
             for parent_key in node_data.get("depends_on", {}).get("nodes", []):
                 parent_data = nodes.get(parent_key, {})
                 if not parent_data:
                     continue
-                source_id = f"dbt.{parent_data.get('database','')}.{parent_data.get('schema','')}.{parent_data.get('name','')}"
+                source_id = (
+                    f"dbt.{parent_data.get('database','')}"
+                    f".{parent_data.get('schema','')}"
+                    f".{parent_data.get('name','')}"
+                )
                 edge = LineageEdge(
                     source_node_id=source_id,
                     target_node_id=node_id,
@@ -239,12 +263,18 @@ class LineageTracker:
         return edge_count
 
     def _ensure_indices(self) -> None:
-        """Create Elasticsearch indices if they don't exist."""
+        """Create Elasticsearch indices if they don't exist.
+
+        Uses the current elasticsearch-py 8.x keyword-argument API.
+        The deprecated body= parameter has been replaced with settings= and
+        mappings= keyword arguments.
+        """
         for index in [self.NODE_INDEX, self.EDGE_INDEX]:
             if not self.es.indices.exists(index=index):
-                self.es.indices.create(index=index, body={
-                    "settings": {"number_of_shards": 1, "number_of_replicas": 1},
-                    "mappings": {
+                self.es.indices.create(
+                    index=index,
+                    settings={"number_of_shards": 1, "number_of_replicas": 1},
+                    mappings={
                         "properties": {
                             "@timestamp": {"type": "date"},
                             "source_node_id": {"type": "keyword"},
@@ -254,6 +284,6 @@ class LineageTracker:
                             "environment": {"type": "keyword"},
                             "platform": {"type": "keyword"},
                         }
-                    }
-                })
+                    },
+                )
                 logger.info("Created index: %s", index)

@@ -7,15 +7,30 @@ Detects anomalous row counts using static thresholds or ML-based baselines.
 from __future__ import annotations
 
 import logging
+import re
 import statistics
 from typing import Any, List, Optional
 
 import sqlalchemy
 from elasticsearch import Elasticsearch
+from tenacity import retry, stop_after_attempt, wait_exponential, before_sleep_log
 
 from .base import BaseCheck, CheckResult
 
 logger = logging.getLogger(__name__)
+
+# ── SQL identifier validation ───────────────────────────────────────────────────
+_IDENTIFIER_RE = re.compile(r'^[A-Za-z_][A-Za-z0-9_.]*$')
+
+
+def _validate_sql_identifier(value: str, label: str) -> str:
+    """Raise ValueError if *value* is not a safe SQL identifier."""
+    if not _IDENTIFIER_RE.match(value):
+        raise ValueError(
+            f"Invalid SQL identifier for {label!r}: {value!r}. "
+            "Only letters, digits, underscores, and dots are allowed."
+        )
+    return value
 
 
 class RowCountCheck(BaseCheck):
@@ -42,12 +57,15 @@ class RowCountCheck(BaseCheck):
         severity = config.get("severity", "high")
 
         try:
-            table_name = dataset.split(".")[-1]
+            # --- Security: validate table identifier before interpolation ---
+            raw_table = dataset.split(".")[-1]
+            table_name = _validate_sql_identifier(raw_table, "dataset/table_name")
+            # -----------------------------------------------------------------
+
             with connection.connect() as conn:
                 result = conn.execute(sqlalchemy.text(f"SELECT COUNT(*) FROM {table_name}"))
                 row_count = result.scalar() or 0
 
-            # Static threshold checks
             if min_rows is not None and row_count < min_rows:
                 return self._fail(
                     dataset=dataset,
@@ -68,7 +86,6 @@ class RowCountCheck(BaseCheck):
                     details={"row_count": row_count, "max_rows": max_rows},
                 )
 
-            # Anomaly detection (z-score based on historical baselines)
             if anomaly_detection and self.es:
                 anomaly_result = self._anomaly_check(dataset, row_count, stddev_threshold, severity)
                 if anomaly_result:
@@ -82,32 +99,44 @@ class RowCountCheck(BaseCheck):
                 details={"row_count": row_count},
             )
 
+        except ValueError:
+            raise
         except Exception as exc:
             logger.exception("Row count check error for %s", dataset)
             return self._error(dataset, exc)
 
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=1, max=10),
+        before_sleep=before_sleep_log(logger, logging.WARNING),
+        reraise=False,
+    )
     def _anomaly_check(
         self, dataset: str, current_count: int, stddev_threshold: float, severity: str
     ) -> Optional[CheckResult]:
-        """Compare current row count against 30-day rolling baseline."""
+        """Compare current row count against 30-day rolling baseline.
+
+        Fix: sort, size, and _source are now passed as top-level keyword
+        arguments to es.search() rather than being nested inside the query dict,
+        which caused them to be silently ignored and anomaly detection to always
+        return 0 historical data points.
+        """
         try:
             response = self.es.search(
                 index="dataobs-quality-results",
-                body={
-                    "query": {
-                        "bool": {
-                            "must": [
-                                {"term": {"dataset.keyword": dataset}},
-                                {"term": {"check_type.keyword": "row_count"}},
-                                {"term": {"status.keyword": "PASS"}},
-                                {"range": {"@timestamp": {"gte": "now-30d"}}},
-                            ]
-                        },
-                        "sort": [{"@timestamp": {"order": "desc"}}],
-                        "size": 60,
-                        "_source": ["metric_value"],
+                query={
+                    "bool": {
+                        "must": [
+                            {"term": {"dataset.keyword": dataset}},
+                            {"term": {"check_type.keyword": "row_count"}},
+                            {"term": {"status.keyword": "PASS"}},
+                            {"range": {"@timestamp": {"gte": "now-30d"}}},
+                        ]
                     }
                 },
+                sort=[{"@timestamp": {"order": "desc"}}],
+                size=60,
+                source=["metric_value"],
             )
 
             historical: List[float] = [
@@ -116,7 +145,7 @@ class RowCountCheck(BaseCheck):
                 if hit["_source"].get("metric_value") is not None
             ]
 
-            if len(historical) < 7:  # Need at least 7 data points
+            if len(historical) < 7:
                 return None
 
             mean = statistics.mean(historical)
@@ -130,7 +159,10 @@ class RowCountCheck(BaseCheck):
             if z_score > stddev_threshold:
                 return self._fail(
                     dataset=dataset,
-                    message=f"Row count anomaly: {current_count:,} (z-score={z_score:.2f}, threshold={stddev_threshold})",
+                    message=(
+                        f"Row count anomaly: {current_count:,} "
+                        f"(z-score={z_score:.2f}, threshold={stddev_threshold})"
+                    ),
                     severity=severity,
                     metric_value=float(current_count),
                     threshold=stddev_threshold,

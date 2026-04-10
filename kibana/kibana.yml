@@ -1,0 +1,22 @@
+# Kibana configuration for DataObs local stack.
+#
+# Credentials (ELASTICSEARCH_USERNAME, ELASTICSEARCH_PASSWORD) are intentionally
+# NOT stored here — they are injected at runtime via docker-compose environment
+# variables so that this file is safe to commit.
+
+server.name: dataobs-kibana
+server.host: "0.0.0.0"
+
+# Elasticsearch connection — overridden by ELASTICSEARCH_HOSTS env var in Docker.
+elasticsearch.hosts: ["http://elasticsearch:9200"]
+
+# UI features
+xpack.fleet.enabled: true
+xpack.apm.enabled: true
+
+# Telemetry
+monitoring.ui.container.elasticsearch.enabled: true
+telemetry.optIn: false
+
+# Logging
+logging.root.level: warn

@@ -1,0 +1,66 @@
+{
+  "_meta": {
+    "description": "DataObs ingest pipeline — enriches all documents with tenant_id, environment, and normalises AWS resource identifiers"
+  },
+  "pipelines": [
+    {
+      "name": "dataobs-enrich",
+      "processors": [
+        {
+          "set": {
+            "description": "Default tenant_id to 'platform' if not supplied",
+            "field": "dataobs.tenant_id",
+            "value": "platform",
+            "if": "ctx?.dataobs?.tenant_id == null"
+          }
+        },
+        {
+          "set": {
+            "description": "Default environment to 'production' if not supplied",
+            "field": "dataobs.environment",
+            "value": "production",
+            "if": "ctx?.dataobs?.environment == null"
+          }
+        },
+        {
+          "date": {
+            "description": "Parse @timestamp if it arrives as a string",
+            "field": "@timestamp",
+            "formats": ["ISO8601", "UNIX_MS"],
+            "ignore_failure": true
+          }
+        },
+        {
+          "grok": {
+            "description": "Extract account_id and region from ARN if present",
+            "field": "aws.resource_arn",
+            "patterns": ["arn:aws:%{DATA:aws.service}:%{DATA:aws.region}:%{DATA:aws.account_id}:%{GREEDYDATA:aws.resource}"],
+            "ignore_missing": true,
+            "ignore_failure": true
+          }
+        },
+        {
+          "lowercase": {
+            "field": "dataobs.tenant_id",
+            "ignore_missing": true
+          }
+        },
+        {
+          "remove": {
+            "description": "Strip internal OTel instrumentation noise",
+            "field": ["otel.scope.schema_url"],
+            "ignore_missing": true
+          }
+        }
+      ],
+      "on_failure": [
+        {
+          "set": {
+            "field": "dataobs.ingest_error",
+            "value": "{{ _ingest.on_failure_message }}"
+          }
+        }
+      ]
+    }
+  ]
+}

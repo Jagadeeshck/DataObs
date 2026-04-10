@@ -1,0 +1,103 @@
+{
+  "_meta": {
+    "description": "DataObs server-side index templates for all four observability signals"
+  },
+  "templates": [
+    {
+      "name": "dataobs-traces",
+      "index_patterns": ["dataobs-traces-*"],
+      "data_stream": {},
+      "priority": 200,
+      "template": {
+        "settings": {
+          "index.lifecycle.name": "dataobs-server-ilm",
+          "index.number_of_shards": 3,
+          "index.number_of_replicas": 1
+        },
+        "mappings": {
+          "properties": {
+            "@timestamp": { "type": "date" },
+            "trace_id": { "type": "keyword" },
+            "span_id": { "type": "keyword" },
+            "parent_span_id": { "type": "keyword" },
+            "service.name": { "type": "keyword" },
+            "dataobs.dataset": { "type": "keyword" },
+            "dataobs.tenant_id": { "type": "keyword" },
+            "dataobs.environment": { "type": "keyword" },
+            "status.code": { "type": "keyword" }
+          }
+        }
+      }
+    },
+    {
+      "name": "dataobs-metrics",
+      "index_patterns": ["dataobs-metrics-*"],
+      "data_stream": {},
+      "priority": 200,
+      "template": {
+        "settings": {
+          "index.lifecycle.name": "dataobs-server-ilm",
+          "index.number_of_shards": 2,
+          "index.number_of_replicas": 1
+        },
+        "mappings": {
+          "properties": {
+            "@timestamp": { "type": "date" },
+            "metric_name": { "type": "keyword" },
+            "metric_value": { "type": "double" },
+            "dataobs.dataset": { "type": "keyword" },
+            "dataobs.tenant_id": { "type": "keyword" },
+            "dataobs.source_type": { "type": "keyword" }
+          }
+        }
+      }
+    },
+    {
+      "name": "dataobs-logs",
+      "index_patterns": ["dataobs-logs-*"],
+      "data_stream": {},
+      "priority": 200,
+      "template": {
+        "settings": {
+          "index.lifecycle.name": "dataobs-server-ilm",
+          "index.number_of_shards": 2,
+          "index.number_of_replicas": 1
+        },
+        "mappings": {
+          "properties": {
+            "@timestamp": { "type": "date" },
+            "message": { "type": "text" },
+            "log.level": { "type": "keyword" },
+            "service.name": { "type": "keyword" },
+            "dataobs.tenant_id": { "type": "keyword" }
+          }
+        }
+      }
+    },
+    {
+      "name": "dataobs-quality-results",
+      "index_patterns": ["dataobs-quality-results-*"],
+      "data_stream": {},
+      "priority": 200,
+      "template": {
+        "settings": {
+          "index.lifecycle.name": "dataobs-server-ilm",
+          "index.number_of_shards": 1,
+          "index.number_of_replicas": 1
+        },
+        "mappings": {
+          "properties": {
+            "@timestamp": { "type": "date" },
+            "dataset": { "type": "keyword" },
+            "check_type": { "type": "keyword" },
+            "status": { "type": "keyword" },
+            "severity": { "type": "keyword" },
+            "metric_value": { "type": "double" },
+            "threshold": { "type": "double" },
+            "dataobs.tenant_id": { "type": "keyword" }
+          }
+        }
+      }
+    }
+  ]
+}

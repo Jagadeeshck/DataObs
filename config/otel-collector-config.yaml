@@ -1,11 +1,19 @@
 # DataObs OpenTelemetry Collector Configuration
 # Supports: AWS services, application traces/metrics/logs, data pipeline telemetry
 
+# ── Extensions ─────────────────────────────────────────────────────────────────
+# IMPORTANT: There must be exactly ONE top-level `extensions:` block.
+# A duplicate block silently overwrites the first, causing health_check and
+# pprof to never be registered despite appearing in service.extensions.
 extensions:
   health_check:
     endpoint: 0.0.0.0:13133
   pprof:
     endpoint: 0.0.0.0:1777
+  basicauth/elastic:
+    client_auth:
+      username: "${ELASTIC_USER}"
+      password: "${ELASTIC_PASSWORD}"
 
 receivers:
   # ── OTLP Receiver (primary entry point for all instrumented services) ──
@@ -16,7 +24,12 @@ receivers:
       http:
         endpoint: 0.0.0.0:4318
         cors:
-          allowed_origins: ["*"]
+          # SECURITY: Restrict OTLP HTTP to known internal origins only.
+          # Set OTLP_ALLOWED_ORIGINS as a comma-separated env var, e.g.:
+          #   OTLP_ALLOWED_ORIGINS=https://*.internal.example.com
+          # Do NOT use ["*"] — it allows any origin to inject telemetry data.
+          allowed_origins:
+            - "${OTLP_ALLOWED_ORIGINS:-https://*.internal.example.com}"
 
   # ── Prometheus scrape (infrastructure metrics) ──
   prometheus:
@@ -164,12 +177,6 @@ exporters:
   prometheus:
     endpoint: "0.0.0.0:8889"
     namespace: dataobs
-
-extensions:
-  basicauth/elastic:
-    client_auth:
-      username: "${ELASTIC_USER}"
-      password: "${ELASTIC_PASSWORD}"
 
 service:
   extensions: [health_check, pprof, basicauth/elastic]

@@ -28,6 +28,7 @@ See detailed model documentation:
 - `docker-compose.yml`: local stack (Elasticsearch, Kibana, OTEL Collector, DataObs services)
 - `config/dataobs.example.yaml`: main configuration blueprint
 - `config/otel-collector-config.yaml`: OTEL Collector pipelines and exporters
+- `config/otel-ec2-agent-config.yaml`: OTEL/ADOT EC2 agent config for host + app telemetry forwarding
 
 ### Core data observability code
 - `src/quality/freshness.py`: freshness SLA checks
@@ -45,6 +46,7 @@ See detailed model documentation:
 
 ### Production operations
 - `docs/production/production-guide.md`: production deployment patterns
+- `docs/production/ec2-otel-agent.md`: EC2 instrumentation runbook (Java/Python/Spark + X-Ray option)
 - `docs/wiki/operations-wiki.md`: operations wiki / runbook starter
 - `docs/api/rules-and-lineage-api.md`: API usage for rule/lineage management
 - `docs/product/data-checks-and-competitive-parity.md`: data check strategy and parity roadmap

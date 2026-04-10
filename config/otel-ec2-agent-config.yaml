@@ -1,0 +1,115 @@
+# DataObs OpenTelemetry Collector configuration for EC2 hosts
+# Use this as the base config for ADOT/OpenTelemetry Collector running as an agent on each EC2 instance.
+# It supports Java/Python applications (including Spark) and can ingest traces from either OTLP SDKs or AWS X-Ray daemon traffic.
+
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+receivers:
+  # Application telemetry from OpenTelemetry SDKs/auto-instrumentation
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+  # X-Ray UDP ingestion for legacy/daemon-based emitters
+  awsxray:
+    endpoint: 0.0.0.0:2000
+    transport: udp
+
+  # Host-level metrics from EC2 nodes
+  hostmetrics:
+    collection_interval: 30s
+    scrapers:
+      cpu:
+      load:
+      memory:
+      disk:
+      filesystem:
+      network:
+      processes:
+
+  # Collect application and system logs from EC2
+  filelog:
+    include:
+      - /var/log/*.log
+      - /var/log/messages
+      - /var/log/syslog
+      - /var/log/spark/*.log
+      - /opt/spark/logs/*.out
+      - /opt/spark/logs/*.log
+    exclude:
+      - /var/log/lastlog
+      - /var/log/wtmp
+    start_at: beginning
+    operators:
+      - type: regex_parser
+        regex: '^(?P<ts>\d{4}-\d{2}-\d{2}[T\s]\d{2}:\d{2}:\d{2}(?:[\.,]\d+)?)\s+(?P<level>[A-Z]+)\s+(?P<body>.*)$'
+        parse_from: body
+        if: 'body matches "^\\d{4}-\\d{2}-\\d{2}"'
+      - type: move
+        from: attributes.body
+        to: body
+        if: 'attributes.body != nil'
+      - type: add
+        field: attributes.dataobs.source
+        value: ec2-agent
+
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 512
+    spike_limit_mib: 128
+
+  batch:
+    timeout: 10s
+    send_batch_size: 1024
+
+  resourcedetection:
+    detectors: [env, system, ec2]
+    timeout: 5s
+    override: false
+
+  resource:
+    attributes:
+      - key: service.namespace
+        value: dataobs
+        action: upsert
+      - key: deployment.environment
+        from_attribute: DEPLOYMENT_ENV
+        action: insert
+
+exporters:
+  # Send everything to centralized DataObs/OpenTelemetry gateway collector.
+  # If your gateway requires TLS/auth, set these env vars in the EC2 service unit.
+  otlp:
+    endpoint: ${OTEL_GATEWAY_ENDPOINT}
+    tls:
+      insecure: ${OTEL_GATEWAY_INSECURE}
+    headers:
+      x-tenant-id: ${OTEL_TENANT_ID}
+
+  # Optional local troubleshooting
+  debug:
+    verbosity: basic
+
+service:
+  extensions: [health_check]
+  pipelines:
+    traces:
+      receivers: [otlp, awsxray]
+      processors: [memory_limiter, resourcedetection, batch]
+      exporters: [otlp]
+
+    metrics:
+      receivers: [otlp, hostmetrics]
+      processors: [memory_limiter, resourcedetection, batch]
+      exporters: [otlp]
+
+    logs:
+      receivers: [otlp, filelog]
+      processors: [memory_limiter, resourcedetection, resource, batch]
+      exporters: [otlp]

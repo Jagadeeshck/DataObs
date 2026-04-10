@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "2.2",
+  "description": "Install AWS OTEL Collector on Amazon Linux/Ubuntu EC2 instances",
+  "mainSteps": [
+    {
+      "action": "aws:runShellScript",
+      "name": "installOtelCollector",
+      "inputs": {
+        "timeoutSeconds": "1800",
+        "runCommand": [
+          "set -euo pipefail",
+          "REGION=${region}",
+          "if command -v yum >/dev/null 2>&1; then",
+          "  sudo yum install -y aws-otel-collector || sudo yum install -y https://amazoncloudwatch-agent-${region}.s3.${region}.amazonaws.com/amazon_linux/amd64/latest/aws-otel-collector.rpm",
+          "elif command -v apt-get >/dev/null 2>&1; then",
+          "  sudo apt-get update",
+          "  sudo apt-get install -y wget",
+          "  wget -q https://amazoncloudwatch-agent-${region}.s3.${region}.amazonaws.com/ubuntu/amd64/latest/aws-otel-collector.deb -O /tmp/aws-otel-collector.deb",
+          "  sudo dpkg -i /tmp/aws-otel-collector.deb || sudo apt-get -f install -y",
+          "else",
+          "  echo 'Unsupported OS package manager. Expected yum or apt-get.' >&2",
+          "  exit 1",
+          "fi",
+          "sudo systemctl daemon-reload",
+          "sudo systemctl enable aws-otel-collector"
+        ]
+      }
+    }
+  ]
+}

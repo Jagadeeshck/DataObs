@@ -98,13 +98,26 @@ ml:
 
 ---
 
-## 5) AWS OTEL agent confirmation (metrics + logs + traces)
+## 5) AWS OTEL agent confirmation (EKS + EC2, metrics + logs + traces)
 
 For AWS service telemetry collection, confirm your OpenTelemetry Collector (or ADOT Collector) has:
 
 - `awscloudwatch` receiver connected to **metrics** and **logs** pipelines.
 - `awsxray` (UDP 2000) or OTLP receiver connected to the **traces** pipeline.
 - Valid AWS credentials from IAM role, IRSA, or environment variables.
+
+
+
+### EC2 agent deployment option
+
+For workloads running directly on EC2 (for example Spark driver/executor JVMs, Python ETL, or long-running services), run an OTEL collector **agent** on each host and forward data to your central collector/gateway.
+
+- Use `config/otel-ec2-agent-config.yaml` as the baseline agent config.
+- Use `infra/terraform/aws-ec2-otel-agent` to push install + config through AWS SSM to instance groups (tags) or individual nodes (instance IDs).
+- It supports OTLP (`4317`/`4318`) for Java/Python instrumentation.
+- It also supports AWS X-Ray daemon traffic on UDP `2000` via `awsxray` receiver.
+
+Detailed runbook: [`docs/production/ec2-otel-agent.md`](ec2-otel-agent.md).
 
 ### Validation commands
 

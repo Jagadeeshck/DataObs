@@ -87,6 +87,19 @@ aws:
   # access_key_id: "${AWS_ACCESS_KEY_ID}"
   # secret_access_key: "${AWS_SECRET_ACCESS_KEY}"
 
+  ec2_agent:
+    enabled: true
+    collector_mode: adot   # adot | otelcol-contrib
+    config_path: /etc/otel-agent/config.yaml
+    gateway_endpoint: "${OTEL_GATEWAY_ENDPOINT:-otel-gateway.company.net:4317}"
+    support_xray_udp: true
+    xray_udp_port: 2000
+    otlp_grpc_port: 4317
+    otlp_http_port: 4318
+    spark_log_paths:
+      - /var/log/spark/*.log
+      - /opt/spark/logs/*.out
+
   # Services to monitor
   services:
     lambda:

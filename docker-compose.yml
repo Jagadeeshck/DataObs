@@ -2,6 +2,9 @@ version: '3.8'
 
 # DataObs - Full Stack Local Deployment
 # Includes: Elasticsearch, Kibana, OTEL Collector, DataObs API, DataObs Quality Engine
+#
+# REQUIRED: Copy .env.example to .env and fill in all values before running.
+# Run: cp .env.example .env && docker compose up -d
 
 services:
 
@@ -15,7 +18,7 @@ services:
       - node.name=dataobs-es01
       - cluster.name=dataobs-cluster
       - discovery.type=single-node
-      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:-dataobs123}
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:?ELASTIC_PASSWORD is required - copy .env.example to .env}
       - xpack.security.enabled=true
       - xpack.security.http.ssl.enabled=false
       - xpack.license.self_generated.type=trial
@@ -29,7 +32,12 @@ services:
     ports:
       - "9200:9200"
     healthcheck:
-      test: ["CMD-SHELL", "curl -s -u elastic:${ELASTIC_PASSWORD:-dataobs123} http://localhost:9200/_cluster/health | grep -q '\"status\":\"green\"\|\"status\":\"yellow\"'"]
+      test:
+        - "CMD-SHELL"
+        - |
+          curl -s -u "elastic:$$ELASTIC_PASSWORD" \
+            http://localhost:9200/_cluster/health \
+          | grep -qE '"status":"(green|yellow)"'
       interval: 30s
       timeout: 10s
       retries: 5
@@ -45,7 +53,7 @@ services:
     environment:
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
       - ELASTICSEARCH_USERNAME=kibana_system
-      - ELASTICSEARCH_PASSWORD=${KIBANA_PASSWORD:-dataobs123}
+      - ELASTICSEARCH_PASSWORD=${KIBANA_PASSWORD:?KIBANA_PASSWORD is required - copy .env.example to .env}
       - XPACK_FLEET_ENABLED=true
       - XPACK_APM_ENABLED=true
     ports:
@@ -76,7 +84,7 @@ services:
     environment:
       - ELASTIC_ENDPOINT=http://elasticsearch:9200
       - ELASTIC_USER=elastic
-      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:-dataobs123}
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:?ELASTIC_PASSWORD is required}
     depends_on:
       elasticsearch:
         condition: service_healthy
@@ -94,7 +102,7 @@ services:
     environment:
       - ELASTICSEARCH_URL=http://elasticsearch:9200
       - ELASTICSEARCH_USER=elastic
-      - ELASTICSEARCH_PASSWORD=${ELASTIC_PASSWORD:-dataobs123}
+      - ELASTICSEARCH_PASSWORD=${ELASTIC_PASSWORD:?ELASTIC_PASSWORD is required}
       - DATAOBS_CONFIG=/app/config/dataobs.yaml
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
       - OTEL_SERVICE_NAME=dataobs-quality-engine
@@ -119,7 +127,7 @@ services:
     environment:
       - ELASTICSEARCH_URL=http://elasticsearch:9200
       - ELASTICSEARCH_USER=elastic
-      - ELASTICSEARCH_PASSWORD=${ELASTIC_PASSWORD:-dataobs123}
+      - ELASTICSEARCH_PASSWORD=${ELASTIC_PASSWORD:?ELASTIC_PASSWORD is required}
       - DATAOBS_CONFIG=/app/config/dataobs.yaml
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
       - OTEL_SERVICE_NAME=dataobs-api

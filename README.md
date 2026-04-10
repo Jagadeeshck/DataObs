@@ -53,6 +53,7 @@ See detailed model documentation:
 - `docs/product/enterprise-contract-playbook.md`: competitive positioning and contract-winning rollout playbook
 - `k8s/`: raw Kubernetes manifests for API, quality engine, and OTEL collector
 - `helm/dataobs/`: Helm chart for configurable Kubernetes deployments
+- `infra/terraform/aws-ec2-otel-agent/`: Terraform + SSM rollout for OTEL agent installation/config on EC2
 
 ## Quick Start
 

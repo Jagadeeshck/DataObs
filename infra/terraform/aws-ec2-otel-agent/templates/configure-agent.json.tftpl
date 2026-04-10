@@ -1,0 +1,21 @@
+{
+  "schemaVersion": "2.2",
+  "description": "Write OTEL agent config and restart service",
+  "mainSteps": [
+    {
+      "action": "aws:runShellScript",
+      "name": "configureOtelCollector",
+      "inputs": {
+        "timeoutSeconds": "1800",
+        "runCommand": [
+          "set -euo pipefail",
+          "sudo mkdir -p $(dirname ${config_destination})",
+          "echo '${config_b64}' | base64 -d | sudo tee ${config_destination} > /dev/null",
+          "sudo systemctl daemon-reload",
+          "sudo systemctl restart ${service_name}",
+          "sudo systemctl status ${service_name} --no-pager"
+        ]
+      }
+    }
+  ]
+}

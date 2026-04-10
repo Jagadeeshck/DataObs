@@ -113,6 +113,7 @@ For AWS service telemetry collection, confirm your OpenTelemetry Collector (or A
 For workloads running directly on EC2 (for example Spark driver/executor JVMs, Python ETL, or long-running services), run an OTEL collector **agent** on each host and forward data to your central collector/gateway.
 
 - Use `config/otel-ec2-agent-config.yaml` as the baseline agent config.
+- Use `infra/terraform/aws-ec2-otel-agent` to push install + config through AWS SSM to instance groups (tags) or individual nodes (instance IDs).
 - It supports OTLP (`4317`/`4318`) for Java/Python instrumentation.
 - It also supports AWS X-Ray daemon traffic on UDP `2000` via `awsxray` receiver.
 

@@ -11,6 +11,24 @@ This guide explains how to run an OpenTelemetry Collector agent on EC2 instances
 
 ---
 
+
+## 0) Push agent install/config via Terraform + SSM
+
+If you want centralized rollout (instead of manual SSH), use the Terraform module:
+
+- `infra/terraform/aws-ec2-otel-agent`
+
+The module creates SSM documents + associations so you can target:
+
+- **group of nodes** by tag (for example all Spark workers), or
+- **individual EC2 instances** by explicit instance IDs.
+
+See module usage examples in:
+
+- `infra/terraform/aws-ec2-otel-agent/README.md`
+
+---
+
 ## 1) Install collector agent on EC2
 
 You can run either:

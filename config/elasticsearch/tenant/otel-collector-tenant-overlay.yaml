@@ -1,0 +1,73 @@
+# =============================================================================
+# DataObs — Tenant OTel Collector Config Overlay
+#
+# This file is MERGED onto the base otel-collector-config.yaml on the
+# tenant side. It overrides the Elasticsearch exporter to point at the
+# server-side DataObs ingest endpoint and injects the tenant API key
+# (fetched from AWS Secrets Manager at container startup via the
+# AWS_SECRET_ARN env var).
+#
+# The tenant never gets write access to the server cluster's raw indices;
+# data flows: tenant pipeline -> OTel collector -> server ES ingest pipeline
+# -> server cluster -> CCR replication -> tenant read-only cluster.
+# =============================================================================
+
+# Environment variables required on the tenant collector container:
+#   DATAOBS_SERVER_ENDPOINT  — HTTPS endpoint of the DataObs server ES cluster
+#   DATAOBS_TENANT_ID        — Tenant identifier (e.g. "acme")
+#   DATAOBS_TENANT_API_KEY   — Base64-encoded API key from Secrets Manager
+#   OTLP_ALLOWED_ORIGINS     — Comma-separated allowed CORS origins (tenant side)
+
+extensions:
+  bearerauth/tenant:
+    scheme: ApiKey
+    token: "${DATAOBS_TENANT_API_KEY}"
+
+processors:
+  # Inject tenant_id into every telemetry signal so DLS and index routing work.
+  resource/tenant:
+    attributes:
+      - key: dataobs.tenant_id
+        value: "${DATAOBS_TENANT_ID}"
+        action: upsert
+      - key: dataobs.product
+        value: dataobs
+        action: insert
+
+exporters:
+  # Override the base elasticsearch exporter to target the DataObs server.
+  # Tenant API key provides write access only; read is via the tenant cluster.
+  elasticsearch/dataobs_server:
+    endpoints: ["${DATAOBS_SERVER_ENDPOINT}"]
+    auth:
+      authenticator: bearerauth/tenant
+    traces_index: "dataobs-traces"
+    logs_index: "dataobs-logs"
+    metrics_index: "dataobs-metrics"
+    mapping:
+      mode: ecs
+    pipeline: "dataobs-enrich"
+    flush:
+      bytes: 5242880
+      interval: 30s
+    retry:
+      enabled: true
+      max_requests: 3
+      initial_interval: 1s
+      max_interval: 30s
+
+service:
+  extensions: [health_check, pprof, bearerauth/tenant]
+  pipelines:
+    traces:
+      receivers: [otlp, awsxray]
+      processors: [memory_limiter, resourcedetection, resource/tenant, attributes, batch]
+      exporters: [elasticsearch/dataobs_server]
+    metrics:
+      receivers: [otlp, prometheus, hostmetrics, awscloudwatch]
+      processors: [memory_limiter, resourcedetection, resource/tenant, attributes, filter, transform, batch]
+      exporters: [elasticsearch/dataobs_server, prometheus]
+    logs:
+      receivers: [otlp, filelog, awscloudwatch]
+      processors: [memory_limiter, resourcedetection, resource/tenant, attributes, batch]
+      exporters: [elasticsearch/dataobs_server]

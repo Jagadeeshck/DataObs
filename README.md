@@ -53,29 +53,54 @@ This repository provides:
                         ┌─────────────────────────────────────────────────────┐
                         │                  Signal Sources                     │
                         │  Python Apps · Spark Jobs · Lambda · EC2 · K8s pods │
+                        │  (OTel SDK — semconv resource attributes required)   │
                         └───────────────────────┬─────────────────────────────┘
                                                 │  OTLP (gRPC / HTTP)
                         ┌───────────────────────▼─────────────────────────────┐
-                        │            OTel Collector / Grafana Alloy            │
-                        │   Receive → Enrich → Batch → Route                  │
-                        └─────────┬───────────────────────────┬───────────────┘
-                                  │                           │
-               ┌──────────────────▼────────┐    ┌────────────▼────────────────┐
-               │  Elasticsearch / Kibana   │    │        Grafana Cloud        │
-               │  Metrics · Logs · Traces  │    │  Mimir · Loki · Tempo       │
-               │  ML anomaly detection     │    │  Service map · Alerting     │
-               └──────────┬────────────────┘    └────────────┬────────────────┘
-                          │                                  │
-               ┌──────────▼──────────────────────────────────▼───────────┐
-               │                  DataObs Platform                        │
-               │  Quality Engine · Freshness SLA · Lineage · Rules API   │
-               └──────────────────────────┬──────────────────────────────┘
-                                          │
-               ┌──────────────────────────▼──────────────────────────────┐
-               │              Alerting & ITSM                             │
-               │         ServiceNow · PagerDuty · Slack                  │
-               └─────────────────────────────────────────────────────────┘
+                        │         OTel Collector / Grafana Alloy               │
+                        │  Receive → Semconv enrich → Normalize → Batch → Route│
+                        │  spanmetrics connector (RED metrics from traces)      │
+                        │  servicegraph connector (topology map)               │
+                        └──┬──────────┬───────────────┬──────────┬────────────┘
+                           │          │               │          │
+          ┌────────────────▼──┐  ┌────▼────────┐  ┌──▼──────┐  ┌──▼──────────────┐
+          │ Elasticsearch 8.x │  │  OpenSearch │  │   AMP   │  │  Grafana Cloud  │
+          │ AIOps + ML        │  │ self / AWS  │  │(metrics)│  │ OTLP gateway    │
+          │ ECS mapping       │  │ via OSIS or │  │         │  │ Tempo/Loki/Mimir│
+          │ Kibana dashboards │  │ Data Prepper│  └────┬────┘  └──────────────────┘
+          └──────────┬────────┘  └──────┬──────┘       │
+                     │                  │         ┌─────▼──────────────────────────┐
+                     │                  │         │   Amazon Managed Grafana       │
+                     │                  └────────►│   Data sources: AMP + OSIS     │
+                     │                            │   Service map · Anomaly detect  │
+                     │                            │   Drilldown correlations        │
+                     │                            └────────────────────────────────┘
+                     │
+          ┌──────────▼──────────────────────────────────────────────────────┐
+          │                  DataObs Platform                                │
+          │  Quality Engine · Freshness SLA · Lineage · Rules API           │
+          └──────────────────────────────────┬──────────────────────────────┘
+                                             │
+          ┌──────────────────────────────────▼──────────────────────────────┐
+          │              Alerting & ITSM                                     │
+          │         ServiceNow · PagerDuty · Slack                          │
+          └──────────────────────────────────────────────────────────────────┘
 ```
+
+### Backend selector
+
+Set `DATAOBS_BACKEND` to activate the desired sink(s):
+
+| Value | Metrics | Traces | Logs | Use case |
+|---|---|---|---|---|
+| `elasticsearch` | ES `dataobs-metrics` | ES `dataobs-traces` | ES `dataobs-logs` | Default — local / on-prem AIOps |
+| `opensearch` | OpenSearch via Data Prepper | OpenSearch trace-analytics | OpenSearch logs | Self-managed OpenSearch |
+| `opensearch_aws` | OSIS → OpenSearch domain | OSIS → OpenSearch domain | OSIS → OpenSearch domain | Amazon OpenSearch Service |
+| `aws_grafana` | AMP → Amazon Managed Grafana | OSIS → OpenSearch → AMG | OSIS → OpenSearch → AMG | Full AWS managed stack |
+| `grafana_cloud` | Grafana Cloud OTLP | Grafana Cloud OTLP | Grafana Cloud OTLP | Grafana Cloud SaaS |
+| `all` | All of the above | All of the above | All of the above | Fan-out / migration |
+
+See [`docs/aws-grafana-setup.md`](docs/aws-grafana-setup.md) for the AWS provisioning walkthrough.
 
 Signal flow for the Grafana Alloy integration:
 

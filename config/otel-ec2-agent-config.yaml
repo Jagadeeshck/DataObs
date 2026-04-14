@@ -1,13 +1,21 @@
-# DataObs OpenTelemetry Collector configuration for EC2 hosts
-# Use this as the base config for ADOT/OpenTelemetry Collector running as an agent on each EC2 instance.
-# It supports Java/Python applications (including Spark) and can ingest traces from either OTLP SDKs or AWS X-Ray daemon traffic.
+# ============================================================================
+# DataObs — OTel Collector EC2 Agent Configuration
+# ============================================================================
+# Deploy this on each EC2 host as a sidecar / system service.
+# The agent ships telemetry to the centralized DataObs gateway collector.
+#
+# OTel Semantic Conventions: https://opentelemetry.io/docs/specs/semconv/
+# ============================================================================
 
 extensions:
   health_check:
     endpoint: 0.0.0.0:13133
 
 receivers:
-  # Application telemetry from OpenTelemetry SDKs/auto-instrumentation
+  # Application telemetry from OTel SDKs / auto-instrumentation
+  # SDKs should set via OTEL_RESOURCE_ATTRIBUTES or SDK Resource:
+  #   service.name, service.version, service.namespace, service.instance.id
+  #   deployment.environment.name
   otlp:
     protocols:
       grpc:
@@ -15,24 +23,39 @@ receivers:
       http:
         endpoint: 0.0.0.0:4318
 
-  # X-Ray UDP ingestion for legacy/daemon-based emitters
+  # AWS X-Ray legacy ingestion
   awsxray:
     endpoint: 0.0.0.0:2000
     transport: udp
 
-  # Host-level metrics from EC2 nodes
+  # Host-level metrics — semconv system.* names
   hostmetrics:
     collection_interval: 30s
     scrapers:
       cpu:
+        metrics:
+          system.cpu.utilization:
+            enabled: true
+          system.cpu.physical.count:
+            enabled: true
       load:
       memory:
+        metrics:
+          system.memory.utilization:
+            enabled: true
       disk:
       filesystem:
+        metrics:
+          system.filesystem.utilization:
+            enabled: true
       network:
       processes:
+      process:
+        mute_process_name_error: true
+        mute_process_exe_error: true
+        mute_process_io_error: true
 
-  # Collect application and system logs from EC2
+  # Application + system log collection
   filelog:
     include:
       - /var/log/*.log
@@ -40,7 +63,6 @@ receivers:
       - /var/log/syslog
       - /var/log/spark/*.log
       - /opt/spark/logs/*.out
-      - /opt/spark/logs/*.log
     exclude:
       - /var/log/lastlog
       - /var/log/wtmp
@@ -53,10 +75,7 @@ receivers:
       - type: move
         from: attributes.body
         to: body
-        if: 'attributes.body != nil'
-      - type: add
-        field: attributes.dataobs.source
-        value: ec2-agent
+        if: "attributes.body != nil"
 
 processors:
   memory_limiter:
@@ -68,31 +87,79 @@ processors:
     timeout: 10s
     send_batch_size: 1024
 
-  resourcedetection:
-    detectors: [env, system, ec2]
-    timeout: 5s
+  # ── AWS Resource Detection ─────────────────────────────────────────────
+  # Populates cloud.provider, cloud.platform, cloud.region, host.id, host.type
+  # cloud.availability_zone, and EC2 tag→attribute mappings (semconv compliant).
+  resourcedetection/aws:
+    detectors: [env, system, ec2, ecs]
+    timeout: 30s
     override: false
+    ec2:
+      resource_attributes:
+        cloud.account.id:
+          enabled: true
+        cloud.availability_zone:
+          enabled: true
+        cloud.region:
+          enabled: true
+        host.id:
+          enabled: true
+        host.image.id:
+          enabled: true
+        host.name:
+          enabled: true
+        host.type:
+          enabled: true
+      tags:
+        - ^Name$
+        - ^Environment$
+        - ^Team$
+        - ^Service$
+        - ^dataobs:.*
 
-  resource:
+  # ── Semconv Resource Enrichment ──────────────────────────────────────────
+  resource/semconv:
     attributes:
       - key: service.namespace
-        value: dataobs
+        value: "${SERVICE_NAMESPACE:-dataobs}"
         action: upsert
+      # Semconv 1.24+: deployment.environment.name is canonical.
+      # Insert from env var if not already provided by the SDK.
+      - key: deployment.environment.name
+        value: "${DEPLOY_ENV:-production}"
+        action: insert
+      # Back-fill legacy attribute for backward compat with ES ECS / older dashboards
       - key: deployment.environment
-        from_attribute: DEPLOYMENT_ENV
+        from_attribute: deployment.environment.name
+        action: insert
+      - key: dataobs.agent
+        value: "ec2-agent"
         action: insert
 
-exporters:
-  # Send everything to centralized DataObs/OpenTelemetry gateway collector.
-  # If your gateway requires TLS/auth, set these env vars in the EC2 service unit.
-  otlp:
-    endpoint: ${OTEL_GATEWAY_ENDPOINT}
-    tls:
-      insecure: ${OTEL_GATEWAY_INSECURE}
-    headers:
-      x-tenant-id: ${OTEL_TENANT_ID}
+  # ── Semconv normalization (old attribute name → new) ────────────────────
+  transform/semconv_normalize:
+    trace_statements:
+      - context: span
+        statements:
+          - set(attributes["http.request.method"], attributes["http.method"]) where attributes["http.request.method"] == nil and attributes["http.method"] != nil
+          - set(attributes["http.response.status_code"], attributes["http.status_code"]) where attributes["http.response.status_code"] == nil and attributes["http.status_code"] != nil
+          - set(attributes["server.address"], attributes["net.peer.name"]) where attributes["server.address"] == nil and attributes["net.peer.name"] != nil
 
-  # Optional local troubleshooting
+exporters:
+  # Ship everything to the centralized DataObs gateway collector via OTLP/gRPC.
+  # The gateway handles backend routing (ES / OpenSearch / OSIS / AMP).
+  otlp:
+    endpoint: "${OTEL_GATEWAY_ENDPOINT:-http://dataobs-otel-gateway:4317}"
+    tls:
+      insecure: "${OTEL_GATEWAY_INSECURE:-true}"
+    headers:
+      x-tenant-id: "${OTEL_TENANT_ID:-default}"
+    retry_on_failure:
+      enabled: true
+      initial_interval: 5s
+      max_interval: 60s
+      max_elapsed_time: 300s
+
   debug:
     verbosity: basic
 
@@ -101,15 +168,15 @@ service:
   pipelines:
     traces:
       receivers: [otlp, awsxray]
-      processors: [memory_limiter, resourcedetection, batch]
+      processors: [memory_limiter, resourcedetection/aws, resource/semconv, transform/semconv_normalize, batch]
       exporters: [otlp]
 
     metrics:
       receivers: [otlp, hostmetrics]
-      processors: [memory_limiter, resourcedetection, batch]
+      processors: [memory_limiter, resourcedetection/aws, resource/semconv, batch]
       exporters: [otlp]
 
     logs:
       receivers: [otlp, filelog]
-      processors: [memory_limiter, resourcedetection, resource, batch]
+      processors: [memory_limiter, resourcedetection/aws, resource/semconv, transform/semconv_normalize, batch]
       exporters: [otlp]

@@ -418,3 +418,221 @@ jobs:
           else
             echo "No open CVE issue -- all clear"
           fi
+
+  # ---------------------------------------------------------------------------
+  # Job 5: Terraform Plan -- infra/terraform/aws-backend/
+  #
+  # Runs on every push/PR that touches files under infra/terraform/**
+  # Performs: init → validate → plan  (NO apply — plan artifact only)
+  #
+  # AWS credentials injected via OIDC (no long-lived keys stored in secrets).
+  # Add these repository secrets if using static keys instead of OIDC:
+  #   AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION
+  #
+  # Required repository/environment variables:
+  #   TF_VAR_aws_region         — e.g. us-east-1
+  #   TF_VAR_amp_workspace_name — e.g. dataobs-amp
+  #   TF_VAR_amg_workspace_name — e.g. dataobs-amg
+  #   TF_VAR_grafana_url        — e.g. https://<workspace-id>.grafana-workspace.us-east-1.amazonaws.com
+  #   TF_VAR_environment        — e.g. production
+  #   AWS_ROLE_TO_ASSUME        — ARN of IAM role with trust policy for GitHub OIDC
+  #                               (only required when using OIDC auth)
+  # ---------------------------------------------------------------------------
+  terraform-plan:
+    name: Terraform plan
+    runs-on: ubuntu-latest
+    needs: validate-configs
+
+    # Only run when Terraform files changed
+    if: |
+      github.event_name == 'pull_request' ||
+      contains(toJSON(github.event.commits.*.modified), 'infra/terraform') ||
+      contains(toJSON(github.event.commits.*.added), 'infra/terraform') ||
+      contains(toJSON(github.event.commits.*.removed), 'infra/terraform')
+
+    permissions:
+      contents: read
+      pull-requests: write      # post plan comment on PRs
+      id-token: write           # needed for AWS OIDC authentication
+
+    env:
+      TF_WORKING_DIR: infra/terraform/aws-backend
+      TF_VERSION: "1.7.5"
+      AWS_REGION: ${{ vars.TF_VAR_aws_region || 'us-east-1' }}
+
+    defaults:
+      run:
+        working-directory: infra/terraform/aws-backend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # -- Path filter: skip if no Terraform files changed ----------------------
+      - name: Check for Terraform file changes
+        id: tf_changed
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            terraform:
+              - 'infra/terraform/**'
+
+      # -- Configure AWS credentials (OIDC preferred; falls back to key secrets) -
+      # To use OIDC: create an IAM OIDC provider for token.actions.githubusercontent.com
+      # and a role with trust policy allowing repo Jagadeeshck/DataObs.
+      # To use static keys: skip OIDC step and set AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY secrets.
+      - name: Configure AWS credentials (OIDC)
+        if: steps.tf_changed.outputs.terraform == 'true' && vars.AWS_ROLE_TO_ASSUME != ''
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: dataobs-terraform-plan-${{ github.run_id }}
+
+      - name: Configure AWS credentials (static keys fallback)
+        if: |
+          steps.tf_changed.outputs.terraform == 'true' &&
+          vars.AWS_ROLE_TO_ASSUME == '' &&
+          secrets.AWS_ACCESS_KEY_ID != ''
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # -- Install Terraform ----------------------------------------------------
+      - name: Setup Terraform ${{ env.TF_VERSION }}
+        if: steps.tf_changed.outputs.terraform == 'true'
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: true   # enables ::set-output for plan capture
+
+      # -- terraform fmt check --------------------------------------------------
+      - name: Terraform fmt check
+        if: steps.tf_changed.outputs.terraform == 'true'
+        run: terraform fmt -check -recursive
+        working-directory: infra/terraform
+
+      # -- terraform init -------------------------------------------------------
+      # Uses local backend (no remote state) in CI — safe for plan-only runs.
+      # To use S3 backend, set TF_BACKEND_* vars and add -backend-config flags.
+      - name: Terraform init
+        if: steps.tf_changed.outputs.terraform == 'true'
+        run: |
+          terraform init \
+            -input=false \
+            -backend=false
+
+      # -- terraform validate ---------------------------------------------------
+      - name: Terraform validate
+        if: steps.tf_changed.outputs.terraform == 'true'
+        id: validate
+        run: terraform validate -no-color
+
+      # -- terraform plan -------------------------------------------------------
+      # -var flags supply dummy values so plan runs without real infrastructure.
+      # In a real environment, set TF_VAR_* GitHub Actions variables instead.
+      - name: Terraform plan
+        if: steps.tf_changed.outputs.terraform == 'true'
+        id: plan
+        run: |
+          terraform plan \
+            -input=false \
+            -no-color \
+            -out=tfplan \
+            -var="aws_region=${AWS_REGION}" \
+            -var="amp_workspace_name=${{ vars.TF_VAR_amp_workspace_name || 'dataobs-amp-ci' }}" \
+            -var="amg_workspace_name=${{ vars.TF_VAR_amg_workspace_name || 'dataobs-amg-ci' }}" \
+            -var="grafana_url=${{ vars.TF_VAR_grafana_url || 'https://placeholder.grafana-workspace.us-east-1.amazonaws.com' }}" \
+            -var="environment=${{ vars.TF_VAR_environment || 'ci' }}" \
+            2>&1 | tee /tmp/tfplan.txt
+          echo "exitcode=$?" >> $GITHUB_OUTPUT
+        continue-on-error: true   # capture output even on plan errors
+
+      # -- Post plan output as PR comment ---------------------------------------
+      - name: Post Terraform plan to PR
+        if: |
+          steps.tf_changed.outputs.terraform == 'true' &&
+          github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        env:
+          PLAN: ${{ steps.plan.outputs.stdout }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const plan = fs.existsSync('/tmp/tfplan.txt')
+              ? fs.readFileSync('/tmp/tfplan.txt', 'utf8')
+              : process.env.PLAN || '(no plan output captured)';
+
+            const validate = `${{ steps.validate.outcome }}`;
+            const planOutcome = `${{ steps.plan.outcome }}`;
+            const truncated = plan.length > 60000
+              ? plan.substring(0, 60000) + '\n\n... (truncated — see full log in Actions)'
+              : plan;
+
+            const body = [
+              '## Terraform Plan — `infra/terraform/aws-backend/`',
+              '',
+              `| Step | Result |`,
+              `|------|--------|`,
+              `| \`terraform fmt\` | ${{ steps.validate.outcome == 'skipped' && '⏭ skipped' || '✅ passed' }} |`,
+              `| \`terraform validate\` | ${validate === 'success' ? '✅ passed' : validate === 'skipped' ? '⏭ skipped' : '❌ failed'} |`,
+              `| \`terraform plan\` | ${planOutcome === 'success' ? '✅ no errors' : planOutcome === 'skipped' ? '⏭ skipped' : '⚠️ check output'} |`,
+              '',
+              '<details><summary>Show full plan output</summary>',
+              '',
+              '```hcl',
+              truncated,
+              '```',
+              '',
+              '</details>',
+              '',
+              `> Plan generated at commit \`${{ github.sha }}`.slice(0, 50) + `\``,
+              '> **No resources will be created or modified** — this is a plan-only CI job.',
+            ].join('\n');
+
+            // Find and update existing bot comment, or create a new one
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find(c =>
+              c.user.type === 'Bot' &&
+              c.body.includes('Terraform Plan — `infra/terraform/aws-backend/`')
+            );
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+
+      # -- Upload plan binary as artifact ---------------------------------------
+      - name: Upload Terraform plan artifact
+        if: steps.tf_changed.outputs.terraform == 'true' && steps.plan.outcome != 'skipped'
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-${{ github.sha }}
+          path: ${{ env.TF_WORKING_DIR }}/tfplan
+          retention-days: 7
+
+      # -- Fail the job if plan itself errored ----------------------------------
+      - name: Check plan exit code
+        if: steps.tf_changed.outputs.terraform == 'true' && steps.plan.outputs.exitcode != '0'
+        run: |
+          echo "terraform plan exited with code ${{ steps.plan.outputs.exitcode }}"
+          exit 1

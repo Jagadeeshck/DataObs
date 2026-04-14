@@ -1,0 +1,21 @@
+# ============================================================================
+# DataObs — Data Prepper Server Configuration
+# ============================================================================
+ssl: false
+serverPort: 4900
+authentication:
+  http_basic:
+    username: admin
+    password: "${OPENSEARCH_PASSWORD}"
+
+peer_forwarder:
+  discovery_mode: static
+  static_endpoints: []
+  port: 21891
+  ssl: false
+
+circuit_breakers:
+  heap:
+    usage: 85%
+    reset: PT30S
+    check_interval: PT5S

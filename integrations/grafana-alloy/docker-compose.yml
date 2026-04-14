@@ -1,0 +1,111 @@
+version: "3.9"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Grafana Alloy → Grafana Cloud integration stack
+# Part of: DataObs / integrations/grafana-alloy
+#
+# Services:
+#   alloy-app      — Python Flask app instrumented with OTel SDKs
+#   alloy-collector — Grafana Alloy forwarding all signals to Grafana Cloud
+#   alloy-load-gen  — Traffic generator for realistic signal volume
+#
+# NOTE: Ports are offset (+1) from the root docker-compose.yml to avoid
+#       collision when both stacks are running simultaneously:
+#   App:   5001 (vs root 5000 / 8080)
+#   Alloy: 4319 / 4320 / 12346 (vs root 4317 / 4318 for otel-collector)
+#
+# Prerequisites:
+#   cp .env.example .env  # fill in Grafana Cloud credentials
+#
+# Start (from this directory):
+#   docker compose --env-file .env up --build
+#
+# Start alongside root stack:
+#   cd ../..  &&  docker compose up -d   # root stack first
+#   cd integrations/grafana-alloy  &&  docker compose --env-file .env up --build
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── Sample Python application ───────────────────────────────────────────────
+  alloy-app:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: dataobs-alloy-app
+    ports:
+      - "5001:5000"       # mapped to 5001 externally; avoids conflict with root stack
+    environment:
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://alloy-collector:4317"
+      OTEL_SERVICE_NAME:            "${OTEL_SERVICE_NAME:-sample-python-app}"
+      SERVICE_VERSION:              "${SERVICE_VERSION:-1.0.0}"
+      DEPLOYMENT_ENVIRONMENT:       "${DEPLOYMENT_ENVIRONMENT:-development}"
+      OTEL_PROPAGATORS:             "tracecontext,baggage"
+    depends_on:
+      alloy-collector:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - alloy-net
+
+  # ── Grafana Alloy — OTel Collector pipeline ──────────────────────────────────
+  alloy-collector:
+    image: grafana/alloy:v1.8.1
+    container_name: dataobs-grafana-alloy
+    ports:
+      - "4319:4317"     # OTLP gRPC (offset from root's 4317)
+      - "4320:4318"     # OTLP HTTP (offset from root's 4318)
+      - "12346:12345"   # Alloy UI  (offset from root's 12345 if used)
+    volumes:
+      - ./alloy/config.alloy:/etc/alloy/config.alloy:ro
+    command:
+      - run
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --storage.path=/var/lib/alloy/data
+      - /etc/alloy/config.alloy
+    environment:
+      GRAFANA_CLOUD_OTLP_ENDPOINT: "${GRAFANA_CLOUD_OTLP_ENDPOINT}"
+      GRAFANA_CLOUD_INSTANCE_ID:   "${GRAFANA_CLOUD_INSTANCE_ID}"
+      GRAFANA_CLOUD_API_KEY:       "${GRAFANA_CLOUD_API_KEY}"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:12345/-/ready"]
+      interval: 10s
+      timeout:  5s
+      retries:  5
+    restart: unless-stopped
+    networks:
+      - alloy-net
+
+  # ── Traffic generator ────────────────────────────────────────────────────────
+  alloy-load-gen:
+    image: curlimages/curl:8.9.1
+    container_name: dataobs-alloy-load-gen
+    depends_on:
+      alloy-app:
+        condition: service_started
+    networks:
+      - alloy-net
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        echo "Load generator starting in 5s..."
+        sleep 5
+        while true; do
+          curl -sf http://alloy-app:5000/products > /dev/null
+          curl -sf -X POST http://alloy-app:5000/checkout \
+            -H "Content-Type: application/json" \
+            -d '{"product_id":"P001","quantity":2}' > /dev/null
+          curl -sf -X POST http://alloy-app:5000/checkout \
+            -H "Content-Type: application/json" \
+            -d '{"product_id":"P002","quantity":1}' > /dev/null
+          curl -sf http://alloy-app:5000/simulate-error > /dev/null || true
+          curl -sf http://alloy-app:5000/products/P003 > /dev/null
+          curl -sf http://alloy-app:5000/products/MISSING > /dev/null || true
+          curl -sf http://alloy-app:5000/orders > /dev/null
+          sleep 3
+        done
+
+networks:
+  alloy-net:
+    driver: bridge

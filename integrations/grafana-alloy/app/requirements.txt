@@ -1,0 +1,17 @@
+# Web framework
+flask==3.0.3
+
+# OpenTelemetry API & SDK
+opentelemetry-api==1.25.0
+opentelemetry-sdk==1.25.0
+
+# OTLP exporters (gRPC)
+opentelemetry-exporter-otlp-proto-grpc==1.25.0
+
+# Auto-instrumentation libraries
+opentelemetry-instrumentation-flask==0.46b0
+opentelemetry-instrumentation-requests==0.46b0
+opentelemetry-instrumentation-logging==0.46b0
+
+# gRPC transport dependency
+grpcio==1.65.5

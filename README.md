@@ -78,3 +78,38 @@ Then open Kibana at `http://localhost:5601`.
 - Add column distribution drift checks and dynamic thresholds
 - Add end-to-end integration tests for API + alert delivery paths
 - Expand `/strategy/enterprise-backlog` to persist account-level roadmap plans per customer
+
+---
+
+## Integrations
+
+### Grafana Alloy → Grafana Cloud
+
+A deployable Docker Compose stack that routes all three OTel signals (metrics, logs, traces)
+from a sample Python app through **Grafana Alloy** to **Grafana Cloud**
+(Tempo / Loki / Mimir), with service maps, anomaly detection, and drilldown correlation.
+
+- **Location**: [`integrations/grafana-alloy/`](integrations/grafana-alloy/)
+- **Guide**: [`integrations/grafana-alloy/docs/GUIDE.md`](integrations/grafana-alloy/docs/GUIDE.md)
+
+```bash
+cd integrations/grafana-alloy
+cp .env.example .env   # add Grafana Cloud credentials
+docker compose --env-file .env up --build
+```
+
+Signals appear in Grafana Cloud within ~90 seconds. The stack runs on offset ports
+(app: `5001`, Alloy gRPC: `4319`) so it can coexist alongside the root DataObs stack.
+
+---
+
+## CI / GitHub Actions
+
+The `.github/workflows/ci.yml` pipeline runs on every push and PR:
+
+| Job | What it checks |
+|-----|---------------|
+| `validate-configs` | Alloy config syntax (`alloy fmt`), YAML lint, dashboard JSON, Python syntax |
+| `test-python` | Full `pytest` suite for DataObs + OTel app |
+| `build-docker` | Builds all three Docker images (api, quality, sample-python-app) with GHA layer cache |
+| `security-scan` | Trivy CVE scan on `main` branch only |

@@ -1,6 +1,9 @@
 # DataObs — Cloud-Agnostic Data Observability Platform
 
 [![CI](https://github.com/Jagadeeshck/DataObs/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Jagadeeshck/DataObs/actions/workflows/ci.yml)
+[![Release](https://github.com/Jagadeeshck/DataObs/actions/workflows/release.yml/badge.svg)](https://github.com/Jagadeeshck/DataObs/actions/workflows/release.yml)
+[![Latest Release](https://img.shields.io/github/v/release/Jagadeeshck/DataObs?sort=semver&logo=github&label=release)](https://github.com/Jagadeeshck/DataObs/releases/latest)
+[![GHCR](https://img.shields.io/badge/GHCR-packages-blue?logo=github)](https://github.com/Jagadeeshck?tab=packages&repo_name=DataObs)
 [![Trivy Security Scan](https://github.com/Jagadeeshck/DataObs/actions/workflows/ci.yml/badge.svg?branch=main&event=push&label=security-scan)](https://github.com/Jagadeeshck/DataObs/security/code-scanning)
 [![Security: Critical CVEs](https://img.shields.io/github/issues/Jagadeeshck/DataObs/security%3Acritical-cve?color=B60205&label=critical%20CVEs&logo=trivy)](https://github.com/Jagadeeshck/DataObs/issues?q=is%3Aopen+label%3Asecurity%3Acritical-cve)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue?logo=python)](https://www.python.org/)
@@ -111,7 +114,8 @@ See the detailed model: [`docs/architecture/four-tower-model.md`](docs/architect
 DataObs/
 ├── .github/
 │   └── workflows/
-│       └── ci.yml                        # CI: validate + test + build + Trivy scan
+│       ├── ci.yml                        # CI: validate + test + build + Trivy scan
+│       └── release.yml                   # Release: build & push versioned images to GHCR
 │
 ├── src/
 │   ├── api/
@@ -360,7 +364,11 @@ helm install alloy grafana/alloy \
 
 ## CI / GitHub Actions
 
-The `.github/workflows/ci.yml` pipeline runs on every push and PR:
+The repo ships two workflows.
+
+### CI workflow (`ci.yml`)
+
+Runs on every push and PR:
 
 | Job | Trigger | What it does |
 |-----|---------|-------------|
@@ -368,6 +376,39 @@ The `.github/workflows/ci.yml` pipeline runs on every push and PR:
 | `test-python` | After validate | `pytest` suite — 12 tests across quality checks, API, alerting, analytics |
 | `build-docker` | After validate | Builds `dataobs/api`, `dataobs/quality`, `dataobs/sample-python-app` with GHA layer cache |
 | `security-scan` | `main` only | Trivy CVE scan (JSON + table + SARIF) with auto-issue creation |
+
+### Security scan — auto-issue workflow
+
+---
+
+### Release workflow (`release.yml`)
+
+Triggered by a `v*.*.*` tag push (e.g. `git tag v1.0.0 && git push --tags`).
+
+| Job | What it does |
+|-----|-------------|
+| `build-and-push` (matrix × 3) | Builds and pushes `dataobs-api`, `dataobs-quality`, `dataobs-sample-app` to GHCR with semver tags + `:latest` |
+| `create-release` | Generates a changelog from git log, creates a GitHub Release with pull instructions and Helm/K8s update notes |
+
+**Tags published per image:**
+
+```
+ghcr.io/jagadeeshck/dataobs-api:1.2.3    # exact version
+ghcr.io/jagadeeshck/dataobs-api:1.2      # minor alias
+ghcr.io/jagadeeshck/dataobs-api:1        # major alias
+ghcr.io/jagadeeshck/dataobs-api:latest   # always newest release
+```
+
+Images include [SBOM attestations](https://docs.docker.com/build/metadata/attestations/sbom/) and [SLSA build provenance](https://docs.docker.com/build/metadata/attestations/slsa-provenance/).
+
+Pre-release tags (e.g. `v1.0.0-rc.1`) are marked as pre-release automatically.
+
+**To cut a release:**
+
+```bash
+git tag v1.0.0 -m "Release v1.0.0"
+git push origin v1.0.0
+```
 
 ### Security scan — auto-issue workflow
 

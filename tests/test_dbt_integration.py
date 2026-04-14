@@ -442,7 +442,9 @@ class TestMultipleResults:
 
     def test_empty_results_emits_only_root_span(self, exporter: InMemorySpanExporter) -> None:
         data = _make_run_results(results=[])
-        names = parse_and_emit(Path("/tmp/empty_prr.json").write_text(json.dumps(data)) or "/tmp/empty_prr.json")
+        tmp = Path("/tmp/empty_prr.json")
+        tmp.write_text(json.dumps(data))
+        names = parse_and_emit(tmp)
         assert len(names) == 1
         assert names[0].startswith("dbt run")
 

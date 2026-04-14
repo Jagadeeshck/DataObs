@@ -13,9 +13,9 @@ concurrency:
 
 jobs:
 
-  # ─────────────────────────────────────────────────────────────────────────────
+  # ---------------------------------------------------------------------------
   # Job 1: Lint & validate configuration files
-  # ─────────────────────────────────────────────────────────────────────────────
+  # ---------------------------------------------------------------------------
   validate-configs:
     name: Validate configs
     runs-on: ubuntu-latest
@@ -24,7 +24,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # ── Grafana Alloy config syntax check ─────────────────────────────────────
+      # -- Grafana Alloy: install binary ----------------------------------------
+      # The official zip contains a single binary named alloy-linux-amd64.
       - name: Install Grafana Alloy
         run: |
           ALLOY_VERSION="v1.8.1"
@@ -36,38 +37,54 @@ jobs:
           sudo mv alloy-linux-amd64 /usr/local/bin/alloy
           alloy --version
 
-      - name: Validate Alloy config syntax
+      # -- Alloy config: formatting check ----------------------------------------
+      # `alloy fmt --test` exits non-zero if the file would be reformatted,
+      # which also catches any syntax errors in the River/Alloy config language.
+      - name: Validate Alloy config -- fmt check
         run: |
-          echo "── Checking integrations/grafana-alloy/alloy/config.alloy ──"
-          alloy fmt --write=false integrations/grafana-alloy/alloy/config.alloy
-          echo "Alloy config syntax OK"
+          echo "--- alloy fmt --test (syntax + formatting) ---"
+          alloy fmt --test integrations/grafana-alloy/alloy/config.alloy
+          echo "Alloy fmt OK"
 
-      # ── YAML lint ─────────────────────────────────────────────────────────────
+      # -- Alloy config: component + property validation -------------------------
+      # `alloy validate` goes deeper: checks required props, unknown blocks,
+      # component name conflicts. Returns non-zero on any validation error.
+      - name: Validate Alloy config -- component validation
+        run: |
+          echo "--- alloy validate (component + property check) ---"
+          alloy validate integrations/grafana-alloy/alloy/config.alloy
+          echo "Alloy validate OK"
+
+      # -- YAML lint -------------------------------------------------------------
       - name: Install yamllint
         run: pip install --quiet yamllint
 
-      - name: YAML lint — OTel collector configs
+      - name: YAML lint -- OTel collector configs
         run: |
           yamllint -d relaxed config/otel-collector-config.yaml
           yamllint -d relaxed config/otel-ec2-agent-config.yaml
           yamllint -d relaxed integrations/grafana-alloy/grafana/provisioning/datasources/datasources.yaml
           echo "All YAML configs OK"
 
-      # ── Validate docker-compose files ─────────────────────────────────────────
-      - name: Install docker-compose validate tool
-        run: pip install --quiet docker-compose
-
+      # -- docker-compose validation ---------------------------------------------
+      # docker compose v2 is pre-installed on ubuntu-latest runners (no pip needed).
+      # `docker compose config` parses, resolves anchors, and substitutes env vars.
+      # We suppress "variable is not set" warnings for optional .env vars (normal in CI).
       - name: Validate root docker-compose.yml
         run: |
-          docker compose -f docker-compose.yml config --quiet 2>&1 | head -5 || true
-          echo "Root docker-compose.yml validated"
+          docker compose -f docker-compose.yml config 2>&1 \
+            | grep -v "variable is not set\|is not set\|has no default" \
+            | head -30 || true
+          echo "Root docker-compose.yml structure OK"
 
       - name: Validate Alloy integration docker-compose.yml
         run: |
-          docker compose -f integrations/grafana-alloy/docker-compose.yml config --quiet 2>&1 | head -5 || true
-          echo "Alloy docker-compose.yml validated"
+          docker compose -f integrations/grafana-alloy/docker-compose.yml config 2>&1 \
+            | grep -v "variable is not set\|is not set\|has no default" \
+            | head -30 || true
+          echo "Alloy docker-compose.yml structure OK"
 
-      # ── Dashboard JSON lint ───────────────────────────────────────────────────
+      # -- Grafana dashboard JSON lint -------------------------------------------
       - name: Validate Grafana dashboard JSON
         run: |
           python3 -c "
@@ -81,16 +98,16 @@ jobs:
               print('No dashboard JSON files found')
           "
 
-      # ── Python syntax check ───────────────────────────────────────────────────
+      # -- Python syntax check ---------------------------------------------------
       - name: Python syntax check
         run: |
           python3 -m py_compile integrations/grafana-alloy/app/app.py
           python3 -m py_compile src/api/main.py
           echo "Python syntax OK"
 
-  # ─────────────────────────────────────────────────────────────────────────────
+  # ---------------------------------------------------------------------------
   # Job 2: Python tests (existing DataObs test suite)
-  # ─────────────────────────────────────────────────────────────────────────────
+  # ---------------------------------------------------------------------------
   test-python:
     name: Python tests
     runs-on: ubuntu-latest
@@ -115,9 +132,9 @@ jobs:
       - name: Run DataObs test suite
         run: pytest tests/ -v --tb=short
 
-  # ─────────────────────────────────────────────────────────────────────────────
+  # ---------------------------------------------------------------------------
   # Job 3: Build Docker images
-  # ─────────────────────────────────────────────────────────────────────────────
+  # ---------------------------------------------------------------------------
   build-docker:
     name: Build Docker images
     runs-on: ubuntu-latest
@@ -163,21 +180,22 @@ jobs:
       - name: Report built image sizes
         run: docker images --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}" | grep dataobs
 
-  # ─────────────────────────────────────────────────────────────────────────────
-  # Job 4: Security scan (Trivy) — runs on main branch only
+  # ---------------------------------------------------------------------------
+  # Job 4: Security scan (Trivy) -- main branch only
   #
   # Pipeline:
-  #   1. Build image (fast — GHA cache hit)
-  #   2. Run Trivy → JSON output  (parseable, full detail)
-  #   3. Run Trivy → table output (human-readable summary in logs)
-  #   4. Run Trivy → SARIF output (uploaded to GitHub Security tab)
-  #   5. Parse JSON → extract CRITICAL CVEs
-  #   6. If CRITICALs found → open / update a GitHub Issue with full detail table
+  #   1. Build image (fast via GHA layer cache)
+  #   2. Trivy -> JSON  (machine-readable, parsed for CVE details)
+  #   3. Trivy -> table (human-readable summary in Actions log)
+  #   4. Trivy -> SARIF (uploaded to GitHub Security / Code Scanning tab)
+  #   5. Python script parses JSON, extracts CRITICALs, builds issue body
+  #   6a. CRITICALs found  -> open or comment on existing GitHub Issue
+  #   6b. No CRITICALs     -> auto-close the open issue (if any)
   #
-  # Permissions needed:
-  #   issues: write        — to create/update the CVE issue
-  #   security-events: write — to upload SARIF to Code Scanning
-  # ─────────────────────────────────────────────────────────────────────────────
+  # Permissions used (GITHUB_TOKEN -- no extra secrets needed):
+  #   issues: write          -- create / close / comment on CVE issue
+  #   security-events: write -- upload SARIF to Code Scanning
+  # ---------------------------------------------------------------------------
   security-scan:
     name: Security scan
     runs-on: ubuntu-latest
@@ -187,7 +205,7 @@ jobs:
     permissions:
       contents: read
       issues: write
-      security-events: write   # GitHub Code Scanning / SARIF upload
+      security-events: write
 
     steps:
       - name: Checkout
@@ -196,7 +214,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # ── 1. Rebuild image (fast via GHA cache) ─────────────────────────────────
+      # -- 1. Rebuild image (fast via GHA cache) ---------------------------------
       - name: Build sample-python-app for scanning
         uses: docker/build-push-action@v6
         with:
@@ -207,20 +225,20 @@ jobs:
           tags: dataobs/sample-python-app:scan
           cache-from: type=gha,scope=sample-app
 
-      # ── 2. Trivy scan → JSON (primary, machine-readable) ─────────────────────
-      - name: Run Trivy scan — JSON output
+      # -- 2. Trivy scan -> JSON (primary, machine-readable) ---------------------
+      - name: Run Trivy scan -- JSON output
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: dataobs/sample-python-app:scan
           format: json
           output: trivy-results.json
-          exit-code: "0"           # never fail the step — we handle logic below
+          exit-code: "0"
           ignore-unfixed: true
           vuln-type: os,library
           severity: CRITICAL,HIGH
 
-      # ── 3. Trivy scan → table (visible in the Actions log) ───────────────────
-      - name: Run Trivy scan — table summary
+      # -- 3. Trivy scan -> table (visible in the Actions log) ------------------
+      - name: Run Trivy scan -- table summary
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: dataobs/sample-python-app:scan
@@ -230,8 +248,8 @@ jobs:
           vuln-type: os,library
           severity: CRITICAL,HIGH
 
-      # ── 4. Trivy scan → SARIF (uploaded to GitHub Security tab) ──────────────
-      - name: Run Trivy scan — SARIF output
+      # -- 4. Trivy scan -> SARIF (GitHub Security tab) -------------------------
+      - name: Run Trivy scan -- SARIF output
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: dataobs/sample-python-app:scan
@@ -250,12 +268,12 @@ jobs:
           sarif_file: trivy-results.sarif
           category: trivy-image-scan
 
-      # ── 5. Parse JSON — count CRITICALs, build issue body ────────────────────
+      # -- 5. Parse JSON and build issue body ------------------------------------
       - name: Parse Trivy JSON and generate issue body
         id: parse
         run: |
           python3 << 'PYEOF'
-          import json, os, sys
+          import json, os, sys, textwrap
 
           with open("trivy-results.json") as f:
               data = json.load(f)
@@ -265,34 +283,39 @@ jobs:
               for vuln in result.get("Vulnerabilities", []) or []:
                   if vuln.get("Severity") == "CRITICAL":
                       criticals.append({
-                          "pkg":        vuln.get("PkgName", "unknown"),
-                          "cve":        vuln.get("VulnerabilityID", "unknown"),
-                          "installed":  vuln.get("InstalledVersion", "—"),
-                          "fixed":      vuln.get("FixedVersion", "no fix"),
-                          "title":      vuln.get("Title", "").replace("|", "\\|")[:90],
-                          "url":        vuln.get("PrimaryURL", ""),
-                          "target":     result.get("Target", ""),
+                          "pkg":       vuln.get("PkgName", "unknown"),
+                          "cve":       vuln.get("VulnerabilityID", "unknown"),
+                          "installed": vuln.get("InstalledVersion", "-"),
+                          "fixed":     vuln.get("FixedVersion", "no fix"),
+                          "title":     vuln.get("Title", "").replace("|", "\\|")[:90],
+                          "url":       vuln.get("PrimaryURL", ""),
                       })
 
           count = len(criticals)
           print(f"CRITICAL CVE count: {count}")
 
-          # Write count so next step can gate on it
           with open(os.environ["GITHUB_OUTPUT"], "a") as gh_out:
               gh_out.write(f"critical_count={count}\n")
 
           if count == 0:
-              print("No CRITICAL CVEs found — skipping issue creation.")
+              print("No CRITICAL CVEs found.")
               sys.exit(0)
 
-          # Build markdown issue body
-          sha        = os.environ.get("GITHUB_SHA", "unknown")[:10]
-          run_id     = os.environ.get("GITHUB_RUN_ID", "")
-          repo       = os.environ.get("GITHUB_REPOSITORY", "")
-          run_url    = f"https://github.com/{repo}/actions/runs/{run_id}"
+          sha       = os.environ.get("GITHUB_SHA", "unknown")[:10]
+          run_id    = os.environ.get("GITHUB_RUN_ID", "")
+          repo      = os.environ.get("GITHUB_REPOSITORY", "")
+          run_url   = f"https://github.com/{repo}/actions/runs/{run_id}"
           commit_url = f"https://github.com/{repo}/commit/{sha}"
 
-          body = f"""## :rotating_light: CRITICAL CVEs detected by Trivy
+          rows = "\n".join(
+              f"| `{v['pkg']}` | [{v['cve']}]({v['url']}) | `{v['installed']}` | `{v['fixed']}` | {v['title']} |"
+              if v["url"] else
+              f"| `{v['pkg']}` | {v['cve']} | `{v['installed']}` | `{v['fixed']}` | {v['title']} |"
+              for v in criticals
+          )
+
+          body = textwrap.dedent(f"""\
+          ## :rotating_light: CRITICAL CVEs detected by Trivy
 
           **Image:** `dataobs/sample-python-app`
           **Commit:** [{sha}]({commit_url})
@@ -303,26 +326,17 @@ jobs:
 
           | Package | CVE | Installed | Fixed In | Description |
           |---------|-----|-----------|----------|-------------|
-          """
+          {rows}
 
-          for v in criticals:
-              cve_link = f"[{v['cve']}]({v['url']})" if v["url"] else v["cve"]
-              body += f"| `{v['pkg']}` | {cve_link} | `{v['installed']}` | `{v['fixed']}` | {v['title']} |\n"
-
-          body += f"""
           ### Recommended actions
-          1. Update the base image in `integrations/grafana-alloy/app/Dockerfile` to the latest patch.
-          2. Pin affected packages to the fixed version in `requirements.txt`.
-          3. Re-run CI — this issue will be **automatically closed** once no CRITICALs remain.
+          1. Update the base image in `integrations/grafana-alloy/app/Dockerfile`.
+          2. Pin affected packages to their fixed version in `requirements.txt`.
+          3. Re-run CI -- this issue will be **automatically closed** when no CRITICALs remain.
 
           ---
           *Opened automatically by the [CI security-scan job]({run_url}).
-          Trivy version: latest (aquasecurity/trivy-action@master).*
-          """
-
-          # Dedent (strip leading spaces from heredoc indentation)
-          import textwrap
-          body = textwrap.dedent(body)
+          Tool: Trivy (aquasecurity/trivy-action@master).*
+          """)
 
           with open("issue-body.md", "w") as f:
               f.write(body)
@@ -330,26 +344,17 @@ jobs:
           print("Issue body written to issue-body.md")
           PYEOF
 
-      # ── 6a. Open or update GitHub Issue when CRITICALs are found ─────────────
-      #
-      # Strategy:
-      #   - Search for an existing open issue with the label "security:critical-cve"
-      #   - If one exists → add a comment with the new scan results (avoids duplicates)
-      #   - If none exists → create a fresh issue
-      #   - If CRITICALs are GONE on a subsequent run → close the issue automatically
-      #
+      # -- 6a. Open / update GitHub Issue when CRITICALs are found --------------
       - name: Create or update GitHub Issue for CRITICAL CVEs
         if: steps.parse.outputs.critical_count != '0'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO:     ${{ github.repository }}
-          COUNT:    ${{ steps.parse.outputs.critical_count }}
-          SHA:      ${{ github.sha }}
         run: |
           LABEL="security:critical-cve"
-          TITLE="🚨 CRITICAL CVEs detected in sample-python-app image"
+          TITLE="CRITICAL CVEs detected in sample-python-app image"
 
-          # Ensure label exists (idempotent — gh ignores "already exists" exit code)
+          # Ensure label exists (idempotent)
           gh label create "$LABEL" \
             --color "B60205" \
             --description "Automatically opened by Trivy security scan" \
@@ -364,23 +369,21 @@ jobs:
             --jq '.[0].number // empty')
 
           if [ -n "$EXISTING" ]; then
-            echo "Found existing open issue #$EXISTING — adding comment with new scan results"
+            echo "Existing open issue #$EXISTING -- adding comment"
             gh issue comment "$EXISTING" \
               --repo "$REPO" \
               --body-file issue-body.md
-            echo "Comment added to issue #$EXISTING"
           else
-            echo "No open CVE issue found — creating new issue"
+            echo "Creating new CVE issue"
             gh issue create \
               --repo "$REPO" \
               --title "$TITLE" \
               --body-file issue-body.md \
               --label "$LABEL" \
               --assignee "@me"
-            echo "New issue created"
           fi
 
-      # ── 6b. Auto-close the issue if CRITICALs are now resolved ───────────────
+      # -- 6b. Auto-close issue when CRITICALs are resolved --------------------
       - name: Auto-close CVE issue if no CRITICALs remain
         if: steps.parse.outputs.critical_count == '0'
         env:
@@ -399,11 +402,10 @@ jobs:
             --jq '.[0].number // empty')
 
           if [ -n "$EXISTING" ]; then
-            echo "No CRITICALs found — closing issue #$EXISTING"
             gh issue close "$EXISTING" \
               --repo "$REPO" \
-              --comment "✅ No CRITICAL CVEs detected in scan for commit \`${SHA_SHORT}\`. Auto-closing this issue."
+              --comment "No CRITICAL CVEs detected in scan for commit \`${SHA_SHORT}\`. Auto-closing."
             echo "Issue #$EXISTING closed"
           else
-            echo "No open CVE issue to close — all clear"
+            echo "No open CVE issue -- all clear"
           fi

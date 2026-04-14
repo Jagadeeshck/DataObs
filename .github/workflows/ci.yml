@@ -564,3 +564,100 @@ jobs:
             echo "terraform plan exited with code ${EXIT}"
             exit 1
           fi
+
+
+  # ---------------------------------------------------------------------------
+  # Job 6: dbt integration tests
+  #
+  # Validates:
+  #   - parse_run_results.py schema validation (all required fields)
+  #   - OTel span semconv compliance (db.system.name, db.operation.name,
+  #     db.collection.name, db.namespace, db.response.status_code, error.type)
+  #   - SpanKind.CLIENT enforcement
+  #   - Span naming pattern: {db.operation.name} {db.collection.name}
+  #   - dbt Cloud poller semconv attributes
+  #   - Edge cases: empty results, bad JSON, unknown schema version
+  #
+  # Runs on every push/PR. No external dependencies (InMemorySpanExporter only).
+  # ---------------------------------------------------------------------------
+  dbt-integration-test:
+    name: dbt integration tests
+    runs-on: ubuntu-latest
+    needs: validate-configs
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dbt integration dependencies
+        run: |
+          pip install \
+            opentelemetry-sdk>=1.24.0 \
+            opentelemetry-api>=1.24.0 \
+            opentelemetry-semantic-conventions>=0.45b0 \
+            opentelemetry-exporter-otlp-proto-grpc>=1.24.0 \
+            httpx>=0.27.0 \
+            pytest>=8.0 \
+            pytest-asyncio>=0.23
+
+      - name: Verify dbt integration module imports
+        run: |
+          python -c "
+          import sys
+          sys.path.insert(0, '.')
+          from integrations.dbt.parse_run_results import parse_and_emit, _validate_schema
+          from integrations.dbt.dbt_cloud_poller import DbtCloudPoller
+          print('dbt integration imports OK')
+          "
+
+      - name: Run dbt integration tests
+        run: |
+          python -m pytest tests/test_dbt_integration.py \
+            -v \
+            --tb=short \
+            -x \
+            --no-header \
+            -q
+
+      - name: Run schema validation smoke test
+        run: |
+          python << 'PYEOF'
+          import json, sys, warnings
+          sys.path.insert(0, ".")
+          from integrations.dbt.parse_run_results import _validate_schema, _SUPPORTED_SCHEMA_VERSIONS
+
+          # Test all supported schema versions validate cleanly
+          for version in sorted(_SUPPORTED_SCHEMA_VERSIONS):
+              doc = {
+                  "metadata": {
+                      "dbt_schema_version": version,
+                      "dbt_version": "1.7.0",
+                      "generated_at": "2024-03-01T10:00:00.000000Z",
+                      "invocation_id": "smoke-test-123",
+                      "adapter_type": "postgres",
+                  },
+                  "elapsed_time": 0.1,
+                  "results": [],
+                  "args": {},
+              }
+              _validate_schema(doc)
+              print(f"OK: {version}")
+
+          # Test that missing required fields raise ValueError
+          for field in ["metadata", "results"]:
+              bad_doc = {k: v for k, v in doc.items() if k != field}
+              try:
+                  _validate_schema(bad_doc)
+                  print(f"FAIL: missing {field!r} should raise ValueError", file=sys.stderr)
+                  sys.exit(1)
+              except ValueError:
+                  print(f"OK: missing {field!r} raises ValueError as expected")
+
+          print("Schema validation smoke test PASSED")
+          PYEOF

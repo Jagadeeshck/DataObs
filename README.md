@@ -1,5 +1,9 @@
 # DataObs — Cloud-Agnostic Data Observability Platform
 
+[![CI](https://github.com/Jagadeeshck/DataObs/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Jagadeeshck/DataObs/actions/workflows/ci.yml)
+[![Trivy Security Scan](https://github.com/Jagadeeshck/DataObs/actions/workflows/ci.yml/badge.svg?branch=main&event=push&label=security-scan)](https://github.com/Jagadeeshck/DataObs/security/code-scanning)
+[![Security: Critical CVEs](https://img.shields.io/github/issues/Jagadeeshck/DataObs/security%3Acritical-cve?color=B60205&label=critical%20CVEs&logo=trivy)](https://github.com/Jagadeeshck/DataObs/issues?q=is%3Aopen+label%3Asecurity%3Acritical-cve)
+
 DataObs is a product blueprint and implementation starter for end-to-end observability across:
 - infrastructure,
 - data pipelines,
@@ -112,4 +116,18 @@ The `.github/workflows/ci.yml` pipeline runs on every push and PR:
 | `validate-configs` | Alloy config syntax (`alloy fmt`), YAML lint, dashboard JSON, Python syntax |
 | `test-python` | Full `pytest` suite for DataObs + OTel app |
 | `build-docker` | Builds all three Docker images (api, quality, sample-python-app) with GHA layer cache |
-| `security-scan` | Trivy CVE scan on `main` branch only |
+| `security-scan` | Trivy CVE scan (`main` only) — JSON + table + SARIF outputs |
+
+### Security scan details
+
+The `security-scan` job runs three Trivy passes against `dataobs/sample-python-app`:
+
+1. **JSON** — parsed by a Python script to extract CRITICAL CVEs and build a structured report
+2. **Table** — printed to the Actions log for quick human review
+3. **SARIF** — uploaded to the [GitHub Security / Code Scanning tab](https://github.com/Jagadeeshck/DataObs/security/code-scanning)
+
+**Auto-issue workflow:**
+- If **CRITICAL CVEs are found** → a GitHub Issue is opened (or an existing one updated with a comment) with a full CVE table, affected packages, fixed versions, and a link to the CI run. The issue is labelled `security:critical-cve` and assigned automatically.
+- If a subsequent scan finds **no CRITICALs** → the open issue is auto-closed with a resolution comment.
+
+The [![Security: Critical CVEs](https://img.shields.io/github/issues/Jagadeeshck/DataObs/security%3Acritical-cve?color=B60205&label=critical%20CVEs&logo=trivy)](https://github.com/Jagadeeshck/DataObs/issues?q=is%3Aopen+label%3Asecurity%3Acritical-cve) badge at the top of this README shows the live count of open critical CVE issues at a glance.

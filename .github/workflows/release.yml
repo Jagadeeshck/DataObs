@@ -1,0 +1,160 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write       # for softprops/action-gh-release
+  packages: write       # for GHCR push
+  id-token: write       # for OIDC (future sigstore/cosign)
+
+env:
+  REGISTRY: ghcr.io
+  OWNER: jagadeeshck
+
+jobs:
+  # ─────────────────────────────────────────────
+  # 1. Build and push all three Docker images
+  # ─────────────────────────────────────────────
+  build-and-push:
+    name: Build & Push (${{ matrix.image }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: dataobs-api
+            dockerfile: Dockerfile.api
+            context: .
+          - image: dataobs-quality
+            dockerfile: Dockerfile.quality
+            context: .
+          - image: dataobs-sample-app
+            dockerfile: integrations/grafana-alloy/app/Dockerfile
+            context: integrations/grafana-alloy/app
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4.0.0
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4.1.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v6.0.0
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ matrix.image }}
+          tags: |
+            # semver tag  →  :1.2.3  +  :1.2  +  :1
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            # always keep :latest pointing to newest release
+            type=raw,value=latest,enable=true
+          labels: |
+            org.opencontainers.image.title=${{ matrix.image }}
+            org.opencontainers.image.description=DataObs — Cloud-agnostic data observability platform
+            org.opencontainers.image.vendor=Jagadeesh Chandra
+            org.opencontainers.image.licenses=MIT
+
+      - name: Build and push
+        uses: docker/build-push-action@v7.1.0
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.context == '.' && matrix.dockerfile || format('{0}/{1}', matrix.context, matrix.dockerfile) }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+          provenance: true
+          sbom: true
+
+  # ─────────────────────────────────────────────
+  # 2. Create GitHub Release with changelog notes
+  # ─────────────────────────────────────────────
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: build-and-push
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.2
+        with:
+          fetch-depth: 0   # full history for changelog generation
+
+      - name: Generate changelog since last tag
+        id: changelog
+        run: |
+          PREV_TAG=$(git tag --sort=-creatordate | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sed -n '2p')
+          CURRENT_TAG=${GITHUB_REF_NAME}
+          echo "prev_tag=${PREV_TAG}" >> "$GITHUB_OUTPUT"
+
+          if [ -z "$PREV_TAG" ]; then
+            LOG=$(git log --pretty=format:"- %s (%h)" | head -30)
+          else
+            LOG=$(git log "${PREV_TAG}..${CURRENT_TAG}" --pretty=format:"- %s (%h)")
+          fi
+
+          # Write multiline output safely
+          {
+            echo "changelog<<EOF"
+            echo "$LOG"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create release
+        uses: softprops/action-gh-release@v3.0.0
+        with:
+          name: "DataObs ${{ github.ref_name }}"
+          tag_name: ${{ github.ref_name }}
+          generate_release_notes: false
+          body: |
+            ## What's Changed
+            ${{ steps.changelog.outputs.changelog }}
+
+            ## Docker Images
+
+            Pull the images for this release:
+
+            ```bash
+            docker pull ghcr.io/${{ env.OWNER }}/dataobs-api:${{ github.ref_name }}
+            docker pull ghcr.io/${{ env.OWNER }}/dataobs-quality:${{ github.ref_name }}
+            docker pull ghcr.io/${{ env.OWNER }}/dataobs-sample-app:${{ github.ref_name }}
+            ```
+
+            Or use `latest` for the most recent release:
+
+            ```bash
+            docker pull ghcr.io/${{ env.OWNER }}/dataobs-api:latest
+            docker pull ghcr.io/${{ env.OWNER }}/dataobs-quality:latest
+            docker pull ghcr.io/${{ env.OWNER }}/dataobs-sample-app:latest
+            ```
+
+            ## Helm / Kubernetes
+
+            Update `helm/dataobs/values.yaml` image tags to `${{ github.ref_name }}` or pin in your `helmfile.yaml`:
+
+            ```yaml
+            api:
+              image: ghcr.io/${{ env.OWNER }}/dataobs-api:${{ github.ref_name }}
+            quality:
+              image: ghcr.io/${{ env.OWNER }}/dataobs-quality:${{ github.ref_name }}
+            ```
+
+            > Images include [SBOM attestations](https://docs.docker.com/build/metadata/attestations/sbom/) and
+            > [build provenance](https://docs.docker.com/build/metadata/attestations/slsa-provenance/).
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          token: ${{ secrets.GITHUB_TOKEN }}

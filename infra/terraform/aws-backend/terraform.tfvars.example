@@ -1,0 +1,44 @@
+# =============================================================================
+# DataObs — AWS Backend: Example Variable Values
+# =============================================================================
+# Copy to terraform.tfvars and edit before running:
+#   cp terraform.tfvars.example terraform.tfvars
+# NEVER commit terraform.tfvars to version control (it's in .gitignore).
+# =============================================================================
+
+# Core
+aws_region  = "us-east-1"
+name_prefix = "dataobs"
+environment = "prod"
+
+extra_tags = {
+  Team        = "platform-engineering"
+  CostCenter  = "data-platform"
+}
+
+# OpenSearch — must exist before running this module
+opensearch_domain_name = "dataobs-os"          # e.g. the domain created by infra/terraform/elasticsearch/
+opensearch_version     = "2.13.0"
+
+# AMP
+amp_alarm_error_threshold = 5
+# alarm_sns_topic_arn = "arn:aws:sns:us-east-1:123456789012:dataobs-alerts"
+
+# OSIS sizing
+osis_min_units            = 1
+osis_max_units            = 4
+enable_amp_metrics_fanout = true
+
+# AMG
+grafana_version              = "10.4"
+amg_authentication_providers = ["AWS_SSO"]
+amg_permission_type          = "SERVICE_MANAGED"
+amg_enable_sns_notifications = false
+amg_token_ttl_seconds        = 2592000   # 30 days
+
+# EKS IRSA (leave null if not using EKS)
+# eks_oidc_provider_arn    = "arn:aws:iam::123456789012:oidc-provider/oidc.eks.us-east-1.amazonaws.com/id/EXAMPLED539D4633E53DE1B71EXAMPLE"
+# eks_namespace            = "dataobs"
+# eks_service_account_name = "dataobs-otel-collector"
+
+log_retention_days = 90

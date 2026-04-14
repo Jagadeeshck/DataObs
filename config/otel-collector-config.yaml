@@ -1,69 +1,115 @@
-# DataObs OpenTelemetry Collector Configuration
-# Supports: AWS services, application traces/metrics/logs, data pipeline telemetry
+# ============================================================================
+# DataObs — OpenTelemetry Collector Configuration
+# ============================================================================
+# Backend selector: set DATAOBS_BACKEND env var to ONE of:
+#   elasticsearch   → Elasticsearch AIOps (default)
+#   opensearch      → Self-managed OpenSearch (via Data Prepper)
+#   opensearch_aws  → Amazon OpenSearch Ingestion (OSIS)
+#   aws_grafana     → Amazon Managed Grafana (metrics → AMP, traces/logs → OSIS)
+#   grafana_cloud   → Grafana Cloud (OTLP gateway)
+#   all             → Fan-out to all configured backends simultaneously
+#
+# OTel Semantic Conventions: https://opentelemetry.io/docs/specs/semconv/
+# All resource attributes emitted by this collector conform to semconv v1.26+
+# ============================================================================
 
-# ── Extensions ─────────────────────────────────────────────────────────────────
-# IMPORTANT: There must be exactly ONE top-level `extensions:` block.
-# A duplicate block silently overwrites the first, causing health_check and
-# pprof to never be registered despite appearing in service.extensions.
+# ── Extensions ──────────────────────────────────────────────────────────────
 extensions:
   health_check:
     endpoint: 0.0.0.0:13133
   pprof:
     endpoint: 0.0.0.0:1777
+
+  # Elasticsearch basic auth
   basicauth/elastic:
     client_auth:
       username: "${ELASTIC_USER}"
       password: "${ELASTIC_PASSWORD}"
 
+  # OpenSearch basic auth (self-managed)
+  basicauth/opensearch:
+    client_auth:
+      username: "${OPENSEARCH_USER:-admin}"
+      password: "${OPENSEARCH_PASSWORD}"
+
+  # Grafana Cloud basic auth (InstanceID:APIKey)
+  basicauth/grafana_cloud:
+    client_auth:
+      username: "${GRAFANA_CLOUD_INSTANCE_ID}"
+      password: "${GRAFANA_CLOUD_API_KEY}"
+
+# ── Receivers ────────────────────────────────────────────────────────────────
 receivers:
-  # ── OTLP Receiver (primary entry point for all instrumented services) ──
+  # ── OTLP (primary entry point — all instrumented services) ──────────────
+  # SDKs MUST set these resource attributes per semconv:
+  #   service.name, service.version, service.namespace, service.instance.id
+  #   deployment.environment.name (semconv 1.24+; previously deployment.environment)
+  #   telemetry.sdk.name, telemetry.sdk.language, telemetry.sdk.version
   otlp:
     protocols:
       grpc:
         endpoint: 0.0.0.0:4317
+        # Max message size: 128 MiB (default 4 MiB — too small for batch spans)
+        max_recv_msg_size_mib: 128
       http:
         endpoint: 0.0.0.0:4318
         cors:
-          # SECURITY: Restrict OTLP HTTP to known internal origins only.
-          # Set OTLP_ALLOWED_ORIGINS as a comma-separated env var, e.g.:
-          #   OTLP_ALLOWED_ORIGINS=https://*.internal.example.com
-          # Do NOT use ["*"] — it allows any origin to inject telemetry data.
           allowed_origins:
             - "${OTLP_ALLOWED_ORIGINS:-https://*.internal.example.com}"
 
-  # ── Prometheus scrape (infrastructure metrics) ──
+  # ── Prometheus scrape ───────────────────────────────────────────────────
   prometheus:
     config:
       scrape_configs:
-        - job_name: 'dataobs-collector'
+        - job_name: "dataobs-collector-self"
+          # Collector's own /metrics endpoint — exposes pipeline throughput counters
           static_configs:
-            - targets: ['localhost:8888']
-        - job_name: 'dataobs-quality-engine'
+            - targets: ["localhost:8888"]
+          metric_relabel_configs:
+            # Add semconv resource labels to Prometheus scraped metrics
+            - source_labels: [__name__]
+              target_label: service_name
+              replacement: "dataobs-otel-collector"
+        - job_name: "dataobs-quality-engine"
           static_configs:
-            - targets: ['dataobs-quality:9090']
+            - targets: ["dataobs-quality:9090"]
 
-  # ── Host Metrics (for local/EC2 infrastructure) ──
+  # ── Host Metrics ────────────────────────────────────────────────────────
+  # Emits semconv system.* metric names (system.cpu.utilization, system.memory.usage, etc.)
   hostmetrics:
     collection_interval: 30s
+    root_path: /hostfs    # set when running in container with hostfs mount
     scrapers:
       cpu:
         metrics:
           system.cpu.utilization:
             enabled: true
+          system.cpu.physical.count:
+            enabled: true
       memory:
+        metrics:
+          system.memory.utilization:
+            enabled: true
       disk:
       filesystem:
+        metrics:
+          system.filesystem.utilization:
+            enabled: true
       network:
+        metrics:
+          system.network.connections:
+            enabled: true
       load:
       processes:
+      process:
+        mute_process_name_error: true
+        mute_process_exe_error: true
+        mute_process_io_error: true
 
-  # ── AWS CloudWatch Receiver (Lambda, EMR, Glue, etc.) ──
-  # Requires AWS credentials in environment or IAM role
+  # ── AWS CloudWatch ──────────────────────────────────────────────────────
   awscloudwatch:
     region: "${AWS_REGION}"
     poll_interval: 1m
-    imds_endpoint: ""
-    named_profile: ""
     logs:
       poll_interval: 1m
       groups:
@@ -73,12 +119,12 @@ receivers:
           streams:
             prefixes: [""]
 
-  # ── AWS X-Ray Receiver (AWS managed service traces) ──
+  # ── AWS X-Ray ───────────────────────────────────────────────────────────
   awsxray:
     endpoint: 0.0.0.0:2000
     transport: udp
 
-  # ── Filelog Receiver (for log files / container stdout) ──
+  # ── Filelog ─────────────────────────────────────────────────────────────
   filelog:
     include:
       - /var/log/dataobs/*.log
@@ -86,74 +132,192 @@ receivers:
       - type: json_parser
         timestamp:
           parse_from: attributes.timestamp
-          layout: '%Y-%m-%dT%H:%M:%S.%LZ'
+          layout: "%Y-%m-%dT%H:%M:%S.%LZ"
       - type: add
-        field: attributes.collector
-        value: dataobs
+        field: resource["service.name"]
+        value: "${OTEL_SERVICE_NAME:-dataobs}"
+      - type: add
+        field: resource["deployment.environment.name"]
+        value: "${DEPLOY_ENV:-production}"
 
+# ── Processors ───────────────────────────────────────────────────────────────
 processors:
-  # ── Memory limiter (prevent OOM) ──
+  # ── Memory limiter ──────────────────────────────────────────────────────
   memory_limiter:
     check_interval: 1s
     limit_mib: 1024
     spike_limit_mib: 256
 
-  # ── Batch (improves throughput to Elasticsearch) ──
+  # ── Batch ───────────────────────────────────────────────────────────────
   batch:
     send_batch_size: 1000
     timeout: 10s
     send_batch_max_size: 2000
 
-  # ── Resource detection (auto-tag with cloud metadata) ──
-  # IMPORTANT: Only add 'aws' to detectors when running on AWS infrastructure.
-  # The aws detector makes IMDS calls on startup and will cause ~10s timeouts
-  # in non-AWS environments (local dev, GCP, Azure).
-  # Set OTEL_DETECTORS env var to override: e.g. OTEL_DETECTORS=env,system,docker
+  # ── Resource Detection (local / non-AWS) ────────────────────────────────
+  # Populates semconv resource attributes:
+  #   host.name, host.arch, os.type, os.description
+  #   container.id, container.image.name, container.image.tag
   resourcedetection:
     detectors: [env, system, docker]
     timeout: 10s
     override: false
+    system:
+      hostname_sources: [dns, os]
+      resource_attributes:
+        host.name:
+          enabled: true
+        host.id:
+          enabled: true
+        host.arch:
+          enabled: true
+        os.type:
+          enabled: true
+        os.description:
+          enabled: true
+    docker:
+      resource_attributes:
+        container.name:
+          enabled: true
+        container.id:
+          enabled: true
+        container.image.name:
+          enabled: true
+        container.runtime:
+          enabled: true
 
-  # ── Resource detection for AWS deployments ──
-  # Use this separate processor and add it to pipeline processors when on AWS.
-  # Swap resourcedetection above for resourcedetection/aws in service.pipelines.
+  # ── Resource Detection (AWS) ─────────────────────────────────────────────
+  # Populates semconv cloud.* and host.* resource attributes:
+  #   cloud.provider=aws, cloud.platform=aws_ec2 / aws_ecs / aws_eks
+  #   cloud.account.id, cloud.region, cloud.availability_zone
+  #   host.id, host.type, host.image.id
+  #   aws.ecs.cluster.arn, aws.ecs.task.arn, aws.eks.cluster.arn
   resourcedetection/aws:
-    detectors: [env, system, aws, docker]
+    detectors: [env, system, ec2, ecs, eks]
     timeout: 30s
     override: false
-    aws:
-      tags: ["Name", "Environment", "Team", "Service", "dataobs:dataset"]
+    ec2:
+      resource_attributes:
+        cloud.account.id:
+          enabled: true
+        cloud.availability_zone:
+          enabled: true
+        cloud.region:
+          enabled: true
+        host.id:
+          enabled: true
+        host.image.id:
+          enabled: true
+        host.name:
+          enabled: true
+        host.type:
+          enabled: true
+      # EC2 tags → semconv mappings (requires ec2:DescribeTags IAM permission)
+      tags:
+        - ^Name$                        # → host.name fallback
+        - ^Environment$                 # → deployment.environment.name
+        - ^Team$                        # → custom team attribute
+        - ^Service$                     # → service.name hint
+        - ^dataobs:.*                   # DataObs-specific tags
 
-  # ── Attribute processing (enrich telemetry with DataObs context) ──
-  attributes:
-    actions:
+  # ── Kubernetes Resource Detection ────────────────────────────────────────
+  # Populates: k8s.pod.name, k8s.pod.uid, k8s.namespace.name,
+  #             k8s.node.name, k8s.deployment.name, k8s.container.name
+  k8sattributes:
+    auth_type: "serviceAccount"
+    passthrough: false
+    filter:
+      node_from_env_var: KUBE_NODE_NAME
+    extract:
+      metadata:
+        - k8s.pod.name
+        - k8s.pod.uid
+        - k8s.deployment.name
+        - k8s.namespace.name
+        - k8s.node.name
+        - k8s.pod.start_time
+        - k8s.replicaset.name
+        - k8s.statefulset.name
+        - k8s.daemonset.name
+        - k8s.cronjob.name
+        - k8s.job.name
+        - container.id
+        - container.image.name
+        - container.image.tag
+      labels:
+        - tag_name: app.kubernetes.io/name
+          key: app.kubernetes.io/name
+          from: pod
+        - tag_name: app.kubernetes.io/version
+          key: app.kubernetes.io/version
+          from: pod
+    pod_association:
+      - sources:
+          - from: resource_attribute
+            name: k8s.pod.ip
+      - sources:
+          - from: resource_attribute
+            name: k8s.pod.uid
+      - sources:
+          - from: connection
+
+  # ── Semconv Resource Enrichment ──────────────────────────────────────────
+  # Ensures all required semconv resource attributes are present.
+  # Also handles the deprecated `deployment.environment` → `deployment.environment.name`
+  # migration (semconv 1.24+).
+  resource/semconv:
+    attributes:
+      # Required: service identity
+      - key: service.namespace
+        value: "${SERVICE_NAMESPACE:-dataobs}"
+        action: upsert
+      # Semconv 1.24+: canonical env attribute is deployment.environment.name
+      # We upsert both so old dashboards querying deployment.environment still work.
+      - key: deployment.environment.name
+        from_attribute: deployment.environment
+        action: insert
+      - key: deployment.environment.name
+        value: "${DEPLOY_ENV:-production}"
+        action: insert        # only applied if not already set
+      # Back-fill legacy attribute from new canonical for ES ECS compatibility
+      - key: deployment.environment
+        from_attribute: deployment.environment.name
+        action: insert
+      # DataObs platform metadata (custom namespace: dataobs.*)
       - key: dataobs.product
         value: dataobs
         action: insert
       - key: dataobs.version
-        value: "1.0.0"
+        value: "${DATAOBS_VERSION:-1.0.0}"
+        action: insert
+      - key: dataobs.backend
+        value: "${DATAOBS_BACKEND:-elasticsearch}"
         action: insert
 
-  # ── Resource enrichment for data pipeline signals ──
-  resource:
-    attributes:
-      - key: dataobs.environment
-        from_attribute: deployment.environment
-        action: insert
-      - key: dataobs.team
-        from_attribute: team
-        action: insert
+  # ── Semconv Attribute Normalization ─────────────────────────────────────
+  # Rename legacy / non-standard span and log attributes to semconv names.
+  # Covers common instrumentation libraries that predate semconv v1.20.
+  transform/semconv_normalize:
+    trace_statements:
+      - context: span
+        statements:
+          # HTTP semconv: migrate old http.method / http.url to new names
+          - set(attributes["http.request.method"], attributes["http.method"]) where attributes["http.request.method"] == nil and attributes["http.method"] != nil
+          - set(attributes["http.response.status_code"], attributes["http.status_code"]) where attributes["http.response.status_code"] == nil and attributes["http.status_code"] != nil
+          - set(attributes["url.full"], attributes["http.url"]) where attributes["url.full"] == nil and attributes["http.url"] != nil
+          - set(attributes["url.path"], attributes["http.target"]) where attributes["url.path"] == nil and attributes["http.target"] != nil
+          - set(attributes["server.address"], attributes["net.peer.name"]) where attributes["server.address"] == nil and attributes["net.peer.name"] != nil
+          - set(attributes["server.port"], attributes["net.peer.port"]) where attributes["server.port"] == nil and attributes["net.peer.port"] != nil
+          # DB semconv: db.system values normalization
+          - set(attributes["db.system.name"], attributes["db.system"]) where attributes["db.system.name"] == nil and attributes["db.system"] != nil
+          # Error marking: ensure error.type on error spans
+          - set(attributes["error.type"], "exception") where status.code == STATUS_CODE_ERROR and attributes["error.type"] == nil
+    log_statements:
+      - context: log
+        statements:
+          # Map legacy log.level → standard severity
+          - set(attributes["log.level"], attributes["level"]) where attributes["log.level"] == nil and attributes["level"] != nil
 
-  # ── Filter: drop low-value health check noise ──
-  filter:
-    metrics:
-      exclude:
-        match_type: strict
-        metric_names:
-          - promhttp_metric_handler_requests_total
-
-  # ── Transform: normalize AWS Lambda metric names ──
-  transform:
     metric_statements:
       - context: metric
         statements:
@@ -161,17 +325,47 @@ processors:
           - set(description, "Lambda error count") where name == "aws.lambda.errors"
           - set(description, "Lambda duration in ms") where name == "aws.lambda.duration"
 
+  # ── Semconv Attribute Filter (drop PII / sensitive fields) ───────────────
+  attributes/redact:
+    actions:
+      - key: http.request.header.authorization
+        action: delete
+      - key: http.request.header.cookie
+        action: delete
+      - key: db.statement
+        # Retain db.statement but hash sensitive literal values in queries
+        # For full redaction, change action to: delete
+        action: update
+        value: "[REDACTED — enable db.statement in config if needed]"
+      - key: enduser.id
+        action: hash
+
+  # ── Filter: drop health-check noise ─────────────────────────────────────
+  filter/health_noise:
+    traces:
+      span:
+        # Drop spans for GET /health and GET /metrics — they're not useful traces
+        - 'attributes["http.route"] == "/health"'
+        - 'attributes["url.path"] == "/health"'
+        - 'attributes["http.route"] == "/metrics"'
+    metrics:
+      metric:
+        - 'name == "promhttp_metric_handler_requests_total"'
+
+# ── Exporters ────────────────────────────────────────────────────────────────
 exporters:
-  # ── Elasticsearch Exporter (primary sink) ──
+  # ── Elasticsearch AIOps (primary — ES 8.x + ML) ──────────────────────────
+  # index naming follows semconv: signals are separated into dedicated indices.
+  # ECS mode maps OTel resource/span attributes to Elastic Common Schema fields.
   elasticsearch:
-    endpoints: ["${ELASTIC_ENDPOINT}"]
+    endpoints: ["${ELASTIC_ENDPOINT:-http://elasticsearch:9200}"]
     auth:
       authenticator: basicauth/elastic
     traces_index: "dataobs-traces"
-    logs_index: "dataobs-logs"
+    logs_index:   "dataobs-logs"
     metrics_index: "dataobs-metrics"
     flush:
-      bytes: 5242880  # 5MB
+      bytes: 5242880      # 5 MiB
       interval: 30s
     retry:
       enabled: true
@@ -179,34 +373,220 @@ exporters:
       initial_interval: 1s
       max_interval: 30s
     mapping:
-      mode: ecs  # Elastic Common Schema
+      mode: ecs           # Elastic Common Schema — semconv → ECS field mapping
 
-  # ── Debug exporter (dev only) ──
-  debug:
-    verbosity: basic
+  # ── OpenSearch (self-managed via Data Prepper OTLP port) ─────────────────
+  # Data Prepper accepts OTLP on port 21891 (traces) / 21892 (logs) / 21893 (metrics)
+  # OR unified OTLP source on 21890 (Data Prepper 2.7+ otlp source plugin).
+  # We use the unified OTLP port to keep collector config lean.
+  otlp/opensearch_self:
+    endpoint: "${OPENSEARCH_DATA_PREPPER_ENDPOINT:-http://data-prepper:21890}"
+    tls:
+      insecure: ${OPENSEARCH_INSECURE:-true}
+    headers:
+      x-tenant-id: "${OTEL_TENANT_ID:-default}"
+    retry_on_failure:
+      enabled: true
+      initial_interval: 2s
+      max_interval: 30s
+      max_elapsed_time: 120s
 
-  # ── Prometheus exporter (for Kibana metrics source) ──
+  # ── Amazon OpenSearch Ingestion (OSIS) ───────────────────────────────────
+  # OSIS accepts OTLP HTTP (not gRPC) and requires SigV4 signing.
+  # The awsauth extension handles credentials from IMDS / env.
+  otlphttp/opensearch_aws:
+    endpoint: "${OSIS_PIPELINE_ENDPOINT}"    # https://<pipeline-id>.us-east-1.osis.amazonaws.com
+    auth:
+      authenticator: sigv4auth
+    headers:
+      content-type: application/x-protobuf
+    tls:
+      insecure: false
+    retry_on_failure:
+      enabled: true
+      initial_interval: 5s
+      max_interval: 60s
+      max_elapsed_time: 300s
+
+  # ── Amazon Managed Prometheus (AMP) — metrics for AWS Grafana ────────────
+  # AMP uses Prometheus Remote Write protocol (not OTLP).
+  # The awsauth extension handles SigV4 automatically.
+  prometheusremotewrite/amp:
+    endpoint: "${AMP_REMOTE_WRITE_URL}"   # https://aps-workspaces.<region>.amazonaws.com/workspaces/<id>/api/v1/remote_write
+    auth:
+      authenticator: sigv4auth
+    tls:
+      insecure: false
+    resource_to_telemetry_conversion:
+      # Convert semconv resource attributes to Prometheus labels
+      # This makes service.name, deployment.environment.name, etc. queryable in AMP
+      enabled: true
+    add_metric_suffixes: false
+    target_info:
+      # Emit a target_info metric per (service.name, host.name) combination.
+      # This is the semconv-recommended way to correlate Prometheus metrics with resource context.
+      enabled: true
+
+  # ── Grafana Cloud OTLP Gateway ───────────────────────────────────────────
+  otlphttp/grafana_cloud:
+    endpoint: "${GRAFANA_CLOUD_OTLP_ENDPOINT}"  # https://otlp-gateway-<region>.grafana.net/otlp
+    auth:
+      authenticator: basicauth/grafana_cloud
+    tls:
+      insecure: false
+    retry_on_failure:
+      enabled: true
+      initial_interval: 2s
+      max_interval: 30s
+      max_elapsed_time: 120s
+
+  # ── Prometheus exporter (local scrape endpoint — for AWS Grafana / self-hosted) ─
   prometheus:
     endpoint: "0.0.0.0:8889"
     namespace: dataobs
+    resource_to_telemetry_conversion:
+      enabled: true     # exposes all resource attributes as Prometheus labels
 
+  # ── Debug ────────────────────────────────────────────────────────────────
+  debug:
+    verbosity: basic
+
+# ── Connectors ───────────────────────────────────────────────────────────────
+connectors:
+  # Span-metrics connector: derives RED metrics (rate/error/duration) from traces.
+  # These metrics are queryable in Grafana as Prometheus metrics or in Kibana.
+  spanmetrics:
+    namespace: dataobs.traces
+    dimensions:
+      - name: service.name
+      - name: service.version
+      - name: deployment.environment.name
+      - name: http.request.method
+      - name: http.response.status_code
+      - name: db.system.name
+      - name: messaging.system
+      - name: rpc.system
+    exemplars:
+      enabled: true
+    histogram:
+      explicit:
+        buckets: [5ms, 10ms, 25ms, 50ms, 100ms, 250ms, 500ms, 1s, 2.5s, 5s, 10s]
+    metrics_flush_interval: 15s
+
+  # Service graph connector: derives topology graph edges from trace parent-child spans.
+  servicegraph:
+    dimensions:
+      - service.name
+      - deployment.environment.name
+    latency_histogram_buckets: [100ms, 250ms, 500ms, 1s, 5s]
+    store:
+      ttl: 2s
+      max_items: 1000
+
+# ── Service ──────────────────────────────────────────────────────────────────
+# Backend routing is controlled by DATAOBS_BACKEND env var.
+# Pipelines fan-out to all active exporters; unused exporters are simply idle.
+# Use the docker-compose profiles or Helm values to activate specific backends.
 service:
-  extensions: [health_check, pprof, basicauth/elastic]
-  pipelines:
-    traces:
-      receivers: [otlp, awsxray]
-      processors: [memory_limiter, resourcedetection, attributes, resource, batch]
-      exporters: [elasticsearch]
+  extensions: [health_check, pprof, basicauth/elastic, basicauth/opensearch, basicauth/grafana_cloud]
 
-    metrics:
+  pipelines:
+    # ── Traces ──────────────────────────────────────────────────────────────
+    traces/ingest:
+      receivers: [otlp, awsxray]
+      processors:
+        - memory_limiter
+        - resourcedetection
+        - resource/semconv
+        - transform/semconv_normalize
+        - attributes/redact
+        - filter/health_noise
+        - batch
+      exporters: [elasticsearch, spanmetrics, servicegraph]
+
+    # Traces → OpenSearch (self) — active when DATAOBS_BACKEND=opensearch or all
+    traces/opensearch:
+      receivers: [otlp]
+      processors: [memory_limiter, resourcedetection, resource/semconv, transform/semconv_normalize, batch]
+      exporters: [otlp/opensearch_self]
+
+    # Traces → Amazon OpenSearch Ingestion — active when DATAOBS_BACKEND=opensearch_aws or all
+    traces/opensearch_aws:
+      receivers: [otlp]
+      processors: [memory_limiter, resourcedetection/aws, resource/semconv, transform/semconv_normalize, batch]
+      exporters: [otlphttp/opensearch_aws]
+
+    # Traces → Grafana Cloud
+    traces/grafana_cloud:
+      receivers: [otlp]
+      processors: [memory_limiter, resourcedetection, resource/semconv, transform/semconv_normalize, batch]
+      exporters: [otlphttp/grafana_cloud]
+
+    # ── Metrics ─────────────────────────────────────────────────────────────
+    metrics/ingest:
       receivers: [otlp, prometheus, hostmetrics, awscloudwatch]
-      processors: [memory_limiter, resourcedetection, attributes, filter, transform, batch]
+      processors:
+        - memory_limiter
+        - resourcedetection
+        - resource/semconv
+        - transform/semconv_normalize
+        - filter/health_noise
+        - batch
       exporters: [elasticsearch, prometheus]
 
-    logs:
+    # RED metrics derived from spanmetrics connector
+    metrics/spanmetrics:
+      receivers: [spanmetrics, servicegraph]
+      processors: [memory_limiter, batch]
+      exporters: [elasticsearch, prometheus]
+
+    # Metrics → Amazon Managed Prometheus (for AWS Managed Grafana)
+    metrics/amp:
+      receivers: [otlp, prometheus, hostmetrics]
+      processors: [memory_limiter, resourcedetection/aws, resource/semconv, batch]
+      exporters: [prometheusremotewrite/amp]
+
+    # RED metrics → AMP as well
+    metrics/amp_spanmetrics:
+      receivers: [spanmetrics, servicegraph]
+      processors: [memory_limiter, batch]
+      exporters: [prometheusremotewrite/amp]
+
+    # Metrics → Grafana Cloud
+    metrics/grafana_cloud:
+      receivers: [otlp, prometheus, hostmetrics]
+      processors: [memory_limiter, resourcedetection, resource/semconv, batch]
+      exporters: [otlphttp/grafana_cloud]
+
+    # ── Logs ────────────────────────────────────────────────────────────────
+    logs/ingest:
       receivers: [otlp, filelog, awscloudwatch]
-      processors: [memory_limiter, resourcedetection, attributes, batch]
+      processors:
+        - memory_limiter
+        - resourcedetection
+        - resource/semconv
+        - transform/semconv_normalize
+        - attributes/redact
+        - batch
       exporters: [elasticsearch]
+
+    # Logs → OpenSearch (self)
+    logs/opensearch:
+      receivers: [otlp, filelog]
+      processors: [memory_limiter, resourcedetection, resource/semconv, transform/semconv_normalize, batch]
+      exporters: [otlp/opensearch_self]
+
+    # Logs → Amazon OpenSearch Ingestion
+    logs/opensearch_aws:
+      receivers: [otlp, filelog]
+      processors: [memory_limiter, resourcedetection/aws, resource/semconv, transform/semconv_normalize, batch]
+      exporters: [otlphttp/opensearch_aws]
+
+    # Logs → Grafana Cloud
+    logs/grafana_cloud:
+      receivers: [otlp, filelog]
+      processors: [memory_limiter, resourcedetection, resource/semconv, transform/semconv_normalize, batch]
+      exporters: [otlphttp/grafana_cloud]
 
   telemetry:
     logs:

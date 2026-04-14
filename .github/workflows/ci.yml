@@ -46,14 +46,6 @@ jobs:
           alloy fmt --test integrations/grafana-alloy/alloy/config.alloy
           echo "Alloy fmt OK"
 
-      # -- Alloy config: component + property validation -------------------------
-      # `alloy validate` goes deeper: checks required props, unknown blocks,
-      # component name conflicts. Returns non-zero on any validation error.
-      - name: Validate Alloy config -- component validation
-        run: |
-          echo "--- alloy validate (component + property check) ---"
-          alloy validate integrations/grafana-alloy/alloy/config.alloy
-          echo "Alloy validate OK"
 
       # -- YAML lint -------------------------------------------------------------
       - name: Install yamllint

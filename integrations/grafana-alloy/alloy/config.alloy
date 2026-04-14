@@ -16,146 +16,146 @@
 
 // ── Alloy internal logging ────────────────────────────────────────────────────
 logging {
-  level  = "info"
-  format = "logfmt"
+	level  = "info"
+	format = "logfmt"
 }
 
 // ── 1. OTLP receiver — accepts gRPC (4317) and HTTP (4318) from the app ──────
 otelcol.receiver.otlp "default" {
-  // gRPC — used by the sample app
-  grpc {
-    endpoint = "0.0.0.0:4317"
-  }
-  // HTTP/protobuf — useful for browser/SDK direct sends
-  http {
-    endpoint = "0.0.0.0:4318"
-  }
+	// gRPC — used by the sample app
+	grpc {
+		endpoint = "0.0.0.0:4317"
+	}
+	// HTTP/protobuf — useful for browser/SDK direct sends
+	http {
+		endpoint = "0.0.0.0:4318"
+	}
 
-  output {
-    metrics = [otelcol.processor.resourcedetection.default.input]
-    logs    = [otelcol.processor.resourcedetection.default.input]
-    traces  = [otelcol.processor.resourcedetection.default.input]
-  }
+	output {
+		metrics = [otelcol.processor.resourcedetection.default.input]
+		logs    = [otelcol.processor.resourcedetection.default.input]
+		traces  = [otelcol.processor.resourcedetection.default.input]
+	}
 }
 
 // ── 2. Resource detection — auto-populate host.name, os.type, etc. ───────────
 otelcol.processor.resourcedetection "default" {
-  // "env"    reads OTEL_RESOURCE_ATTRIBUTES env var
-  // "system" populates host.name, os.type, process.*
-  detectors = ["env", "system"]
+	// "env"    reads OTEL_RESOURCE_ATTRIBUTES env var
+	// "system" populates host.name, os.type, process.*
+	detectors = ["env", "system"]
 
-  system {
-    hostname_sources = ["os"]
-  }
+	system {
+		hostname_sources = ["os"]
+	}
 
-  output {
-    metrics = [otelcol.processor.transform.cleanup.input]
-    logs    = [otelcol.processor.transform.cleanup.input]
-    traces  = [otelcol.processor.transform.cleanup.input]
-  }
+	output {
+		metrics = [otelcol.processor.transform.cleanup.input]
+		logs    = [otelcol.processor.transform.cleanup.input]
+		traces  = [otelcol.processor.transform.cleanup.input]
+	}
 }
 
 // ── 3. Transform — remove noisy resource attributes, promote env to metrics ──
 otelcol.processor.transform "cleanup" {
-  error_mode = "ignore"
+	error_mode = "ignore"
 
-  // Drop verbose process attributes that clutter Grafana Cloud
-  trace_statements {
-    context = "resource"
-    statements = [
-      "delete_key(attributes, \"process.command_args\")",
-      "delete_key(attributes, \"process.executable.path\")",
-      "delete_key(attributes, \"process.pid\")",
-      "delete_key(attributes, \"process.runtime.description\")",
-      "delete_key(attributes, \"process.runtime.name\")",
-      "delete_key(attributes, \"process.runtime.version\")",
-      "delete_key(attributes, \"os.description\")",
-    ]
-  }
+	// Drop verbose process attributes that clutter Grafana Cloud
+	trace_statements {
+		context    = "resource"
+		statements = [
+			"delete_key(attributes, \"process.command_args\")",
+			"delete_key(attributes, \"process.executable.path\")",
+			"delete_key(attributes, \"process.pid\")",
+			"delete_key(attributes, \"process.runtime.description\")",
+			"delete_key(attributes, \"process.runtime.name\")",
+			"delete_key(attributes, \"process.runtime.version\")",
+			"delete_key(attributes, \"os.description\")",
+		]
+	}
 
-  metric_statements {
-    context = "resource"
-    statements = [
-      "delete_key(attributes, \"process.command_args\")",
-      "delete_key(attributes, \"process.executable.path\")",
-      "delete_key(attributes, \"process.pid\")",
-      "delete_key(attributes, \"os.description\")",
-    ]
-  }
+	metric_statements {
+		context    = "resource"
+		statements = [
+			"delete_key(attributes, \"process.command_args\")",
+			"delete_key(attributes, \"process.executable.path\")",
+			"delete_key(attributes, \"process.pid\")",
+			"delete_key(attributes, \"os.description\")",
+		]
+	}
 
-  log_statements {
-    context = "resource"
-    statements = [
-      "delete_key(attributes, \"process.command_args\")",
-      "delete_key(attributes, \"process.executable.path\")",
-      "delete_key(attributes, \"process.pid\")",
-      "delete_key(attributes, \"os.description\")",
-    ]
-  }
+	log_statements {
+		context    = "resource"
+		statements = [
+			"delete_key(attributes, \"process.command_args\")",
+			"delete_key(attributes, \"process.executable.path\")",
+			"delete_key(attributes, \"process.pid\")",
+			"delete_key(attributes, \"os.description\")",
+		]
+	}
 
-  output {
-    metrics = [otelcol.processor.transform.promote_env.input]
-    logs    = [otelcol.processor.batch.default.input]
-    traces  = [otelcol.processor.batch.default.input]
-  }
+	output {
+		metrics = [otelcol.processor.transform.promote_env.input]
+		logs    = [otelcol.processor.batch.default.input]
+		traces  = [otelcol.processor.batch.default.input]
+	}
 }
 
 // ── 3b. Promote deployment.environment into metric datapoint attributes ───────
 //    This allows filtering in Grafana dashboards by environment label.
 otelcol.processor.transform "promote_env" {
-  error_mode = "ignore"
+	error_mode = "ignore"
 
-  metric_statements {
-    context = "datapoint"
-    statements = [
-      "set(attributes[\"deployment.environment\"], resource.attributes[\"deployment.environment\"])",
-      "set(attributes[\"service.version\"],        resource.attributes[\"service.version\"])",
-    ]
-  }
+	metric_statements {
+		context    = "datapoint"
+		statements = [
+			"set(attributes[\"deployment.environment\"], resource.attributes[\"deployment.environment\"])",
+			"set(attributes[\"service.version\"],        resource.attributes[\"service.version\"])",
+		]
+	}
 
-  output {
-    metrics = [otelcol.processor.batch.default.input]
-  }
+	output {
+		metrics = [otelcol.processor.batch.default.input]
+	}
 }
 
 // ── 4. Batch processor — buffer before sending to reduce API calls ────────────
 otelcol.processor.batch "default" {
-  send_batch_size     = 512
-  send_batch_max_size = 1024
-  timeout             = "5s"
+	send_batch_size     = 512
+	send_batch_max_size = 1024
+	timeout             = "5s"
 
-  output {
-    metrics = [otelcol.exporter.otlphttp.grafana_cloud.input]
-    logs    = [otelcol.exporter.otlphttp.grafana_cloud.input]
-    traces  = [otelcol.exporter.otlphttp.grafana_cloud.input]
-  }
+	output {
+		metrics = [otelcol.exporter.otlphttp.grafana_cloud.input]
+		logs    = [otelcol.exporter.otlphttp.grafana_cloud.input]
+		traces  = [otelcol.exporter.otlphttp.grafana_cloud.input]
+	}
 }
 
 // ── 5. Auth — Basic auth with Grafana Cloud instance ID + API key ─────────────
 otelcol.auth.basic "grafana_cloud" {
-  username = env("GRAFANA_CLOUD_INSTANCE_ID")
-  password = env("GRAFANA_CLOUD_API_KEY")
+	username = env("GRAFANA_CLOUD_INSTANCE_ID")
+	password = env("GRAFANA_CLOUD_API_KEY")
 }
 
 // ── 6. OTLP HTTP exporter → Grafana Cloud ────────────────────────────────────
 otelcol.exporter.otlphttp "grafana_cloud" {
-  client {
-    endpoint = env("GRAFANA_CLOUD_OTLP_ENDPOINT")
-    auth     = otelcol.auth.basic.grafana_cloud.handler
+	client {
+		endpoint = env("GRAFANA_CLOUD_OTLP_ENDPOINT")
+		auth     = otelcol.auth.basic.grafana_cloud.handler
 
-    // Retry on transient failures
-    retry_on_failure {
-      enabled          = true
-      initial_interval = "5s"
-      max_interval     = "30s"
-      max_elapsed_time = "300s"
-    }
+		// Retry on transient failures
+		retry_on_failure {
+			enabled          = true
+			initial_interval = "5s"
+			max_interval     = "30s"
+			max_elapsed_time = "300s"
+		}
 
-    // Queue to absorb bursts
-    sending_queue {
-      enabled      = true
-      num_consumers = 4
-      queue_size   = 1000
-    }
-  }
+		// Queue to absorb bursts
+		sending_queue {
+			enabled       = true
+			num_consumers = 4
+			queue_size    = 1000
+		}
+	}
 }

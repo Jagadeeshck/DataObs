@@ -105,13 +105,16 @@ jobs:
       - name: Install root dependencies
         run: |
           pip install -r requirements.txt
-          pip install pytest
+          # pytest not in requirements.txt -- install explicitly
+          # requests needed by tests/integration/conftest.py at import time
+          pip install pytest requests
 
       - name: Install OTel app dependencies
         run: pip install -r integrations/grafana-alloy/app/requirements.txt
 
       - name: Run DataObs test suite
-        run: python -m pytest tests/ -v --tb=short
+        # Exclude integration tests (need Docker) and dbt tests (separate job)
+        run: python -m pytest tests/ -v --tb=short --ignore=tests/integration --ignore=tests/test_dbt_integration.py
 
   # ---------------------------------------------------------------------------
   # Job 3: Build Docker images

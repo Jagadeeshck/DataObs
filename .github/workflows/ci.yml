@@ -24,8 +24,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # -- Grafana Alloy: install binary ----------------------------------------
-      # The official zip contains a single binary named alloy-linux-amd64.
       - name: Install Grafana Alloy
         run: |
           ALLOY_VERSION="v1.8.1"
@@ -37,17 +35,12 @@ jobs:
           sudo mv alloy-linux-amd64 /usr/local/bin/alloy
           alloy --version
 
-      # -- Alloy config: formatting check ----------------------------------------
-      # `alloy fmt --test` exits non-zero if the file would be reformatted,
-      # which also catches any syntax errors in the River/Alloy config language.
       - name: Validate Alloy config -- fmt check
         run: |
           echo "--- alloy fmt --test (syntax + formatting) ---"
           alloy fmt --test integrations/grafana-alloy/alloy/config.alloy
           echo "Alloy fmt OK"
 
-
-      # -- YAML lint -------------------------------------------------------------
       - name: Install yamllint
         run: pip install --quiet yamllint
 
@@ -58,10 +51,6 @@ jobs:
           yamllint -d relaxed integrations/grafana-alloy/grafana/provisioning/datasources/datasources.yaml
           echo "All YAML configs OK"
 
-      # -- docker-compose validation ---------------------------------------------
-      # docker compose v2 is pre-installed on ubuntu-latest runners (no pip needed).
-      # `docker compose config` parses, resolves anchors, and substitutes env vars.
-      # We suppress "variable is not set" warnings for optional .env vars (normal in CI).
       - name: Validate root docker-compose.yml
         run: |
           docker compose -f docker-compose.yml config 2>&1 \
@@ -76,7 +65,6 @@ jobs:
             | head -30 || true
           echo "Alloy docker-compose.yml structure OK"
 
-      # -- Grafana dashboard JSON lint -------------------------------------------
       - name: Validate Grafana dashboard JSON
         run: |
           python3 -c "
@@ -90,7 +78,6 @@ jobs:
               print('No dashboard JSON files found')
           "
 
-      # -- Python syntax check ---------------------------------------------------
       - name: Python syntax check
         run: |
           python3 -m py_compile integrations/grafana-alloy/app/app.py
@@ -98,7 +85,7 @@ jobs:
           echo "Python syntax OK"
 
   # ---------------------------------------------------------------------------
-  # Job 2: Python tests (existing DataObs test suite)
+  # Job 2: Python tests
   # ---------------------------------------------------------------------------
   test-python:
     name: Python tests
@@ -112,15 +99,12 @@ jobs:
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
-          # Match the python:3.11-slim base used in Dockerfile.api / Dockerfile.quality
-          # to avoid version-specific dependency surprises.
           python-version: "3.11"
           cache: pip
 
       - name: Install root dependencies
         run: |
           pip install -r requirements.txt
-          # pytest is not in requirements.txt -- install explicitly
           pip install pytest
 
       - name: Install OTel app dependencies
@@ -174,9 +158,6 @@ jobs:
           cache-from: type=gha,scope=sample-app
           cache-to: type=gha,mode=max,scope=sample-app
 
-      # Note: build-push-action with push:false/load:false builds into the
-      # buildx cache only and does not populate the local docker image store.
-      # We report cache hit confirmation instead of docker images output.
       - name: Report build completion
         run: |
           echo "All three images built and cached successfully:"
@@ -186,19 +167,6 @@ jobs:
 
   # ---------------------------------------------------------------------------
   # Job 4: Security scan (Trivy) -- main branch only
-  #
-  # Pipeline:
-  #   1. Build image (fast via GHA layer cache)
-  #   2. Trivy -> JSON  (machine-readable, parsed for CVE details)
-  #   3. Trivy -> table (human-readable summary in Actions log)
-  #   4. Trivy -> SARIF (uploaded to GitHub Security / Code Scanning tab)
-  #   5. Python script parses JSON, extracts CRITICALs, builds issue body
-  #   6a. CRITICALs found  -> open or comment on existing GitHub Issue
-  #   6b. No CRITICALs     -> auto-close the open issue (if any)
-  #
-  # Permissions used (GITHUB_TOKEN -- no extra secrets needed):
-  #   issues: write          -- create / close / comment on CVE issue
-  #   security-events: write -- upload SARIF to Code Scanning
   # ---------------------------------------------------------------------------
   security-scan:
     name: Security scan
@@ -218,7 +186,6 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # -- 1. Rebuild image (fast via GHA cache) ---------------------------------
       - name: Build sample-python-app for scanning
         uses: docker/build-push-action@v6
         with:
@@ -229,8 +196,6 @@ jobs:
           tags: dataobs/sample-python-app:scan
           cache-from: type=gha,scope=sample-app
 
-      # -- 2. Trivy scan -> JSON (primary, machine-readable) ---------------------
-      # Pinned to 0.35.0 (2026-03). Update intentionally — do not use @master.
       - name: Run Trivy scan -- JSON output
         uses: aquasecurity/trivy-action@0.35.0
         with:
@@ -242,7 +207,6 @@ jobs:
           vuln-type: os,library
           severity: CRITICAL,HIGH
 
-      # -- 3. Trivy scan -> table (visible in the Actions log) ------------------
       - name: Run Trivy scan -- table summary
         uses: aquasecurity/trivy-action@0.35.0
         with:
@@ -253,7 +217,6 @@ jobs:
           vuln-type: os,library
           severity: CRITICAL,HIGH
 
-      # -- 4. Trivy scan -> SARIF (GitHub Security tab) -------------------------
       - name: Run Trivy scan -- SARIF output
         uses: aquasecurity/trivy-action@0.35.0
         with:
@@ -269,15 +232,11 @@ jobs:
       - name: Upload SARIF to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
         if: always()
-        # continue-on-error: SARIF upload requires GitHub Advanced Security (GHAS)
-        # or a public repo. On private repos without GHAS this returns 403/404.
-        # The rest of the scan (table log, JSON parse, auto-issue) still runs.
         continue-on-error: true
         with:
           sarif_file: trivy-results.sarif
           category: trivy-image-scan
 
-      # -- 5. Parse JSON and build issue body ------------------------------------
       - name: Parse Trivy JSON and generate issue body
         id: parse
         run: |
@@ -310,10 +269,10 @@ jobs:
               print("No CRITICAL CVEs found.")
               sys.exit(0)
 
-          sha       = os.environ.get("GITHUB_SHA", "unknown")[:10]
-          run_id    = os.environ.get("GITHUB_RUN_ID", "")
-          repo      = os.environ.get("GITHUB_REPOSITORY", "")
-          run_url   = f"https://github.com/{repo}/actions/runs/{run_id}"
+          sha        = os.environ.get("GITHUB_SHA", "unknown")[:10]
+          run_id     = os.environ.get("GITHUB_RUN_ID", "")
+          repo       = os.environ.get("GITHUB_REPOSITORY", "")
+          run_url    = f"https://github.com/{repo}/actions/runs/{run_id}"
           commit_url = f"https://github.com/{repo}/commit/{sha}"
 
           rows = "\n".join(
@@ -353,7 +312,6 @@ jobs:
           print("Issue body written to issue-body.md")
           PYEOF
 
-      # -- 6a. Open / update GitHub Issue when CRITICALs are found --------------
       - name: Create or update GitHub Issue for CRITICAL CVEs
         if: steps.parse.outputs.critical_count != '0'
         env:
@@ -363,13 +321,11 @@ jobs:
           LABEL="security:critical-cve"
           TITLE="CRITICAL CVEs detected in sample-python-app image"
 
-          # Ensure label exists (idempotent)
           gh label create "$LABEL" \
             --color "B60205" \
             --description "Automatically opened by Trivy security scan" \
             --repo "$REPO" 2>/dev/null || true
 
-          # Check for an existing open issue with this label
           EXISTING=$(gh issue list \
             --repo "$REPO" \
             --label "$LABEL" \
@@ -392,7 +348,6 @@ jobs:
               --assignee "@me"
           fi
 
-      # -- 6b. Auto-close issue when CRITICALs are resolved --------------------
       - name: Auto-close CVE issue if no CRITICALs remain
         if: steps.parse.outputs.critical_count == '0'
         env:
@@ -422,21 +377,19 @@ jobs:
   # ---------------------------------------------------------------------------
   # Job 5: Terraform Plan -- infra/terraform/aws-backend/
   #
-  # Runs on every push/PR that touches files under infra/terraform/**
-  # Performs: init → validate → plan  (NO apply — plan artifact only)
+  # Runs on every push/PR. Uses dorny/paths-filter to skip steps when no
+  # Terraform files changed. Never runs terraform apply.
   #
-  # AWS credentials injected via OIDC (no long-lived keys stored in secrets).
-  # Add these repository secrets if using static keys instead of OIDC:
-  #   AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION
+  # Required GitHub Actions variables (Settings > Variables):
+  #   AWS_ROLE_TO_ASSUME        ARN of IAM role for OIDC auth (preferred)
+  #   TF_VAR_aws_region         e.g. us-east-1
+  #   TF_VAR_amp_workspace_name e.g. dataobs-amp
+  #   TF_VAR_amg_workspace_name e.g. dataobs-amg
+  #   TF_VAR_grafana_url        e.g. https://<id>.grafana-workspace.<region>.amazonaws.com
+  #   TF_VAR_environment        e.g. production
   #
-  # Required repository/environment variables:
-  #   TF_VAR_aws_region         — e.g. us-east-1
-  #   TF_VAR_amp_workspace_name — e.g. dataobs-amp
-  #   TF_VAR_amg_workspace_name — e.g. dataobs-amg
-  #   TF_VAR_grafana_url        — e.g. https://<workspace-id>.grafana-workspace.us-east-1.amazonaws.com
-  #   TF_VAR_environment        — e.g. production
-  #   AWS_ROLE_TO_ASSUME        — ARN of IAM role with trust policy for GitHub OIDC
-  #                               (only required when using OIDC auth)
+  # Optional secrets for static-key fallback (if OIDC not configured):
+  #   AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
   # ---------------------------------------------------------------------------
   terraform-plan:
     name: Terraform plan
@@ -445,24 +398,19 @@ jobs:
 
     permissions:
       contents: read
-      pull-requests: write      # post plan comment on PRs
-      id-token: write           # needed for AWS OIDC authentication
+      pull-requests: write
+      id-token: write
 
     env:
-      TF_WORKING_DIR: infra/terraform/aws-backend
       TF_VERSION: "1.7.5"
       AWS_REGION: ${{ vars.TF_VAR_aws_region || 'us-east-1' }}
-
-    defaults:
-      run:
-        working-directory: infra/terraform/aws-backend
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # -- Path filter: skip if no Terraform files changed ----------------------
-      - name: Check for Terraform file changes
+      # Detect whether any Terraform files changed
+      - name: Detect Terraform changes
         id: tf_changed
         uses: dorny/paths-filter@v3
         with:
@@ -470,162 +418,149 @@ jobs:
             terraform:
               - 'infra/terraform/**'
 
-      # -- Configure AWS credentials (OIDC preferred; falls back to key secrets) -
-      # To use OIDC: create an IAM OIDC provider for token.actions.githubusercontent.com
-      # and a role with trust policy allowing repo Jagadeeshck/DataObs.
-      # To use static keys: skip OIDC step and set AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY secrets.
+      # ---- AWS credentials: OIDC (preferred) ----------------------------------
       - name: Configure AWS credentials (OIDC)
         if: steps.tf_changed.outputs.terraform == 'true' && vars.AWS_ROLE_TO_ASSUME != ''
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ vars.AWS_ROLE_TO_ASSUME }}
           aws-region: ${{ env.AWS_REGION }}
-          role-session-name: dataobs-terraform-plan-${{ github.run_id }}
+          role-session-name: dataobs-tf-plan-${{ github.run_id }}
 
-      - name: Configure AWS credentials (static keys fallback)
-        if: |
-          steps.tf_changed.outputs.terraform == 'true' &&
-          vars.AWS_ROLE_TO_ASSUME == '' &&
-          secrets.AWS_ACCESS_KEY_ID != ''
+      # ---- AWS credentials: static keys (fallback) ----------------------------
+      - name: Configure AWS credentials (static keys)
+        if: steps.tf_changed.outputs.terraform == 'true' && vars.AWS_ROLE_TO_ASSUME == ''
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      # -- Install Terraform ----------------------------------------------------
-      - name: Setup Terraform ${{ env.TF_VERSION }}
+      # ---- Install Terraform --------------------------------------------------
+      - name: Setup Terraform
         if: steps.tf_changed.outputs.terraform == 'true'
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: ${{ env.TF_VERSION }}
-          terraform_wrapper: true   # enables ::set-output for plan capture
 
-      # -- terraform fmt check --------------------------------------------------
+      # ---- fmt check ----------------------------------------------------------
       - name: Terraform fmt check
         if: steps.tf_changed.outputs.terraform == 'true'
-        run: terraform fmt -check -recursive
         working-directory: infra/terraform
+        run: terraform fmt -check -recursive
 
-      # -- terraform init -------------------------------------------------------
-      # Uses local backend (no remote state) in CI — safe for plan-only runs.
-      # To use S3 backend, set TF_BACKEND_* vars and add -backend-config flags.
+      # ---- init (local backend -- plan only, no state write) ------------------
       - name: Terraform init
         if: steps.tf_changed.outputs.terraform == 'true'
-        run: |
-          terraform init \
-            -input=false \
-            -backend=false
+        working-directory: infra/terraform/aws-backend
+        run: terraform init -input=false -backend=false
 
-      # -- terraform validate ---------------------------------------------------
+      # ---- validate -----------------------------------------------------------
       - name: Terraform validate
         if: steps.tf_changed.outputs.terraform == 'true'
         id: validate
+        working-directory: infra/terraform/aws-backend
         run: terraform validate -no-color
 
-      # -- terraform plan -------------------------------------------------------
-      # -var flags supply dummy values so plan runs without real infrastructure.
-      # In a real environment, set TF_VAR_* GitHub Actions variables instead.
+      # ---- plan (no apply) ----------------------------------------------------
       - name: Terraform plan
         if: steps.tf_changed.outputs.terraform == 'true'
         id: plan
+        working-directory: infra/terraform/aws-backend
+        continue-on-error: true
         run: |
+          AMP_NAME="${{ vars.TF_VAR_amp_workspace_name || 'dataobs-amp-ci' }}"
+          AMG_NAME="${{ vars.TF_VAR_amg_workspace_name || 'dataobs-amg-ci' }}"
+          GF_URL="${{ vars.TF_VAR_grafana_url || 'https://placeholder.grafana-workspace.us-east-1.amazonaws.com' }}"
+          ENV="${{ vars.TF_VAR_environment || 'ci' }}"
+
           terraform plan \
             -input=false \
             -no-color \
             -out=tfplan \
             -var="aws_region=${AWS_REGION}" \
-            -var="amp_workspace_name=${{ vars.TF_VAR_amp_workspace_name || 'dataobs-amp-ci' }}" \
-            -var="amg_workspace_name=${{ vars.TF_VAR_amg_workspace_name || 'dataobs-amg-ci' }}" \
-            -var="grafana_url=${{ vars.TF_VAR_grafana_url || 'https://placeholder.grafana-workspace.us-east-1.amazonaws.com' }}" \
-            -var="environment=${{ vars.TF_VAR_environment || 'ci' }}" \
-            2>&1 | tee /tmp/tfplan.txt
-          echo "exitcode=$?" >> $GITHUB_OUTPUT
-        continue-on-error: true   # capture output even on plan errors
+            -var="amp_workspace_name=${AMP_NAME}" \
+            -var="amg_workspace_name=${AMG_NAME}" \
+            -var="grafana_url=${GF_URL}" \
+            -var="environment=${ENV}" \
+            2>&1 | tee /tmp/tfplan-output.txt
 
-      # -- Post plan output as PR comment ---------------------------------------
-      - name: Post Terraform plan to PR
-        if: |
-          steps.tf_changed.outputs.terraform == 'true' &&
-          github.event_name == 'pull_request'
-        uses: actions/github-script@v7
+          echo "plan_exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+
+      # ---- post plan as PR comment --------------------------------------------
+      - name: Post plan comment to PR
+        if: steps.tf_changed.outputs.terraform == 'true' && github.event_name == 'pull_request'
         env:
-          PLAN: ${{ steps.plan.outputs.stdout }}
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const fs = require('fs');
-            const plan = fs.existsSync('/tmp/tfplan.txt')
-              ? fs.readFileSync('/tmp/tfplan.txt', 'utf8')
-              : process.env.PLAN || '(no plan output captured)';
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+          VALIDATE_OUTCOME: ${{ steps.validate.outcome }}
+          PLAN_OUTCOME: ${{ steps.plan.outcome }}
+        run: |
+          PLAN_TEXT=""
+          if [ -f /tmp/tfplan-output.txt ]; then
+            PLAN_TEXT=$(cat /tmp/tfplan-output.txt)
+          fi
 
-            const validate = `${{ steps.validate.outcome }}`;
-            const planOutcome = `${{ steps.plan.outcome }}`;
-            const truncated = plan.length > 60000
-              ? plan.substring(0, 60000) + '\n\n... (truncated — see full log in Actions)'
-              : plan;
+          # Truncate at 60k chars to stay within GitHub comment limits
+          if [ ${#PLAN_TEXT} -gt 60000 ]; then
+            PLAN_TEXT="${PLAN_TEXT:0:60000}
+          ... (truncated — see full log in Actions)"
+          fi
 
-            const body = [
-              '## Terraform Plan — `infra/terraform/aws-backend/`',
-              '',
-              `| Step | Result |`,
-              `|------|--------|`,
-              `| \`terraform fmt\` | ${{ steps.validate.outcome == 'skipped' && '⏭ skipped' || '✅ passed' }} |`,
-              `| \`terraform validate\` | ${validate === 'success' ? '✅ passed' : validate === 'skipped' ? '⏭ skipped' : '❌ failed'} |`,
-              `| \`terraform plan\` | ${planOutcome === 'success' ? '✅ no errors' : planOutcome === 'skipped' ? '⏭ skipped' : '⚠️ check output'} |`,
-              '',
-              '<details><summary>Show full plan output</summary>',
-              '',
-              '```hcl',
-              truncated,
-              '```',
-              '',
-              '</details>',
-              '',
-              `> Plan generated at commit \`${{ github.sha }}`.slice(0, 50) + `\``,
-              '> **No resources will be created or modified** — this is a plan-only CI job.',
-            ].join('\n');
+          V_ICON="passed"
+          [ "$VALIDATE_OUTCOME" = "failure" ] && V_ICON="FAILED"
+          [ "$VALIDATE_OUTCOME" = "skipped" ] && V_ICON="skipped"
 
-            // Find and update existing bot comment, or create a new one
-            const { data: comments } = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-            });
+          P_ICON="no errors"
+          [ "$PLAN_OUTCOME" = "failure" ] && P_ICON="FAILED"
+          [ "$PLAN_OUTCOME" = "skipped" ] && P_ICON="skipped"
 
-            const botComment = comments.find(c =>
-              c.user.type === 'Bot' &&
-              c.body.includes('Terraform Plan — `infra/terraform/aws-backend/`')
-            );
+          BODY="## Terraform Plan -- \`infra/terraform/aws-backend/\`
 
-            if (botComment) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: botComment.id,
-                body,
-              });
-            } else {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                body,
-              });
-            }
+          | Step | Result |
+          |------|--------|
+          | \`terraform fmt\` | ${V_ICON} |
+          | \`terraform validate\` | ${V_ICON} |
+          | \`terraform plan\` | ${P_ICON} |
 
-      # -- Upload plan binary as artifact ---------------------------------------
-      - name: Upload Terraform plan artifact
+          <details><summary>Show full plan output</summary>
+
+          \`\`\`
+          ${PLAN_TEXT}
+          \`\`\`
+
+          </details>
+
+          > No resources will be created or modified -- this is a plan-only CI job."
+
+          # Update existing bot comment or create new one
+          EXISTING=$(gh api "repos/${REPO}/issues/${PR_NUMBER}/comments" \
+            --jq '[.[] | select(.user.type == "Bot") | select(.body | contains("Terraform Plan -- "))] | .[0].id // empty')
+
+          if [ -n "$EXISTING" ]; then
+            gh api --method PATCH "repos/${REPO}/issues/comments/${EXISTING}" \
+              -f body="$BODY"
+          else
+            gh api --method POST "repos/${REPO}/issues/${PR_NUMBER}/comments" \
+              -f body="$BODY"
+          fi
+
+      # ---- upload plan binary as artifact ------------------------------------
+      - name: Upload plan artifact
         if: steps.tf_changed.outputs.terraform == 'true' && steps.plan.outcome != 'skipped'
         uses: actions/upload-artifact@v4
         with:
           name: tfplan-${{ github.sha }}
-          path: ${{ env.TF_WORKING_DIR }}/tfplan
+          path: infra/terraform/aws-backend/tfplan
           retention-days: 7
 
-      # -- Fail the job if plan itself errored ----------------------------------
-      - name: Check plan exit code
-        if: steps.tf_changed.outputs.terraform == 'true' && steps.plan.outputs.exitcode != '0'
+      # ---- fail job if plan errored ------------------------------------------
+      - name: Assert plan succeeded
+        if: steps.tf_changed.outputs.terraform == 'true'
         run: |
-          echo "terraform plan exited with code ${{ steps.plan.outputs.exitcode }}"
-          exit 1
+          EXIT="${{ steps.plan.outputs.plan_exit_code }}"
+          if [ -n "$EXIT" ] && [ "$EXIT" != "0" ]; then
+            echo "terraform plan exited with code ${EXIT}"
+            exit 1
+          fi

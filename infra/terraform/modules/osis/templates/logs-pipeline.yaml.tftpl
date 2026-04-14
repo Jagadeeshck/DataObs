@@ -1,0 +1,31 @@
+version: "2"
+
+# DataObs — OSIS Logs Pipeline
+# Accepts OTLP logs, writes to rolling daily indices: dataobs-logs-YYYY.MM.DD
+# OTel semconv: https://opentelemetry.io/docs/specs/semconv/
+
+dataobs-logs-pipeline:
+  source:
+    otel_logs_source:
+      path: "/v1/logs"
+
+  processor:
+    - otel_logs:
+        flatten_attributes: false
+
+    - add_entries:
+        entries:
+          # Inject daily date suffix for rolling index names
+          - key: "@index_date"
+            value_expression: 'DateTimeFormatter.ofPattern("yyyy.MM.dd").format(LocalDate.now())'
+
+  sink:
+    - opensearch:
+        hosts:
+          - "${opensearch_endpoint}"
+        index: "dataobs-logs-%{@index_date}"
+        aws:
+          region: "${region}"
+          sts_role_arn: "${pipeline_role_arn}"
+        bulk_size: 4
+        flush_timeout: 30000

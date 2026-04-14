@@ -1,0 +1,41 @@
+version: "2"
+
+# DataObs — OSIS Metrics Pipeline
+# Accepts OTLP metrics, writes to OpenSearch dataobs-metrics index.
+# Optionally fans out to Amazon Managed Prometheus (AMP) for Grafana querying.
+# OTel semconv: https://opentelemetry.io/docs/specs/semconv/
+
+dataobs-metrics-pipeline:
+  source:
+    otel_metrics_source:
+      path: "/v1/metrics"
+      output_format: otel
+
+  processor:
+    - otel_metrics:
+        calculate_histogram_buckets: true
+        calculate_exponential_histogram_buckets: true
+        exponential_histogram_max_allowed_scale: 10
+        flatten_attributes: false
+
+  sink:
+    # Primary: OpenSearch dataobs-metrics index
+    - opensearch:
+        hosts:
+          - "${opensearch_endpoint}"
+        index: "dataobs-metrics"
+        aws:
+          region: "${region}"
+          sts_role_arn: "${pipeline_role_arn}"
+        bulk_size: 4
+        flush_timeout: 30000
+
+%{ if enable_amp_fanout }
+    # Fan-out: Amazon Managed Prometheus (AMP) Remote Write
+    # Enables Grafana to query metrics from AMP alongside traces/logs from OpenSearch.
+    - prometheus:
+        url: "${amp_remote_write_url}"
+        aws:
+          region: "${region}"
+          sts_role_arn: "${amp_role_arn}"
+%{ endif }

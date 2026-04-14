@@ -1,0 +1,118 @@
+# ============================================================================
+# DataObs — Grafana Provisioned Data Sources
+# ============================================================================
+# This file provisions data sources in the local Grafana container (aws_grafana profile).
+# In Amazon Managed Grafana: configure these data sources via the AWS console or
+# Terraform (grafana provider), using IAM-based auth instead of username/password.
+#
+# AWS Managed Grafana data sources:
+#   Metrics  → Amazon Managed Prometheus (AMP) — IAM role auth, no credentials needed
+#   Traces   → Amazon OpenSearch Service — IAM role auth via AWS plugin
+#   Logs     → Amazon OpenSearch Service — IAM role auth via AWS plugin
+#   Traces   → AWS X-Ray — IAM role auth, native AMG integration
+# ============================================================================
+
+apiVersion: 1
+
+datasources:
+  # ── Prometheus / AMP (Metrics) ──────────────────────────────────────────
+  # Local dev: points to the local Prometheus container.
+  # AWS Managed Grafana: use AMP data source plugin with IAM auth:
+  #   type: grafana-amazonprometheus-datasource
+  #   url: https://aps-workspaces.<region>.amazonaws.com/workspaces/<workspace-id>
+  #   jsonData.authType: default  (uses workspace IAM role)
+  - name: "DataObs Prometheus (AMP)"
+    type: prometheus
+    uid: dataobs-amp
+    url: http://prometheus:9090
+    access: proxy
+    isDefault: true
+    jsonData:
+      timeInterval: "30s"
+      queryTimeout: "60s"
+      httpMethod: POST
+      # Semconv label mappings for Grafana variable queries:
+      # Use labels: service_name, deployment_environment_name, service_namespace
+      exemplarTraceIdDestinations:
+        - name: trace_id
+          datasourceUid: dataobs-tempo-or-os-traces
+
+  # ── OpenSearch / Amazon OpenSearch Service (Traces) ─────────────────────
+  # Local dev: points to the local OpenSearch container.
+  # AWS Managed Grafana: use the Amazon OpenSearch Service data source plugin:
+  #   type: grafana-opensearch-datasource
+  #   url: https://search-<domain>.<region>.es.amazonaws.com
+  #   jsonData.sigV4Auth: true
+  #   jsonData.sigV4Region: <region>
+  - name: "DataObs OpenSearch (Traces)"
+    type: grafana-opensearch-datasource
+    uid: dataobs-os-traces
+    url: https://opensearch:9200    # local; in AWS: https://search-<domain>.<region>.es.amazonaws.com
+    access: proxy
+    basicAuth: true
+    basicAuthUser: admin
+    secureJsonData:
+      basicAuthPassword: "${OPENSEARCH_PASSWORD}"
+    jsonData:
+      database: "trace-analytics-raw"
+      logMessageField: body
+      logLevelField: severity
+      version: "2.13.0"
+      flavor: opensearch
+      timeField: "@timestamp"
+      # AWS Managed Grafana — replace above jsonData with:
+      # sigV4Auth: true
+      # sigV4Region: us-east-1
+      # authType: default   # uses workspace execution role
+
+  # ── OpenSearch / Amazon OpenSearch Service (Logs) ───────────────────────
+  - name: "DataObs OpenSearch (Logs)"
+    type: grafana-opensearch-datasource
+    uid: dataobs-os-logs
+    url: https://opensearch:9200
+    access: proxy
+    basicAuth: true
+    basicAuthUser: admin
+    secureJsonData:
+      basicAuthPassword: "${OPENSEARCH_PASSWORD}"
+    jsonData:
+      database: "dataobs-logs-*"
+      logMessageField: body
+      logLevelField: attributes.log.level
+      version: "2.13.0"
+      flavor: opensearch
+      timeField: "@timestamp"
+
+  # ── Elasticsearch AIOps (Traces) ─────────────────────────────────────────
+  - name: "DataObs Elasticsearch (Traces)"
+    type: elasticsearch
+    uid: dataobs-es-traces
+    url: http://elasticsearch:9200
+    access: proxy
+    basicAuth: true
+    basicAuthUser: elastic
+    secureJsonData:
+      basicAuthPassword: "${ELASTIC_PASSWORD}"
+    jsonData:
+      index: "dataobs-traces"
+      timeField: "@timestamp"
+      esVersion: "8.0.0"
+      logMessageField: body
+      logLevelField: attributes.severity_text
+
+  # ── Elasticsearch AIOps (Logs) ────────────────────────────────────────────
+  - name: "DataObs Elasticsearch (Logs)"
+    type: elasticsearch
+    uid: dataobs-es-logs
+    url: http://elasticsearch:9200
+    access: proxy
+    basicAuth: true
+    basicAuthUser: elastic
+    secureJsonData:
+      basicAuthPassword: "${ELASTIC_PASSWORD}"
+    jsonData:
+      index: "dataobs-logs"
+      timeField: "@timestamp"
+      esVersion: "8.0.0"
+      logMessageField: body
+      logLevelField: attributes.severity_text

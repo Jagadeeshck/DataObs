@@ -1,0 +1,139 @@
+# ============================================================================
+# DataObs — Data Prepper Pipeline Configuration (OpenSearch self-managed)
+# ============================================================================
+# Data Prepper version: 2.7+
+# This file uses the unified `otlp` source (Data Prepper 2.7 otlp-source plugin)
+# which accepts all three signal types on a single port.
+#
+# Topology:
+#   OTel Collector → OTLP → Data Prepper (port 21890)
+#     → logs pipeline    → opensearch: dataobs-logs-*
+#     → traces pipeline  → opensearch: trace-analytics-raw + service-map
+#     → metrics pipeline → opensearch: dataobs-metrics-*
+#
+# OTel Semantic Conventions: https://opentelemetry.io/docs/specs/semconv/
+# ============================================================================
+
+version: "2"
+
+# ── Unified OTLP entry pipeline ──────────────────────────────────────────────
+otel-entry:
+  source:
+    otlp:
+      ssl: false
+      port: 21890
+      # Request size limit: 10 MiB (default 10MB — keep consistent with collector batch)
+      request_timeout: 10000
+  route:
+    - traces: 'getEventType() == "TRACE"'
+    - logs:   'getEventType() == "LOG"'
+    - metrics: 'getEventType() == "METRIC"'
+  sink:
+    - pipeline:
+        name: traces-raw-pipeline
+        routes: [traces]
+    - pipeline:
+        name: service-map-pipeline
+        routes: [traces]
+    - pipeline:
+        name: logs-pipeline
+        routes: [logs]
+    - pipeline:
+        name: metrics-pipeline
+        routes: [metrics]
+
+# ── Traces → opensearch (raw spans + trace-analytics-raw) ────────────────────
+traces-raw-pipeline:
+  source:
+    pipeline:
+      name: otel-entry
+  processor:
+    # otel_traces processor: enriches spans with semconv-aligned fields,
+    # generates trace-analytics-raw index documents.
+    - otel_traces:
+        # Flatten resource attributes into span document for ES/OpenSearch query ease
+        flatten_attributes: false
+  sink:
+    - opensearch:
+        hosts: ["${OPENSEARCH_ENDPOINT:-https://opensearch:9200}"]
+        username: "${OPENSEARCH_USER:-admin}"
+        password: "${OPENSEARCH_PASSWORD}"
+        insecure: "${OPENSEARCH_INSECURE:-false}"
+        # trace-analytics-raw creates the dataobs-traces index with the correct
+        # OTel trace analytics mapping expected by OpenSearch Dashboards Trace Analytics
+        index_type: trace-analytics-raw
+        bulk_size: 4
+
+# ── Service Map pipeline ─────────────────────────────────────────────────────
+service-map-pipeline:
+  source:
+    pipeline:
+      name: otel-entry
+  processor:
+    # Derives service graph edges from parent-child span relationships.
+    # Writes to trace-analytics-service-map index — powers Trace Analytics service map UI.
+    - service_map:
+        window_duration: PT10S
+        database_path: "/var/lib/data-prepper/service-map.db"
+  sink:
+    - opensearch:
+        hosts: ["${OPENSEARCH_ENDPOINT:-https://opensearch:9200}"]
+        username: "${OPENSEARCH_USER:-admin}"
+        password: "${OPENSEARCH_PASSWORD}"
+        insecure: "${OPENSEARCH_INSECURE:-false}"
+        index_type: trace-analytics-service-map
+        bulk_size: 4
+
+# ── Logs pipeline ────────────────────────────────────────────────────────────
+logs-pipeline:
+  source:
+    pipeline:
+      name: otel-entry
+  processor:
+    # Enrich log records with semconv resource attribute fields.
+    # Fields populated from OTel resource attributes:
+    #   service.name, service.version, service.namespace
+    #   deployment.environment.name, host.name, cloud.region etc.
+    - otel_logs:
+        flatten_attributes: false
+    # Add index date suffix for ILM-style daily rolling indices
+    - add_entries:
+        entries:
+          - key: "@index_date"
+            value_expression: 'DateTimeFormatter.ofPattern("yyyy.MM.dd").format(LocalDate.now())'
+  sink:
+    - opensearch:
+        hosts: ["${OPENSEARCH_ENDPOINT:-https://opensearch:9200}"]
+        username: "${OPENSEARCH_USER:-admin}"
+        password: "${OPENSEARCH_PASSWORD}"
+        insecure: "${OPENSEARCH_INSECURE:-false}"
+        index: "dataobs-logs-%{@index_date}"
+        # Template ensures OTel semconv field mappings for log records
+        template_type: index-template
+        template_file: "/usr/share/data-prepper/templates/otel-logs-template.json"
+        bulk_size: 4
+
+# ── Metrics pipeline ─────────────────────────────────────────────────────────
+metrics-pipeline:
+  source:
+    pipeline:
+      name: otel-entry
+  processor:
+    - otel_metrics:
+        # Converts OTel histogram/summary → OpenSearch-compatible document format
+        # Preserves semconv metric names (system.cpu.utilization, http.server.request.duration, etc.)
+        calculate_histogram_buckets: true
+        calculate_exponential_histogram_buckets: true
+        exponential_histogram_max_allowed_scale: 10
+        flatten_attributes: false
+  sink:
+    - opensearch:
+        hosts: ["${OPENSEARCH_ENDPOINT:-https://opensearch:9200}"]
+        username: "${OPENSEARCH_USER:-admin}"
+        password: "${OPENSEARCH_PASSWORD}"
+        insecure: "${OPENSEARCH_INSECURE:-false}"
+        index: "dataobs-metrics"
+        # OTel metrics template — provides correct numeric field mappings
+        template_type: index-template
+        template_file: "/usr/share/data-prepper/templates/otel-metrics-template.json"
+        bulk_size: 4

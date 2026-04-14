@@ -1,0 +1,91 @@
+# ============================================================================
+# DataObs — Amazon OpenSearch Ingestion (OSIS) Pipeline Configuration
+# ============================================================================
+# Deploy this via the AWS Console or Terraform:
+#   aws osis create-pipeline --pipeline-name dataobs-otel \
+#     --min-units 1 --max-units 4 \
+#     --pipeline-configuration-body file://osis-pipeline.yaml
+#
+# The OTel Collector exports to OSIS using otlphttp/opensearch_aws exporter.
+# OSIS ingestion endpoint: https://<pipeline-id>.<region>.osis.amazonaws.com
+#
+# IAM: the collector's IAM role needs osis:Ingest on this pipeline ARN.
+# Index write IAM role needs es:ESHttp* on the domain.
+#
+# OTel Semantic Conventions: https://opentelemetry.io/docs/specs/semconv/
+# ============================================================================
+
+version: "2"
+
+# ── Traces ───────────────────────────────────────────────────────────────────
+dataobs-traces-pipeline:
+  source:
+    otel_trace_source:
+      path: "/v1/traces"
+      # SigV4 authentication — no credentials in config; handled by OSIS service role
+  processor:
+    - otel_traces:
+        flatten_attributes: false
+  sink:
+    - opensearch:
+        hosts:
+          - "${OPENSEARCH_AWS_DOMAIN_ENDPOINT}"   # https://search-dataobs-<hash>.<region>.es.amazonaws.com
+        index_type: trace-analytics-raw
+        aws:
+          region: "${AWS_REGION}"
+          sts_role_arn: "${OSIS_INDEX_WRITE_ROLE_ARN}"   # arn:aws:iam::<account>:role/DataObsOSISIndexRole
+    - opensearch:
+        hosts:
+          - "${OPENSEARCH_AWS_DOMAIN_ENDPOINT}"
+        index_type: trace-analytics-service-map
+        aws:
+          region: "${AWS_REGION}"
+          sts_role_arn: "${OSIS_INDEX_WRITE_ROLE_ARN}"
+
+# ── Logs ──────────────────────────────────────────────────────────────────────
+dataobs-logs-pipeline:
+  source:
+    otel_logs_source:
+      path: "/v1/logs"
+  processor:
+    - otel_logs:
+        flatten_attributes: false
+    - add_entries:
+        entries:
+          - key: "@index_date"
+            value_expression: 'DateTimeFormatter.ofPattern("yyyy.MM.dd").format(LocalDate.now())'
+  sink:
+    - opensearch:
+        hosts:
+          - "${OPENSEARCH_AWS_DOMAIN_ENDPOINT}"
+        index: "dataobs-logs-%{@index_date}"
+        aws:
+          region: "${AWS_REGION}"
+          sts_role_arn: "${OSIS_INDEX_WRITE_ROLE_ARN}"
+
+# ── Metrics ───────────────────────────────────────────────────────────────────
+dataobs-metrics-pipeline:
+  source:
+    otel_metrics_source:
+      path: "/v1/metrics"
+      output_format: otel
+  processor:
+    - otel_metrics:
+        calculate_histogram_buckets: true
+        calculate_exponential_histogram_buckets: true
+        exponential_histogram_max_allowed_scale: 10
+  sink:
+    - opensearch:
+        hosts:
+          - "${OPENSEARCH_AWS_DOMAIN_ENDPOINT}"
+        index: "dataobs-metrics"
+        aws:
+          region: "${AWS_REGION}"
+          sts_role_arn: "${OSIS_INDEX_WRITE_ROLE_ARN}"
+    # Fan-out metrics to Amazon Managed Prometheus as well
+    # so Amazon Managed Grafana has both OpenSearch (logs/traces) and AMP (metrics) sources.
+    - prometheus:
+        url: "${AMP_REMOTE_WRITE_URL}"   # https://aps-workspaces.<region>.amazonaws.com/workspaces/<id>/api/v1/remote_write
+        aws:
+          region: "${AWS_REGION}"
+          sts_role_arn: "${OSIS_AMP_WRITE_ROLE_ARN}"

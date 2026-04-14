@@ -46,7 +46,7 @@ class ElasticsearchMLManager:
             },
             "data_description": {"time_field": config.time_field},
         }
-        self.es.ml.put_job(job_id=config.job_id, body=job_body)
+        self.es.ml.put_job(job_id=config.job_id, **job_body)
 
         datafeed_id = f"datafeed-{config.job_id}"
         datafeed_body = {
@@ -55,7 +55,7 @@ class ElasticsearchMLManager:
             "query_delay": config.query_delay,
             "query": {"bool": {"filter": [{"exists": {"field": config.detector_field}}]}},
         }
-        self.es.ml.put_datafeed(datafeed_id=datafeed_id, body=datafeed_body)
+        self.es.ml.put_datafeed(datafeed_id=datafeed_id, **datafeed_body)
 
     def start_job(self, job_id: str, start: str = "now-30d") -> Dict[str, Any]:
         datafeed_id = f"datafeed-{job_id}"
@@ -67,18 +67,16 @@ class ElasticsearchMLManager:
 
         return self.es.search(
             index=".ml-anomalies-*",
-            body={
-                "size": size,
-                "sort": [{"record_score": "desc"}],
-                "query": {
-                    "bool": {
-                        "filter": [
-                            {"term": {"job_id": job_id}},
-                            {"term": {"result_type": "record"}},
-                            {"range": {"record_score": {"gte": severity_threshold}}},
-                        ]
-                    }
-                },
+            size=size,
+            sort=[{"record_score": "desc"}],
+            query={
+                "bool": {
+                    "filter": [
+                        {"term": {"job_id": job_id}},
+                        {"term": {"result_type": "record"}},
+                        {"range": {"record_score": {"gte": severity_threshold}}},
+                    ]
+                }
             },
         )
 

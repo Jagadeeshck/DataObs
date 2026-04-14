@@ -105,9 +105,21 @@ processors:
     send_batch_max_size: 2000
 
   # ── Resource detection (auto-tag with cloud metadata) ──
+  # IMPORTANT: Only add 'aws' to detectors when running on AWS infrastructure.
+  # The aws detector makes IMDS calls on startup and will cause ~10s timeouts
+  # in non-AWS environments (local dev, GCP, Azure).
+  # Set OTEL_DETECTORS env var to override: e.g. OTEL_DETECTORS=env,system,docker
   resourcedetection:
-    detectors: [env, system, aws, docker]
+    detectors: [env, system, docker]
     timeout: 10s
+    override: false
+
+  # ── Resource detection for AWS deployments ──
+  # Use this separate processor and add it to pipeline processors when on AWS.
+  # Swap resourcedetection above for resourcedetection/aws in service.pipelines.
+  resourcedetection/aws:
+    detectors: [env, system, aws, docker]
+    timeout: 30s
     override: false
     aws:
       tags: ["Name", "Environment", "Team", "Service", "dataobs:dataset"]

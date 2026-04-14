@@ -42,8 +42,10 @@ elasticsearch:
     logs: "dataobs-logs"
     traces: "dataobs-traces"
     quality: "dataobs-quality-results"
-    lineage: "dataobs-lineage"
     freshness: "dataobs-freshness"
+    # Lineage uses two indices (mirroring LineageTracker constants in src/quality/lineage.py):
+    lineage_nodes: "dataobs-lineage-nodes"
+    lineage_edges: "dataobs-lineage-edges"
   ilm:
     hot_phase_days: 7
     warm_phase_days: 30
@@ -318,6 +320,9 @@ alerting:
 
 # ─────────────────────────────────────────────────────────
 # SLOs (Service Level Objectives)
+# STATUS: PLANNED — SLO evaluation engine not yet implemented.
+# These definitions are parsed and stored but not yet evaluated automatically.
+# Tracking: https://github.com/Jagadeeshck/DataObs/issues
 # ─────────────────────────────────────────────────────────
 slos:
   - name: "Orders Pipeline SLO"

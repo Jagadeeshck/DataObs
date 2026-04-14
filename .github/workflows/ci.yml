@@ -109,10 +109,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python 3.12
+      - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          # Match the python:3.11-slim base used in Dockerfile.api / Dockerfile.quality
+          # to avoid version-specific dependency surprises.
+          python-version: "3.11"
           cache: pip
 
       - name: Install root dependencies
@@ -125,12 +127,7 @@ jobs:
         run: pip install -r integrations/grafana-alloy/app/requirements.txt
 
       - name: Run DataObs test suite
-        run: |
-          # test_row_count_check_anomaly_detection_flags_large_outlier has a
-          # pre-existing mock incompatibility (_FakeES.search() kwarg mismatch).
-          # Deselected here until the underlying mock is fixed.
-          python -m pytest tests/ -v --tb=short \
-            --deselect tests/test_quality_checks.py::test_row_count_check_anomaly_detection_flags_large_outlier
+        run: python -m pytest tests/ -v --tb=short
 
   # ---------------------------------------------------------------------------
   # Job 3: Build Docker images
@@ -233,8 +230,9 @@ jobs:
           cache-from: type=gha,scope=sample-app
 
       # -- 2. Trivy scan -> JSON (primary, machine-readable) ---------------------
+      # Pinned to v0.28.0 (2024-12). Update intentionally — do not use @master.
       - name: Run Trivy scan -- JSON output
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.28.0
         with:
           image-ref: dataobs/sample-python-app:scan
           format: json
@@ -246,7 +244,7 @@ jobs:
 
       # -- 3. Trivy scan -> table (visible in the Actions log) ------------------
       - name: Run Trivy scan -- table summary
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.28.0
         with:
           image-ref: dataobs/sample-python-app:scan
           format: table
@@ -257,7 +255,7 @@ jobs:
 
       # -- 4. Trivy scan -> SARIF (GitHub Security tab) -------------------------
       - name: Run Trivy scan -- SARIF output
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.28.0
         with:
           image-ref: dataobs/sample-python-app:scan
           format: sarif

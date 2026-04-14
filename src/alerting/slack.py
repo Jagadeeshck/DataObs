@@ -16,6 +16,12 @@ class SlackConfig:
     icon_emoji: str = ":satellite:"
     timeout_seconds: int = 10
 
+    def __repr__(self) -> str:  # prevent webhook_url leaking into logs
+        return (
+            f"SlackConfig(webhook_url='***', default_channel={self.default_channel!r}, "
+            f"username={self.username!r})"
+        )
+
 
 @dataclass
 class SlackEvent:
@@ -32,6 +38,7 @@ class SlackClient:
         self.config = config
 
     def _payload(self, event: SlackEvent) -> dict:
+        """Build a Block Kit payload (replaces deprecated attachments API)."""
         color = {
             "critical": "#D7263D",
             "high": "#F46036",
@@ -39,27 +46,52 @@ class SlackClient:
             "low": "#2A9D8F",
         }.get(event.severity.lower(), "#2E86AB")
 
-        fields = [{"title": "Severity", "value": event.severity, "short": True}]
-        if event.dataset:
-            fields.append({"title": "Dataset", "value": event.dataset, "short": True})
-        if event.runbook_url:
-            fields.append({"title": "Runbook", "value": event.runbook_url, "short": False})
+        # Header block
+        blocks = [
+            {
+                "type": "header",
+                "text": {"type": "plain_text", "text": event.title, "emoji": True},
+            },
+            {
+                "type": "section",
+                "text": {"type": "mrkdwn", "text": event.text},
+            },
+        ]
 
-        payload = {
+        # Fields block — severity + optional dataset
+        fields = [
+            {"type": "mrkdwn", "text": f"*Severity*\n{event.severity.upper()}"},
+        ]
+        if event.dataset:
+            fields.append({"type": "mrkdwn", "text": f"*Dataset*\n{event.dataset}"})
+        blocks.append({"type": "section", "fields": fields})
+
+        # Runbook context block
+        if event.runbook_url:
+            blocks.append({
+                "type": "context",
+                "elements": [
+                    {"type": "mrkdwn", "text": f":notebook: *Runbook:* <{event.runbook_url}|View runbook>"}
+                ],
+            })
+
+        # Coloured attachment wrapper (Block Kit doesn't support colour natively;
+        # wrapping in an attachment preserves the left-side colour stripe)
+        payload: dict = {
             "username": self.config.username,
             "icon_emoji": self.config.icon_emoji,
             "attachments": [
                 {
-                    "fallback": event.title,
                     "color": color,
-                    "title": event.title,
-                    "text": event.text,
-                    "fields": fields,
+                    "blocks": blocks,
+                    "fallback": event.title,
                 }
             ],
         }
 
-        payload["channel"] = event.channel or self.config.default_channel
+        channel = event.channel or self.config.default_channel
+        if channel:
+            payload["channel"] = channel
         return payload
 
     def send(self, event: SlackEvent) -> dict:

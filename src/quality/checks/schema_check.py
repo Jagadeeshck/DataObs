@@ -98,11 +98,9 @@ class SchemaCheck(BaseCheck):
         try:
             response = self.es.search(
                 index="dataobs-schema-registry",
-                body={
-                    "query": {"term": {"dataset.keyword": dataset}},
-                    "sort": [{"@timestamp": {"order": "desc"}}],
-                    "size": 1,
-                },
+                query={"term": {"dataset.keyword": dataset}},
+                sort=[{"@timestamp": {"order": "desc"}}],
+                size=1,
             )
             hits = response["hits"]["hits"]
             if hits:

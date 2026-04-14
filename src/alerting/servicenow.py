@@ -18,6 +18,12 @@ class ServiceNowConfig:
     timeout_seconds: int = 10
     severity_to_priority: Dict[str, str] | None = None
 
+    def __repr__(self) -> str:  # prevent password leaking into logs
+        return (
+            f"ServiceNowConfig(instance_url={self.instance_url!r}, "
+            f"username={self.username!r}, password='***', table={self.table!r})"
+        )
+
 
 @dataclass
 class AlertEvent:

@@ -25,10 +25,21 @@ config:
       existing_cluster: true
       url: "http://elasticsearch.default.svc.cluster.local:9200"
       username: "elastic"
-      password: "change-me"
+      # REQUIRED: override via --set or a Kubernetes Secret.
+      # Never commit a real password here.
+      # Example: helm upgrade dataobs . --set config.esPassword=mysecret
+      password: ""
       verify_certs: false
       index_prefix: dataobs
   otelCollectorYaml: |
+    extensions:
+      health_check:
+        endpoint: 0.0.0.0:13133
+      basicauth/elastic:
+        client_auth:
+          username: "${ELASTIC_USER}"
+          password: "${ELASTIC_PASSWORD}"
+
     receivers:
       otlp:
         protocols:
@@ -41,26 +52,62 @@ config:
       awsxray:
         endpoint: 0.0.0.0:2000
         transport: udp
+
     processors:
+      memory_limiter:
+        check_interval: 1s
+        limit_mib: 512
+        spike_limit_mib: 128
       batch:
+        send_batch_size: 500
         timeout: 10s
+      resourcedetection:
+        detectors: [env, system, docker]
+        timeout: 10s
+        override: false
+
     exporters:
+      elasticsearch:
+        endpoints: ["${ELASTIC_ENDPOINT}"]
+        auth:
+          authenticator: basicauth/elastic
+        traces_index: "dataobs-traces"
+        logs_index: "dataobs-logs"
+        metrics_index: "dataobs-metrics"
+        flush:
+          bytes: 5242880
+          interval: 30s
+        retry:
+          enabled: true
+          max_requests: 3
+          initial_interval: 1s
+          max_interval: 30s
+        mapping:
+          mode: ecs
+      # debug exporter kept for local troubleshooting only — not wired to any pipeline.
       debug:
         verbosity: basic
+
     service:
+      extensions: [health_check, basicauth/elastic]
       pipelines:
         traces:
           receivers: [otlp, awsxray]
-          processors: [batch]
-          exporters: [debug]
+          processors: [memory_limiter, resourcedetection, batch]
+          exporters: [elasticsearch]
         metrics:
           receivers: [otlp, awscloudwatch]
-          processors: [batch]
-          exporters: [debug]
+          processors: [memory_limiter, resourcedetection, batch]
+          exporters: [elasticsearch]
         logs:
           receivers: [otlp, awscloudwatch]
-          processors: [batch]
-          exporters: [debug]
+          processors: [memory_limiter, resourcedetection, batch]
+          exporters: [elasticsearch]
+      telemetry:
+        logs:
+          level: info
+        metrics:
+          address: 0.0.0.0:8888
 
 api:
   enabled: true

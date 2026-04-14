@@ -58,6 +58,7 @@ class LineageNode:
             "tags": self.tags,
             "description": self.description,
             "owner": self.owner,
+            "updated_at": self.updated_at or datetime.now(timezone.utc).isoformat(),
         }
 
 
@@ -163,7 +164,15 @@ class LineageTracker:
                     size=100,
                     source=["target_node_id"],
                 )
-                for hit in response["hits"]["hits"]:
+                hits = response["hits"]["hits"]
+                if len(hits) == 100:
+                    logger.warning(
+                        "BFS truncated: node '%s' has >=100 outgoing edges at depth %d. "
+                        "Impact analysis may be incomplete. Consider using search_after pagination.",
+                        current_node,
+                        current_depth,
+                    )
+                for hit in hits:
                     target = hit["_source"]["target_node_id"]
                     if target not in visited:
                         next_queue.append(target)
@@ -197,7 +206,15 @@ class LineageTracker:
                     size=100,
                     source=["source_node_id"],
                 )
-                for hit in response["hits"]["hits"]:
+                hits = response["hits"]["hits"]
+                if len(hits) == 100:
+                    logger.warning(
+                        "BFS truncated: node '%s' has >=100 incoming edges at depth %d. "
+                        "Upstream lineage may be incomplete. Consider using search_after pagination.",
+                        current_node,
+                        current_depth,
+                    )
+                for hit in hits:
                     source = hit["_source"]["source_node_id"]
                     if source not in visited:
                         next_queue.append(source)
@@ -277,12 +294,20 @@ class LineageTracker:
                     mappings={
                         "properties": {
                             "@timestamp": {"type": "date"},
-                            "source_node_id": {"type": "keyword"},
-                            "target_node_id": {"type": "keyword"},
+                            # --- node index fields ---
                             "node_id": {"type": "keyword"},
                             "node_type": {"type": "keyword"},
+                            "name": {"type": "text", "fields": {"keyword": {"type": "keyword"}}},
                             "environment": {"type": "keyword"},
                             "platform": {"type": "keyword"},
+                            "owner": {"type": "keyword"},
+                            "updated_at": {"type": "date"},
+                            # --- edge index fields ---
+                            "source_node_id": {"type": "keyword"},
+                            "target_node_id": {"type": "keyword"},
+                            "job_id": {"type": "keyword"},
+                            "job_type": {"type": "keyword"},
+                            "run_id": {"type": "keyword"},
                         }
                     },
                 )

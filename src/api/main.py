@@ -1,121 +1,249 @@
-"""Lightweight HTTP API for DataObs rule and lineage management.
-
-This module intentionally avoids external web framework dependencies, so it can run
-in minimal environments. It exposes JSON endpoints for core management operations.
 """
+DataObs API Server
 
+Lightweight HTTP API backed by Elasticsearch.  All state (rules, lineage)
+is stored in ES — no in-memory store, so multiple replicas share data and
+restarts are stateless.
+
+Authentication
+--------------
+Set API_TOKEN env var.  All requests must carry:
+
+    Authorization: Bearer <token>
+
+If API_TOKEN is not set the server starts but logs a prominent warning and
+allows unauthenticated access (useful for local dev only).
+
+Environment variables
+---------------------
+API_TOKEN               Shared bearer token for all clients
+API_HOST                Bind host (default: 0.0.0.0)
+API_PORT                Bind port (default: 8080)
+ELASTICSEARCH_URL       ES endpoint (default: http://localhost:9200)
+ELASTICSEARCH_USER      ES username (default: elastic)
+ELASTICSEARCH_PASSWORD  ES password (default: "")
+LOG_LEVEL               Python log level (default: INFO)
+
+Endpoints
+---------
+GET  /health                         → 200 {"status": "ok"}
+GET  /rules                          → list all rules
+POST /rules                          → add a rule (JSON body)
+GET  /lineage/nodes                  → all lineage nodes
+GET  /lineage/edges                  → all lineage edges
+GET  /lineage/impact/<node_id>       → downstream BFS impact
+GET  /strategy/enterprise-backlog    → prioritised enterprise capability backlog
+"""
 from __future__ import annotations
 
 import json
-from http import HTTPStatus
+import logging
+import os
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import parse_qs, urlparse
+from typing import Any, Dict
 
+from elasticsearch import Elasticsearch
+
+from src.api.store import LineageStore, RuleStore
 from src.core.enterprise_blueprint import enterprise_backlog
 
-from .store import LineageStore, RuleStore
+logger = logging.getLogger(__name__)
 
-RULES = RuleStore()
-LINEAGE = LineageStore()
+# ---------------------------------------------------------------------------
+# Globals (set once in main(), read by handler)
+# ---------------------------------------------------------------------------
+_rule_store: RuleStore | None = None
+_lineage_store: LineageStore | None = None
+_api_token: str | None = None  # None means auth disabled (dev mode)
 
+
+# ---------------------------------------------------------------------------
+# Auth helper
+# ---------------------------------------------------------------------------
+
+def _is_authorised(handler: BaseHTTPRequestHandler) -> bool:
+    """Return True if the request carries a valid Bearer token, or if auth is disabled."""
+    if _api_token is None:
+        return True  # auth not configured — dev mode
+    auth_header = handler.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        return False
+    return auth_header[len("Bearer "):].strip() == _api_token
+
+
+# ---------------------------------------------------------------------------
+# Response helpers
+# ---------------------------------------------------------------------------
+
+def _send_json(handler: BaseHTTPRequestHandler, status: int, body: Any) -> None:
+    payload = json.dumps(body, default=str).encode("utf-8")
+    handler.send_response(status)
+    handler.send_header("Content-Type", "application/json")
+    handler.send_header("Content-Length", str(len(payload)))
+    handler.end_headers()
+    handler.wfile.write(payload)
+
+
+def _send_401(handler: BaseHTTPRequestHandler) -> None:
+    handler.send_response(401)
+    handler.send_header("WWW-Authenticate", 'Bearer realm="DataObs API"')
+    handler.send_header("Content-Type", "application/json")
+    handler.end_headers()
+    handler.wfile.write(b'{"error": "Unauthorized - valid Bearer token required"}')
+
+
+def _send_404(handler: BaseHTTPRequestHandler) -> None:
+    _send_json(handler, 404, {"error": "Not found"})
+
+
+def _send_405(handler: BaseHTTPRequestHandler) -> None:
+    _send_json(handler, 405, {"error": "Method not allowed"})
+
+
+def _read_json_body(handler: BaseHTTPRequestHandler) -> Dict[str, Any]:
+    length = int(handler.headers.get("Content-Length", 0))
+    if length == 0:
+        return {}
+    raw = handler.rfile.read(length)
+    return json.loads(raw.decode("utf-8"))
+
+
+# ---------------------------------------------------------------------------
+# Request handler
+# ---------------------------------------------------------------------------
 
 class DataObsHandler(BaseHTTPRequestHandler):
-    server_version = "DataObsAPI/0.1"
+    """Route HTTP requests to the appropriate store method."""
 
-    def _read_json(self) -> dict:
-        content_length = int(self.headers.get("Content-Length", 0))
-        raw = self.rfile.read(content_length).decode("utf-8") if content_length else "{}"
-        return json.loads(raw or "{}")
+    server_version = "DataObs/1.0"
+    sys_version = ""  # suppress Python version disclosure
 
-    def _send(self, status: HTTPStatus, payload: dict | list) -> None:
-        body = json.dumps(payload).encode("utf-8")
-        self.send_response(status.value)
-        self.send_header("Content-Type", "application/json")
-        self.send_header("Content-Length", str(len(body)))
-        self.end_headers()
-        self.wfile.write(body)
+    def log_message(self, fmt: str, *args) -> None:  # type: ignore[override]
+        logger.info("%s — %s", self.address_string(), fmt % args)
 
-    def do_GET(self):  # noqa: N802
-        parsed = urlparse(self.path)
-        path = parsed.path
+    # ── Auth guard ────────────────────────────────────────────────────────
 
+    def _guard(self) -> bool:
+        """Return True if request is authorised; send 401 and return False otherwise."""
+        if not _is_authorised(self):
+            _send_401(self)
+            return False
+        return True
+
+    # ── GET ───────────────────────────────────────────────────────────────
+
+    def do_GET(self) -> None:  # noqa: N802
+        path = self.path.split("?")[0].rstrip("/")
+
+        # Health check — no auth required so load-balancers can probe freely
         if path == "/health":
-            return self._send(HTTPStatus.OK, {"status": "ok", "service": "dataobs-api"})
+            _send_json(self, 200, {"status": "ok", "service": "dataobs-api"})
+            return
+
+        if not self._guard():
+            return
 
         if path == "/rules":
-            return self._send(HTTPStatus.OK, {"items": RULES.list_rules()})
+            rules = _rule_store.get_all_rules()
+            _send_json(self, 200, {"rules": rules, "count": len(rules)})
 
-        if path == "/lineage/nodes":
-            return self._send(HTTPStatus.OK, {"items": LINEAGE.list_nodes()})
+        elif path == "/lineage/nodes":
+            nodes = _lineage_store.get_all_nodes()
+            _send_json(self, 200, {"nodes": nodes, "count": len(nodes)})
 
-        if path == "/lineage/edges":
-            return self._send(HTTPStatus.OK, {"items": LINEAGE.list_edges()})
+        elif path == "/lineage/edges":
+            edges = _lineage_store.get_all_edges()
+            _send_json(self, 200, {"edges": edges, "count": len(edges)})
 
-        if path.startswith("/lineage/impact/"):
-            node_id = path.split("/lineage/impact/", 1)[1]
-            qs = parse_qs(parsed.query)
-            depth = int(qs.get("depth", ["5"])[0])
-            impacted = LINEAGE.downstream(node_id, depth=depth)
-            return self._send(HTTPStatus.OK, {"root_node_id": node_id, "downstream": impacted})
+        elif path.startswith("/lineage/impact/"):
+            node_id = path[len("/lineage/impact/"):]
+            if not node_id:
+                _send_json(self, 400, {"error": "node_id is required"})
+                return
+            affected = _lineage_store.get_downstream_impact(node_id)
+            _send_json(self, 200, {"root_node": node_id, "affected": affected, "count": len(affected)})
 
-        if path == "/strategy/enterprise-backlog":
-            qs = parse_qs(parsed.query)
-            implemented_param = qs.get("implemented", [""])[0]
-            implemented = [item for item in implemented_param.split(",") if item]
-            backlog = enterprise_backlog(implemented)
-            return self._send(
-                HTTPStatus.OK,
-                {
-                    "implemented": implemented,
-                    "recommended_backlog": backlog,
-                    "summary": {
-                        "total_capabilities": len(backlog) + len(implemented),
-                        "implemented_count": len(implemented),
-                        "remaining_count": len(backlog),
-                    },
-                },
-            )
+        elif path == "/strategy/enterprise-backlog":
+            backlog = enterprise_backlog(implemented_keys=[])
+            _send_json(self, 200, {"backlog": backlog})
 
-        return self._send(HTTPStatus.NOT_FOUND, {"error": "not_found"})
+        else:
+            _send_404(self)
 
-    def do_POST(self):  # noqa: N802
-        path = urlparse(self.path).path
+    # ── POST ──────────────────────────────────────────────────────────────
 
-        if path.startswith("/rules/"):
-            rule_id = path.split("/rules/", 1)[1]
-            record = RULES.upsert_rule(rule_id, self._read_json())
-            return self._send(HTTPStatus.CREATED, record)
+    def do_POST(self) -> None:  # noqa: N802
+        path = self.path.split("?")[0].rstrip("/")
 
-        if path.startswith("/lineage/nodes/"):
-            node_id = path.split("/lineage/nodes/", 1)[1]
-            record = LINEAGE.upsert_node(node_id, self._read_json())
-            return self._send(HTTPStatus.CREATED, record)
+        if not self._guard():
+            return
 
-        if path == "/lineage/edges":
-            payload = self._read_json()
-            if not payload.get("source_node_id") or not payload.get("target_node_id"):
-                return self._send(HTTPStatus.BAD_REQUEST, {"error": "source_node_id and target_node_id are required"})
-            record = LINEAGE.add_edge(payload)
-            return self._send(HTTPStatus.CREATED, record)
+        if path == "/rules":
+            try:
+                rule = _read_json_body(self)
+                rule_id = _rule_store.add_rule(rule)
+                _send_json(self, 201, {"rule_id": rule_id, "status": "created"})
+            except (json.JSONDecodeError, ValueError) as exc:
+                _send_json(self, 400, {"error": f"Invalid JSON body: {exc}"})
+        else:
+            _send_404(self)
 
-        return self._send(HTTPStatus.NOT_FOUND, {"error": "not_found"})
+    # ── Unsupported methods ───────────────────────────────────────────────
 
-    def do_DELETE(self):  # noqa: N802
-        path = urlparse(self.path).path
-        if path.startswith("/rules/"):
-            rule_id = path.split("/rules/", 1)[1]
-            if RULES.delete_rule(rule_id):
-                return self._send(HTTPStatus.OK, {"deleted": rule_id})
-            return self._send(HTTPStatus.NOT_FOUND, {"error": "rule_not_found"})
+    def do_PUT(self) -> None:   # noqa: N802
+        _send_405(self)
 
-        return self._send(HTTPStatus.NOT_FOUND, {"error": "not_found"})
+    def do_DELETE(self) -> None:  # noqa: N802
+        _send_405(self)
 
 
-def run(host: str = "0.0.0.0", port: int = 8080) -> None:
+# ---------------------------------------------------------------------------
+# Entry point
+# ---------------------------------------------------------------------------
+
+def _make_es_client() -> Elasticsearch:
+    url = os.getenv("ELASTICSEARCH_URL", "http://localhost:9200")
+    user = os.getenv("ELASTICSEARCH_USER", "elastic")
+    password = os.getenv("ELASTICSEARCH_PASSWORD", "")
+    return Elasticsearch(
+        [url],
+        basic_auth=(user, password),
+        request_timeout=30,
+    )
+
+
+def main() -> None:
+    global _rule_store, _lineage_store, _api_token
+
+    logging.basicConfig(
+        level=os.getenv("LOG_LEVEL", "INFO"),
+        format="%(asctime)s %(levelname)s %(name)s — %(message)s",
+    )
+
+    host = os.getenv("API_HOST", "0.0.0.0")
+    port = int(os.getenv("API_PORT", "8080"))
+
+    _api_token = os.getenv("API_TOKEN") or None
+    if _api_token is None:
+        logger.warning(
+            "API_TOKEN is not set — running in unauthenticated dev mode. "
+            "Set API_TOKEN in production."
+        )
+    else:
+        logger.info("Bearer token authentication enabled.")
+
+    es = _make_es_client()
+    _rule_store = RuleStore(es)
+    _lineage_store = LineageStore(es)
+
     server = ThreadingHTTPServer((host, port), DataObsHandler)
-    print(f"DataObs API listening on http://{host}:{port}")
-    server.serve_forever()
+    logger.info("DataObs API listening on http://%s:%d", host, port)
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        logger.info("Shutting down API server …")
+        server.shutdown()
 
 
 if __name__ == "__main__":
-    run()
+    main()

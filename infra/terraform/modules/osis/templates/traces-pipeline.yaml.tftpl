@@ -1,0 +1,41 @@
+version: "2"
+
+# DataObs — OSIS Traces Pipeline
+# Accepts OTLP traces, generates trace-analytics-raw and service-map indices.
+# OTel semconv: https://opentelemetry.io/docs/specs/semconv/
+
+dataobs-traces-pipeline:
+  source:
+    otel_trace_source:
+      path: "/v1/traces"
+      # Authentication is SigV4 — handled by the OSIS service via the pipeline role.
+      # The OTel Collector must sign requests using the collector IAM role.
+
+  processor:
+    - otel_traces:
+        # flatten_attributes: false preserves the nested OTel resource/span structure.
+        # Set to true if your OpenSearch dashboards expect flat documents.
+        flatten_attributes: false
+
+  sink:
+    # trace-analytics-raw: raw span documents — powers individual trace search
+    - opensearch:
+        hosts:
+          - "${opensearch_endpoint}"
+        index_type: trace-analytics-raw
+        aws:
+          region: "${region}"
+          sts_role_arn: "${pipeline_role_arn}"
+        bulk_size: 4
+        flush_timeout: 60000
+
+    # trace-analytics-service-map: aggregated service graph edges
+    - opensearch:
+        hosts:
+          - "${opensearch_endpoint}"
+        index_type: trace-analytics-service-map
+        aws:
+          region: "${region}"
+          sts_role_arn: "${pipeline_role_arn}"
+        bulk_size: 4
+        flush_timeout: 60000

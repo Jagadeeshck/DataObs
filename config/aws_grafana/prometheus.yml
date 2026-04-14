@@ -1,0 +1,47 @@
+# ============================================================================
+# DataObs — Prometheus Configuration (local dev simulation of AMP)
+# ============================================================================
+# This is used in the aws_grafana Docker Compose profile.
+# In AWS, replace this with Amazon Managed Prometheus (AMP) — no config needed;
+# the OTel Collector pushes via Remote Write using the prometheusremotewrite/amp exporter.
+# ============================================================================
+
+global:
+  scrape_interval: 30s
+  evaluation_interval: 30s
+  external_labels:
+    deployment_environment_name: local
+    service_namespace: dataobs
+    cloud_provider: local
+
+# OTel Collector Prometheus endpoint — exposes:
+#   - dataobs.traces.* RED metrics (from spanmetrics connector)
+#   - dataobs.servicegraph.* topology metrics (from servicegraph connector)
+#   - system.* host metrics (from hostmetrics receiver + prometheus exporter)
+#   - dataobs-quality:9090 engine metrics
+scrape_configs:
+  - job_name: "dataobs-otel-collector"
+    static_configs:
+      - targets: ["otel-collector:8889"]
+    metric_relabel_configs:
+      # Ensure semconv service.name label is present
+      - source_labels: [job]
+        target_label: service_name
+        replacement: "dataobs-otel-collector"
+
+  - job_name: "dataobs-quality-engine"
+    static_configs:
+      - targets: ["dataobs-quality:9090"]
+    metric_relabel_configs:
+      - source_labels: [job]
+        target_label: service_name
+        replacement: "dataobs-quality-engine"
+
+  - job_name: "dataobs-api"
+    static_configs:
+      - targets: ["dataobs-api:8080"]
+    metrics_path: /metrics
+    metric_relabel_configs:
+      - source_labels: [job]
+        target_label: service_name
+        replacement: "dataobs-api"

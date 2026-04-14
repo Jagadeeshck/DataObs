@@ -1,0 +1,11 @@
+{
+  "title": "alert-delivery",
+  "uid": "dataobs-alert-delivery",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "30s",
+  "tags": ["dataobs", "generated"],
+  "panels": [],
+  "__inputs": [],
+  "__requires": []
+}

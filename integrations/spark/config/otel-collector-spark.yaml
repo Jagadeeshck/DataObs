@@ -1,0 +1,135 @@
+# OTel Collector configuration for Spark telemetry.
+#
+# Receives OTLP from PySpark driver (gRPC on 4317, HTTP/JSON on 4318).
+# Exports to Prometheus (metrics), Elasticsearch / Grafana Tempo (traces),
+# and stdout (debug).
+#
+# Usage:
+#   docker run --rm -v $(pwd):/conf \
+#     otel/opentelemetry-collector-contrib:0.102.0 \
+#     --config /conf/integrations/spark/config/otel-collector-spark.yaml
+#
+# Environment variables expected:
+#   ES_ENDPOINT          e.g. http://elasticsearch:9200
+#   GRAFANA_TEMPO_ENDPOINT  e.g. http://tempo:4317
+
+extensions:
+  health_check:
+    endpoint: "0.0.0.0:13133"
+  zpages:
+    endpoint: "0.0.0.0:55679"
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: "0.0.0.0:4317"
+      http:
+        endpoint: "0.0.0.0:4318"
+
+processors:
+  # Batch spans / metrics before export to reduce network overhead.
+  batch:
+    send_batch_size: 512
+    timeout: 10s
+
+  # Drop high-cardinality task-level attributes to prevent metric explosion.
+  # Keep job-level and stage-level attributes; scrub task IDs.
+  attributes/drop_task_id:
+    actions:
+      - key: spark.task.id
+        action: delete
+      - key: spark.attempt.number
+        action: delete
+
+  # Filter: only forward Spark telemetry (service.name starts with "spark-")
+  filter/spark_only:
+    error_mode: ignore
+    traces:
+      span:
+        - 'attributes["db.system"] != "spark"'
+    metrics:
+      metric:
+        - 'resource.attributes["service.name"] != nil and not IsMatch(resource.attributes["service.name"], "^spark.*")'
+
+  # Memory limiter to avoid OOM on the collector itself.
+  memory_limiter:
+    limit_mib: 512
+    spike_limit_mib: 128
+    check_interval: 5s
+
+  # Resource detector: enrich with host / docker / EC2 attributes.
+  resourcedetection:
+    detectors: [env, docker, ec2]
+    timeout: 5s
+    override: false
+
+exporters:
+  # ── Traces ─────────────────────────────────────────────────────────────────
+  # Grafana Tempo via OTLP
+  otlp/tempo:
+    endpoint: "${GRAFANA_TEMPO_ENDPOINT}"
+    tls:
+      insecure: true
+
+  # ── Metrics ────────────────────────────────────────────────────────────────
+  # Prometheus scrape endpoint (port 8889) — scraped by Grafana
+  prometheus:
+    endpoint: "0.0.0.0:8889"
+    namespace: spark
+    send_timestamps: true
+    metric_expiration: 3m
+    resource_to_telemetry_conversion:
+      enabled: true
+
+  # ── Logs ───────────────────────────────────────────────────────────────────
+  # Elasticsearch for log correlation in Kibana / Grafana Explore
+  elasticsearch:
+    endpoints: ["${ES_ENDPOINT}"]
+    logs_index: "dataobs-spark-logs"
+    traces_index: "dataobs-spark-traces"
+    tls:
+      insecure: true
+
+  # Debug exporter — useful during local development
+  debug:
+    verbosity: detailed
+    sampling_initial: 5
+    sampling_thereafter: 100
+
+service:
+  extensions: [health_check, zpages]
+
+  pipelines:
+    # ── Traces pipeline ──────────────────────────────────────────────────────
+    traces:
+      receivers: [otlp]
+      processors:
+        - memory_limiter
+        - resourcedetection
+        - filter/spark_only
+        - attributes/drop_task_id
+        - batch
+      exporters: [otlp/tempo, elasticsearch, debug]
+
+    # ── Metrics pipeline ─────────────────────────────────────────────────────
+    # High-cardinality task metrics are aggregated here before reaching
+    # Prometheus to prevent label cardinality explosion.
+    metrics:
+      receivers: [otlp]
+      processors:
+        - memory_limiter
+        - resourcedetection
+        - filter/spark_only
+        - attributes/drop_task_id
+        - batch
+      exporters: [prometheus, debug]
+
+    # ── Logs pipeline ────────────────────────────────────────────────────────
+    logs:
+      receivers: [otlp]
+      processors:
+        - memory_limiter
+        - resourcedetection
+        - batch
+      exporters: [elasticsearch, debug]

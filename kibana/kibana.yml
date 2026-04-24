@@ -1,18 +1,17 @@
-# Kibana configuration for DataObs local stack.
+# Kibana 9.x configuration for DataObs local stack.
 #
 # Credentials (ELASTICSEARCH_USERNAME, ELASTICSEARCH_PASSWORD) are intentionally
 # NOT stored here — they are injected at runtime via docker-compose environment
 # variables so that this file is safe to commit.
+#
+# NOTE: xpack.fleet.enabled and xpack.apm.enabled were removed in Kibana 9.x;
+# Fleet and APM are now always-on features and these keys cause a startup warning.
 
 server.name: dataobs-kibana
 server.host: "0.0.0.0"
 
 # Elasticsearch connection — overridden by ELASTICSEARCH_HOSTS env var in Docker.
 elasticsearch.hosts: ["http://elasticsearch:9200"]
-
-# UI features
-xpack.fleet.enabled: true
-xpack.apm.enabled: true
 
 # Telemetry
 monitoring.ui.container.elasticsearch.enabled: true

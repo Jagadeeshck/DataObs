@@ -17,11 +17,11 @@ version: '3.8'
 services:
 
   # ════════════════════════════════════════════════════════════════════════════
-  # BACKEND A — Elasticsearch AIOps (default profile)
+  # BACKEND A — Elasticsearch 9.x AIOps (default profile)
   # ════════════════════════════════════════════════════════════════════════════
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.0
-    container_name: dataobs-elasticsearch
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.3.0
+    container_name: dataobs-es01
     environment:
       - node.name=dataobs-es01
       - cluster.name=dataobs-cluster
@@ -46,28 +46,91 @@ services:
           curl -s -u "elastic:$$ELASTIC_PASSWORD" \
             http://localhost:9200/_cluster/health \
           | grep -qE '"status":"(green|yellow)"'
-      interval: 30s
+      interval: 15s
       timeout: 10s
-      retries: 5
+      retries: 10
+      start_period: 30s
     networks:
       - dataobs-net
 
+  # ────────────────────────────────────────────────────────────────────────────
+  # es-setup: one-shot init container that bootstraps the kibana_system password
+  # before Kibana is allowed to start.
+  #
+  # WHY THIS IS NEEDED:
+  #   Elasticsearch ships with a built-in kibana_system user that has an empty
+  #   (locked) password. Kibana 9.x refuses to connect until this password is
+  #   set via the ES security API. Without this step you get:
+  #     "Authentication of [kibana_system] was terminated by realm [reserved]"
+  #   This container runs once after ES is healthy, sets the password from the
+  #   KIBANA_PASSWORD env var, then exits 0 so Kibana's
+  #   depends_on.condition: service_completed_successfully gate opens.
+  # ────────────────────────────────────────────────────────────────────────────
+  es-setup:
+    image: curlimages/curl:8.7.1
+    container_name: dataobs-es-setup
+    labels:
+      - "com.dataobs.role=init"
+      - "com.dataobs.task=kibana_password_bootstrap"
+    environment:
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:?ELASTIC_PASSWORD is required}
+      - KIBANA_PASSWORD=${KIBANA_PASSWORD:?KIBANA_PASSWORD is required}
+    command:
+      - /bin/sh
+      - -c
+      - |
+        set -e
+        echo "[es-setup] Waiting for Elasticsearch to be ready..."
+        until curl -s -o /dev/null -w "%{http_code}" \
+              -u "elastic:$${ELASTIC_PASSWORD}" \
+              http://elasticsearch:9200/_cluster/health \
+              | grep -qE '^(200)$$'; do
+          echo "[es-setup] ES not ready yet, retrying in 5s..."
+          sleep 5
+        done
+        echo "[es-setup] Elasticsearch is ready. Setting kibana_system password..."
+        HTTP_CODE=$$(curl -s -o /dev/null -w "%{http_code}" \
+          -u "elastic:$${ELASTIC_PASSWORD}" \
+          -X POST http://elasticsearch:9200/_security/user/kibana_system/_password \
+          -H 'Content-Type: application/json' \
+          -d "{\"password\":\"$${KIBANA_PASSWORD}\"}"
+        )
+        if [ "$$HTTP_CODE" = "200" ]; then
+          echo "[es-setup] kibana_system password set successfully (HTTP 200)."
+        else
+          echo "[es-setup] ERROR: Failed to set kibana_system password (HTTP $$HTTP_CODE). Aborting."
+          exit 1
+        fi
+        echo "[es-setup] Bootstrap complete."
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - dataobs-net
+    restart: "no"
+
   kibana:
-    image: docker.elastic.co/kibana/kibana:8.13.0
+    image: docker.elastic.co/kibana/kibana:9.3.0
     container_name: dataobs-kibana
     environment:
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
       - ELASTICSEARCH_USERNAME=kibana_system
       - ELASTICSEARCH_PASSWORD=${KIBANA_PASSWORD:?KIBANA_PASSWORD is required - copy .env.example to .env}
-      - XPACK_FLEET_ENABLED=true
-      - XPACK_APM_ENABLED=true
     ports:
       - "5601:5601"
     depends_on:
-      elasticsearch:
-        condition: service_healthy
+      es-setup:
+        condition: service_completed_successfully
     volumes:
       - ./kibana/kibana.yml:/usr/share/kibana/config/kibana.yml:ro
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - "curl -s http://localhost:5601/api/status | grep -q '\"level\":\"available\"'"
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
     networks:
       - dataobs-net
 
@@ -93,8 +156,8 @@ services:
     volumes:
       - opensearchdata:/usr/share/opensearch/data
     ports:
-      - "9201:9200"     # offset from ES port to allow co-existence
-      - "9600:9600"     # performance analyzer
+      - "9201:9200"
+      - "9600:9600"
     healthcheck:
       test:
         - "CMD-SHELL"
@@ -118,14 +181,13 @@ services:
       - OPENSEARCH_PASSWORD=${OPENSEARCH_PASSWORD}
       - OPENSEARCH_SSL_VERIFICATIONMODE=none
     ports:
-      - "5602:5601"     # offset from Kibana port
+      - "5602:5601"
     depends_on:
       opensearch:
         condition: service_healthy
     networks:
       - dataobs-net
 
-  # Data Prepper: OTLP ingestion pipeline → OpenSearch (trace analytics + logs + metrics)
   data-prepper:
     profiles: [opensearch]
     image: opensearchproject/data-prepper:2.7.0
@@ -134,8 +196,8 @@ services:
       - ./config/opensearch/data-prepper-pipelines.yaml:/usr/share/data-prepper/pipelines/pipelines.yaml:ro
       - ./config/opensearch/data-prepper-config.yaml:/usr/share/data-prepper/config/data-prepper-config.yaml:ro
     ports:
-      - "21890:21890"   # OTLP unified source (traces + logs + metrics)
-      - "4900:4900"     # Data Prepper API
+      - "21890:21890"
+      - "4900:4900"
     environment:
       - OPENSEARCH_ENDPOINT=https://opensearch:9200
       - OPENSEARCH_USER=admin
@@ -148,12 +210,8 @@ services:
       - dataobs-net
 
   # ════════════════════════════════════════════════════════════════════════════
-  # BACKEND C — Local Prometheus + Grafana (simulates AWS Managed Grafana locally)
-  # In AWS: replace this with Amazon Managed Grafana workspace + AMP + OSIS.
-  # See docs/aws-grafana-setup.md for the AWS provisioning steps.
-  # Profile: aws_grafana
+  # BACKEND C — Local Prometheus + Grafana (profile: aws_grafana)
   # ════════════════════════════════════════════════════════════════════════════
-  # Local Prometheus — simulates Amazon Managed Prometheus (AMP)
   prometheus:
     profiles: [aws_grafana]
     image: prom/prometheus:v2.51.0
@@ -161,7 +219,7 @@ services:
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
       - "--storage.tsdb.path=/prometheus"
-      - "--web.enable-remote-write-receiver"    # enables Prometheus Remote Write endpoint
+      - "--web.enable-remote-write-receiver"
       - "--web.enable-lifecycle"
     volumes:
       - ./config/aws_grafana/prometheus.yml:/etc/prometheus/prometheus.yml:ro
@@ -171,10 +229,6 @@ services:
     networks:
       - dataobs-net
 
-  # Grafana — simulates Amazon Managed Grafana locally
-  # In AWS: create a Managed Grafana workspace and configure data sources:
-  #   - Amazon Managed Prometheus (AMP) for metrics
-  #   - Amazon OpenSearch Service for traces and logs
   grafana:
     profiles: [aws_grafana]
     image: grafana/grafana:10.4.0
@@ -196,12 +250,10 @@ services:
       - dataobs-net
 
   # ════════════════════════════════════════════════════════════════════════════
-  # OPENTELEMETRY COLLECTOR — central gateway (all profiles)
-  # Routing to backends is controlled by DATAOBS_BACKEND env var and
-  # which pipeline sections are active in the config.
+  # OPENTELEMETRY COLLECTOR — latest contrib release
   # ════════════════════════════════════════════════════════════════════════════
   otel-collector:
-    image: otel/opentelemetry-collector-contrib:0.98.0
+    image: otel/opentelemetry-collector-contrib:0.126.0
     container_name: dataobs-otel-collector
     command: ["--config=/etc/otelcol-contrib/otel-collector-config.yaml"]
     volumes:
@@ -210,33 +262,26 @@ services:
       - "4317:4317"     # OTLP gRPC
       - "4318:4318"     # OTLP HTTP
       - "8888:8888"     # Collector self-metrics
-      - "8889:8889"     # Prometheus scrape endpoint (for AMP / Grafana)
+      - "8889:8889"     # Prometheus scrape endpoint
       - "13133:13133"   # Health check
     environment:
-      # ── Backend selection ───────────────────────────────────────────────
-      # Set to: elasticsearch | opensearch | opensearch_aws | aws_grafana | grafana_cloud | all
       - DATAOBS_BACKEND=${DATAOBS_BACKEND:-elasticsearch}
-      # ── Elasticsearch ───────────────────────────────────────────────────
       - ELASTIC_ENDPOINT=http://elasticsearch:9200
       - ELASTIC_USER=elastic
       - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:?ELASTIC_PASSWORD is required}
-      # ── OpenSearch self-managed ─────────────────────────────────────────
       - OPENSEARCH_DATA_PREPPER_ENDPOINT=http://data-prepper:21890
       - OPENSEARCH_INSECURE=true
-      # ── Amazon OpenSearch Ingestion (OSIS) ──────────────────────────────
       - OSIS_PIPELINE_ENDPOINT=${OSIS_PIPELINE_ENDPOINT:-}
-      # ── Amazon Managed Prometheus (AMP) ─────────────────────────────────
       - AMP_REMOTE_WRITE_URL=${AMP_REMOTE_WRITE_URL:-http://prometheus:9090/api/v1/write}
-      # ── Grafana Cloud ────────────────────────────────────────────────────
       - GRAFANA_CLOUD_OTLP_ENDPOINT=${GRAFANA_CLOUD_OTLP_ENDPOINT:-}
       - GRAFANA_CLOUD_INSTANCE_ID=${GRAFANA_CLOUD_INSTANCE_ID:-}
       - GRAFANA_CLOUD_API_KEY=${GRAFANA_CLOUD_API_KEY:-}
-      # ── OTel Semconv ─────────────────────────────────────────────────────
       - DEPLOY_ENV=${DEPLOY_ENV:-local}
       - SERVICE_NAMESPACE=dataobs
       - DATAOBS_VERSION=${DATAOBS_VERSION:-dev}
-      - OTLP_ALLOWED_ORIGINS=${OTLP_ALLOWED_ORIGINS:-*}
-      # ── AWS (needed for OSIS + AMP SigV4) ───────────────────────────────
+      # OTLP_ALLOWED_ORIGINS: set to your internal origin, e.g. https://*.internal.example.com
+      # Do NOT use "*" in production. Omit to use the secure default in otel-collector-config.yaml.
+      - OTLP_ALLOWED_ORIGINS=${OTLP_ALLOWED_ORIGINS:-}
       - AWS_REGION=${AWS_REGION:-us-east-1}
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
@@ -260,13 +305,11 @@ services:
       - ELASTICSEARCH_USER=elastic
       - ELASTICSEARCH_PASSWORD=${ELASTIC_PASSWORD:?ELASTIC_PASSWORD is required}
       - DATAOBS_CONFIG=/app/config/dataobs.yaml
-      # ── OTel SDK semconv resource attributes ──────────────────────────────
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
       - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
       - OTEL_SERVICE_NAME=dataobs-quality-engine
       - OTEL_SERVICE_VERSION=${DATAOBS_VERSION:-dev}
       - OTEL_SERVICE_NAMESPACE=dataobs
-      # deployment.environment.name is semconv 1.24+ canonical name
       - OTEL_RESOURCE_ATTRIBUTES=service.namespace=dataobs,deployment.environment.name=${DEPLOY_ENV:-local},deployment.environment=${DEPLOY_ENV:-local},service.instance.id=quality-engine-1,telemetry.sdk.language=python
       - LOG_LEVEL=INFO
     volumes:
@@ -292,7 +335,6 @@ services:
       - ELASTICSEARCH_USER=elastic
       - ELASTICSEARCH_PASSWORD=${ELASTIC_PASSWORD:?ELASTIC_PASSWORD is required}
       - DATAOBS_CONFIG=/app/config/dataobs.yaml
-      # ── OTel SDK semconv resource attributes ──────────────────────────────
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
       - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
       - OTEL_SERVICE_NAME=dataobs-api

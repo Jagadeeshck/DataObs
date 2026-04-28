@@ -1,0 +1,50 @@
+# DataObs POC — Default data sources (data.gov.uk / CKAN)
+# ─────────────────────────────────────────────────────────
+# These are used as a reference catalogue when auto-discovery is enabled
+# but a more stable known-good URL is preferred over live CKAN search.
+# The pipeline will fall back to CKAN live-search when these are not
+# explicitly set in poc.data_sources.
+#
+# To use: copy selected entries into poc.data_sources in config/dataobs.yaml.
+# ─────────────────────────────────────────────────────────
+
+default_sources:
+
+  - name: road-safety
+    theme: transport
+    title: "Road Safety Data — Casualties Great Britain"
+    source_type: data.gov.uk
+    dataset_id: road-safety-data
+    resource_url: "https://data.gov.uk/dataset/road-safety-data/datapackage.csv"
+    format: csv
+    publisher: "Department for Transport"
+    description: >
+      Annual road casualty statistics for Great Britain including accident
+      circumstances, vehicle details, and casualty characteristics.
+    tags: [road, safety, accidents, transport, gb]
+
+  - name: air-quality-monitoring
+    theme: environment
+    title: "UK Automatic Urban and Rural Network (AURN) — Air Quality Data"
+    source_type: data.gov.uk
+    dataset_id: uk-automatic-urban-and-rural-network-aurn-air-quality-data
+    resource_url: "https://uk-air.defra.gov.uk/openair/R_data/AURN_metadata.RData"
+    format: csv
+    publisher: "Department for Environment, Food and Rural Affairs (DEFRA)"
+    description: >
+      Continuous ambient air quality monitoring data from AURN stations
+      across the UK covering pollutants including NO2, PM2.5, PM10, O3.
+    tags: [air-quality, environment, defra, pollution, monitoring]
+
+  - name: local-authority-profile
+    theme: government
+    title: "Local Authority District to Region Lookup"
+    source_type: data.gov.uk
+    dataset_id: local-authority-district-to-region-april-2019-lookup-in-england
+    resource_url: "https://opendata.arcgis.com/datasets/0892f9a891614aaf82ea0fca5dc8b4d7_0.csv"
+    format: csv
+    publisher: "Office for National Statistics (ONS)"
+    description: >
+      ONS lookup table mapping local authority districts (LADs) to regions
+      and countries for England, Wales, Scotland, and Northern Ireland.
+    tags: [local-authority, reference, ons, geography, lookup]

@@ -1,0 +1,15 @@
+# DataObs POC — additional Python dependencies
+# Install with: pip install -r requirements-poc.txt
+
+# Core pipeline
+pyspark>=3.5.0
+requests>=2.31.0
+PyYAML>=6.0
+elasticsearch>=8.0.0,<9.0.0
+
+# OpenTelemetry SDK + OTLP HTTP exporter (optional but recommended)
+# Remove if running without an OTel collector — the pipeline gracefully
+# falls back to logger-only telemetry when these are not installed.
+opentelemetry-sdk>=1.24.0
+opentelemetry-exporter-otlp-proto-http>=1.24.0
+opentelemetry-instrumentation>=0.45b0

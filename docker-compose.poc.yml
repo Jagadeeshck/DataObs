@@ -49,8 +49,7 @@ services:
 
   # ──────────────────────────────────────────────────────────
   # 1. Elasticsearch 9.3.3
-  #    xpack.fleet.enabled intentionally absent — it is a Kibana
-  #    setting only and causes a fatal ES bootstrap error if set here.
+  #    xpack.fleet.enabled intentionally absent — Kibana-only setting.
   # ──────────────────────────────────────────────────────────
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:${ELK_VERSION:-9.3.3}
@@ -89,18 +88,22 @@ services:
 
   # ──────────────────────────────────────────────────────────
   # 2. ES Setup (one-shot init container)
-  #    Runs once after ES is healthy:
-  #      a) Sets kibana_system password
-  #      b) Creates Fleet service token → writes to shared volume
   #
-  #    Uses only curl + grep (both present in the ES image).
-  #    python3 is NOT available in the ES image — do not use it.
+  #    Runs as root so it can write to the fleet_token volume.
+  #    Docker creates named volumes owned by root:root; the ES image
+  #    default user is uid 1000 (elasticsearch) which cannot write
+  #    to a freshly-created volume root directory without root.
   #
-  #    $$ escapes shell vars so Compose does not interpolate them.
+  #    Only this init container needs write access. All consumers
+  #    (fleet-server) mount the volume read-only (:ro).
+  #
+  #    Uses curl + grep only — python3 is NOT in the ES image.
+  #    $$ escapes shell vars from Compose interpolation.
   # ──────────────────────────────────────────────────────────
   es-setup:
     image: docker.elastic.co/elasticsearch/elasticsearch:${ELK_VERSION:-9.3.3}
     container_name: dataobs-poc-es-setup
+    user: root
     depends_on:
       elasticsearch:
         condition: service_healthy
@@ -124,8 +127,6 @@ services:
         echo " done."
 
         echo "[es-setup] Creating Fleet service token..."
-        # Use grep -oP to extract the token value from the JSON response.
-        # python3 is not available in the ES image.
         RESPONSE=$$(curl -sf -X POST -u "$$AUTH" \
           "$$HOST/_security/service/elastic/fleet-server/credential/token/poc-fleet-token")
         echo "[es-setup] Raw response: $$RESPONSE"
@@ -136,6 +137,7 @@ services:
           exit 1
         fi
         echo "$$TOKEN" > /fleet_token/token.txt
+        chmod 644 /fleet_token/token.txt
         echo "[es-setup] Fleet token written to /fleet_token/token.txt"
         echo "[es-setup] Done."
     networks:
@@ -255,9 +257,6 @@ services:
 
   # ──────────────────────────────────────────────────────────
   # 6. OpenTelemetry Collector (contrib 0.99.0)
-  #    traces  → Elastic Agent APM :8200
-  #    metrics → Elasticsearch :9200
-  #    logs    → Elasticsearch :9200
   # ──────────────────────────────────────────────────────────
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.99.0

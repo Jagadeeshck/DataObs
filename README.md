@@ -22,6 +22,7 @@
 - [Repository Layout](#repository-layout)
 - [Prerequisites](#prerequisites)
 - [Quick Start](#quick-start)
+- [Troubleshooting](#troubleshooting)
 - [Configuration Reference](#configuration-reference)
 - [Integrations](#integrations)
 - [Kubernetes & Helm](#kubernetes--helm)
@@ -64,7 +65,7 @@ This repository provides:
                         └──┬──────────┬───────────────┬──────────┬────────────┘
                            │          │               │          │
           ┌────────────────▼──┐  ┌────▼────────┐  ┌──▼──────┐  ┌──▼──────────────┐
-          │ Elasticsearch 8.x │  │  OpenSearch │  │   AMP   │  │  Grafana Cloud  │
+          │ Elasticsearch 9.x │  │  OpenSearch │  │   AMP   │  │  Grafana Cloud  │
           │ AIOps + ML        │  │ self / AWS  │  │(metrics)│  │ OTLP gateway    │
           │ ECS mapping       │  │ via OSIS or │  │         │  │ Tempo/Loki/Mimir│
           │ Kibana dashboards │  │ Data Prepper│  └────┬────┘  └──────────────────┘
@@ -267,6 +268,93 @@ curl -X POST http://localhost:5001/checkout \
 ```
 
 See [`integrations/grafana-alloy/docs/GUIDE.md`](integrations/grafana-alloy/docs/GUIDE.md) for the complete 10-step walkthrough.
+
+---
+
+## Troubleshooting
+
+### ❌ Elasticsearch fails to start — "cannot upgrade a node from version [8.x] directly to version [9.x]"
+
+**Symptom**
+
+```
+fatal exception while booting Elasticsearch
+error.message: cannot upgrade a node from version [8.13.0] directly to version [9.3.0],
+               upgrade to version [8.19.0] first.
+```
+
+**Root cause**
+
+Elasticsearch stores its originating version in node metadata inside the `esdata` Docker volume. When you previously ran the stack with an older image (e.g. `8.13.0`) and later pulled `9.3.0`, the new process reads the stale metadata and hard-blocks the start because Elastic enforces a **mandatory stepping-stone upgrade path**: you cannot skip directly from 8.x to 9.x — you must first pass through the last minor release of 8.x (`8.19.0`). Since this is a local POC with no production data, the simplest fix is to delete the stale volume.
+
+**Fix — delete the stale `esdata` volume**
+
+```bash
+# 1. Tear down all running containers
+docker compose down
+
+# 2. Confirm the exact volume name (usually prefixed with your folder name)
+docker volume ls | grep esdata
+
+# 3. Remove the stale volume
+docker volume rm dataobs_esdata
+
+# 4. Ensure .env is populated
+cp .env.example .env
+# Edit .env — set ELASTIC_PASSWORD and KIBANA_PASSWORD
+
+# 5. Re-start the stack from scratch
+docker compose up -d
+```
+
+**Verify the fix**
+
+```bash
+# Watch ES boot — should report version 9.x with no errors
+docker logs dataobs-es01 -f
+
+# Confirm the running version
+curl -s -u elastic:<your-password> http://localhost:9200 | jq .version.number
+# Expected output: "9.3.0"
+```
+
+Kibana will be available at `http://localhost:5601` once the `es-setup` init container completes its one-shot password bootstrap and the `service_completed_successfully` health gate opens for the Kibana service.
+
+> **Note:** This error can also appear if you restore an old `esdata` volume backup from a previous major version. The same fix applies — either delete the volume (POC) or perform the intermediate 8.19.0 upgrade step first (production).
+
+---
+
+### ❌ `es-setup` container exits with non-zero code
+
+**Symptom:** `dataobs-es-setup` exits with error `Failed to set kibana_system password (HTTP 401)`.
+
+**Cause:** `ELASTIC_PASSWORD` in `.env` does not match the password that was used when the `esdata` volume was first initialised.
+
+**Fix:** Either update `.env` to match the original password, or delete the `esdata` volume (see above) and restart with a fresh password.
+
+---
+
+### ❌ Kibana shows "Kibana server is not ready yet"
+
+**Symptom:** Browser shows the Kibana loading screen indefinitely.
+
+**Cause:** Kibana depends on `es-setup` completing successfully. If `es-setup` failed, Kibana's `depends_on: service_completed_successfully` gate never opens.
+
+**Fix:**
+
+```bash
+# Check es-setup logs first
+docker logs dataobs-es-setup
+
+# Then check Kibana logs
+docker logs dataobs-kibana
+```
+
+Resolve any `es-setup` error first (see above), then restart:
+
+```bash
+docker compose restart kibana
+```
 
 ---
 

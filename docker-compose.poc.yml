@@ -49,12 +49,8 @@ services:
 
   # ──────────────────────────────────────────────────────────
   # 1. Elasticsearch 9.3.3
-  #
-  #  Settings notes for ES 9.x:
-  #    - xpack.fleet.enabled  → REMOVED. Not a valid ES setting.
-  #                             Fleet is configured in Kibana only.
-  #    - xpack.security.*     → Required for authentication.
-  #    - xpack.license.*      → trial enables all features locally.
+  #    xpack.fleet.enabled intentionally absent — it is a Kibana
+  #    setting only and causes a fatal ES bootstrap error if set here.
   # ──────────────────────────────────────────────────────────
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:${ELK_VERSION:-9.3.3}
@@ -67,10 +63,6 @@ services:
       xpack.security.enabled: "true"
       xpack.security.http.ssl.enabled: "false"
       xpack.license.self_generated.type: trial
-      # NOTE: xpack.fleet.enabled is intentionally absent.
-      # It is not a recognised Elasticsearch setting in 9.x and
-      # causes a fatal bootstrap error if present.
-      # Fleet is enabled via XPACK_FLEET_ENABLED on the Kibana service.
       bootstrap.memory_lock: "true"
       cluster.routing.allocation.disk.threshold_enabled: "false"
     ulimits:
@@ -101,8 +93,10 @@ services:
   #      a) Sets kibana_system password
   #      b) Creates Fleet service token → writes to shared volume
   #
-  #    NOTE: $$ escapes shell variables so Docker Compose does not
-  #    try to interpolate AUTH / HOST / TOKEN as Compose variables.
+  #    Uses only curl + grep (both present in the ES image).
+  #    python3 is NOT available in the ES image — do not use it.
+  #
+  #    $$ escapes shell vars so Compose does not interpolate them.
   # ──────────────────────────────────────────────────────────
   es-setup:
     image: docker.elastic.co/elasticsearch/elasticsearch:${ELK_VERSION:-9.3.3}
@@ -130,9 +124,17 @@ services:
         echo " done."
 
         echo "[es-setup] Creating Fleet service token..."
-        TOKEN=$(curl -sf -X POST -u "$$AUTH" \
-          "$$HOST/_security/service/elastic/fleet-server/credential/token/poc-fleet-token" \
-          | python3 -c "import sys,json; print(json.load(sys.stdin)['token']['value'])")
+        # Use grep -oP to extract the token value from the JSON response.
+        # python3 is not available in the ES image.
+        RESPONSE=$$(curl -sf -X POST -u "$$AUTH" \
+          "$$HOST/_security/service/elastic/fleet-server/credential/token/poc-fleet-token")
+        echo "[es-setup] Raw response: $$RESPONSE"
+        TOKEN=$$(echo "$$RESPONSE" | grep -oP '(?<="value":")[^"]+')
+        if [ -z "$$TOKEN" ]; then
+          echo "[es-setup] ERROR: failed to extract Fleet token from response"
+          echo "[es-setup] Response was: $$RESPONSE"
+          exit 1
+        fi
         echo "$$TOKEN" > /fleet_token/token.txt
         echo "[es-setup] Fleet token written to /fleet_token/token.txt"
         echo "[es-setup] Done."
@@ -142,8 +144,7 @@ services:
 
   # ──────────────────────────────────────────────────────────
   # 3. Kibana 9.3.3
-  #    XPACK_FLEET_ENABLED and XPACK_APM_ENABLED are set here —
-  #    these are Kibana settings, not Elasticsearch settings.
+  #    XPACK_FLEET_ENABLED / XPACK_APM_ENABLED are Kibana settings.
   # ──────────────────────────────────────────────────────────
   kibana:
     image: docker.elastic.co/kibana/kibana:${ELK_VERSION:-9.3.3}
@@ -180,12 +181,9 @@ services:
       - dataobs-poc
 
   # ──────────────────────────────────────────────────────────
-  # 4. Fleet Server
-  #    Uses elastic-agent/elastic-agent image (new 9.x path).
-  #    Reads Fleet token from shared volume written by es-setup.
+  # 4. Fleet Server (elastic-agent/elastic-agent — new 9.x image path)
   # ──────────────────────────────────────────────────────────
   fleet-server:
-    # NEW 9.x image path: elastic-agent/elastic-agent (not beats/elastic-agent)
     image: docker.elastic.co/elastic-agent/elastic-agent:${ELK_VERSION:-9.3.3}
     container_name: dataobs-poc-fleet-server
     depends_on:
@@ -218,14 +216,10 @@ services:
       - dataobs-poc
 
   # ──────────────────────────────────────────────────────────
-  # 5. Elastic Agent — APM Server (ES 9.x integrated)
-  #    NEW 9.x image path: elastic-agent/elastic-agent
-  #    Exposes APM intake on port 8200.
-  #    Accepts: Elastic APM protocol + OTLP gRPC/HTTP natively.
-  #    Traces land in traces-apm-* → Kibana APM UI.
+  # 5. Elastic Agent — APM Server (elastic-agent/elastic-agent — 9.x)
+  #    Port 8200: APM intake (Elastic APM + OTLP natively)
   # ──────────────────────────────────────────────────────────
   elastic-agent:
-    # NEW 9.x image path: elastic-agent/elastic-agent (not beats/elastic-agent)
     image: docker.elastic.co/elastic-agent/elastic-agent:${ELK_VERSION:-9.3.3}
     container_name: dataobs-poc-elastic-agent
     depends_on:
@@ -261,10 +255,9 @@ services:
 
   # ──────────────────────────────────────────────────────────
   # 6. OpenTelemetry Collector (contrib 0.99.0)
-  #    Receives OTLP from the pipeline and routes:
-  #      traces  → Elastic Agent APM :8200 (otlp/apm exporter)
-  #      metrics → Elasticsearch :9200 directly
-  #      logs    → Elasticsearch :9200 directly
+  #    traces  → Elastic Agent APM :8200
+  #    metrics → Elasticsearch :9200
+  #    logs    → Elasticsearch :9200
   # ──────────────────────────────────────────────────────────
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.99.0
@@ -296,9 +289,6 @@ services:
 
   # ──────────────────────────────────────────────────────────
   # 7. DataObs POC Pipeline (run-once)
-  #    Run manually after the stack is healthy:
-  #      docker compose -f docker-compose.poc.yml \
-  #        --env-file .env.poc.local run --rm pipeline
   # ──────────────────────────────────────────────────────────
   pipeline:
     build:

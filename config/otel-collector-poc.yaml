@@ -1,12 +1,24 @@
 # ============================================================
 #  OpenTelemetry Collector — POC Configuration
-#  Receives OTLP (gRPC + HTTP) from the DataObs pipeline
-#  and forwards traces, metrics, and logs to Elasticsearch.
+#  OTel Collector Contrib 0.99.0  /  Elastic Stack 9.3.3
+#
+#  Signal routing:
+#
+#    OTLP (pipeline)
+#      ├─ traces  ───►  Elastic Agent APM :8200  (OTLP/gRPC)
+#      │                → stored in traces-apm-* data streams
+#      │                → visible in Kibana → Observability → APM
+#      ├─ metrics ───►  Elasticsearch :9200
+#      │                → index: dataobs-poc-telemetry-metrics
+#      └─ logs    ───►  Elasticsearch :9200
+#                       → index: dataobs-poc-telemetry-logs
 # ============================================================
 
 extensions:
   health_check:
     endpoint: 0.0.0.0:13133
+  pprof:
+    endpoint: 0.0.0.0:1777
 
 receivers:
   otlp:
@@ -17,54 +29,112 @@ receivers:
         endpoint: 0.0.0.0:4318
         cors:
           allowed_origins:
-            - http://localhost:*
-            - http://kibana:*
+            - "http://localhost:*"
+            - "http://kibana:*"
+            - "http://pipeline:*"
 
 processors:
   batch:
     timeout: 5s
     send_batch_size: 512
+
   memory_limiter:
     check_interval: 5s
-    limit_mib: 256
-    spike_limit_mib: 64
+    limit_mib: 300
+    spike_limit_mib: 75
+
+  # Tag all telemetry with POC deployment metadata
   resource:
     attributes:
-      - key: environment
+      - key: deployment.environment
         value: poc
         action: insert
-      - key: project
+      - key: service.namespace
         value: dataobs
+        action: insert
+      - key: elastic.stack.version
+        value: "9.3.3"
+        action: insert
+
+  # Enrich spans with pipeline context
+  attributes:
+    actions:
+      - key: pipeline.name
+        value: dataobs-poc
+        action: insert
+      - key: data.tenant
+        value: poc
         action: insert
 
 exporters:
-  # Forward traces to Elasticsearch APM
-  elasticsearch:
-    endpoints: ["${ELASTICHOST}"]
+
+  # ──────────────────────────────────────────────────────────
+  # TRACES → Elastic Agent APM Server (port 8200)
+  # Elastic Agent 9.x accepts OTLP natively on port 8200.
+  # Traces appear in: Kibana → Observability → APM → Services
+  # Data streams: traces-apm-*, spans-apm-*
+  # ──────────────────────────────────────────────────────────
+  otlp/apm:
+    endpoint: "${APM_SERVER_URL:-http://elastic-agent:8200}"
+    tls:
+      insecure: true
+    headers:
+      Authorization: "Bearer ${APM_SECRET_TOKEN:-dataobs_poc_apm_token}"
+
+  # ──────────────────────────────────────────────────────────
+  # METRICS → Elasticsearch directly
+  # Index: dataobs-poc-telemetry-metrics
+  # ──────────────────────────────────────────────────────────
+  elasticsearch/metrics:
+    endpoints: ["${ELASTICHOST:-http://elasticsearch:9200}"]
     user: elastic
     password: "${ELASTIC_PASSWORD}"
-    logs_index:    dataobs-poc-telemetry-logs
-    traces_index:  dataobs-poc-telemetry-traces
     metrics_index: dataobs-poc-telemetry-metrics
     tls:
       insecure: true
+    retry:
+      enabled: true
+      initial_interval: 5s
+      max_interval: 30s
 
-  # Also log everything to stdout for easy debugging
+  # ──────────────────────────────────────────────────────────
+  # LOGS → Elasticsearch directly
+  # Index: dataobs-poc-telemetry-logs
+  # ──────────────────────────────────────────────────────────
+  elasticsearch/logs:
+    endpoints: ["${ELASTICHOST:-http://elasticsearch:9200}"]
+    user: elastic
+    password: "${ELASTIC_PASSWORD}"
+    logs_index: dataobs-poc-telemetry-logs
+    tls:
+      insecure: true
+    retry:
+      enabled: true
+      initial_interval: 5s
+      max_interval: 30s
+
+  # stdout debug (easy local inspection)
   debug:
     verbosity: basic
 
 service:
-  extensions: [health_check]
+  extensions: [health_check, pprof]
   pipelines:
+
+    # Traces → Elastic Agent APM (full distributed tracing in Kibana APM)
     traces:
       receivers:  [otlp]
-      processors: [memory_limiter, resource, batch]
-      exporters:  [elasticsearch, debug]
+      processors: [memory_limiter, resource, attributes, batch]
+      exporters:  [otlp/apm, debug]
+
+    # Metrics → Elasticsearch
     metrics:
       receivers:  [otlp]
       processors: [memory_limiter, resource, batch]
-      exporters:  [elasticsearch, debug]
+      exporters:  [elasticsearch/metrics, debug]
+
+    # Logs → Elasticsearch
     logs:
       receivers:  [otlp]
       processors: [memory_limiter, resource, batch]
-      exporters:  [elasticsearch, debug]
+      exporters:  [elasticsearch/logs, debug]

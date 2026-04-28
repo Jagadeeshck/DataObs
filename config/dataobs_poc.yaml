@@ -1,37 +1,32 @@
 # ============================================================
-#  DataObs — POC Configuration
-#  Self-contained config for the local POC stack.
-#  All values can be overridden via environment variables
-#  (format: ${ENV_VAR:-default_value}).
+#  DataObs — POC Configuration  (Elastic Stack 9.3.3)
+#  Self-contained — no changes to config/dataobs.yaml needed.
 #
-#  To start the POC:
-#    1. cp .env.poc .env.poc.local   (edit passwords if needed)
-#    2. docker compose -f docker-compose.poc.yml --env-file .env.poc.local up -d
-#    3. docker compose -f docker-compose.poc.yml --env-file .env.poc.local run --rm pipeline
+#  All ${VAR:-default} values are resolved from .env.poc.local
+#  when running via docker-compose.poc.yml.
+#
+#  Full setup guide: docs/poc-setup.md
 # ============================================================
 
-# ── POC mode toggle ─────────────────────────────────────────
 poc:
   enabled: true
   profile: local_gov_uk_demo
-
-  # Set to false to skip Kibana dashboard creation
   bootstrap_dashboards: true
   create_kibana_data_views: true
 
-  # ── Runtime working directories ────────────────────────────
+  # ── Runtime working directories ───────────────────────────
   runtime:
-    spark_master: "${SPARK_MASTER:-local[*]}"
-    checkpoint_dir: "/tmp/dataobs/poc/checkpoints"
-    raw_download_dir: "/tmp/dataobs/poc/raw"
+    spark_master:       "${SPARK_MASTER:-local[*]}"
+    checkpoint_dir:     "/tmp/dataobs/poc/checkpoints"
+    raw_download_dir:   "/tmp/dataobs/poc/raw"
     curated_output_dir: "/tmp/dataobs/poc/curated"
-    temp_dir: "/tmp/dataobs/poc/tmp"
+    temp_dir:           "/tmp/dataobs/poc/tmp"
 
-  # ── Elasticsearch ──────────────────────────────────────────
+  # ── Elasticsearch 9.3.3 ───────────────────────────────────
   elasticsearch:
-    host: "${ELASTICHOST:-http://elasticsearch:9200}"
-    username: "elastic"
-    password: "${ELASTIC_PASSWORD:-dataobs_poc_secret}"
+    host:         "${ELASTICHOST:-http://elasticsearch:9200}"
+    username:     "elastic"
+    password:     "${ELASTIC_PASSWORD:-dataobs_poc_secret}"
     verify_certs: false
     indices:
       raw:               "dataobs-poc-raw"
@@ -42,71 +37,82 @@ poc:
       quality:           "dataobs-poc-quality"
       lineage:           "dataobs-poc-lineage"
 
-  # ── OpenTelemetry ──────────────────────────────────────────
+  # ── OpenTelemetry ─────────────────────────────────────────
+  # Traces  → OTel Collector → Elastic Agent APM :8200
+  # Metrics → OTel Collector → Elasticsearch :9200 directly
+  # Logs    → OTel Collector → Elasticsearch :9200 directly
   opentelemetry:
-    service_name: "dataobs-poc-pipeline"
-    exporter_otlp_endpoint: "${OTEL_EXPORTER_OTLP_ENDPOINT:-http://otel-collector:4318}"
-    protocol: "http/protobuf"
-    traces_enabled: true
-    metrics_enabled: true
-    logs_enabled: true
+    service_name:            "dataobs-poc-pipeline"
+    exporter_otlp_endpoint:  "${OTEL_EXPORTER_OTLP_ENDPOINT:-http://otel-collector:4318}"
+    protocol:                "http/protobuf"
+    traces_enabled:          true
+    metrics_enabled:         true
+    logs_enabled:            true
 
-  # ── Data sources ───────────────────────────────────────────
-  # Leave data_sources empty [] to auto-discover from data.gov.uk.
-  # Add explicit entries below to skip auto-discovery.
+  # ── APM — Elastic Agent 9.x (built-in APM Server) ─────────
+  # APM Server runs inside Elastic Agent (managed by Fleet).
+  # Port 8200 accepts Elastic APM protocol + OTLP natively.
+  # Traces visible in: Kibana → Observability → APM → Services
+  apm:
+    server_url:      "${APM_SERVER_URL:-http://elastic-agent:8200}"
+    secret_token:    "${APM_SECRET_TOKEN:-dataobs_poc_apm_token}"
+    service_name:    "dataobs-poc-pipeline"
+    service_version: "poc-v1"
+    environment:     "poc"
+
+  # ── Data sources ──────────────────────────────────────────
+  # Leave data_sources empty → auto-discover from data.gov.uk
+  # Set explicit entries below to skip CKAN discovery.
   source_defaults:
-    enabled: true
-    provider: "data.gov.uk"
-    auto_discover_if_empty: true
-    preferred_formats:
-      - csv
-      - json
-    max_datasets: 3
+    enabled:                 true
+    provider:                "data.gov.uk"
+    auto_discover_if_empty:  true
+    preferred_formats:       [csv, json]
+    max_datasets:            3
     themes:
       - transport
       - environment
       - government
 
   data_sources: []
-  # Uncomment to pin specific datasets instead of auto-discovering:
+  # Uncomment to pin specific datasets:
   # data_sources:
   #   - name: road-safety
   #     source_type: data.gov.uk
   #     resource_url: "https://opendata.arcgis.com/datasets/0892f9a891614aaf82ea0fca5dc8b4d7_0.csv"
   #     format: csv
-  #   - name: air-quality
-  #     source_type: data.gov.uk
-  #     resource_url: "https://uk-air.defra.gov.uk/datastore/data/automatic-urban-rural-sites.csv"
-  #     format: csv
 
-  # ── Processing ─────────────────────────────────────────────
+  # ── Processing & quality rules ────────────────────────────
   processing:
     datasets:
-      standardize_columns: true
+      standardize_columns:    true
       add_ingestion_metadata: true
-      row_limit: 5000
+      row_limit:              5000
     quality_rules:
-      freshness_max_age_hours: 168
-      fail_on_schema_drift: false
-      max_null_pct_warn: 5.0
-      max_null_pct_fail: 20.0
-      duplicate_threshold_pct: 1.0
-      min_rows_warn: 10
+      freshness_max_age_hours:  168
+      fail_on_schema_drift:     false
+      max_null_pct_warn:        5.0
+      max_null_pct_fail:        20.0
+      duplicate_threshold_pct:  1.0
+      min_rows_warn:            10
 
-  # ── Telemetry events ───────────────────────────────────────
+  # ── Telemetry emission ────────────────────────────────────
   telemetry:
-    emit_stage_events: true
+    emit_stage_events:    true
     emit_dataset_metrics: true
-    emit_quality_events: true
-    emit_lineage_events: true
+    emit_quality_events:  true
+    emit_lineage_events:  true
 
-  # ── Kibana dashboards ──────────────────────────────────────
+  # ── Kibana dashboards ─────────────────────────────────────
   dashboards:
-    kibana_base_url: "${KIBANA_URL:-http://kibana:5601}"
-    kibana_space: "default"
-    load_saved_objects_file: "kibana/dataobs-poc-saved-objects.ndjson"
+    kibana_base_url:          "${KIBANA_URL:-http://kibana:5601}"
+    kibana_space:             "default"
+    load_saved_objects_file:  "kibana/dataobs-poc-saved-objects.ndjson"
     create_data_views:
       - "dataobs-poc-curated*"
       - "dataobs-poc-quality*"
       - "dataobs-poc-telemetry-*"
       - "dataobs-poc-lineage*"
+      - "traces-apm*"       # APM distributed traces
+      - "metrics-apm*"      # APM service metrics
+      - "logs-apm*"         # APM log correlation

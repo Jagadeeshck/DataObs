@@ -15,6 +15,10 @@
 #    OLD (8.x): docker.elastic.co/beats/elastic-agent
 #    NEW (9.x): docker.elastic.co/elastic-agent/elastic-agent
 #
+#  IMPORTANT — xpack.fleet.enabled is a Kibana-only setting in 9.x.
+#    Do NOT set it on Elasticsearch — it causes a fatal boot error.
+#    Fleet is enabled by default in Kibana via XPACK_FLEET_ENABLED.
+#
 #  Service startup order (auto-managed via healthchecks):
 #    1. elasticsearch   — single-node, security enabled
 #    2. es-setup        — one-shot: sets passwords + Fleet token
@@ -45,6 +49,12 @@ services:
 
   # ──────────────────────────────────────────────────────────
   # 1. Elasticsearch 9.3.3
+  #
+  #  Settings notes for ES 9.x:
+  #    - xpack.fleet.enabled  → REMOVED. Not a valid ES setting.
+  #                             Fleet is configured in Kibana only.
+  #    - xpack.security.*     → Required for authentication.
+  #    - xpack.license.*      → trial enables all features locally.
   # ──────────────────────────────────────────────────────────
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:${ELK_VERSION:-9.3.3}
@@ -57,7 +67,10 @@ services:
       xpack.security.enabled: "true"
       xpack.security.http.ssl.enabled: "false"
       xpack.license.self_generated.type: trial
-      xpack.fleet.enabled: "true"
+      # NOTE: xpack.fleet.enabled is intentionally absent.
+      # It is not a recognised Elasticsearch setting in 9.x and
+      # causes a fatal bootstrap error if present.
+      # Fleet is enabled via XPACK_FLEET_ENABLED on the Kibana service.
       bootstrap.memory_lock: "true"
       cluster.routing.allocation.disk.threshold_enabled: "false"
     ulimits:
@@ -88,8 +101,8 @@ services:
   #      a) Sets kibana_system password
   #      b) Creates Fleet service token → writes to shared volume
   #
-  #    NOTE: $$ is used for shell variables (AUTH, HOST, TOKEN)
-  #    to prevent Docker Compose interpolating them as Compose vars.
+  #    NOTE: $$ escapes shell variables so Docker Compose does not
+  #    try to interpolate AUTH / HOST / TOKEN as Compose variables.
   # ──────────────────────────────────────────────────────────
   es-setup:
     image: docker.elastic.co/elasticsearch/elasticsearch:${ELK_VERSION:-9.3.3}
@@ -129,6 +142,8 @@ services:
 
   # ──────────────────────────────────────────────────────────
   # 3. Kibana 9.3.3
+  #    XPACK_FLEET_ENABLED and XPACK_APM_ENABLED are set here —
+  #    these are Kibana settings, not Elasticsearch settings.
   # ──────────────────────────────────────────────────────────
   kibana:
     image: docker.elastic.co/kibana/kibana:${ELK_VERSION:-9.3.3}

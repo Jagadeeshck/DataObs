@@ -19,6 +19,9 @@
 #    Do NOT set it on Elasticsearch — it causes a fatal boot error.
 #    Fleet is enabled by default in Kibana via XPACK_FLEET_ENABLED.
 #
+#  IMPORTANT — XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY must be
+#    exactly 32+ characters. Kibana will FATAL on startup if shorter.
+#
 #  Service startup order (auto-managed via healthchecks):
 #    1. elasticsearch   — single-node, security enabled
 #    2. es-setup        — one-shot: sets passwords + Fleet token
@@ -88,17 +91,9 @@ services:
 
   # ──────────────────────────────────────────────────────────
   # 2. ES Setup (one-shot init container)
-  #
-  #    Runs as root so it can write to the fleet_token volume.
-  #    Docker creates named volumes owned by root:root; the ES image
-  #    default user is uid 1000 (elasticsearch) which cannot write
-  #    to a freshly-created volume root directory without root.
-  #
-  #    Only this init container needs write access. All consumers
-  #    (fleet-server) mount the volume read-only (:ro).
-  #
+  #    Runs as root — Docker volumes are root:root by default;
+  #    ES image uid 1000 cannot write without elevation.
   #    Uses curl + grep only — python3 is NOT in the ES image.
-  #    $$ escapes shell vars from Compose interpolation.
   # ──────────────────────────────────────────────────────────
   es-setup:
     image: docker.elastic.co/elasticsearch/elasticsearch:${ELK_VERSION:-9.3.3}
@@ -147,6 +142,7 @@ services:
   # ──────────────────────────────────────────────────────────
   # 3. Kibana 9.3.3
   #    XPACK_FLEET_ENABLED / XPACK_APM_ENABLED are Kibana settings.
+  #    Encryption key MUST be >= 32 chars or Kibana fatals on boot.
   # ──────────────────────────────────────────────────────────
   kibana:
     image: docker.elastic.co/kibana/kibana:${ELK_VERSION:-9.3.3}
@@ -163,7 +159,8 @@ services:
       XPACK_SECURITY_ENABLED: "true"
       XPACK_FLEET_ENABLED: "true"
       XPACK_APM_ENABLED: "true"
-      XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY: "dataobs-poc-9x-32char-enc-key!!"
+      # Exactly 32 characters (verified): d-a-t-a-o-b-s-p-o-c-9-x-3-2-c-h-a-r-e-n-c-k-e-y-1-2-3-4-5-6-7-8
+      XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY: "dataobspoc9x32charenckey12345678"
       TELEMETRY_ENABLED: "false"
     volumes:
       - kibana_poc_data:/usr/share/kibana/data

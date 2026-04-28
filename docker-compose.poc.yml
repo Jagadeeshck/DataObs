@@ -1,0 +1,194 @@
+# ============================================================
+#  DataObs — POC Docker Compose
+#  Minimal self-contained local stack for the POC.
+#
+#  Services:
+#    elasticsearch   — single-node ES (security enabled)
+#    es-setup        — one-shot init: sets passwords & roles
+#    kibana          — Kibana connected to ES
+#    otel-collector  — OpenTelemetry Collector (OTLP → ES)
+#    pipeline        — DataObs POC pipeline (run once)
+#
+#  Usage:
+#    # First time (or after config changes):
+#    cp .env.poc .env.poc.local
+#    # Edit .env.poc.local if you want non-default passwords.
+#
+#    # Start the stack:
+#    docker compose -f docker-compose.poc.yml --env-file .env.poc.local up -d elasticsearch kibana otel-collector
+#
+#    # Wait ~30 s for ES + Kibana to be healthy, then run the pipeline:
+#    docker compose -f docker-compose.poc.yml --env-file .env.poc.local run --rm pipeline
+#
+#    # Tear down:
+#    docker compose -f docker-compose.poc.yml --env-file .env.poc.local down -v
+# ============================================================
+
+x-es-env: &es-env
+  ELASTIC_PASSWORD: ${ELASTIC_PASSWORD}
+  KIBANA_PASSWORD:  ${KIBANA_PASSWORD}
+  ES_JAVA_OPTS:     "-Xms512m -Xmx512m"
+
+services:
+
+  # ── Elasticsearch ─────────────────────────────────────────
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:${ELK_VERSION:-8.13.4}
+    container_name: dataobs-poc-es
+    environment:
+      <<: *es-env
+      node.name: es-poc
+      cluster.name: dataobs-poc
+      discovery.type: single-node
+      xpack.security.enabled: "true"
+      xpack.security.http.ssl.enabled: "false"
+      xpack.license.self_generated.type: basic
+      bootstrap.memory_lock: "true"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - es_poc_data:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - |
+          curl -s -u elastic:${ELASTIC_PASSWORD} http://localhost:9200/_cluster/health \
+            | grep -qE '"status":"(green|yellow)"'
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    networks:
+      - dataobs-poc
+
+  # ── ES Setup (one-shot init) ───────────────────────────────
+  es-setup:
+    image: docker.elastic.co/elasticsearch/elasticsearch:${ELK_VERSION:-8.13.4}
+    container_name: dataobs-poc-es-setup
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    environment:
+      <<: *es-env
+      ELASTICHOST: http://elasticsearch:9200
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        set -e
+        echo "[es-setup] Setting kibana_system password..."
+        curl -s -X POST \
+          -u elastic:${ELASTIC_PASSWORD} \
+          -H 'Content-Type: application/json' \
+          http://elasticsearch:9200/_security/user/kibana_system/_password \
+          -d "{\"password\":\"${KIBANA_PASSWORD}\"}"
+        echo "[es-setup] Done."
+    networks:
+      - dataobs-poc
+    restart: "no"
+
+  # ── Kibana ────────────────────────────────────────────────
+  kibana:
+    image: docker.elastic.co/kibana/kibana:${ELK_VERSION:-8.13.4}
+    container_name: dataobs-poc-kibana
+    depends_on:
+      es-setup:
+        condition: service_completed_successfully
+    environment:
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+      ELASTICSEARCH_USERNAME: kibana_system
+      ELASTICSEARCH_PASSWORD: ${KIBANA_PASSWORD}
+      KIBANA_SYSTEM_PASSWORD:  ${KIBANA_PASSWORD}
+      SERVER_NAME: dataobs-poc-kibana
+      SERVER_PUBLICBASEURL: http://localhost:5601
+      XPACK_SECURITY_ENABLED: "true"
+      XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY: "dataobs-poc-32char-encryption-k"
+      TELEMETRY_ENABLED: "false"
+      MONITORING_UI_CONTAINER_ELASTICSEARCH_ENABLED: "false"
+    volumes:
+      - kibana_poc_data:/usr/share/kibana/data
+    ports:
+      - "5601:5601"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:5601/api/status | grep -q '\"level\":\"available\"'"]
+      interval: 20s
+      timeout: 10s
+      retries: 10
+      start_period: 90s
+    networks:
+      - dataobs-poc
+
+  # ── OpenTelemetry Collector ───────────────────────────────
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.99.0
+    container_name: dataobs-poc-otel
+    command: ["--config=/etc/otel/config.yaml"]
+    volumes:
+      - ./config/otel-collector-poc.yaml:/etc/otel/config.yaml:ro
+    ports:
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+      - "8888:8888"   # Prometheus metrics (collector self-monitoring)
+    environment:
+      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD}
+      ELASTICHOST: http://elasticsearch:9200
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:13133/"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    networks:
+      - dataobs-poc
+
+  # ── DataObs POC Pipeline (run-once) ──────────────────────
+  # Run with:
+  #   docker compose -f docker-compose.poc.yml --env-file .env.poc.local run --rm pipeline
+  pipeline:
+    build:
+      context: .
+      dockerfile: Dockerfile.poc
+    container_name: dataobs-poc-pipeline
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      kibana:
+        condition: service_healthy
+      otel-collector:
+        condition: service_healthy
+    environment:
+      ELASTICHOST:                    http://elasticsearch:9200
+      ELASTIC_PASSWORD:               ${ELASTIC_PASSWORD}
+      KIBANA_URL:                     http://kibana:5601
+      OTEL_EXPORTER_OTLP_ENDPOINT:   http://otel-collector:4318
+      DATAOBS_CONFIG:                 /app/config/dataobs_poc.yaml
+      DATAOBS_TENANT_ID:              poc
+      DATAOBS_STORE_BACKEND:          elasticsearch
+      SPARK_MASTER:                   "local[*]"
+      PYTHONPATH:                     /app
+    volumes:
+      - ./config:/app/config:ro
+      - ./kibana:/app/kibana:ro
+      - poc_pipeline_tmp:/tmp/dataobs
+    command: ["/app/scripts/run_poc_pipeline.sh"]
+    restart: "no"
+    networks:
+      - dataobs-poc
+
+volumes:
+  es_poc_data:
+    driver: local
+  kibana_poc_data:
+    driver: local
+  poc_pipeline_tmp:
+    driver: local
+
+networks:
+  dataobs-poc:
+    driver: bridge
+    name: dataobs-poc

@@ -11,6 +11,10 @@
 #  │  accepts both Elastic APM protocol and OTLP natively.    │
 #  └─────────────────────────────────────────────────────────┘
 #
+#  IMPORTANT — Elastic Agent image path changed in 9.x:
+#    OLD (8.x): docker.elastic.co/beats/elastic-agent
+#    NEW (9.x): docker.elastic.co/elastic-agent/elastic-agent
+#
 #  Service startup order (auto-managed via healthchecks):
 #    1. elasticsearch   — single-node, security enabled
 #    2. es-setup        — one-shot: sets passwords + Fleet token
@@ -41,8 +45,6 @@ services:
 
   # ──────────────────────────────────────────────────────────
   # 1. Elasticsearch 9.3.3
-  #    xpack.fleet.enabled exposes the Fleet & APM integration
-  #    APIs used by Fleet Server and Elastic Agent.
   # ──────────────────────────────────────────────────────────
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:${ELK_VERSION:-9.3.3}
@@ -84,7 +86,10 @@ services:
   # 2. ES Setup (one-shot init container)
   #    Runs once after ES is healthy:
   #      a) Sets kibana_system password
-  #      b) Creates a Fleet service token → writes to shared volume
+  #      b) Creates Fleet service token → writes to shared volume
+  #
+  #    NOTE: $$ is used for shell variables (AUTH, HOST, TOKEN)
+  #    to prevent Docker Compose interpolating them as Compose vars.
   # ──────────────────────────────────────────────────────────
   es-setup:
     image: docker.elastic.co/elasticsearch/elasticsearch:${ELK_VERSION:-9.3.3}
@@ -93,8 +98,8 @@ services:
       elasticsearch:
         condition: service_healthy
     environment:
-      <<: *es-env
-      ELASTICHOST: http://elasticsearch:9200
+      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD}
+      KIBANA_PASSWORD:  ${KIBANA_PASSWORD}
     volumes:
       - fleet_token:/fleet_token
     entrypoint: ["/bin/bash", "-c"]
@@ -102,20 +107,21 @@ services:
       - |
         set -e
         HOST=http://elasticsearch:9200
-        AUTH="elastic:${ELASTIC_PASSWORD}"
+        AUTH="elastic:$${ELASTIC_PASSWORD}"
 
         echo "[es-setup] Setting kibana_system password..."
-        curl -sf -X POST -u "$AUTH" \
+        curl -sf -X POST -u "$$AUTH" \
           -H 'Content-Type: application/json' \
-          "$HOST/_security/user/kibana_system/_password" \
-          -d "{\"password\":\"${KIBANA_PASSWORD}\"}"
+          "$$HOST/_security/user/kibana_system/_password" \
+          -d "{\"password\":\"$${KIBANA_PASSWORD}\"}"
+        echo " done."
 
         echo "[es-setup] Creating Fleet service token..."
-        TOKEN=$(curl -sf -X POST -u "$AUTH" \
-          "$HOST/_security/service/elastic/fleet-server/credential/token/poc-fleet-token" \
+        TOKEN=$(curl -sf -X POST -u "$$AUTH" \
+          "$$HOST/_security/service/elastic/fleet-server/credential/token/poc-fleet-token" \
           | python3 -c "import sys,json; print(json.load(sys.stdin)['token']['value'])")
-        echo "$TOKEN" > /fleet_token/token.txt
-        echo "[es-setup] Fleet token written."
+        echo "$$TOKEN" > /fleet_token/token.txt
+        echo "[es-setup] Fleet token written to /fleet_token/token.txt"
         echo "[es-setup] Done."
     networks:
       - dataobs-poc
@@ -160,11 +166,12 @@ services:
 
   # ──────────────────────────────────────────────────────────
   # 4. Fleet Server
-  #    Manages Elastic Agent policies (including the APM policy).
-  #    Uses the service token written by es-setup.
+  #    Uses elastic-agent/elastic-agent image (new 9.x path).
+  #    Reads Fleet token from shared volume written by es-setup.
   # ──────────────────────────────────────────────────────────
   fleet-server:
-    image: docker.elastic.co/beats/elastic-agent:${ELK_VERSION:-9.3.3}
+    # NEW 9.x image path: elastic-agent/elastic-agent (not beats/elastic-agent)
+    image: docker.elastic.co/elastic-agent/elastic-agent:${ELK_VERSION:-9.3.3}
     container_name: dataobs-poc-fleet-server
     depends_on:
       es-setup:
@@ -197,12 +204,14 @@ services:
 
   # ──────────────────────────────────────────────────────────
   # 5. Elastic Agent — APM Server (ES 9.x integrated)
+  #    NEW 9.x image path: elastic-agent/elastic-agent
   #    Exposes APM intake on port 8200.
-  #    Accepts: Elastic APM protocol + OTLP gRPC/HTTP.
-  #    Traces land in traces-apm-* data streams → Kibana APM UI.
+  #    Accepts: Elastic APM protocol + OTLP gRPC/HTTP natively.
+  #    Traces land in traces-apm-* → Kibana APM UI.
   # ──────────────────────────────────────────────────────────
   elastic-agent:
-    image: docker.elastic.co/beats/elastic-agent:${ELK_VERSION:-9.3.3}
+    # NEW 9.x image path: elastic-agent/elastic-agent (not beats/elastic-agent)
+    image: docker.elastic.co/elastic-agent/elastic-agent:${ELK_VERSION:-9.3.3}
     container_name: dataobs-poc-elastic-agent
     depends_on:
       fleet-server:

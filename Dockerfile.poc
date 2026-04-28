@@ -1,0 +1,33 @@
+# ============================================================
+#  DataObs — POC Pipeline Dockerfile
+#  Builds a container with Python + PySpark + OTel SDK
+#  that runs the full end-to-end POC pipeline.
+# ============================================================
+
+FROM python:3.11-slim
+
+# Java is required for PySpark
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    openjdk-17-jre-headless \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+
+WORKDIR /app
+
+# Install Python dependencies
+COPY requirements.txt requirements-poc.txt ./
+RUN pip install --no-cache-dir -r requirements.txt -r requirements-poc.txt
+
+# Copy source code and config
+COPY src/       ./src/
+COPY scripts/   ./scripts/
+COPY config/    ./config/
+COPY kibana/    ./kibana/
+
+RUN chmod +x ./scripts/run_poc_pipeline.sh
+
+CMD ["/app/scripts/run_poc_pipeline.sh"]

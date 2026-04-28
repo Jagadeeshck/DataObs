@@ -1,9 +1,14 @@
 # DataObs POC — Setup & Run Guide
 
-This guide covers how to stand up the DataObs Proof-of-Concept pipeline locally
-in under 10 minutes.  The POC demonstrates all four observability towers
-(Full Stack, Pipeline, Data, Business) using real public open data from
-[data.gov.uk](https://www.data.gov.uk) and a local Spark + Elasticsearch + Kibana stack.
+This guide gets the DataObs Proof-of-Concept running **end-to-end in under 10 minutes** using three dedicated files:
+
+| File | Purpose |
+|---|---|
+| `.env.poc` | All environment variables for the POC stack |
+| `config/dataobs_poc.yaml` | Full POC pipeline configuration |
+| `docker-compose.poc.yml` | Self-contained Docker stack (ES + Kibana + OTel + pipeline) |
+
+No changes to the main `docker-compose.yml` or `config/dataobs.yaml` are required.
 
 ---
 
@@ -11,86 +16,130 @@ in under 10 minutes.  The POC demonstrates all four observability towers
 
 ```
  data.gov.uk (CKAN API)
-       │
-       │  HTTP download
+       │  auto-discovered CSV/JSON datasets
        ▼
-  Local Spark Job  ──► OTel Collector ──► Elasticsearch
-       │                                        │
-       │  bulk index                            │
-       ▼                                        ▼
-  dataobs-poc-raw          ◄─────────── Kibana Dashboards
-  dataobs-poc-curated
-  dataobs-poc-quality
-  dataobs-poc-lineage
+ ┌─────────────────────┐     OTLP/HTTP      ┌──────────────────────┐
+ │  pipeline container │ ─────────────────► │  otel-collector:4318 │
+ │  (PySpark + Python) │                    └──────────┬───────────┘
+ └─────────┬───────────┘                               │ ES exporter
+           │ bulk index                                ▼
+           ▼                                ┌──────────────────────┐
+ ┌─────────────────────┐                    │    Elasticsearch     │
+ │ dataobs-poc-raw     │ ◄──────────────────│   :9200  (single-    │
+ │ dataobs-poc-curated │                    │    node, security)   │
+ │ dataobs-poc-quality │                    └──────────┬───────────┘
+ │ dataobs-poc-lineage │                               │
+ └─────────────────────┘                               ▼
+                                            ┌──────────────────────┐
+                                            │  Kibana  :5601       │
+                                            │  3 pre-built         │
+                                            │  dashboards          │
+                                            └──────────────────────┘
 ```
 
 ---
 
-## Quick Start
+## Prerequisites
 
-### 1. Prerequisites
+| Tool | Minimum version | Install |
+|---|---|---|
+| Docker | 24+ | https://docs.docker.com/get-docker/ |
+| Docker Compose | v2 (`docker compose`) | bundled with Docker Desktop |
 
-- Docker & Docker Compose
-- Python 3.10+
-- Java 11+ (for PySpark)
-
-### 2. Start the stack
-
-```bash
-docker compose up -d elasticsearch kibana otel-collector
-```
-
-Wait for Elasticsearch (`http://localhost:9200`) and Kibana (`http://localhost:5601`) to be healthy.
-
-### 3. Configure POC mode
-
-```bash
-cp config/dataobs.example.yaml config/dataobs.yaml
-```
-
-Edit `config/dataobs.yaml` and set:
-
-```yaml
-poc:
-  enabled: true
-```
-
-All other POC settings have sensible defaults.  Elasticsearch and Kibana
-credentials are read from environment variables (`ELASTICSEARCH_URL`,
-`ELASTICSEARCH_USER`, `ELASTICSEARCH_PASSWORD`, `KIBANA_URL`) or fall
-back to `http://localhost:9200` / `http://localhost:5601`.
-
-### 4. Install Python dependencies
-
-```bash
-pip install -r requirements-poc.txt
-```
-
-### 5. Run the pipeline
-
-```bash
-chmod +x scripts/run_poc_pipeline.sh
-./scripts/run_poc_pipeline.sh
-```
-
-This will:
-1. Auto-discover 3 public datasets from data.gov.uk (road safety, air quality, local authority)
-2. Download and parse each file locally
-3. Run Spark transformations (normalise columns, add metadata)
-4. Execute baseline quality checks per dataset
-5. Index everything into Elasticsearch
-6. Import Kibana index patterns and dashboards
+No Python, Java, or Spark installation is needed on your machine — everything runs inside Docker.
 
 ---
 
-## Custom Data Sources
+## Step-by-step
 
-To use your own datasets instead of the auto-discovered defaults, add them
-to `poc.data_sources` in `config/dataobs.yaml`:
+### 1 — Copy the env file
+
+```bash
+cp .env.poc .env.poc.local
+```
+
+The defaults in `.env.poc` work out of the box for a local POC.
+If you want non-default passwords, edit `.env.poc.local` now:
+
+```bash
+# only if you want to change passwords
+nano .env.poc.local
+```
+
+> ⚠️  `.env.poc.local` is gitignored. Never commit it.
+
+### 2 — Start the stack
+
+```bash
+docker compose -f docker-compose.poc.yml --env-file .env.poc.local \
+  up -d elasticsearch kibana otel-collector
+```
+
+This starts Elasticsearch, runs the one-shot `es-setup` init container
+(sets the `kibana_system` password automatically), then starts Kibana
+and the OTel Collector.
+
+Wait until all three are healthy (~30–60 s):
+
+```bash
+docker compose -f docker-compose.poc.yml --env-file .env.poc.local ps
+# All three should show   Status: healthy
+```
+
+### 3 — Run the pipeline
+
+```bash
+docker compose -f docker-compose.poc.yml --env-file .env.poc.local \
+  run --rm pipeline
+```
+
+The pipeline container will:
+1. **Discover** up to 3 public datasets from data.gov.uk (transport, environment, government)
+2. **Download** each CSV/JSON file
+3. **Parse & transform** with PySpark
+4. **Quality-check** each dataset (row count, null %, duplicates)
+5. **Index** raw, curated, quality, and lineage documents into Elasticsearch
+6. **Emit** OTel traces and metrics to the collector
+7. **Bootstrap** Kibana data views and 3 dashboards
+
+Typical run time: **2–5 minutes** (depending on download speed).
+
+### 4 — Open Kibana
+
+Navigate to [http://localhost:5601](http://localhost:5601)
+
+- **Username:** `elastic`
+- **Password:** value of `ELASTIC_PASSWORD` in your `.env.poc.local` (default: `dataobs_poc_secret`)
+
+Three dashboards are available under **Analytics → Dashboards**:
+
+| Dashboard | What you'll see |
+|---|---|
+| **[DataObs POC] Pipeline Health** | Stage durations, records ingested per dataset, OTel spans |
+| **[DataObs POC] Data Quality Overview** | Null %, duplicate ratio, row counts, pass/warn/fail per check |
+| **[DataObs POC] Public Dataset Explorer** | Browse the ingested road safety, air quality, and LA profile data |
+
+---
+
+## Tearing down
+
+```bash
+# Stop and remove containers + volumes
+docker compose -f docker-compose.poc.yml --env-file .env.poc.local down -v
+```
+
+---
+
+## Configuration reference
+
+All POC settings live in **`config/dataobs_poc.yaml`** — no need to touch `config/dataobs.yaml`.
+
+### Pin specific datasets (skip auto-discovery)
+
+Uncomment and fill in `poc.data_sources` in `config/dataobs_poc.yaml`:
 
 ```yaml
 poc:
-  enabled: true
   data_sources:
     - name: my-dataset
       source_type: custom
@@ -98,52 +147,47 @@ poc:
       format: csv
 ```
 
-When `data_sources` is non-empty the CKAN auto-discovery is skipped entirely.
+When `data_sources` is non-empty, CKAN auto-discovery is skipped entirely.
+
+### Change quality thresholds
+
+```yaml
+poc:
+  processing:
+    quality_rules:
+      max_null_pct_warn: 10.0   # warn above 10 % nulls
+      max_null_pct_fail: 30.0   # fail above 30 % nulls
+      duplicate_threshold_pct: 2.0
+```
+
+### Point at AWS OpenSearch instead of local ES
+
+Update `.env.poc.local`:
+
+```bash
+ELASTICHOST=https://your-opensearch-domain.eu-west-1.es.amazonaws.com
+ELASTIC_PASSWORD=your-master-password
+```
+
+Then skip the local elasticsearch and es-setup services:
+
+```bash
+docker compose -f docker-compose.poc.yml --env-file .env.poc.local \
+  up -d kibana otel-collector
+docker compose -f docker-compose.poc.yml --env-file .env.poc.local \
+  run --rm pipeline
+```
 
 ---
 
-## Kibana Dashboards
-
-After a successful pipeline run, open Kibana at `http://localhost:5601`.
-Three dashboards are created automatically:
-
-| Dashboard | Description |
-|---|---|
-| **[DataObs POC] Pipeline Health** | Stage durations, records ingested, pipeline pass/fail |
-| **[DataObs POC] Data Quality Overview** | Null %, duplicate ratio, row counts per dataset |
-| **[DataObs POC] Public Dataset Explorer** | Browse the ingested road safety, air quality, and LA profile data |
-
-You can extend any dashboard by adding Lens visualisations on top of the
-`dataobs-poc-curated*` or `dataobs-poc-quality*` index patterns.
-
----
-
-## Telemetry
-
-The pipeline emits OTel traces and metrics to the configured OTel Collector
-endpoint (default: `http://otel-collector:4318`).  If the OTel SDK is not
-installed or the endpoint is unreachable the pipeline falls back to
-structured logger output — it never crashes due to missing telemetry.
-
-Telemetry is forwarded to Elasticsearch via the OTel Collector and is
-visible in the **[DataObs POC] Pipeline Health** dashboard.
-
----
-
-## Elasticsearch Indices
+## Elasticsearch indices created
 
 | Index | Content |
 |---|---|
 | `dataobs-poc-raw` | Raw parsed records from source files |
-| `dataobs-poc-curated` | Spark-normalised records |
-| `dataobs-poc-quality` | Quality check results per check per dataset |
-| `dataobs-poc-lineage` | Lineage events (source → raw → curated) |
-
----
-
-## Extending the POC
-
-- **Add a new dataset**: add an entry to `poc.data_sources` or extend `DEFAULT_QUERIES` in `src/poc/datasets.py`
-- **Add a quality check**: extend `run_basic_quality_checks()` in `src/poc/quality.py`
-- **Add a Kibana visualisation**: edit `kibana/dataobs-poc-saved-objects.ndjson`
-- **Connect to AWS**: set `poc.elasticsearch.host` to your AWS OpenSearch endpoint and configure IAM credentials
+| `dataobs-poc-curated` | Spark-normalised records with metadata |
+| `dataobs-poc-quality` | Quality check results (one doc per check per dataset) |
+| `dataobs-poc-lineage` | Lineage events (source URL → raw → curated) |
+| `dataobs-poc-telemetry-traces` | OTel traces from the pipeline stages |
+| `dataobs-poc-telemetry-metrics` | OTel metrics (stage duration, records ingested) |
+| `dataobs-poc-telemetry-logs` | OTel log records |

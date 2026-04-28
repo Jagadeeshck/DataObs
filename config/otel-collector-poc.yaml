@@ -1,0 +1,70 @@
+# ============================================================
+#  OpenTelemetry Collector — POC Configuration
+#  Receives OTLP (gRPC + HTTP) from the DataObs pipeline
+#  and forwards traces, metrics, and logs to Elasticsearch.
+# ============================================================
+
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+        cors:
+          allowed_origins:
+            - http://localhost:*
+            - http://kibana:*
+
+processors:
+  batch:
+    timeout: 5s
+    send_batch_size: 512
+  memory_limiter:
+    check_interval: 5s
+    limit_mib: 256
+    spike_limit_mib: 64
+  resource:
+    attributes:
+      - key: environment
+        value: poc
+        action: insert
+      - key: project
+        value: dataobs
+        action: insert
+
+exporters:
+  # Forward traces to Elasticsearch APM
+  elasticsearch:
+    endpoints: ["${ELASTICHOST}"]
+    user: elastic
+    password: "${ELASTIC_PASSWORD}"
+    logs_index:    dataobs-poc-telemetry-logs
+    traces_index:  dataobs-poc-telemetry-traces
+    metrics_index: dataobs-poc-telemetry-metrics
+    tls:
+      insecure: true
+
+  # Also log everything to stdout for easy debugging
+  debug:
+    verbosity: basic
+
+service:
+  extensions: [health_check]
+  pipelines:
+    traces:
+      receivers:  [otlp]
+      processors: [memory_limiter, resource, batch]
+      exporters:  [elasticsearch, debug]
+    metrics:
+      receivers:  [otlp]
+      processors: [memory_limiter, resource, batch]
+      exporters:  [elasticsearch, debug]
+    logs:
+      receivers:  [otlp]
+      processors: [memory_limiter, resource, batch]
+      exporters:  [elasticsearch, debug]

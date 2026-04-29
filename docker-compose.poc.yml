@@ -1,30 +1,45 @@
 # ============================================================
 #  DataObs — POC Docker Compose  (Elastic Stack 9.3.3)
-#  Full observability stack: ES + Kibana + Fleet + Elastic Agent
-#  (APM Server built-in) + OTel Collector + Pipeline.
+#  Full observability stack:
+#    Elasticsearch + Kibana + Fleet Server + Elastic Agent
+#    (APM Server built-in to ES 9.x) + OTel Collector + Pipeline
 #
-#  NOTE: In Elastic Stack 9.x, APM Server is NOT a separate
-#  container. It is built into Elasticsearch and exposed via
-#  Elastic Agent managed by Fleet Server.
+#  ┌─ APM Architecture note ─────────────────────────────────┐
+#  │  In Elastic Stack 9.x, APM Server is NOT a separate     │
+#  │  container. It runs inside Elastic Agent, managed by     │
+#  │  Fleet Server. The APM intake is on port 8200 and        │
+#  │  accepts both Elastic APM protocol and OTLP natively.    │
+#  └─────────────────────────────────────────────────────────┘
 #
-#  Service start order:
-#    1. elasticsearch   — single-node ES with security
-#    2. es-setup        — one-shot: sets passwords + creates Fleet token
-#    3. kibana          — Kibana UI
-#    4. fleet-server    — Fleet coordination server
-#    5. elastic-agent   — Runs APM Server (port 8200)
-#    6. otel-collector  — OTLP receiver -> APM + ES exporters
-#    7. pipeline        — DataObs POC pipeline (run-once)
+#  IMPORTANT — Elastic Agent image path changed in 9.x:
+#    OLD (8.x): docker.elastic.co/beats/elastic-agent
+#    NEW (9.x): docker.elastic.co/elastic-agent/elastic-agent
+#
+#  IMPORTANT — xpack.fleet.enabled is a Kibana-only setting in 9.x.
+#    Do NOT set it on Elasticsearch — it causes a fatal boot error.
+#    Fleet is enabled by default in Kibana via XPACK_FLEET_ENABLED.
+#
+#  IMPORTANT — XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY must be
+#    exactly 32+ characters. Kibana will FATAL on startup if shorter.
+#
+#  Service startup order (auto-managed via healthchecks):
+#    1. elasticsearch   — single-node, security enabled
+#    2. es-setup        — one-shot: sets passwords + Fleet token
+#    3. kibana          — waits for es-setup completion
+#    4. fleet-server    — waits for es-setup + kibana healthy
+#    5. elastic-agent   — waits for fleet-server healthy (APM :8200)
+#    6. otel-collector  — waits for elasticsearch + elastic-agent
+#    7. pipeline        — waits for all above (run-once)
 #
 #  Quick start:
 #    cp .env.poc .env.poc.local
 #    docker compose -f docker-compose.poc.yml --env-file .env.poc.local \
 #      up -d elasticsearch kibana fleet-server elastic-agent otel-collector
-#    # wait ~60s for all services to be healthy, then:
+#    # wait ~60-90s for healthy, then:
 #    docker compose -f docker-compose.poc.yml --env-file .env.poc.local \
 #      run --rm pipeline
 #
-#  Tear down:
+#  Tear down (removes all volumes):
 #    docker compose -f docker-compose.poc.yml --env-file .env.poc.local down -v
 # ============================================================
 
@@ -35,11 +50,10 @@ x-es-env: &es-env
 
 services:
 
-  # --------------------------------------------------------
+  # ──────────────────────────────────────────────────────────
   # 1. Elasticsearch 9.3.3
-  #    APM data is ingested natively by ES 9.x via the
-  #    .apm-* system indices. No separate apm-server image.
-  # --------------------------------------------------------
+  #    xpack.fleet.enabled intentionally absent — Kibana-only setting.
+  # ──────────────────────────────────────────────────────────
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:${ELK_VERSION:-9.3.3}
     container_name: dataobs-poc-es
@@ -52,8 +66,6 @@ services:
       xpack.security.http.ssl.enabled: "false"
       xpack.license.self_generated.type: trial
       bootstrap.memory_lock: "true"
-      # Enable Fleet and APM features
-      xpack.fleet.enabled: "true"
       cluster.routing.allocation.disk.threshold_enabled: "false"
     ulimits:
       memlock:
@@ -77,21 +89,22 @@ services:
     networks:
       - dataobs-poc
 
-  # --------------------------------------------------------
+  # ──────────────────────────────────────────────────────────
   # 2. ES Setup (one-shot init container)
-  #    - Sets kibana_system password
-  #    - Sets APM system user password
-  #    - Creates Fleet service token (written to shared volume)
-  # --------------------------------------------------------
+  #    Runs as root — Docker volumes are root:root by default;
+  #    ES image uid 1000 cannot write without elevation.
+  #    Uses curl + grep only — python3 is NOT in the ES image.
+  # ──────────────────────────────────────────────────────────
   es-setup:
     image: docker.elastic.co/elasticsearch/elasticsearch:${ELK_VERSION:-9.3.3}
     container_name: dataobs-poc-es-setup
+    user: root
     depends_on:
       elasticsearch:
         condition: service_healthy
     environment:
-      <<: *es-env
-      ELASTICHOST: http://elasticsearch:9200
+      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD}
+      KIBANA_PASSWORD:  ${KIBANA_PASSWORD}
     volumes:
       - fleet_token:/fleet_token
     entrypoint: ["/bin/bash", "-c"]
@@ -99,29 +112,38 @@ services:
       - |
         set -e
         HOST=http://elasticsearch:9200
-        AUTH="elastic:${ELASTIC_PASSWORD}"
+        AUTH="elastic:$${ELASTIC_PASSWORD}"
 
         echo "[es-setup] Setting kibana_system password..."
-        curl -sf -X POST -u "$AUTH" \
+        curl -sf -X POST -u "$$AUTH" \
           -H 'Content-Type: application/json' \
-          "$HOST/_security/user/kibana_system/_password" \
-          -d "{\"password\":\"${KIBANA_PASSWORD}\"}"
+          "$$HOST/_security/user/kibana_system/_password" \
+          -d "{\"password\":\"$${KIBANA_PASSWORD}\"}"
+        echo " done."
 
         echo "[es-setup] Creating Fleet service token..."
-        TOKEN=$(curl -sf -X POST -u "$AUTH" \
-          "$HOST/_security/service/elastic/fleet-server/credential/token/poc-fleet-token" \
-          | grep -oP '(?<="value":")[^"]+' )
-        echo "$TOKEN" > /fleet_token/token.txt
-        echo "[es-setup] Fleet token written."
-
+        RESPONSE=$$(curl -sf -X POST -u "$$AUTH" \
+          "$$HOST/_security/service/elastic/fleet-server/credential/token/poc-fleet-token")
+        echo "[es-setup] Raw response: $$RESPONSE"
+        TOKEN=$$(echo "$$RESPONSE" | grep -oP '(?<="value":")[^"]+')
+        if [ -z "$$TOKEN" ]; then
+          echo "[es-setup] ERROR: failed to extract Fleet token from response"
+          echo "[es-setup] Response was: $$RESPONSE"
+          exit 1
+        fi
+        echo "$$TOKEN" > /fleet_token/token.txt
+        chmod 644 /fleet_token/token.txt
+        echo "[es-setup] Fleet token written to /fleet_token/token.txt"
         echo "[es-setup] Done."
     networks:
       - dataobs-poc
     restart: "no"
 
-  # --------------------------------------------------------
+  # ──────────────────────────────────────────────────────────
   # 3. Kibana 9.3.3
-  # --------------------------------------------------------
+  #    XPACK_FLEET_ENABLED / XPACK_APM_ENABLED are Kibana settings.
+  #    Encryption key MUST be >= 32 chars or Kibana fatals on boot.
+  # ──────────────────────────────────────────────────────────
   kibana:
     image: docker.elastic.co/kibana/kibana:${ELK_VERSION:-9.3.3}
     container_name: dataobs-poc-kibana
@@ -137,9 +159,9 @@ services:
       XPACK_SECURITY_ENABLED: "true"
       XPACK_FLEET_ENABLED: "true"
       XPACK_APM_ENABLED: "true"
-      XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY: "dataobs-poc-9x-32char-enc-key!!"
+      # Exactly 32 characters (verified): d-a-t-a-o-b-s-p-o-c-9-x-3-2-c-h-a-r-e-n-c-k-e-y-1-2-3-4-5-6-7-8
+      XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY: "dataobspoc9x32charenckey12345678"
       TELEMETRY_ENABLED: "false"
-      MONITORING_UI_CONTAINER_ELASTICSEARCH_ENABLED: "false"
     volumes:
       - kibana_poc_data:/usr/share/kibana/data
     ports:
@@ -157,12 +179,11 @@ services:
     networks:
       - dataobs-poc
 
-  # --------------------------------------------------------
-  # 4. Fleet Server
-  #    Coordinates Elastic Agent policies (including APM).
-  # --------------------------------------------------------
+  # ──────────────────────────────────────────────────────────
+  # 4. Fleet Server (elastic-agent/elastic-agent — new 9.x image path)
+  # ──────────────────────────────────────────────────────────
   fleet-server:
-    image: docker.elastic.co/beats/elastic-agent:${ELK_VERSION:-9.3.3}
+    image: docker.elastic.co/elastic-agent/elastic-agent:${ELK_VERSION:-9.3.3}
     container_name: dataobs-poc-fleet-server
     depends_on:
       es-setup:
@@ -193,14 +214,12 @@ services:
     networks:
       - dataobs-poc
 
-  # --------------------------------------------------------
-  # 5. Elastic Agent — APM Server (built into ES 9.x stack)
-  #    Exposes APM intake on port 8200.
-  #    The OTel Collector forwards traces/metrics/logs here
-  #    via the elasticsearchapm (OTLP) exporter.
-  # --------------------------------------------------------
+  # ──────────────────────────────────────────────────────────
+  # 5. Elastic Agent — APM Server (elastic-agent/elastic-agent — 9.x)
+  #    Port 8200: APM intake (Elastic APM + OTLP natively)
+  # ──────────────────────────────────────────────────────────
   elastic-agent:
-    image: docker.elastic.co/beats/elastic-agent:${ELK_VERSION:-9.3.3}
+    image: docker.elastic.co/elastic-agent/elastic-agent:${ELK_VERSION:-9.3.3}
     container_name: dataobs-poc-elastic-agent
     depends_on:
       fleet-server:
@@ -212,7 +231,6 @@ services:
       KIBANA_HOST: http://kibana:5601
       KIBANA_USERNAME: elastic
       KIBANA_PASSWORD: ${ELASTIC_PASSWORD}
-      # APM Server settings (applied via Fleet APM policy)
       ELASTIC_APM_SERVER_URL: http://0.0.0.0:8200
       ELASTIC_APM_SECRET_TOKEN: ${APM_SECRET_TOKEN:-dataobs_poc_apm_token}
       ELASTICSEARCH_HOST: http://elasticsearch:9200
@@ -221,7 +239,7 @@ services:
     volumes:
       - agent_data:/usr/share/elastic-agent/data
     ports:
-      - "8200:8200"   # APM intake (OTLP + Elastic APM protocol)
+      - "8200:8200"
     cap_add:
       - SYS_PTRACE
       - DAC_READ_SEARCH
@@ -234,14 +252,9 @@ services:
     networks:
       - dataobs-poc
 
-  # --------------------------------------------------------
-  # 6. OpenTelemetry Collector
-  #    Receives OTLP from the pipeline.
-  #    Exports:
-  #      traces  -> Elastic Agent APM (port 8200 / OTLP)
-  #      metrics -> Elasticsearch directly
-  #      logs    -> Elasticsearch directly
-  # --------------------------------------------------------
+  # ──────────────────────────────────────────────────────────
+  # 6. OpenTelemetry Collector (contrib 0.99.0)
+  # ──────────────────────────────────────────────────────────
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.99.0
     container_name: dataobs-poc-otel
@@ -251,7 +264,7 @@ services:
     ports:
       - "4317:4317"   # OTLP gRPC
       - "4318:4318"   # OTLP HTTP
-      - "8888:8888"   # Prometheus scrape (collector self-metrics)
+      - "8888:8888"   # Collector self-metrics (Prometheus)
     environment:
       ELASTIC_PASSWORD: ${ELASTIC_PASSWORD}
       ELASTICHOST: http://elasticsearch:9200
@@ -270,12 +283,9 @@ services:
     networks:
       - dataobs-poc
 
-  # --------------------------------------------------------
+  # ──────────────────────────────────────────────────────────
   # 7. DataObs POC Pipeline (run-once)
-  #    Run with:
-  #      docker compose -f docker-compose.poc.yml \
-  #        --env-file .env.poc.local run --rm pipeline
-  # --------------------------------------------------------
+  # ──────────────────────────────────────────────────────────
   pipeline:
     build:
       context: .
@@ -308,18 +318,12 @@ services:
       - dataobs-poc
 
 volumes:
-  es_poc_data:
-    driver: local
-  kibana_poc_data:
-    driver: local
-  fleet_token:
-    driver: local
-  fleet_data:
-    driver: local
-  agent_data:
-    driver: local
-  poc_pipeline_tmp:
-    driver: local
+  es_poc_data:       { driver: local }
+  kibana_poc_data:   { driver: local }
+  fleet_token:       { driver: local }
+  fleet_data:        { driver: local }
+  agent_data:        { driver: local }
+  poc_pipeline_tmp:  { driver: local }
 
 networks:
   dataobs-poc:

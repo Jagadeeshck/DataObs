@@ -1,17 +1,15 @@
 # DataObs POC — Setup & Run Guide
 
-> **Elastic Stack version:** 9.3.3 (latest, April 2026)
-> **APM:** Built into Elasticsearch 9.x via Elastic Agent — no separate `apm-server` container needed.
+> **Elastic Stack:** 9.3.3 (latest stable, April 2026)
+> **APM Server:** Built into Elasticsearch 9.x via Elastic Agent — **no separate `apm-server` container**.
 
-This guide gets the DataObs Proof-of-Concept running end-to-end in **under 10 minutes** using three dedicated files:
+This guide gets DataObs running end-to-end locally in **under 10 minutes** using three dedicated files that don't touch the main stack config at all:
 
 | File | Purpose |
 |---|---|
 | `.env.poc` | All environment variables for the POC stack |
-| `config/dataobs_poc.yaml` | Full POC pipeline configuration |
-| `docker-compose.poc.yml` | Self-contained Docker stack |
-
-No changes to the main `docker-compose.yml` or `config/dataobs.yaml` are needed.
+| `config/dataobs_poc.yaml` | Full POC pipeline & APM configuration |
+| `docker-compose.poc.yml` | Self-contained Docker stack (7 services) |
 
 ---
 
@@ -19,39 +17,39 @@ No changes to the main `docker-compose.yml` or `config/dataobs.yaml` are needed.
 
 ```
  data.gov.uk (CKAN API)
-       | auto-discovered CSV/JSON datasets
-       v
- +---------------------+    OTLP/HTTP     +----------------------+
- |  pipeline container |----------------->|  otel-collector:4318 |
- |  (PySpark + Python) |                  +----------+-----------+
- +----------+----------+                             |
-            |                           +-----------+-------------+
-            | bulk index                |                         |
-            v                    traces v              metrics/logs v
- +--------------------+   +---------------------+   +---------------------+
- | dataobs-poc-raw    |   | elastic-agent :8200  |   | Elasticsearch :9200  |
- | dataobs-poc-curated|   | (APM Server 9.x)     |   | dataobs-poc-telemetry|
- | dataobs-poc-quality|   +----------+----------+   +----------+----------+
- | dataobs-poc-lineage|              |                          |
- +--------------------+              v                          |
-                         +---------------------+                |
-                         |   Elasticsearch     |<---------------+
-                         |   traces-apm-*      |
-                         |   metrics-apm-*     |
-                         |   logs-apm-*        |
-                         +----------+----------+
-                                    |
-                                    v
-                         +---------------------+
-                         |   Kibana :5601       |
-                         |   Observability/APM  |
-                         |   Custom dashboards  |
-                         +---------------------+
+        │  auto-discovered CSV/JSON datasets
+        ▼
+ +--------------------+   OTLP/HTTP    +----------------------+
+ | pipeline container |───────────────►| otel-collector :4318 |
+ | (PySpark + Python) |                +----------+-----------+
+ +--------+-----------+                           │
+          │                        ┌──────────────┼──────────────┐
+          │ bulk index         traces           metrics        logs
+          ▼                        ▼               ▼              ▼
+ +-------------------+  +---------------------+  +-------------------+
+ | dataobs-poc-raw   |  | elastic-agent :8200  |  | Elasticsearch     |
+ | dataobs-poc-      |  | (APM Server 9.x)     |  | :9200             |
+ |   curated         |  +----------+----------+  | telemetry-metrics |
+ | dataobs-poc-      |             │             | telemetry-logs    |
+ |   quality         |             ▼             +-------------------+
+ | dataobs-poc-      |  +---------------------+
+ |   lineage         |  | Elasticsearch :9200  |
+ +-------------------+  | traces-apm-*         |
+                        | metrics-apm-*        |
+                        | logs-apm-*           |
+                        +----------+----------+
+                                   │
+                                   ▼
+                        +---------------------+
+                        |    Kibana :5601      |
+                        | Observability / APM  |
+                        | Custom dashboards    |
+                        +---------------------+
 ```
 
 ### Why no separate `apm-server` container?
 
-In **Elastic Stack 9.x**, APM Server is no longer a standalone service. It is managed by **Elastic Agent** via Fleet Server and runs as an integrated process. The APM intake endpoint (`http://elastic-agent:8200`) speaks both the Elastic APM protocol and native **OTLP over gRPC/HTTP**. Traces sent by the OTel Collector land in the `traces-apm-*` data streams and appear in **Kibana → Observability → APM**.
+In **Elastic Stack 9.x**, APM Server is no longer a standalone Docker image. It runs as an integrated process inside **Elastic Agent**, managed by **Fleet Server**. The APM intake endpoint (`http://elastic-agent:8200`) accepts both the native Elastic APM protocol and **OTLP over gRPC/HTTP** natively. Traces sent by the OTel Collector land in `traces-apm-*` data streams and appear in **Kibana → Observability → APM → Services** automatically.
 
 ---
 
@@ -60,84 +58,91 @@ In **Elastic Stack 9.x**, APM Server is no longer a standalone service. It is ma
 | Tool | Minimum version |
 |---|---|
 | Docker | 24+ |
-| Docker Compose | v2 (`docker compose`) |
+| Docker Compose v2 | `docker compose` (not `docker-compose`) |
 
-No Python, Java, or Spark installation needed on your machine — everything runs inside Docker.
+No Python, Java, or Spark installation needed — everything runs inside Docker.
 
-**Memory:** Allocate at least **6 GB RAM** to Docker for the full stack (ES + Kibana + Fleet + Agent + OTel + pipeline).
+> **Memory:** Allocate at least **6 GB RAM** to Docker Desktop for the full stack.
 
 ---
 
-## Step-by-step
-
-### 1 — Copy the env file
+## Step 1 — Copy the env file
 
 ```bash
 cp .env.poc .env.poc.local
 ```
 
-The defaults work out of the box. Edit `.env.poc.local` only if you want non-default passwords.
+The defaults work out of the box. Only edit `.env.poc.local` if you want custom passwords.
 
 > ⚠️ `.env.poc.local` is gitignored. Never commit it.
 
-### 2 — Start the infrastructure stack
+---
+
+## Step 2 — Start the infrastructure
 
 ```bash
 docker compose -f docker-compose.poc.yml --env-file .env.poc.local \
   up -d elasticsearch kibana fleet-server elastic-agent otel-collector
 ```
 
-Service startup order (automatic via `depends_on` + healthchecks):
+Services start in this order (healthchecks enforce it automatically):
 
 ```
-elasticsearch  ->  es-setup  ->  kibana
-                            ->  fleet-server  ->  elastic-agent
-                                                        |
-                                               otel-collector
+elasticsearch
+    └─► es-setup (one-shot: sets passwords + Fleet token)
+            ├─► kibana
+            └─► fleet-server
+                    └─► elastic-agent  (APM Server on :8200)
+                            └─► otel-collector
 ```
 
-Wait until all services are healthy (~60–90 s on first pull):
+Wait until all services show **healthy** (~60–90 s on first pull):
 
 ```bash
 docker compose -f docker-compose.poc.yml --env-file .env.poc.local ps
-# All should show: Status: healthy
 ```
 
-### 3 — Run the pipeline
+---
+
+## Step 3 — Run the pipeline
 
 ```bash
 docker compose -f docker-compose.poc.yml --env-file .env.poc.local \
   run --rm pipeline
 ```
 
-The pipeline will:
-1. **Discover** 3 public datasets from data.gov.uk (transport, environment, government)
+The pipeline runs once and exits. It will:
+
+1. **Discover** 3 public datasets from data.gov.uk via CKAN API
 2. **Download** each CSV/JSON file
-3. **Parse & transform** with PySpark
-4. **Quality-check** each dataset (row count, null %, duplicates, schema)
+3. **Parse & transform** with PySpark (`local[*]`)
+4. **Quality-check** each dataset (null %, duplicates, row count, schema)
 5. **Index** raw, curated, quality, and lineage docs into Elasticsearch
-6. **Emit OTel traces** → OTel Collector → Elastic Agent APM (visible in Kibana APM)
+6. **Emit OTel traces** → OTel Collector → Elastic Agent APM (Kibana APM UI)
 7. **Emit OTel metrics/logs** → OTel Collector → Elasticsearch directly
-8. **Bootstrap** Kibana data views and 3 custom dashboards
+8. **Bootstrap** Kibana data views and 3 pre-built dashboards
 
 Typical run time: **3–6 minutes**.
 
-### 4 — Open Kibana
+---
 
-Navigate to **http://localhost:5601**
+## Step 4 — Open Kibana
+
+Navigate to **[http://localhost:5601](http://localhost:5601)**
+
 - **Username:** `elastic`
 - **Password:** value of `ELASTIC_PASSWORD` in `.env.poc.local` (default: `dataobs_poc_secret`)
 
----
+### Where to look
 
-## What you’ll see in Kibana
-
-### Observability → APM → Services
+#### Observability → APM → Services
 The `dataobs-poc-pipeline` service appears here with:
-- Full **distributed traces** for each pipeline stage (discover, download, parse, transform, quality_check, load_elasticsearch)
+- Full **distributed traces** for each pipeline stage
 - **Stage duration** histograms and latency percentiles
-- **Error tracking** (any failed stages appear as APM errors)
-- **Trace waterfall** view showing stage-by-stage span breakdown
+- **Error tracking** for any failed stages
+- **Trace waterfall** showing the full span breakdown
+
+#### Analytics → Dashboards
 
 ### Analytics → Dashboards
 
@@ -151,20 +156,29 @@ The `dataobs-poc-pipeline` service appears here with:
 
 | Data view | Index / data stream |
 |---|---|
-| `dataobs-poc-curated*` | Spark-processed dataset records |
+| **[DataObs POC] Pipeline Health** | Stage durations, records ingested, OTel metrics |
+| **[DataObs POC] Data Quality Overview** | Null %, duplicate ratio, row counts, pass/warn/fail |
+| **[DataObs POC] Public Dataset Explorer** | Ingested transport, environment, govt data |
+
+#### Discover — data views created automatically
+
+| Data view | Content |
+|---|---|
+| `dataobs-poc-curated*` | Spark-processed records |
 | `dataobs-poc-quality*` | Quality check results |
 | `dataobs-poc-lineage*` | Lineage events |
-| `dataobs-poc-telemetry-metrics*` | OTel metrics (stage duration, record count) |
+| `dataobs-poc-telemetry-metrics*` | OTel pipeline metrics |
 | `dataobs-poc-telemetry-logs*` | Pipeline structured logs |
 | `traces-apm*` | APM distributed traces |
-| `metrics-apm*` | APM metrics |
-| `logs-apm*` | APM logs |
+| `metrics-apm*` | APM service metrics |
+| `logs-apm*` | APM log correlation |
 
 ---
 
 ## Tear down
 
 ```bash
+# Stop containers and remove all volumes
 docker compose -f docker-compose.poc.yml --env-file .env.poc.local down -v
 ```
 
@@ -172,7 +186,7 @@ docker compose -f docker-compose.poc.yml --env-file .env.poc.local down -v
 
 ## Configuration reference
 
-All POC settings live in **`config/dataobs_poc.yaml`**. Key sections:
+All POC settings live in **`config/dataobs_poc.yaml`**.
 
 ### Pin specific datasets (skip CKAN auto-discovery)
 
@@ -185,7 +199,7 @@ poc:
       format: csv
 ```
 
-### Change quality thresholds
+### Adjust quality thresholds
 
 ```yaml
 poc:
@@ -226,20 +240,4 @@ docker compose -f docker-compose.poc.yml --env-file .env.poc.local \
 | Pipeline (PySpark) | 1 GB |
 | **Total** | **~4.5–6 GB** |
 
-> Allocate at least **6 GB RAM** to Docker in Docker Desktop preferences.
-
----
-
-## Elasticsearch indices & data streams
-
-| Index / data stream | Content |
-|---|---|
-| `dataobs-poc-raw` | Raw parsed records |
-| `dataobs-poc-curated` | Spark-normalised records |
-| `dataobs-poc-quality` | Quality check results |
-| `dataobs-poc-lineage` | Lineage events |
-| `dataobs-poc-telemetry-metrics` | OTel pipeline metrics |
-| `dataobs-poc-telemetry-logs` | Pipeline structured logs |
-| `traces-apm-*` | Distributed traces (Kibana APM) |
-| `metrics-apm-*` | APM service metrics |
-| `logs-apm-*` | APM log correlation |
+> Set Docker Desktop memory to at least **6 GB** in Preferences → Resources.

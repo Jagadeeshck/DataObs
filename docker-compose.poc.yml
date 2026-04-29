@@ -131,7 +131,7 @@ services:
           echo "[es-setup] Response was: $$RESPONSE"
           exit 1
         fi
-        echo "$$TOKEN" > /fleet_token/token.txt
+        printf '%s' "$$TOKEN" > /fleet_token/token.txt
         chmod 644 /fleet_token/token.txt
         echo "[es-setup] Fleet token written to /fleet_token/token.txt"
         echo "[es-setup] Done."

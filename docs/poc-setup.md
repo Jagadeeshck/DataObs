@@ -144,7 +144,17 @@ The `dataobs-poc-pipeline` service appears here with:
 
 #### Analytics → Dashboards
 
-| Dashboard | What you'll see |
+### Analytics → Dashboards
+
+| Dashboard | What you’ll see |
+|---|---|
+| **[DataObs POC] Pipeline Health** | Stage durations, records ingested, OTel metrics |
+| **[DataObs POC] Data Quality Overview** | Null %, duplicate ratio, row counts, pass/warn/fail |
+| **[DataObs POC] Public Dataset Explorer** | Browse road safety, air quality, local authority data |
+
+### Discover
+
+| Data view | Index / data stream |
 |---|---|
 | **[DataObs POC] Pipeline Health** | Stage durations, records ingested, OTel metrics |
 | **[DataObs POC] Data Quality Overview** | Null %, duplicate ratio, row counts, pass/warn/fail |

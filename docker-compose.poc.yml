@@ -179,6 +179,36 @@ services:
     networks:
       - dataobs-poc
 
+  # ─────────────────────────────────────────────────────────
+  # 3.5. Kibana Fleet Setup (one-shot init)
+  #   Bootstraps Fleet in Kibana and creates fleet-server-policy
+  # ─────────────────────────────────────────────────────────
+  kibana-setup:
+    image: curlimages/curl:latest
+    container_name: dataobs-poc-kibana-setup
+    restart: "no"
+    networks:
+      - dataobs-poc
+    depends_on:
+      kibana:
+        condition: service_healthy
+    environment:
+      KIBANA_PASSWORD: ${KIBANA_PASSWORD:-changeme}
+    command: >
+      /bin/sh -c
+      "
+      echo '[kibana-setup] Initialising Fleet...' &&
+      curl -sf -u elastic:$$KIBANA_PASSWORD
+        -X POST http://kibana:5601/api/fleet/setup
+        -H 'kbn-xsrf: true' &&
+      echo '[kibana-setup] Creating fleet-server-policy...' &&
+      curl -sf -u elastic:$$KIBANA_PASSWORD
+        -X POST http://kibana:5601/api/fleet/agent_policies
+        -H 'kbn-xsrf: true'
+        -H 'Content-Type: application/json'
+        -d '{\"id\":\"fleet-server-policy\",\"name\":\"Fleet Server Policy\",\"namespace\":\"default\",\"monitoring_enabled\":[]}' || true &&
+      echo '[kibana-setup] Done.'
+      "
   # ──────────────────────────────────────────────────────────
   # 4. Fleet Server (elastic-agent/elastic-agent — new 9.x image path)
   # ──────────────────────────────────────────────────────────
@@ -190,6 +220,8 @@ services:
         condition: service_completed_successfully
       kibana:
         condition: service_healthy
+      kibana-setup:
+        condition: service_completed_successfully
     environment:
       FLEET_SERVER_ENABLE: "1"
       FLEET_SERVER_ELASTICSEARCH_HOST: http://elasticsearch:9200

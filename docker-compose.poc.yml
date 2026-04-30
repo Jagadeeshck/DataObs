@@ -105,8 +105,6 @@ services:
     environment:
       ELASTIC_PASSWORD: ${ELASTIC_PASSWORD}
       KIBANA_PASSWORD:  ${KIBANA_PASSWORD}
-    volumes:
-      - fleet_token:/fleet_token
     entrypoint: ["/bin/bash", "-c"]
     command:
       - |
@@ -120,20 +118,6 @@ services:
           "$$HOST/_security/user/kibana_system/_password" \
           -d "{\"password\":\"$${KIBANA_PASSWORD}\"}"
         echo " done."
-
-        echo "[es-setup] Creating Fleet service token..."
-        RESPONSE=$$(curl -sf -X POST -u "$$AUTH" \
-          "$$HOST/_security/service/elastic/fleet-server/credential/token/poc-fleet-token")
-        echo "[es-setup] Raw response: $$RESPONSE"
-        TOKEN=$$(echo "$$RESPONSE" | grep -oP '(?<="value":")[^"]+')
-        if [ -z "$$TOKEN" ]; then
-          echo "[es-setup] ERROR: failed to extract Fleet token from response"
-          echo "[es-setup] Response was: $$RESPONSE"
-          exit 1
-        fi
-        printf '%s' "$$TOKEN" > /fleet_token/token.txt
-        chmod 644 /fleet_token/token.txt
-        echo "[es-setup] Fleet token written to /fleet_token/token.txt"
         echo "[es-setup] Done."
     networks:
       - dataobs-poc
@@ -194,22 +178,44 @@ services:
         condition: service_healthy
     environment:
       KIBANA_PASSWORD: ${KIBANA_PASSWORD:-changeme}
-    command: >
-      /bin/sh -c
-      "
-      echo '[kibana-setup] Initialising Fleet...' &&
-      curl -sf -u elastic:$$KIBANA_PASSWORD
-        -X POST http://kibana:5601/api/fleet/setup
-        -H 'kbn-xsrf: true' &&
-      echo '[kibana-setup] Creating fleet-server-policy...' &&
-      curl -sf -u elastic:$$KIBANA_PASSWORD
-        -X POST http://kibana:5601/api/fleet/agent_policies
-        -H 'kbn-xsrf: true'
-        -H 'Content-Type: application/json'
-        -d '{\"id\":\"fleet-server-policy\",\"name\":\"Fleet Server Policy\",\"namespace\":\"default\",\"monitoring_enabled\":[]}' || true &&
-      echo '[kibana-setup] Done.'
-      "
-  # ──────────────────────────────────────────────────────────
+    volumes:
+      - fleet_token:/fleet_token
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        KIBANA="http://kibana:5601"
+        AUTH="elastic:$$KIBANA_PASSWORD"
+
+        echo "[kibana-setup] Initialising Fleet..."
+        curl -sf -u "$$AUTH" \
+          -X POST "$$KIBANA/api/fleet/setup" \
+          -H "kbn-xsrf: true"
+
+        echo "[kibana-setup] Creating fleet-server-policy..."
+        curl -sf -u "$$AUTH" \
+          -X POST "$$KIBANA/api/fleet/agent_policies" \
+          -H "kbn-xsrf: true" \
+          -H "Content-Type: application/json" \
+          -d '{"id":"fleet-server-policy","name":"Fleet Server Policy","namespace":"default","monitoring_enabled":[]}' \
+          || echo "[kibana-setup] Policy already exists, continuing."
+
+        echo "[kibana-setup] Creating Fleet service token via Kibana API..."
+        RESPONSE=$$(curl -sf -u "$$AUTH" \
+          -X POST "$$KIBANA/api/fleet/service_tokens" \
+          -H "kbn-xsrf: true" \
+          -H "Content-Type: application/json" \
+          -d '{"remote":false}')
+        TOKEN=$$(echo "$$RESPONSE" | grep -oP '(?<="value":")[^"]+' )
+        if [ -z "$$TOKEN" ]; then
+          echo "[kibana-setup] ERROR: token extraction failed. Response: $$RESPONSE"
+          exit 1
+        fi
+        printf '%s' "$$TOKEN" > /fleet_token/token.txt
+        chmod 644 /fleet_token/token.txt
+        echo "[kibana-setup] Token written to /fleet_token/token.txt"
+        echo "[kibana-setup] Done."
+    ──────────────────────────────────────────────────────────
   # 4. Fleet Server (elastic-agent/elastic-agent — new 9.x image path)
   # ──────────────────────────────────────────────────────────
   fleet-server:

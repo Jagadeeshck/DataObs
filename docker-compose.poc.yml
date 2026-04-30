@@ -143,6 +143,8 @@ services:
       XPACK_SECURITY_ENABLED: "true"
       XPACK_FLEET_ENABLED: "true"
       XPACK_APM_ENABLED: "true"
+      XPACK_FLEET_AGENTS_ELASTICSEARCH_HOSTS: '["http://elasticsearch:9200"]'
+      XPACK_FLEET_AGENTS_FLEET_SERVER_HOSTS: '["http://fleet-server:8220"]'
       # Exactly 32 characters (verified): d-a-t-a-o-b-s-p-o-c-9-x-3-2-c-h-a-r-e-n-c-k-e-y-1-2-3-4-5-6-7-8
       XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY: "dataobspoc9x32charenckey12345678"
       TELEMETRY_ENABLED: "false"
@@ -170,6 +172,7 @@ services:
   kibana-setup:
     image: curlimages/curl:latest
     container_name: dataobs-poc-kibana-setup
+    user: root
     restart: "no"
     networks:
       - dataobs-poc
@@ -177,15 +180,18 @@ services:
       kibana:
         condition: service_healthy
     environment:
-      KIBANA_PASSWORD: ${KIBANA_PASSWORD:-changeme}
+      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD}
+      ELK_VERSION: ${ELK_VERSION:-9.3.3}
+      APM_SECRET_TOKEN: ${APM_SECRET_TOKEN:-dataobs_poc_apm_token}
     volumes:
       - fleet_token:/fleet_token
+      - agent_enrollment_token:/agent_enrollment_token
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
-set -e
+        set -e
         KIBANA="http://kibana:5601"
-        AUTH="elastic:$$KIBANA_PASSWORD"
+        AUTH="elastic:$$ELASTIC_PASSWORD"
 
         echo "[kibana-setup] Waiting for Fleet API to be ready..."
         RETRIES=30
@@ -207,13 +213,84 @@ set -e
           fi
         done
 
+        echo "[kibana-setup] Configuring Fleet default Elasticsearch output..."
+        curl -sf -u "$$AUTH" \
+          -X PUT "$$KIBANA/api/fleet/outputs/fleet-default-output" \
+          -H "kbn-xsrf: true" \
+          -H "Content-Type: application/json" \
+          -d '{"name":"default","type":"elasticsearch","hosts":["http://elasticsearch:9200"],"is_default":true,"is_default_monitoring":true}' \
+          || echo "[kibana-setup] Fleet output update skipped, continuing."
+
+        echo "[kibana-setup] Configuring Fleet Server host..."
+        curl -sf -u "$$AUTH" \
+          -X POST "$$KIBANA/api/fleet/fleet_server_hosts" \
+          -H "kbn-xsrf: true" \
+          -H "Content-Type: application/json" \
+          -d '{"id":"default-fleet-server","name":"default","host_urls":["http://fleet-server:8220"],"is_default":true}' \
+          || echo "[kibana-setup] Fleet Server host already exists, continuing."
+
         echo "[kibana-setup] Creating fleet-server-policy..."
         curl -sf -u "$$AUTH" \
           -X POST "$$KIBANA/api/fleet/agent_policies" \
           -H "kbn-xsrf: true" \
           -H "Content-Type: application/json" \
-          -d '{"id":"fleet-server-policy","name":"Fleet Server Policy","namespace":"default","monitoring_enabled":[]}' \
+          -d '{"id":"fleet-server-policy","name":"Fleet Server Policy","namespace":"default","monitoring_enabled":[],"is_default_fleet_server":true}' \
           || echo "[kibana-setup] Policy already exists, continuing."
+
+        echo "[kibana-setup] Installing Fleet Server integration..."
+        curl -sf -u "$$AUTH" \
+          -X POST "$$KIBANA/api/fleet/epm/packages/fleet_server/1.6.0" \
+          -H "kbn-xsrf: true" \
+          -H "Content-Type: application/json" \
+          -d '{}' \
+          || echo "[kibana-setup] Fleet Server integration already installed, continuing."
+
+        echo "[kibana-setup] Attaching Fleet Server integration to policy..."
+        curl -sf -u "$$AUTH" \
+          -X POST "$$KIBANA/api/fleet/package_policies" \
+          -H "kbn-xsrf: true" \
+          -H "Content-Type: application/json" \
+          -d '{"name":"fleet-server-1","namespace":"default","policy_id":"fleet-server-policy","package":{"name":"fleet_server","version":"1.6.0"},"inputs":[{"type":"fleet-server","enabled":true,"streams":[],"vars":{"max_agents":{"value":1000},"custom":{"value":""}}}]}' \
+          || echo "[kibana-setup] Fleet Server package policy already exists, continuing."
+
+        echo "[kibana-setup] Creating APM agent policy..."
+        curl -sf -u "$$AUTH" \
+          -X POST "$$KIBANA/api/fleet/agent_policies" \
+          -H "kbn-xsrf: true" \
+          -H "Content-Type: application/json" \
+          -d '{"id":"apm-agent-policy","name":"APM Agent Policy","namespace":"default","monitoring_enabled":[]}' \
+          || echo "[kibana-setup] APM agent policy already exists, continuing."
+
+        echo "[kibana-setup] Installing APM integration..."
+        curl -sf -u "$$AUTH" \
+          -X POST "$$KIBANA/api/fleet/epm/packages/apm/$${ELK_VERSION}" \
+          -H "kbn-xsrf: true" \
+          -H "Content-Type: application/json" \
+          -d '{}' \
+          || echo "[kibana-setup] APM integration already installed, continuing."
+
+        echo "[kibana-setup] Attaching APM integration to agent policy..."
+        curl -sf -u "$$AUTH" \
+          -X POST "$$KIBANA/api/fleet/package_policies" \
+          -H "kbn-xsrf: true" \
+          -H "Content-Type: application/json" \
+          -d "{\"name\":\"apm-1\",\"namespace\":\"default\",\"policy_id\":\"apm-agent-policy\",\"package\":{\"name\":\"apm\",\"version\":\"$${ELK_VERSION}\"},\"inputs\":[{\"type\":\"apm\",\"enabled\":true,\"streams\":[],\"vars\":{\"host\":{\"value\":\"0.0.0.0:8200\"},\"url\":{\"value\":\"http://elastic-agent:8200\"},\"secret_token\":{\"value\":\"$${APM_SECRET_TOKEN}\"},\"api_key_enabled\":{\"value\":false},\"enable_rum\":{\"value\":true},\"tls_enabled\":{\"value\":false}}}]}" \
+          || echo "[kibana-setup] APM package policy already exists, continuing."
+
+        echo "[kibana-setup] Creating APM agent enrollment token..."
+        RESPONSE=$$(curl -sf -u "$$AUTH" \
+          -X POST "$$KIBANA/api/fleet/enrollment_api_keys" \
+          -H "kbn-xsrf: true" \
+          -H "Content-Type: application/json" \
+          -d '{"name":"apm-agent-token","policy_id":"apm-agent-policy"}')
+        TOKEN=$$(echo "$$RESPONSE" | sed -n 's/.*"api_key":"\([^"]*\)".*/\1/p')
+        if [ -z "$$TOKEN" ]; then
+          echo "[kibana-setup] ERROR: APM enrollment token extraction failed. Response: $$RESPONSE"
+          exit 1
+        fi
+        printf '%s' "$$TOKEN" > /agent_enrollment_token/token.txt
+        chmod 644 /agent_enrollment_token/token.txt
+        echo "[kibana-setup] APM enrollment token written to /agent_enrollment_token/token.txt"
 
         echo "[kibana-setup] Creating Fleet service token via Kibana API..."
         RESPONSE=$$(curl -sf -u "$$AUTH" \
@@ -221,7 +298,7 @@ set -e
           -H "kbn-xsrf: true" \
           -H "Content-Type: application/json" \
           -d '{"remote":false}')
-        TOKEN=$$(echo "$$RESPONSE" | grep -oP '(?<="value":")[^"]+' )
+        TOKEN=$$(echo "$$RESPONSE" | sed -n 's/.*"value":"\([^"]*\)".*/\1/p')
         if [ -z "$$TOKEN" ]; then
           echo "[kibana-setup] ERROR: token extraction failed. Response: $$RESPONSE"
           exit 1
@@ -230,7 +307,7 @@ set -e
         chmod 644 /fleet_token/token.txt
         echo "[kibana-setup] Token written to /fleet_token/token.txt"
         echo "[kibana-setup] Done."
-        ───────────────────────────────────────────────────────
+  # ───────────────────────────────────────────────────────
   # 4. Fleet Server (elastic-agent/elastic-agent — new 9.x image path)
   # ──────────────────────────────────────────────────────────
   fleet-server:
@@ -246,6 +323,7 @@ set -e
     environment:
       FLEET_SERVER_ENABLE: "1"
       FLEET_SERVER_ELASTICSEARCH_HOST: http://elasticsearch:9200
+      FLEET_SERVER_ELASTICSEARCH_HOSTS: http://elasticsearch:9200
       FLEET_SERVER_SERVICE_TOKEN_PATH: /fleet_token/token.txt
       FLEET_SERVER_POLICY_ID: fleet-server-policy
       FLEET_SERVER_HOST: 0.0.0.0
@@ -281,7 +359,7 @@ set -e
     environment:
       FLEET_ENROLL: "1"
       FLEET_URL: http://fleet-server:8220
-      FLEET_ENROLLMENT_TOKEN: ${FLEET_ENROLLMENT_TOKEN:-}
+      FLEET_INSECURE: "1"
       KIBANA_HOST: http://kibana:5601
       KIBANA_USERNAME: elastic
       KIBANA_PASSWORD: ${ELASTIC_PASSWORD}
@@ -292,6 +370,12 @@ set -e
       ELASTICSEARCH_PASSWORD: ${ELASTIC_PASSWORD}
     volumes:
       - agent_data:/usr/share/elastic-agent/data
+      - agent_enrollment_token:/agent_enrollment_token:ro
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        export FLEET_ENROLLMENT_TOKEN="$$(cat /agent_enrollment_token/token.txt)"
+        exec /usr/bin/tini -- /usr/local/bin/docker-entrypoint
     ports:
       - "8200:8200"
     cap_add:
@@ -375,6 +459,7 @@ volumes:
   es_poc_data:       { driver: local }
   kibana_poc_data:   { driver: local }
   fleet_token:       { driver: local }
+  agent_enrollment_token: { driver: local }
   fleet_data:        { driver: local }
   agent_data:        { driver: local }
   poc_pipeline_tmp:  { driver: local }

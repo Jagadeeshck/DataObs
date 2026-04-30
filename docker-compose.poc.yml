@@ -215,7 +215,7 @@ services:
         chmod 644 /fleet_token/token.txt
         echo "[kibana-setup] Token written to /fleet_token/token.txt"
         echo "[kibana-setup] Done."
-    ──────────────────────────────────────────────────────────
+  #  ──────────────────────────────────────────────────────────
   # 4. Fleet Server (elastic-agent/elastic-agent — new 9.x image path)
   # ──────────────────────────────────────────────────────────
   fleet-server:

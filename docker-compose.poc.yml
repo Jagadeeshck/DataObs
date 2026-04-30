@@ -183,14 +183,29 @@ services:
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
-        set -e
+set -e
         KIBANA="http://kibana:5601"
         AUTH="elastic:$$KIBANA_PASSWORD"
 
-        echo "[kibana-setup] Initialising Fleet..."
-        curl -sf -u "$$AUTH" \
-          -X POST "$$KIBANA/api/fleet/setup" \
-          -H "kbn-xsrf: true"
+        echo "[kibana-setup] Waiting for Fleet API to be ready..."
+        RETRIES=30
+        i=0
+        while [ $$i -lt $$RETRIES ]; do
+          HTTP=$$(curl -s -o /dev/null -w "%{http_code}" -u "$$AUTH" \
+            -X POST "$$KIBANA/api/fleet/setup" \
+            -H "kbn-xsrf: true")
+          if [ "$$HTTP" = "200" ] || [ "$$HTTP" = "201" ]; then
+            echo "[kibana-setup] Fleet setup OK (HTTP $$HTTP)"
+            break
+          fi
+          i=$$(($$i+1))
+          echo "[kibana-setup] Fleet not ready (HTTP $$HTTP), attempt $$i/$$RETRIES, retrying in 5s..."
+          sleep 5
+          if [ $$i -eq $$RETRIES ]; then
+            echo "[kibana-setup] ERROR: Fleet setup failed after $$RETRIES attempts"
+            exit 1
+          fi
+        done
 
         echo "[kibana-setup] Creating fleet-server-policy..."
         curl -sf -u "$$AUTH" \
@@ -215,7 +230,7 @@ services:
         chmod 644 /fleet_token/token.txt
         echo "[kibana-setup] Token written to /fleet_token/token.txt"
         echo "[kibana-setup] Done."
-  #  ──────────────────────────────────────────────────────────
+        ───────────────────────────────────────────────────────
   # 4. Fleet Server (elastic-agent/elastic-agent — new 9.x image path)
   # ──────────────────────────────────────────────────────────
   fleet-server:

@@ -274,7 +274,7 @@ services:
           -X POST "$$KIBANA/api/fleet/package_policies" \
           -H "kbn-xsrf: true" \
           -H "Content-Type: application/json" \
-          -d "{\"name\":\"apm-1\",\"namespace\":\"default\",\"policy_id\":\"apm-agent-policy\",\"package\":{\"name\":\"apm\",\"version\":\"$${ELK_VERSION}\"},\"inputs\":[{\"type\":\"apm\",\"enabled\":true,\"streams\":[],\"vars\":{\"host\":{\"value\":\"0.0.0.0:8200\"},\"url\":{\"value\":\"http://elastic-agent:8200\"},\"secret_token\":{\"value\":\"$${APM_SECRET_TOKEN}\"},\"api_key_enabled\":{\"value\":false},\"enable_rum\":{\"value\":true},\"tls_enabled\":{\"value\":false}}}]}" \
+          -d "{\"name\":\"apm-1\",\"namespace\":\"default\",\"policy_id\":\"apm-agent-policy\",\"package\":{\"name\":\"apm\",\"version\":\"$${ELK_VERSION}\"},\"inputs\":[{\"type\":\"apm\",\"enabled\":true,\"streams\":[],\"vars\":{\"host\":{\"value\":\"0.0.0.0:8200\"},\"url\":{\"value\":\"http://elastic-agent:8200\"},\"secret_token\":{\"value\":\"$${APM_SECRET_TOKEN}\"},\"api_key_enabled\":{\"value\":false},\"enable_rum\":{\"value\":true},\"tls_enabled\":{\"value\":false},\"tail_sampling_enabled\":{\"value\":false}}}]}" \
           || echo "[kibana-setup] APM package policy already exists, continuing."
 
         echo "[kibana-setup] Creating APM agent enrollment token..."

@@ -21,6 +21,13 @@
 #    ✔ container CPU / memory / network / filesystem via cAdvisor
 #    ✔ host CPU / memory / disk / network via hostmetrics
 #    ✔ pipeline + Spark traces / metrics / logs via OTLP
+#
+#  Fixes applied (2026-05-01):
+#    - root_path: /hostfs set on hostmetrics (requires /hostfs volume
+#      mount in docker-compose.poc.yml) — eliminates the startup
+#      warning and ensures host filesystem stats are not container-scoped
+#    - memory_limiter limits aligned to 400 MiB / 100 MiB spike to
+#      match actual collector startup log output
 # ============================================================
 
 extensions:
@@ -36,6 +43,10 @@ receivers:
         endpoint: 0.0.0.0:4318
 
   hostmetrics:
+    # root_path tells the hostmetrics receiver to resolve /proc, /sys, etc.
+    # relative to /hostfs rather than the container root. The /hostfs bind-mount
+    # must be set in docker-compose (- /:/hostfs:ro) for this to work.
+    root_path: /hostfs
     collection_interval: 30s
     scrapers:
       cpu: {}
@@ -56,8 +67,10 @@ receivers:
 processors:
   memory_limiter:
     check_interval: 5s
-    limit_mib: 256
-    spike_limit_mib: 64
+    # Aligned to actual collector startup log (limit_mib: 400, spike_limit_mib: 100)
+    # Container mem_limit in compose is 768m so this leaves ~268 MiB headroom
+    limit_mib: 400
+    spike_limit_mib: 100
 
   batch:
     timeout: 5s

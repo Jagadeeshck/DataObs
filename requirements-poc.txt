@@ -5,7 +5,7 @@
 pyspark>=3.5.0
 requests>=2.31.0
 PyYAML>=6.0
-elasticsearch>=8.0.0,<9.0.0
+elasticsearch[async]>=9.3,<10.0
 
 # OpenTelemetry SDK + OTLP HTTP exporter (optional but recommended)
 # Remove if running without an OTel collector — the pipeline gracefully

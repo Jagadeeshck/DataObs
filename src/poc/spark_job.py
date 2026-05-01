@@ -5,7 +5,7 @@ Pipeline stages
 ---------------
   1. discover   — resolve data sources (explicit config or auto data.gov.uk)
   2. download   — fetch raw files to local working directory
-  3. parse      — read CSV/JSON into Python dicts; attach ingestion metadata
+  3. parse      — read CSV/JSON/XLSX into Python dicts; attach ingestion metadata
   4. transform  — load into Spark, normalise columns, cap at 5,000 rows
   5. quality    — run baseline checks (row count, nulls, duplicates, schema)
   6. load       — bulk-index raw, curated, quality, lineage into Elasticsearch
@@ -64,16 +64,19 @@ def _download(url: str, target: Path, timeout: int = 120) -> None:
     with open(target, "wb") as fh:
         for chunk in resp.iter_content(chunk_size=65536):
             fh.write(chunk)
-    logger.info("[download] Saved %s bytes → %s", target.stat().st_size, target)
+    logger.info("[download] Saved %s bytes \u2192 %s", target.stat().st_size, target)
 
 
 def _parse(path: Path, fmt: str) -> List[Dict[str, Any]]:
+    """Parse CSV, JSON, or XLSX files into a list of row dicts."""
     fmt = fmt.lower().strip(".")
     raw = path.read_bytes()
+
     if fmt == "csv":
         text = raw.decode("utf-8", errors="replace")
         reader = csv.DictReader(io.StringIO(text))
         return [dict(row) for row in reader]
+
     if fmt == "json":
         payload = json.loads(raw.decode("utf-8", errors="replace"))
         if isinstance(payload, list):
@@ -83,7 +86,33 @@ def _parse(path: Path, fmt: str) -> List[Dict[str, Any]]:
                 if isinstance(payload.get(key), list):
                     return payload[key]
             return [payload]
-    logger.warning("[parse] Unsupported format '%s' — returning empty list.", fmt)
+
+    if fmt in {"xlsx", "xls"}:
+        try:
+            import openpyxl  # noqa: PLC0415
+            wb = openpyxl.load_workbook(io.BytesIO(raw), read_only=True, data_only=True)
+            ws = wb.active
+            rows = list(ws.iter_rows(values_only=True))
+            if not rows:
+                logger.warning("[parse] XLSX file %s is empty.", path.name)
+                return []
+            headers = [str(h).strip() if h is not None else f"col_{i}" for i, h in enumerate(rows[0])]
+            result = []
+            for data_row in rows[1:]:
+                result.append({headers[i]: (str(v) if v is not None else "") for i, v in enumerate(data_row)})
+            logger.info("[parse] Parsed %d rows from XLSX %s", len(result), path.name)
+            return result
+        except ImportError:
+            logger.error(
+                "[parse] openpyxl is not installed — cannot parse XLSX. "
+                "Add 'openpyxl' to requirements-poc.txt."
+            )
+            return []
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("[parse] Failed to parse XLSX %s: %s", path.name, exc)
+            return []
+
+    logger.warning("[parse] Unsupported format '%s' \u2014 returning empty list.", fmt)
     return []
 
 
@@ -114,7 +143,7 @@ def _spark_transform(spark, records: List[Dict[str, Any]], limit: int = 5000) ->
 def main() -> None:
     logging.basicConfig(
         level="INFO",
-        format="%(asctime)s %(levelname)s %(name)s — %(message)s",
+        format="%(asctime)s %(levelname)s %(name)s \u2014 %(message)s",
     )
 
     poc_cfg = get_poc_config()
@@ -134,7 +163,7 @@ def main() -> None:
     runtime = poc_cfg["runtime"]
     raw_dir = Path(runtime["raw_download_dir"])
 
-    # ── 1. Discover sources ─────────────────────────────────────────────────
+    # \u2500\u2500 1. Discover sources \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
     with telemetry.stage("discover"):
         sources = resolve_sources(poc_cfg)
         if not sources:
@@ -144,7 +173,7 @@ def main() -> None:
             )
         logger.info("[discover] %d source(s) resolved.", len(sources))
 
-    # ── Ensure ES indices ───────────────────────────────────────────────────
+    # \u2500\u2500 Ensure ES indices \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
     writer.ensure_indices()
 
     spark = _build_spark(runtime["spark_master"])
@@ -156,29 +185,29 @@ def main() -> None:
         for source in sources:
             dataset_name = source.get("name") or source.get("poc_name") or source.get("dataset_id", "unknown")
             fmt = (source.get("format") or "csv").lower()
-            ext = "json" if fmt == "json" else "csv"
+            ext = "json" if fmt == "json" else ("xlsx" if fmt in {"xlsx", "xls"} else "csv")
             local_path = raw_dir / f"{dataset_name}.{ext}"
             url = source["resource_url"]
             current_stage = "download"
 
             try:
-                # ── 2. Download ─────────────────────────────────────────────
+                # \u2500\u2500 2. Download \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
                 with telemetry.stage("download", dataset=dataset_name, url=url):
                     _download(url, local_path)
 
-                # ── 3. Parse ────────────────────────────────────────────────
+                # \u2500\u2500 3. Parse \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
                 current_stage = "parse"
                 with telemetry.stage("parse", dataset=dataset_name, format=fmt):
                     records = _parse(local_path, fmt)
                     logger.info("[parse] %d rows parsed from %s", len(records), dataset_name)
 
-                # ── 4. Spark transform ──────────────────────────────────────
+                # \u2500\u2500 4. Spark transform \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
                 current_stage = "transform"
                 with telemetry.stage("transform", dataset=dataset_name, rows_in=len(records)):
                     raw_annotated = _normalize(records, dataset_name, url)
                     curated = _spark_transform(spark, raw_annotated, limit=5000)
 
-                # ── 5. Quality checks ───────────────────────────────────────
+                # \u2500\u2500 5. Quality checks \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
                 current_stage = "quality_check"
                 with telemetry.stage("quality_check", dataset=dataset_name):
                     quality_results = run_basic_quality_checks(
@@ -196,7 +225,7 @@ def main() -> None:
                             score=qr.get("score", 0),
                         )
 
-                # ── 6. Load into Elasticsearch ──────────────────────────────
+                # \u2500\u2500 6. Load into Elasticsearch \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
                 current_stage = "load_elasticsearch"
                 with telemetry.stage("load_elasticsearch", dataset=dataset_name):
                     writer.write_raw(raw_annotated[:5000])

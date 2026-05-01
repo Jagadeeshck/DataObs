@@ -1,15 +1,27 @@
 # ============================================================
-#  OpenTelemetry Collector — POC Configuration
+#  OpenTelemetry Collector — POC Configuration (UNIFIED)
 #  OTel Collector Contrib 0.99.0  /  Elastic Stack 9.3.3
 #
 #  Signal routing:
 #
-#    OTLP (pipeline)
+#    Infrastructure / Docker host
+#      ├─ hostmetrics  ──►  ES directly (metrics-otel-*)
+#      ├─ docker_stats ──►  ES directly (metrics-otel-*)
+#      └─ cadvisor     ──►  ES directly (container metrics)
+#
+#    Pipeline / Spark / AWS
 #      ├─ traces  ───►  Elastic Agent APM :8200  (OTLP/gRPC)
-#      │                → stored in traces-apm-* data streams
-#      │                → visible in Kibana → Observability → APM
-#      ├─ metrics ───►  Elastic Agent APM :8200  (OTLP/gRPC)
+#      ├─ metrics ───►  Elasticsearch directly  (metrics-otel-*)
 #      └─ logs    ───►  Elastic Agent APM :8200  (OTLP/gRPC)
+#
+#    AWS Services (Lambda / Glue / EMR)
+#      └─ awscloudwatch ──►  Elasticsearch (metrics-aws-*)
+#
+#  Kibana visibility:
+#    Traces  → Observability → APM → Services
+#    Metrics → Observability → Infrastructure / Metrics Explorer
+#    Logs    → Observability → Logs
+#    Docker  → Observability → Infrastructure (Containers view)
 # ============================================================
 
 extensions:
@@ -19,6 +31,7 @@ extensions:
     endpoint: 0.0.0.0:1777
 
 receivers:
+  # ── OTLP: receives from pipeline, Spark jobs, Lambda, Glue ──
   otlp:
     protocols:
       grpc:
@@ -30,6 +43,62 @@ receivers:
             - "http://localhost:*"
             - "http://kibana:*"
             - "http://pipeline:*"
+            - "http://spark-driver:*"
+
+  # ── Host metrics (CPU, memory, disk, network of Docker host) ──
+  hostmetrics:
+    collection_interval: 30s
+    scrapers:
+      cpu:
+        metrics:
+          system.cpu.utilization:
+            enabled: true
+      memory:
+        metrics:
+          system.memory.utilization:
+            enabled: true
+      disk: {}
+      filesystem: {}
+      network: {}
+      load: {}
+      processes: {}
+
+  # ── Docker container stats (all running containers) ──
+  docker_stats:
+    endpoint: unix:///var/run/docker.sock
+    collection_interval: 30s
+    timeout: 20s
+    api_version: "1.43"
+    metrics:
+      container.cpu.percent:
+        enabled: true
+      container.memory.percent:
+        enabled: true
+      container.network.io.usage.rx_bytes:
+        enabled: true
+      container.network.io.usage.tx_bytes:
+        enabled: true
+      container.blockio.io_service_bytes_recursive:
+        enabled: true
+
+  # ── Prometheus scrape: cAdvisor (detailed container metrics) ──
+  prometheus:
+    config:
+      scrape_configs:
+        - job_name: cadvisor
+          scrape_interval: 30s
+          static_configs:
+            - targets: ["cadvisor:8080"]
+          metric_relabel_configs:
+            - source_labels: [__name__]
+              regex: 'container_(cpu|memory|network|fs).*'
+              action: keep
+
+        # OTel Collector self-metrics
+        - job_name: otel_collector_self
+          scrape_interval: 30s
+          static_configs:
+            - targets: ["localhost:8888"]
 
 processors:
   batch:
@@ -38,10 +107,10 @@ processors:
 
   memory_limiter:
     check_interval: 5s
-    limit_mib: 300
-    spike_limit_mib: 75
+    limit_mib: 400
+    spike_limit_mib: 100
 
-  # Tag all telemetry with POC deployment metadata
+  # Tag ALL telemetry with deployment metadata
   resource:
     attributes:
       - key: deployment.environment
@@ -53,8 +122,11 @@ processors:
       - key: elastic.stack.version
         value: "9.3.3"
         action: insert
+      - key: host.type
+        value: docker-local
+        action: insert
 
-  # Enrich spans with pipeline context
+  # Pipeline-specific span enrichment
   attributes:
     actions:
       - key: pipeline.name
@@ -64,14 +136,28 @@ processors:
         value: poc
         action: insert
 
-exporters:
+  # Docker / infra metrics — label with source
+  resource/docker:
+    attributes:
+      - key: telemetry.source
+        value: docker-host
+        action: insert
+      - key: monitoring.layer
+        value: infrastructure
+        action: insert
 
-  # ──────────────────────────────────────────────────────────
-  # TRACES → Elastic Agent APM Server (port 8200)
-  # Elastic Agent 9.x accepts OTLP natively on port 8200.
-  # Traces appear in: Kibana → Observability → APM → Services
-  # Data streams: traces-apm-*, spans-apm-*
-  # ──────────────────────────────────────────────────────────
+  # Spark / pipeline metrics enrichment
+  resource/spark:
+    attributes:
+      - key: telemetry.source
+        value: spark-pipeline
+        action: insert
+      - key: monitoring.layer
+        value: data-pipeline
+        action: insert
+
+exporters:
+  # ── TRACES → Elastic Agent APM (APM UI in Kibana) ──────────
   otlp/apm:
     endpoint: "${env:APM_SERVER_URL}"
     tls:
@@ -79,7 +165,31 @@ exporters:
     headers:
       Authorization: "Bearer ${env:APM_SECRET_TOKEN}"
 
-  # stdout debug (easy local inspection)
+  # ── METRICS + LOGS → Elasticsearch directly ─────────────────
+  # Uses ES exporter so all metrics land in metrics-otel-* data streams
+  # visible in Kibana Metrics Explorer and Infrastructure view
+  elasticsearch:
+    endpoint: "${env:ELASTICHOST}"
+    user: elastic
+    password: "${env:ELASTIC_PASSWORD}"
+    logs_index: logs-otel-poc
+    metrics_index: metrics-otel-poc
+    traces_index: traces-otel-poc
+    tls:
+      insecure: true
+    retry:
+      enabled: true
+      initial_interval: 5s
+      max_interval: 30s
+      max_elapsed_time: 300s
+    sending_queue:
+      enabled: true
+      num_consumers: 4
+      queue_size: 100
+    mapping:
+      mode: ecs
+
+  # stdout debug
   debug:
     verbosity: basic
 
@@ -87,20 +197,32 @@ service:
   extensions: [health_check, pprof]
   pipelines:
 
-    # Traces → Elastic Agent APM (full distributed tracing in Kibana APM)
+    # ── Pipeline / Spark TRACES → APM (distributed trace view) ──
     traces:
       receivers:  [otlp]
-      processors: [memory_limiter, resource, attributes, batch]
+      processors: [memory_limiter, resource, resource/spark, attributes, batch]
       exporters:  [otlp/apm, debug]
 
-    # Metrics → Elasticsearch
-    metrics:
+    # ── Pipeline / Spark METRICS → ES (metrics-otel-poc) ────────
+    metrics/pipeline:
       receivers:  [otlp]
-      processors: [memory_limiter, resource, batch]
-      exporters:  [otlp/apm, debug]
+      processors: [memory_limiter, resource, resource/spark, batch]
+      exporters:  [elasticsearch, debug]
 
-    # Logs → Elastic Agent APM
+    # ── Pipeline / Spark LOGS → APM (Logs UI in Kibana) ─────────
     logs:
       receivers:  [otlp]
       processors: [memory_limiter, resource, batch]
       exporters:  [otlp/apm, debug]
+
+    # ── Docker host metrics → ES (Infrastructure view) ──────────
+    metrics/docker:
+      receivers:  [hostmetrics, docker_stats]
+      processors: [memory_limiter, resource, resource/docker, batch]
+      exporters:  [elasticsearch]
+
+    # ── cAdvisor container metrics → ES ─────────────────────────
+    metrics/cadvisor:
+      receivers:  [prometheus]
+      processors: [memory_limiter, resource, resource/docker, batch]
+      exporters:  [elasticsearch]

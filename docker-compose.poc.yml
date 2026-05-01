@@ -1,45 +1,52 @@
 # ============================================================
 #  DataObs — POC Docker Compose  (Elastic Stack 9.3.3)
+#  UNIFIED: Single ES cluster for Observability + Test Data
+#
 #  Full observability stack:
 #    Elasticsearch + Kibana + Fleet Server + Elastic Agent
 #    (APM Server built-in to ES 9.x) + OTel Collector + Pipeline
+#    + cAdvisor (Docker container metrics)
 #
-#  ┌─ APM Architecture note ─────────────────────────────────┐
-#  │  In Elastic Stack 9.x, APM Server is NOT a separate     │
-#  │  container. It runs inside Elastic Agent, managed by     │
-#  │  Fleet Server. The APM intake is on port 8200 and        │
-#  │  accepts both Elastic APM protocol and OTLP natively.    │
-#  └─────────────────────────────────────────────────────────┘
+#  ┌─ Elasticsearch — Unified Cluster ──────────────────────────┐
+#  │  SINGLE cluster serves BOTH:                               │
+#  │  1. Observability: traces-apm-*, metrics-otel-*, logs-otel-│
+#  │  2. Test Data:     dataobs-test-data, dataobs-spark-results │
+#  │                    dataobs-lineage                          │
+#  └─────────────────────────────────────────────────────────────┘
 #
-#  IMPORTANT — Elastic Agent image path changed in 9.x:
-#    OLD (8.x): docker.elastic.co/beats/elastic-agent
-#    NEW (9.x): docker.elastic.co/elastic-agent/elastic-agent
+#  ┌─ Docker Environment Monitoring ────────────────────────────┐
+#  │  cAdvisor  → OTel Collector (Prometheus scrape :8080)      │
+#  │  hostmetrics receiver → CPU/memory/disk/network of host    │
+#  │  docker_stats receiver → per-container resource usage      │
+#  └─────────────────────────────────────────────────────────────┘
 #
-#  IMPORTANT — xpack.fleet.enabled is a Kibana-only setting in 9.x.
-#    Do NOT set it on Elasticsearch — it causes a fatal boot error.
-#    Fleet is enabled by default in Kibana via XPACK_FLEET_ENABLED.
+#  ┌─ Spark Instrumentation ─────────────────────────────────────┐
+#  │  pipeline container runs pipeline_runner.py                 │
+#  │  SparkOtelInstrumentation wraps every Spark job             │
+#  │  → traces, metrics, logs all flow via OTel Collector        │
+#  │  → visible in Kibana APM Services + Metrics Explorer        │
+#  └─────────────────────────────────────────────────────────────┘
 #
-#  IMPORTANT — XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY must be
-#    exactly 32+ characters. Kibana will FATAL on startup if shorter.
-#
-#  Service startup order (auto-managed via healthchecks):
+#  Service startup order:
 #    1. elasticsearch   — single-node, security enabled
-#    2. es-setup        — one-shot: sets passwords + Fleet token
-#    3. kibana          — waits for es-setup completion
-#    4. fleet-server    — waits for es-setup + kibana healthy
-#    5. elastic-agent   — waits for fleet-server healthy (APM :8200)
-#    6. otel-collector  — waits for elasticsearch + elastic-agent
-#    7. pipeline        — waits for all above (run-once)
+#    2. es-setup        — one-shot: sets passwords + ILM policies
+#    3. kibana          — waits for es-setup
+#    4. kibana-setup    — fleet + APM integration bootstrap
+#    5. fleet-server    — waits for kibana-setup
+#    6. elastic-agent   — APM :8200, waits for fleet-server
+#    7. cadvisor        — Docker host metrics
+#    8. otel-collector  — waits for elasticsearch + elastic-agent
+#    9. pipeline        — waits for all above (run-once)
 #
 #  Quick start:
 #    cp .env.poc .env.poc.local
 #    docker compose -f docker-compose.poc.yml --env-file .env.poc.local \
-#      up -d elasticsearch kibana fleet-server elastic-agent otel-collector
-#    # wait ~60-90s for healthy, then:
+#      up -d elasticsearch kibana fleet-server elastic-agent cadvisor otel-collector
+#    # wait ~90s for healthy, then:
 #    docker compose -f docker-compose.poc.yml --env-file .env.poc.local \
 #      run --rm pipeline
 #
-#  Tear down (removes all volumes):
+#  Tear down:
 #    docker compose -f docker-compose.poc.yml --env-file .env.poc.local down -v
 # ============================================================
 
@@ -51,23 +58,25 @@ x-es-env: &es-env
 services:
 
   # ──────────────────────────────────────────────────────────
-  # 1. Elasticsearch 9.3.3
-  #    xpack.fleet.enabled intentionally absent — Kibana-only setting.
+  # 1. Elasticsearch 9.3.3 — UNIFIED cluster
+  #    Single cluster for: observability data + test/pipeline data
   # ──────────────────────────────────────────────────────────
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:${ELK_VERSION:-9.3.3}
     container_name: dataobs-poc-es
-    mem_limit: 2g
+    mem_limit: 3g
     environment:
       <<: *es-env
       node.name: es-poc
-      cluster.name: dataobs-poc
+      cluster.name: dataobs-poc-unified
       discovery.type: single-node
       xpack.security.enabled: "true"
       xpack.security.http.ssl.enabled: "false"
       xpack.license.self_generated.type: trial
       bootstrap.memory_lock: "true"
       cluster.routing.allocation.disk.threshold_enabled: "false"
+      # Allow both observability data streams and custom indices
+      action.auto_create_index: "true"
     ulimits:
       memlock:
         soft: -1
@@ -76,6 +85,9 @@ services:
       - es_poc_data:/usr/share/elasticsearch/data
     ports:
       - "9200:9200"
+    labels:
+      com.dataobs.service: "elasticsearch"
+      com.dataobs.role: "unified-store"
     healthcheck:
       test:
         - CMD-SHELL
@@ -91,15 +103,12 @@ services:
       - dataobs-poc
 
   # ──────────────────────────────────────────────────────────
-  # 2. ES Setup (one-shot init container)
-  #    Runs as root — Docker volumes are root:root by default;
-  #    ES image uid 1000 cannot write without elevation.
-  #    Uses curl + grep only — python3 is NOT in the ES image.
+  # 2. ES Setup — creates test-data indices + ILM policies
   # ──────────────────────────────────────────────────────────
   es-setup:
     image: docker.elastic.co/elasticsearch/elasticsearch:${ELK_VERSION:-9.3.3}
     container_name: dataobs-poc-es-setup
-    mem_limit: 2g
+    mem_limit: 512m
     user: root
     depends_on:
       elasticsearch:
@@ -120,6 +129,42 @@ services:
           "$$HOST/_security/user/kibana_system/_password" \
           -d "{\"password\":\"$${KIBANA_PASSWORD}\"}"
         echo " done."
+
+        echo "[es-setup] Creating test-data index template..."
+        curl -sf -X PUT -u "$$AUTH" \
+          -H 'Content-Type: application/json' \
+          "$$HOST/_index_template/dataobs-test-data" \
+          -d '{
+            "index_patterns": ["dataobs-test-data*", "dataobs-spark-results*", "dataobs-lineage*"],
+            "template": {
+              "settings": {"number_of_shards": 1, "number_of_replicas": 0},
+              "mappings": {
+                "properties": {
+                  "@timestamp":    {"type": "date"},
+                  "run_id":        {"type": "keyword"},
+                  "record_id":     {"type": "long"},
+                  "value":         {"type": "double"},
+                  "value_doubled": {"type": "double"},
+                  "source":        {"type": "keyword"},
+                  "tenant":        {"type": "keyword"},
+                  "lineage_type":  {"type": "keyword"},
+                  "pipeline":      {"type": "keyword"}
+                }
+              }
+            }
+          }' || echo "[es-setup] index template already exists"
+
+        echo "[es-setup] Creating otel-metrics index template..."
+        curl -sf -X PUT -u "$$AUTH" \
+          -H 'Content-Type: application/json' \
+          "$$HOST/_index_template/metrics-otel-poc" \
+          -d '{
+            "index_patterns": ["metrics-otel-poc*"],
+            "template": {
+              "settings": {"number_of_shards": 1, "number_of_replicas": 0}
+            }
+          }' || echo "[es-setup] otel-metrics template already exists"
+
         echo "[es-setup] Done."
     networks:
       - dataobs-poc
@@ -127,8 +172,6 @@ services:
 
   # ──────────────────────────────────────────────────────────
   # 3. Kibana 9.3.3
-  #    XPACK_FLEET_ENABLED / XPACK_APM_ENABLED are Kibana settings.
-  #    Encryption key MUST be >= 32 chars or Kibana fatals on boot.
   # ──────────────────────────────────────────────────────────
   kibana:
     image: docker.elastic.co/kibana/kibana:${ELK_VERSION:-9.3.3}
@@ -148,13 +191,14 @@ services:
       XPACK_APM_ENABLED: "true"
       XPACK_FLEET_AGENTS_ELASTICSEARCH_HOSTS: '["http://elasticsearch:9200"]'
       XPACK_FLEET_AGENTS_FLEET_SERVER_HOSTS: '["http://fleet-server:8220"]'
-      # Exactly 32 characters (verified): d-a-t-a-o-b-s-p-o-c-9-x-3-2-c-h-a-r-e-n-c-k-e-y-1-2-3-4-5-6-7-8
       XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY: "dataobspoc9x32charenckey12345678"
       TELEMETRY_ENABLED: "false"
     volumes:
       - kibana_poc_data:/usr/share/kibana/data
     ports:
       - "5601:5601"
+    labels:
+      com.dataobs.service: "kibana"
     healthcheck:
       test:
         - CMD-SHELL
@@ -169,13 +213,12 @@ services:
       - dataobs-poc
 
   # ─────────────────────────────────────────────────────────
-  # 3.5. Kibana Fleet Setup (one-shot init)
-  #   Bootstraps Fleet in Kibana and creates fleet-server-policy
+  # 3.5. Kibana Fleet Setup
   # ─────────────────────────────────────────────────────────
   kibana-setup:
     image: curlimages/curl:latest
     container_name: dataobs-poc-kibana-setup
-    mem_limit: 2g
+    mem_limit: 256m
     user: root
     restart: "no"
     networks:
@@ -294,9 +337,9 @@ services:
         fi
         printf '%s' "$$TOKEN" > /agent_enrollment_token/token.txt
         chmod 644 /agent_enrollment_token/token.txt
-        echo "[kibana-setup] APM enrollment token written to /agent_enrollment_token/token.txt"
+        echo "[kibana-setup] APM enrollment token written."
 
-        echo "[kibana-setup] Creating Fleet service token via Kibana API..."
+        echo "[kibana-setup] Creating Fleet service token..."
         RESPONSE=$$(curl -sf -u "$$AUTH" \
           -X POST "$$KIBANA/api/fleet/service_tokens" \
           -H "kbn-xsrf: true" \
@@ -309,15 +352,15 @@ services:
         fi
         printf '%s' "$$TOKEN" > /fleet_token/token.txt
         chmod 644 /fleet_token/token.txt
-        echo "[kibana-setup] Token written to /fleet_token/token.txt"
         echo "[kibana-setup] Done."
-  # ───────────────────────────────────────────────────────
-  # 4. Fleet Server (elastic-agent/elastic-agent — new 9.x image path)
+
+  # ───────────────────────────────────────────────────────────
+  # 4. Fleet Server
   # ──────────────────────────────────────────────────────────
   fleet-server:
     image: docker.elastic.co/elastic-agent/elastic-agent:${ELK_VERSION:-9.3.3}
     container_name: dataobs-poc-fleet-server
-    mem_limit: 2g
+    mem_limit: 1g
     depends_on:
       es-setup:
         condition: service_completed_successfully
@@ -352,8 +395,7 @@ services:
       - dataobs-poc
 
   # ──────────────────────────────────────────────────────────
-  # 5. Elastic Agent — APM Server (elastic-agent/elastic-agent — 9.x)
-  #    Port 8200: APM intake (Elastic APM + OTLP natively)
+  # 5. Elastic Agent — APM Server
   # ──────────────────────────────────────────────────────────
   elastic-agent:
     image: docker.elastic.co/elastic-agent/elastic-agent:${ELK_VERSION:-9.3.3}
@@ -397,15 +439,49 @@ services:
       - dataobs-poc
 
   # ──────────────────────────────────────────────────────────
-  # 6. OpenTelemetry Collector (contrib 0.99.0)
+  # 6. cAdvisor — Docker container resource metrics
+  #    Exports per-container CPU/memory/network/filesystem
+  #    metrics via Prometheus endpoint :8080
+  #    OTel Collector scrapes this via the prometheus receiver.
+  # ──────────────────────────────────────────────────────────
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    container_name: dataobs-poc-cadvisor
+    mem_limit: 512m
+    privileged: true
+    devices:
+      - /dev/kmsg:/dev/kmsg
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    ports:
+      - "8081:8080"
+    labels:
+      com.dataobs.service: "cadvisor"
+      com.dataobs.role: "docker-monitoring"
+    networks:
+      - dataobs-poc
+    restart: unless-stopped
+
+  # ──────────────────────────────────────────────────────────
+  # 7. OpenTelemetry Collector (contrib 0.99.0)
+  #    - Receives OTLP from pipeline + Spark jobs
+  #    - Scrapes cAdvisor Prometheus endpoint
+  #    - Collects host metrics + docker_stats
+  #    - Routes to ES (metrics) + APM (traces/logs)
   # ──────────────────────────────────────────────────────────
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.99.0
     container_name: dataobs-poc-otel
-    mem_limit: 2g
+    mem_limit: 1g
     command: ["--config=/etc/otel/config.yaml"]
     volumes:
       - ./config/otel-collector-poc.yaml:/etc/otel/config.yaml:ro
+      # Mount Docker socket so docker_stats receiver can connect
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     ports:
       - "4317:4317"   # OTLP gRPC
       - "4318:4318"   # OTLP HTTP
@@ -420,6 +496,8 @@ services:
         condition: service_healthy
       elastic-agent:
         condition: service_healthy
+      cadvisor:
+        condition: service_started
     healthcheck:
       test: ["CMD", "/otelcol-contrib", "--version"]
       interval: 15s
@@ -427,16 +505,20 @@ services:
       retries: 8
     networks:
       - dataobs-poc
+    labels:
+      com.dataobs.service: "otel-collector"
 
   # ──────────────────────────────────────────────────────────
-  # 7. DataObs POC Pipeline (run-once)
+  # 8. DataObs POC Pipeline (run-once)
+  #    Now uses pipeline_runner.py with full OTel instrumentation
+  #    including Spark job spans visible in Kibana APM
   # ──────────────────────────────────────────────────────────
   pipeline:
     build:
       context: .
       dockerfile: Dockerfile.poc
     container_name: dataobs-poc-pipeline
-    mem_limit: 2g
+    mem_limit: 4g
     depends_on:
       elasticsearch:
         condition: service_healthy
@@ -449,28 +531,43 @@ services:
       ELASTIC_PASSWORD:               ${ELASTIC_PASSWORD}
       KIBANA_URL:                     http://kibana:5601
       OTEL_EXPORTER_OTLP_ENDPOINT:   http://otel-collector:4318
+      OTEL_SERVICE_NAME:              dataobs-pipeline
+      OTEL_RESOURCE_ATTRIBUTES:       "deployment.environment=poc,service.namespace=dataobs"
       DATAOBS_CONFIG:                 /app/config/dataobs_poc.yaml
       DATAOBS_TENANT_ID:              poc
       DATAOBS_STORE_BACKEND:          elasticsearch
       SPARK_MASTER:                   "local[*]"
       PYTHONPATH:                     /app
+      DEPLOYMENT_ENV:                 poc
+      # Spark OTel Java agent (ships in Dockerfile.poc)
+      SPARK_SUBMIT_OPTS: >-
+        -Dotel.service.name=spark-driver
+        -Dotel.exporter.otlp.endpoint=http://otel-collector:4318
+        -Dotel.exporter.otlp.protocol=http/protobuf
+        -Dotel.traces.exporter=otlp
+        -Dotel.metrics.exporter=otlp
+        -Dotel.logs.exporter=otlp
+        -Dotel.resource.attributes=deployment.environment=poc,service.namespace=dataobs
     volumes:
       - ./config:/app/config:ro
       - ./kibana:/app/kibana:ro
       - poc_pipeline_tmp:/tmp/dataobs
-    command: ["/app/scripts/run_poc_pipeline.sh"]
+    command: ["python", "-m", "src.poc.pipeline_runner"]
     restart: "no"
     networks:
       - dataobs-poc
+    labels:
+      com.dataobs.service: "pipeline"
+      com.dataobs.role: "data-pipeline"
 
 volumes:
-  es_poc_data:       { driver: local }
-  kibana_poc_data:   { driver: local }
-  fleet_token:       { driver: local }
+  es_poc_data:            { driver: local }
+  kibana_poc_data:        { driver: local }
+  fleet_token:            { driver: local }
   agent_enrollment_token: { driver: local }
-  fleet_data:        { driver: local }
-  agent_data:        { driver: local }
-  poc_pipeline_tmp:  { driver: local }
+  fleet_data:             { driver: local }
+  agent_data:             { driver: local }
+  poc_pipeline_tmp:       { driver: local }
 
 networks:
   dataobs-poc:

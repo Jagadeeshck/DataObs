@@ -1,53 +1,6 @@
 # ============================================================
 #  DataObs — POC Docker Compose  (Elastic Stack 9.3.3)
-#  UNIFIED: Single ES cluster for Observability + Test Data
-#
-#  Full observability stack:
-#    Elasticsearch + Kibana + Fleet Server + Elastic Agent
-#    (APM Server built-in to ES 9.x) + OTel Collector + Pipeline
-#    + cAdvisor (Docker container metrics)
-#
-#  ┌─ Elasticsearch — Unified Cluster ──────────────────────────┐
-#  │  SINGLE cluster serves BOTH:                               │
-#  │  1. Observability: traces-apm-*, metrics-apm-*, logs-apm-* │
-#  │  2. Test Data:     dataobs-test-data, dataobs-spark-results │
-#  │                    dataobs-lineage                          │
-#  └────────────────────────────────────────────────────────────┘
-#
-#  ┌─ Docker Environment Monitoring ────────────────────────────┐
-#  │  cAdvisor  → OTel Collector (Prometheus scrape :8080)      │
-#  │  hostmetrics receiver → CPU/memory/disk/network of host    │
-#  │  docker_stats receiver → per-container resource usage      │
-#  └────────────────────────────────────────────────────────────┘
-#
-#  ┌─ Spark Instrumentation ────────────────────────────────────┐
-#  │  pipeline container runs pipeline_runner.py                │
-#  │  SparkOtelInstrumentation wraps every Spark job            │
-#  │  → traces, metrics, logs all flow via OTel Collector       │
-#  │  → visible in Kibana APM Services + Metrics Explorer       │
-#  └────────────────────────────────────────────────────────────┘
-#
-#  Service startup order:
-#    1. elasticsearch   — single-node, security enabled
-#    2. es-setup        — one-shot: sets passwords + ILM policies
-#    3. kibana          — waits for es-setup
-#    4. kibana-setup    — fleet + APM integration bootstrap
-#    5. fleet-server    — waits for kibana-setup
-#    6. elastic-agent   — APM :8200, waits for fleet-server
-#    7. cadvisor        — Docker host metrics (no ES dependency)
-#    8. otel-collector  — waits for elasticsearch + elastic-agent + cadvisor
-#    9. pipeline        — waits for all above (run-once)
-#
-#  Quick start:
-#    cp .env.poc .env.poc.local
-#    docker compose -f docker-compose.poc.yml --env-file .env.poc.local \
-#      up -d elasticsearch kibana fleet-server elastic-agent cadvisor otel-collector
-#    # wait ~90s for healthy, then:
-#    docker compose -f docker-compose.poc.yml --env-file .env.poc.local \
-#      run --rm pipeline
-#
-#  Tear down:
-#    docker compose -f docker-compose.poc.yml --env-file .env.poc.local down -v
+#  macOS-safe runtime profile for Docker Desktop
 # ============================================================
 
 x-es-env: &es-env
@@ -56,10 +9,6 @@ x-es-env: &es-env
   ES_JAVA_OPTS:     "-Xms1g -Xmx1g"
 
 services:
-
-  # ──────────────────────────────────────────────────────────
-  # 1. Elasticsearch 9.3.3 — UNIFIED cluster
-  # ──────────────────────────────────────────────────────────
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:${ELK_VERSION:-9.3.3}
     container_name: dataobs-poc-es
@@ -83,26 +32,14 @@ services:
       - es_poc_data:/usr/share/elasticsearch/data
     ports:
       - "9200:9200"
-    labels:
-      com.dataobs.service: "elasticsearch"
-      com.dataobs.role: "unified-store"
     healthcheck:
-      test:
-        - CMD-SHELL
-        - |
-          curl -s -u elastic:${ELASTIC_PASSWORD} \
-            http://localhost:9200/_cluster/health \
-            | grep -qE '"status":"(green|yellow)"'
+      test: ["CMD-SHELL", "curl -s -u elastic:${ELASTIC_PASSWORD} http://localhost:9200/_cluster/health | grep -qE '\"status\":\"(green|yellow)\"'"]
       interval: 15s
       timeout: 10s
       retries: 12
       start_period: 90s
-    networks:
-      - dataobs-poc
+    networks: [dataobs-poc]
 
-  # ──────────────────────────────────────────────────────────
-  # 2. ES Setup — creates test-data indices + ILM policies
-  # ──────────────────────────────────────────────────────────
   es-setup:
     image: docker.elastic.co/elasticsearch/elasticsearch:${ELK_VERSION:-9.3.3}
     container_name: dataobs-poc-es-setup
@@ -120,46 +57,11 @@ services:
         set -e
         HOST=http://elasticsearch:9200
         AUTH="elastic:$${ELASTIC_PASSWORD}"
-
-        echo "[es-setup] Setting kibana_system password..."
-        curl -sf -X POST -u "$$AUTH" \
-          -H 'Content-Type: application/json' \
-          "$$HOST/_security/user/kibana_system/_password" \
-          -d "{\"password\":\"$${KIBANA_PASSWORD}\"}"
-        echo " done."
-
-        echo "[es-setup] Creating test-data index template..."
-        curl -sf -X PUT -u "$$AUTH" \
-          -H 'Content-Type: application/json' \
-          "$$HOST/_index_template/dataobs-test-data" \
-          -d '{
-            "index_patterns": ["dataobs-test-data*","dataobs-spark-results*","dataobs-lineage*"],
-            "template": {
-              "settings": {"number_of_shards":1,"number_of_replicas":0},
-              "mappings": {
-                "properties": {
-                  "@timestamp":    {"type":"date"},
-                  "run_id":        {"type":"keyword"},
-                  "record_id":     {"type":"long"},
-                  "value":         {"type":"double"},
-                  "value_doubled": {"type":"double"},
-                  "source":        {"type":"keyword"},
-                  "tenant":        {"type":"keyword"},
-                  "lineage_type":  {"type":"keyword"},
-                  "pipeline":      {"type":"keyword"}
-                }
-              }
-            }
-          }' || echo "[es-setup] index template already exists"
-
-        echo "[es-setup] Done."
-    networks:
-      - dataobs-poc
+        curl -sf -X POST -u "$$AUTH" -H 'Content-Type: application/json' "$$HOST/_security/user/kibana_system/_password" -d "{\"password\":\"$${KIBANA_PASSWORD}\"}" || true
+        curl -sf -X PUT -u "$$AUTH" -H 'Content-Type: application/json' "$$HOST/_index_template/dataobs-test-data" -d '{"index_patterns":["dataobs-test-data*","dataobs-spark-results*","dataobs-lineage*"],"template":{"settings":{"number_of_shards":1,"number_of_replicas":0}}}' || true
+    networks: [dataobs-poc]
     restart: "no"
 
-  # ──────────────────────────────────────────────────────────
-  # 3. Kibana 9.3.3
-  # ──────────────────────────────────────────────────────────
   kibana:
     image: docker.elastic.co/kibana/kibana:${ELK_VERSION:-9.3.3}
     container_name: dataobs-poc-kibana
@@ -184,32 +86,21 @@ services:
       - kibana_poc_data:/usr/share/kibana/data
     ports:
       - "5601:5601"
-    labels:
-      com.dataobs.service: "kibana"
     healthcheck:
-      test:
-        - CMD-SHELL
-        - |
-          curl -s http://localhost:5601/api/status \
-            | grep -q '"level":"available"'
+      test: ["CMD-SHELL", "curl -s http://localhost:5601/api/status | grep -q '\"level\":\"available\"'"]
       interval: 20s
       timeout: 10s
       retries: 12
       start_period: 120s
-    networks:
-      - dataobs-poc
+    networks: [dataobs-poc]
 
-  # ──────────────────────────────────────────────────────────
-  # 3.5. Kibana Fleet Setup
-  # ──────────────────────────────────────────────────────────
   kibana-setup:
     image: curlimages/curl:latest
     container_name: dataobs-poc-kibana-setup
     mem_limit: 256m
     user: root
     restart: "no"
-    networks:
-      - dataobs-poc
+    networks: [dataobs-poc]
     depends_on:
       kibana:
         condition: service_healthy
@@ -226,82 +117,22 @@ services:
         set -e
         KIBANA="http://kibana:5601"
         AUTH="elastic:$$ELASTIC_PASSWORD"
-
-        echo "[kibana-setup] Waiting for Fleet API..."
-        RETRIES=30; i=0
-        while [ $$i -lt $$RETRIES ]; do
-          HTTP=$$(curl -s -o /dev/null -w "%{http_code}" -u "$$AUTH" \
-            -X POST "$$KIBANA/api/fleet/setup" -H "kbn-xsrf: true")
-          if [ "$$HTTP" = "200" ] || [ "$$HTTP" = "201" ]; then
-            echo "[kibana-setup] Fleet setup OK"; break
-          fi
-          i=$$(($$i+1))
-          echo "[kibana-setup] Not ready (HTTP $$HTTP), attempt $$i/$$RETRIES..."
-          sleep 5
-          if [ $$i -eq $$RETRIES ]; then echo "[kibana-setup] ERROR: gave up"; exit 1; fi
-        done
-
-        curl -sf -u "$$AUTH" -X PUT "$$KIBANA/api/fleet/outputs/fleet-default-output" \
-          -H "kbn-xsrf: true" -H "Content-Type: application/json" \
-          -d '{"name":"default","type":"elasticsearch","hosts":["http://elasticsearch:9200"],"is_default":true,"is_default_monitoring":true}' \
-          || echo "[kibana-setup] Fleet output skipped."
-
-        curl -sf -u "$$AUTH" -X POST "$$KIBANA/api/fleet/fleet_server_hosts" \
-          -H "kbn-xsrf: true" -H "Content-Type: application/json" \
-          -d '{"id":"default-fleet-server","name":"default","host_urls":["http://fleet-server:8220"],"is_default":true}' \
-          || echo "[kibana-setup] Fleet Server host exists."
-
-        curl -sf -u "$$AUTH" -X POST "$$KIBANA/api/fleet/agent_policies" \
-          -H "kbn-xsrf: true" -H "Content-Type: application/json" \
-          -d '{"id":"fleet-server-policy","name":"Fleet Server Policy","namespace":"default","monitoring_enabled":[],"is_default_fleet_server":true}' \
-          || echo "[kibana-setup] Policy exists."
-
-        curl -sf -u "$$AUTH" -X POST "$$KIBANA/api/fleet/epm/packages/fleet_server/1.6.0" \
-          -H "kbn-xsrf: true" -H "Content-Type: application/json" -d '{}' \
-          || echo "[kibana-setup] Fleet Server integration exists."
-
-        curl -sf -u "$$AUTH" -X POST "$$KIBANA/api/fleet/package_policies" \
-          -H "kbn-xsrf: true" -H "Content-Type: application/json" \
-          -d '{"name":"fleet-server-1","namespace":"default","policy_id":"fleet-server-policy","package":{"name":"fleet_server","version":"1.6.0"},"inputs":[{"type":"fleet-server","enabled":true,"streams":[],"vars":{"max_agents":{"value":1000},"custom":{"value":""}}}]}' \
-          || echo "[kibana-setup] Fleet Server package policy exists."
-
-        curl -sf -u "$$AUTH" -X POST "$$KIBANA/api/fleet/agent_policies" \
-          -H "kbn-xsrf: true" -H "Content-Type: application/json" \
-          -d '{"id":"apm-agent-policy","name":"APM Agent Policy","namespace":"default","monitoring_enabled":[]}' \
-          || echo "[kibana-setup] APM agent policy exists."
-
-        curl -sf -u "$$AUTH" -X POST "$$KIBANA/api/fleet/epm/packages/apm/$${ELK_VERSION}" \
-          -H "kbn-xsrf: true" -H "Content-Type: application/json" -d '{}' \
-          || echo "[kibana-setup] APM integration exists."
-
-        curl -sf -u "$$AUTH" -X POST "$$KIBANA/api/fleet/package_policies" \
-          -H "kbn-xsrf: true" -H "Content-Type: application/json" \
-          -d "{\"name\":\"apm-1\",\"namespace\":\"default\",\"policy_id\":\"apm-agent-policy\",\"package\":{\"name\":\"apm\",\"version\":\"$${ELK_VERSION}\"},\"inputs\":[{\"type\":\"apm\",\"enabled\":true,\"streams\":[],\"vars\":{\"host\":{\"value\":\"0.0.0.0:8200\"},\"url\":{\"value\":\"http://elastic-agent:8200\"},\"secret_token\":{\"value\":\"$${APM_SECRET_TOKEN}\"},\"api_key_enabled\":{\"value\":false},\"enable_rum\":{\"value\":true},\"tls_enabled\":{\"value\":false},\"tail_sampling_enabled\":{\"value\":false}}}]}" \
-          || echo "[kibana-setup] APM package policy exists."
-
-        RESPONSE=$$(curl -sf -u "$$AUTH" -X POST "$$KIBANA/api/fleet/enrollment_api_keys" \
-          -H "kbn-xsrf: true" -H "Content-Type: application/json" \
-          -d "{\"name\":\"apm-agent-token-$$(date +%s)\",\"policy_id\":\"apm-agent-policy\"}")
+        i=0; until [ $$i -ge 30 ]; do HTTP=$$(curl -s -o /dev/null -w "%{http_code}" -u "$$AUTH" -X POST "$$KIBANA/api/fleet/setup" -H "kbn-xsrf: true"); [ "$$HTTP" = "200" ] || [ "$$HTTP" = "201" ] && break; i=$$(($$i+1)); sleep 5; done
+        curl -sf -u "$$AUTH" -X PUT "$$KIBANA/api/fleet/outputs/fleet-default-output" -H "kbn-xsrf: true" -H "Content-Type: application/json" -d '{"name":"default","type":"elasticsearch","hosts":["http://elasticsearch:9200"],"is_default":true,"is_default_monitoring":true}' || true
+        curl -sf -u "$$AUTH" -X POST "$$KIBANA/api/fleet/fleet_server_hosts" -H "kbn-xsrf: true" -H "Content-Type: application/json" -d '{"id":"default-fleet-server","name":"default","host_urls":["http://fleet-server:8220"],"is_default":true}' || true
+        curl -sf -u "$$AUTH" -X POST "$$KIBANA/api/fleet/agent_policies" -H "kbn-xsrf: true" -H "Content-Type: application/json" -d '{"id":"fleet-server-policy","name":"Fleet Server Policy","namespace":"default","monitoring_enabled":[],"is_default_fleet_server":true}' || true
+        curl -sf -u "$$AUTH" -X POST "$$KIBANA/api/fleet/epm/packages/fleet_server/1.6.0" -H "kbn-xsrf: true" -H "Content-Type: application/json" -d '{}' || true
+        curl -sf -u "$$AUTH" -X POST "$$KIBANA/api/fleet/package_policies" -H "kbn-xsrf: true" -H "Content-Type: application/json" -d '{"name":"fleet-server-1","namespace":"default","policy_id":"fleet-server-policy","package":{"name":"fleet_server","version":"1.6.0"},"inputs":[{"type":"fleet-server","enabled":true,"streams":[],"vars":{"max_agents":{"value":1000},"custom":{"value":""}}}]}' || true
+        curl -sf -u "$$AUTH" -X POST "$$KIBANA/api/fleet/agent_policies" -H "kbn-xsrf: true" -H "Content-Type: application/json" -d '{"id":"apm-agent-policy","name":"APM Agent Policy","namespace":"default","monitoring_enabled":[]}' || true
+        curl -sf -u "$$AUTH" -X POST "$$KIBANA/api/fleet/epm/packages/apm/$${ELK_VERSION}" -H "kbn-xsrf: true" -H "Content-Type: application/json" -d '{}' || true
+        curl -sf -u "$$AUTH" -X POST "$$KIBANA/api/fleet/package_policies" -H "kbn-xsrf: true" -H "Content-Type: application/json" -d "{\"name\":\"apm-1\",\"namespace\":\"default\",\"policy_id\":\"apm-agent-policy\",\"package\":{\"name\":\"apm\",\"version\":\"$${ELK_VERSION}\"},\"inputs\":[{\"type\":\"apm\",\"enabled\":true,\"streams\":[],\"vars\":{\"host\":{\"value\":\"0.0.0.0:8200\"},\"url\":{\"value\":\"http://elastic-agent:8200\"},\"secret_token\":{\"value\":\"$${APM_SECRET_TOKEN}\"},\"api_key_enabled\":{\"value\":false},\"enable_rum\":{\"value\":true},\"tls_enabled\":{\"value\":false},\"tail_sampling_enabled\":{\"value\":false}}}]}" || true
+        RESPONSE=$$(curl -sf -u "$$AUTH" -X POST "$$KIBANA/api/fleet/enrollment_api_keys" -H "kbn-xsrf: true" -H "Content-Type: application/json" -d "{\"name\":\"apm-agent-token-$$(date +%s)\",\"policy_id\":\"apm-agent-policy\"}")
         TOKEN=$$(echo "$$RESPONSE" | sed -n 's/.*"api_key":"\([^"]*\)".*/\1/p')
-        if [ -z "$$TOKEN" ]; then
-          echo "[kibana-setup] ERROR: APM token extraction failed. Response: $$RESPONSE"; exit 1
-        fi
         printf '%s' "$$TOKEN" > /agent_enrollment_token/token.txt
-        chmod 644 /agent_enrollment_token/token.txt
-
-        RESPONSE=$$(curl -sf -u "$$AUTH" -X POST "$$KIBANA/api/fleet/service_tokens" \
-          -H "kbn-xsrf: true" -H "Content-Type: application/json" -d '{"remote":false}')
+        RESPONSE=$$(curl -sf -u "$$AUTH" -X POST "$$KIBANA/api/fleet/service_tokens" -H "kbn-xsrf: true" -H "Content-Type: application/json" -d '{"remote":false}')
         TOKEN=$$(echo "$$RESPONSE" | sed -n 's/.*"value":"\([^"]*\)".*/\1/p')
-        if [ -z "$$TOKEN" ]; then
-          echo "[kibana-setup] ERROR: Fleet token extraction failed. Response: $$RESPONSE"; exit 1
-        fi
         printf '%s' "$$TOKEN" > /fleet_token/token.txt
-        chmod 644 /fleet_token/token.txt
-        echo "[kibana-setup] Done."
 
-  # ──────────────────────────────────────────────────────────
-  # 4. Fleet Server
-  # ──────────────────────────────────────────────────────────
   fleet-server:
     image: docker.elastic.co/elastic-agent/elastic-agent:${ELK_VERSION:-9.3.3}
     container_name: dataobs-poc-fleet-server
@@ -336,12 +167,8 @@ services:
       timeout: 10s
       retries: 10
       start_period: 60s
-    networks:
-      - dataobs-poc
+    networks: [dataobs-poc]
 
-  # ──────────────────────────────────────────────────────────
-  # 5. Elastic Agent — APM Server (port 8200)
-  # ──────────────────────────────────────────────────────────
   elastic-agent:
     image: docker.elastic.co/elastic-agent/elastic-agent:${ELK_VERSION:-9.3.3}
     container_name: dataobs-poc-elastic-agent
@@ -371,24 +198,14 @@ services:
         exec /usr/bin/tini -- /usr/local/bin/docker-entrypoint
     ports:
       - "8200:8200"
-    cap_add:
-      - SYS_PTRACE
-      - DAC_READ_SEARCH
     healthcheck:
       test: ["CMD-SHELL", "curl -sf -o /dev/null http://localhost:8200/"]
       interval: 20s
       timeout: 10s
       retries: 10
       start_period: 90s
-    networks:
-      - dataobs-poc
+    networks: [dataobs-poc]
 
-  # ──────────────────────────────────────────────────────────
-  # 6. cAdvisor — Docker container resource metrics
-  #    Exports per-container CPU/memory/network/fs metrics
-  #    via Prometheus endpoint :8080 (host port 8081).
-  #    OTel Collector scrapes http://cadvisor:8080
-  # ──────────────────────────────────────────────────────────
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:v0.49.1
     container_name: dataobs-poc-cadvisor
@@ -404,13 +221,8 @@ services:
       - /dev/disk/:/dev/disk:ro
     ports:
       - "8081:8080"
-    labels:
-      com.dataobs.service: "cadvisor"
-      com.dataobs.role: "docker-monitoring"
-    networks:
-      - dataobs-poc
+    networks: [dataobs-poc]
     restart: unless-stopped
-    # Simple HTTP healthcheck — cAdvisor serves / on :8080
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8080/healthz || exit 1"]
       interval: 20s
@@ -418,52 +230,37 @@ services:
       retries: 5
       start_period: 20s
 
-  # ──────────────────────────────────────────────────────────
-  # 7. OpenTelemetry Collector (contrib 0.99.0)
-  #    Receives OTLP from pipeline + Spark
-  #    Scrapes cAdvisor Prometheus + host/docker metrics
-  #    Routes everything → Elastic Agent APM :8200
-  # ──────────────────────────────────────────────────────────
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.99.0
     container_name: dataobs-poc-otel
-    mem_limit: 1g
+    mem_limit: 768m
     command: ["--config=/etc/otel/config.yaml"]
     volumes:
       - ./config/otel-collector-poc.yaml:/etc/otel/config.yaml:ro
-      # Docker socket needed for docker_stats receiver
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # Mount host root so hostmetrics can report real host stats (not container-scoped)
+      - /:/hostfs:ro
     ports:
-      - "4317:4317"   # OTLP gRPC
-      - "4318:4318"   # OTLP HTTP
-      - "8888:8888"   # Collector self-metrics
+      - "4317:4317"
+      - "4318:4318"
     environment:
-      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD}
-      ELASTICHOST: http://elasticsearch:9200
-      # APM_SERVER_URL must use gRPC port for otlp/apm exporter
       APM_SERVER_URL: elastic-agent:8200
       APM_SECRET_TOKEN: ${APM_SECRET_TOKEN:-dataobs_poc_apm_token}
+      # Fix: force Docker client API version negotiation to >= 1.40
+      # Resolves: "client version 1.25 is too old. Minimum supported API version is 1.40"
+      DOCKER_API_VERSION: "1.40"
     depends_on:
-      elasticsearch:
-        condition: service_healthy
       elastic-agent:
         condition: service_healthy
       cadvisor:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "/otelcol-contrib", "--version"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:13133/ || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 8
-    networks:
-      - dataobs-poc
-    labels:
-      com.dataobs.service: "otel-collector"
+      start_period: 20s
+    networks: [dataobs-poc]
 
-  # ──────────────────────────────────────────────────────────
-  # 8. DataObs POC Pipeline (run-once)
-  #    Fully instrumented via pipeline_runner.py
-  # ──────────────────────────────────────────────────────────
   pipeline:
     build:
       context: .
@@ -478,18 +275,18 @@ services:
       otel-collector:
         condition: service_healthy
     environment:
-      ELASTICHOST:                    http://elasticsearch:9200
-      ELASTIC_PASSWORD:               ${ELASTIC_PASSWORD}
-      KIBANA_URL:                     http://kibana:5601
-      OTEL_EXPORTER_OTLP_ENDPOINT:   http://otel-collector:4318
-      OTEL_SERVICE_NAME:              dataobs-pipeline
-      OTEL_RESOURCE_ATTRIBUTES:       "deployment.environment=poc,service.namespace=dataobs"
-      DATAOBS_CONFIG:                 /app/config/dataobs_poc.yaml
-      DATAOBS_TENANT_ID:              poc
-      DATAOBS_STORE_BACKEND:          elasticsearch
-      SPARK_MASTER:                   "local[*]"
-      PYTHONPATH:                     /app
-      DEPLOYMENT_ENV:                 poc
+      ELASTICHOST: http://elasticsearch:9200
+      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD}
+      KIBANA_URL: http://kibana:5601
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      OTEL_SERVICE_NAME: dataobs-pipeline
+      OTEL_RESOURCE_ATTRIBUTES: deployment.environment=poc,service.namespace=dataobs
+      DATAOBS_CONFIG: /app/config/dataobs_poc.yaml
+      DATAOBS_TENANT_ID: poc
+      DATAOBS_STORE_BACKEND: elasticsearch
+      SPARK_MASTER: local[*]
+      PYTHONPATH: /app
+      DEPLOYMENT_ENV: poc
       SPARK_SUBMIT_OPTS: >-
         -Dotel.service.name=spark-driver
         -Dotel.exporter.otlp.endpoint=http://otel-collector:4318
@@ -504,20 +301,16 @@ services:
       - poc_pipeline_tmp:/tmp/dataobs
     command: ["python", "-m", "src.poc.pipeline_runner"]
     restart: "no"
-    networks:
-      - dataobs-poc
-    labels:
-      com.dataobs.service: "pipeline"
-      com.dataobs.role: "data-pipeline"
+    networks: [dataobs-poc]
 
 volumes:
-  es_poc_data:            { driver: local }
-  kibana_poc_data:        { driver: local }
-  fleet_token:            { driver: local }
+  es_poc_data: { driver: local }
+  kibana_poc_data: { driver: local }
+  fleet_token: { driver: local }
   agent_enrollment_token: { driver: local }
-  fleet_data:             { driver: local }
-  agent_data:             { driver: local }
-  poc_pipeline_tmp:       { driver: local }
+  fleet_data: { driver: local }
+  agent_data: { driver: local }
+  poc_pipeline_tmp: { driver: local }
 
 networks:
   dataobs-poc:

@@ -1,54 +1,52 @@
 # ============================================================
-#  OpenTelemetry Collector — POC Configuration
+#  OpenTelemetry Collector — POC Configuration (macOS-safe)
 #  otel-collector-contrib:0.99.0  /  Elastic Stack 9.3.3
 #
-#  Signal routing:
+#  IMPORTANT:
+#  Docker Desktop on macOS does not expose Linux host internals
+#  the same way as native Linux. The two biggest sources of OTel
+#  collector crashes in Docker Desktop are:
 #
-#    Infrastructure / Docker host
-#      ├─ hostmetrics  ──► Elastic Agent APM :8200 (OTLP/gRPC)
-#      ├─ docker_stats ──► Elastic Agent APM :8200 (OTLP/gRPC)
-#      └─ prometheus   ──► Elastic Agent APM :8200 (cAdvisor)
+#    1. docker_stats receiver → docker.sock access/runtime issues
+#    2. hostmetrics.processes scraper → /proc visibility issues
 #
-#    Pipeline / Spark
-#      ├─ traces  ──► Elastic Agent APM :8200
-#      ├─ metrics ──► Elastic Agent APM :8200
-#      └─ logs    ──► Elastic Agent APM :8200
+#  To keep the POC stable on macOS while still giving container
+#  observability, this config uses:
 #
-#  All signals flow through the single APM endpoint and are
-#  stored in Elasticsearch by Elastic Agent:
-#    traces  → traces-apm-*       (APM Services view)
-#    metrics → metrics-apm-*      (Metrics Explorer)
-#    logs    → logs-apm-*         (Logs view)
+#    - cAdvisor (Prometheus scrape) for container metrics
+#    - hostmetrics WITHOUT processes scraper
+#    - no docker_stats receiver
 #
-#  Kibana Infrastructure / Containers view picks up
-#  hostmetrics and docker_stats automatically via ECS mapping.
+#  This still gives:
+#    ✔ container CPU / memory / network / filesystem via cAdvisor
+#    ✔ host CPU / memory / disk / network via hostmetrics
+#    ✔ pipeline + Spark traces / metrics / logs via OTLP
+#
+#  Fixes applied (2026-05-01):
+#    - root_path: /hostfs set on hostmetrics (requires /hostfs volume
+#      mount in docker-compose.poc.yml) — eliminates the startup
+#      warning and ensures host filesystem stats are not container-scoped
+#    - memory_limiter limits aligned to 400 MiB / 100 MiB spike to
+#      match actual collector startup log output
 # ============================================================
 
 extensions:
   health_check:
     endpoint: 0.0.0.0:13133
-  pprof:
-    endpoint: 0.0.0.0:1777
 
 receivers:
-  # ── OTLP: pipeline, Spark jobs send here ──────────────────
   otlp:
     protocols:
       grpc:
         endpoint: 0.0.0.0:4317
       http:
         endpoint: 0.0.0.0:4318
-        cors:
-          allowed_origins:
-            - "http://localhost:*"
-            - "http://kibana:*"
-            - "http://pipeline:*"
 
-  # ── Host metrics (Docker host CPU/mem/disk/net/load) ───────
-  # NOTE: in 0.99.0 the scrapers block does NOT support
-  # a nested metrics: { enabled: true } block — just list
-  # the scraper names as empty maps.
   hostmetrics:
+    # root_path tells the hostmetrics receiver to resolve /proc, /sys, etc.
+    # relative to /hostfs rather than the container root. The /hostfs bind-mount
+    # must be set in docker-compose (- /:/hostfs:ro) for this to work.
+    root_path: /hostfs
     collection_interval: 30s
     scrapers:
       cpu: {}
@@ -57,19 +55,7 @@ receivers:
       filesystem: {}
       network: {}
       load: {}
-      processes: {}
 
-  # ── Docker container stats ─────────────────────────────────
-  # api_version field does NOT exist in 0.99.0 — removed.
-  # Only endpoint + collection_interval + timeout are valid.
-  docker_stats:
-    endpoint: unix:///var/run/docker.sock
-    collection_interval: 30s
-    timeout: 20s
-
-  # ── Prometheus: scrape cAdvisor + collector self-metrics ───
-  # metric_relabel_configs is a Prometheus server concept;
-  # OTel prometheus receiver only supports relabel_configs.
   prometheus:
     config:
       scrape_configs:
@@ -78,112 +64,80 @@ receivers:
           static_configs:
             - targets: ["cadvisor:8080"]
 
-        - job_name: otel_collector_self
-          scrape_interval: 30s
-          static_configs:
-            - targets: ["localhost:8888"]
-
 processors:
+  memory_limiter:
+    check_interval: 5s
+    # Aligned to actual collector startup log (limit_mib: 400, spike_limit_mib: 100)
+    # Container mem_limit in compose is 768m so this leaves ~268 MiB headroom
+    limit_mib: 400
+    spike_limit_mib: 100
+
   batch:
     timeout: 5s
     send_batch_size: 512
 
-  memory_limiter:
-    check_interval: 5s
-    limit_mib: 400
-    spike_limit_mib: 100
-
-  # Tag every signal with deployment metadata
-  resource:
+  resource/common:
     attributes:
       - key: deployment.environment
         value: poc
-        action: insert
+        action: upsert
       - key: service.namespace
         value: dataobs
-        action: insert
-      - key: elastic.stack.version
-        value: "9.3.3"
-        action: insert
+        action: upsert
 
-  # Pipeline / Spark extra attributes
-  attributes:
-    actions:
-      - key: pipeline.name
-        value: dataobs-poc
-        action: insert
-      - key: data.tenant
-        value: poc
-        action: insert
-
-  # Docker / infra source tag
   resource/docker:
     attributes:
       - key: telemetry.source
-        value: docker-host
-        action: insert
+        value: docker-desktop
+        action: upsert
       - key: monitoring.layer
         value: infrastructure
-        action: insert
+        action: upsert
 
-  # Spark / pipeline source tag
-  resource/spark:
+  resource/pipeline:
     attributes:
       - key: telemetry.source
         value: spark-pipeline
-        action: insert
+        action: upsert
       - key: monitoring.layer
         value: data-pipeline
-        action: insert
+        action: upsert
 
 exporters:
-  # ── ALL signals → Elastic Agent APM (OTLP/gRPC port 8200) ──
-  # This is the most reliable path in otel-contrib 0.99.0.
-  # Elastic Agent 9.x accepts OTLP natively and maps:
-  #   traces  → traces-apm-*   → Kibana APM Services
-  #   metrics → metrics-apm-*  → Kibana Metrics Explorer
-  #   logs    → logs-apm-*     → Kibana Logs
   otlp/apm:
-    endpoint: "${env:APM_SERVER_URL}"
+    endpoint: ${env:APM_SERVER_URL}
     tls:
       insecure: true
     headers:
-      Authorization: "Bearer ${env:APM_SECRET_TOKEN}"
+      Authorization: Bearer ${env:APM_SECRET_TOKEN}
 
-  # ── stdout debug (tail docker logs dataobs-poc-otel) ───────
   debug:
-    verbosity: basic
+    verbosity: normal
 
 service:
-  extensions: [health_check, pprof]
+  extensions: [health_check]
   pipelines:
-
-    # Pipeline / Spark TRACES → APM
     traces:
-      receivers:  [otlp]
-      processors: [memory_limiter, resource, resource/spark, attributes, batch]
-      exporters:  [otlp/apm, debug]
+      receivers: [otlp]
+      processors: [memory_limiter, resource/common, resource/pipeline, batch]
+      exporters: [otlp/apm, debug]
 
-    # Pipeline / Spark METRICS → APM
     metrics/pipeline:
-      receivers:  [otlp]
-      processors: [memory_limiter, resource, resource/spark, batch]
-      exporters:  [otlp/apm, debug]
+      receivers: [otlp]
+      processors: [memory_limiter, resource/common, resource/pipeline, batch]
+      exporters: [otlp/apm, debug]
 
-    # Pipeline / Spark LOGS → APM
     logs:
-      receivers:  [otlp]
-      processors: [memory_limiter, resource, batch]
-      exporters:  [otlp/apm, debug]
+      receivers: [otlp]
+      processors: [memory_limiter, resource/common, resource/pipeline, batch]
+      exporters: [otlp/apm, debug]
 
-    # Docker host metrics → APM (Infrastructure view)
-    metrics/docker:
-      receivers:  [hostmetrics, docker_stats]
-      processors: [memory_limiter, resource, resource/docker, batch]
-      exporters:  [otlp/apm]
+    metrics/host:
+      receivers: [hostmetrics]
+      processors: [memory_limiter, resource/common, resource/docker, batch]
+      exporters: [otlp/apm]
 
-    # cAdvisor container metrics → APM
-    metrics/cadvisor:
-      receivers:  [prometheus]
-      processors: [memory_limiter, resource, resource/docker, batch]
-      exporters:  [otlp/apm]
+    metrics/containers:
+      receivers: [prometheus]
+      processors: [memory_limiter, resource/common, resource/docker, batch]
+      exporters: [otlp/apm]

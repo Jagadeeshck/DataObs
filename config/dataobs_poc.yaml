@@ -71,7 +71,7 @@ poc:
     max_datasets:            3
     themes:
       - transport
-      - environment
+#      - environment
       - government
 
   data_sources: []

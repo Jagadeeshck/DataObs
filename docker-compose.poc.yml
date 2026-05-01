@@ -286,7 +286,7 @@ services:
           -X POST "$$KIBANA/api/fleet/enrollment_api_keys" \
           -H "kbn-xsrf: true" \
           -H "Content-Type: application/json" \
-          -d '{"name":"apm-agent-token","policy_id":"apm-agent-policy"}')
+          -d "{\"name\":\"apm-agent-token-$$(date +%s)\",\"policy_id\":\"apm-agent-policy\"}")
         TOKEN=$$(echo "$$RESPONSE" | sed -n 's/.*"api_key":"\([^"]*\)".*/\1/p')
         if [ -z "$$TOKEN" ]; then
           echo "[kibana-setup] ERROR: APM enrollment token extraction failed. Response: $$RESPONSE"
@@ -388,7 +388,7 @@ services:
       - SYS_PTRACE
       - DAC_READ_SEARCH
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:8200/ | grep -q 'apm-server'"]
+      test: ["CMD-SHELL", "curl -sf -o /dev/null http://localhost:8200/"]
       interval: 20s
       timeout: 10s
       retries: 10
@@ -413,7 +413,7 @@ services:
     environment:
       ELASTIC_PASSWORD: ${ELASTIC_PASSWORD}
       ELASTICHOST: http://elasticsearch:9200
-      APM_SERVER_URL: http://elastic-agent:8200
+      APM_SERVER_URL: elastic-agent:8200
       APM_SECRET_TOKEN: ${APM_SECRET_TOKEN:-dataobs_poc_apm_token}
     depends_on:
       elasticsearch:
@@ -421,7 +421,7 @@ services:
       elastic-agent:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:13133/"]
+      test: ["CMD", "/otelcol-contrib", "--version"]
       interval: 15s
       timeout: 5s
       retries: 8

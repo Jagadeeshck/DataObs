@@ -8,10 +8,8 @@
 #      ├─ traces  ───►  Elastic Agent APM :8200  (OTLP/gRPC)
 #      │                → stored in traces-apm-* data streams
 #      │                → visible in Kibana → Observability → APM
-#      ├─ metrics ───►  Elasticsearch :9200
-#      │                → index: dataobs-poc-telemetry-metrics
-#      └─ logs    ───►  Elasticsearch :9200
-#                       → index: dataobs-poc-telemetry-logs
+#      ├─ metrics ───►  Elastic Agent APM :8200  (OTLP/gRPC)
+#      └─ logs    ───►  Elastic Agent APM :8200  (OTLP/gRPC)
 # ============================================================
 
 extensions:
@@ -75,43 +73,11 @@ exporters:
   # Data streams: traces-apm-*, spans-apm-*
   # ──────────────────────────────────────────────────────────
   otlp/apm:
-    endpoint: "${APM_SERVER_URL:-http://elastic-agent:8200}"
+    endpoint: "${env:APM_SERVER_URL}"
     tls:
       insecure: true
     headers:
-      Authorization: "Bearer ${APM_SECRET_TOKEN:-dataobs_poc_apm_token}"
-
-  # ──────────────────────────────────────────────────────────
-  # METRICS → Elasticsearch directly
-  # Index: dataobs-poc-telemetry-metrics
-  # ──────────────────────────────────────────────────────────
-  elasticsearch/metrics:
-    endpoints: ["${ELASTICHOST:-http://elasticsearch:9200}"]
-    user: elastic
-    password: "${ELASTIC_PASSWORD}"
-    metrics_index: dataobs-poc-telemetry-metrics
-    tls:
-      insecure: true
-    retry:
-      enabled: true
-      initial_interval: 5s
-      max_interval: 30s
-
-  # ──────────────────────────────────────────────────────────
-  # LOGS → Elasticsearch directly
-  # Index: dataobs-poc-telemetry-logs
-  # ──────────────────────────────────────────────────────────
-  elasticsearch/logs:
-    endpoints: ["${ELASTICHOST:-http://elasticsearch:9200}"]
-    user: elastic
-    password: "${ELASTIC_PASSWORD}"
-    logs_index: dataobs-poc-telemetry-logs
-    tls:
-      insecure: true
-    retry:
-      enabled: true
-      initial_interval: 5s
-      max_interval: 30s
+      Authorization: "Bearer ${env:APM_SECRET_TOKEN}"
 
   # stdout debug (easy local inspection)
   debug:
@@ -131,10 +97,10 @@ service:
     metrics:
       receivers:  [otlp]
       processors: [memory_limiter, resource, batch]
-      exporters:  [elasticsearch/metrics, debug]
+      exporters:  [otlp/apm, debug]
 
-    # Logs → Elasticsearch
+    # Logs → Elastic Agent APM
     logs:
       receivers:  [otlp]
       processors: [memory_limiter, resource, batch]
-      exporters:  [elasticsearch/logs, debug]
+      exporters:  [otlp/apm, debug]

@@ -15,21 +15,46 @@ Or via the convenience script::
 from __future__ import annotations
 
 import logging
+import os
 import time
 from pathlib import Path
 
 import requests
+from requests.auth import HTTPBasicAuth
 
 from src.poc.config import get_poc_config
 
 logger = logging.getLogger(__name__)
 
 
-def wait_for_kibana(base_url: str, retries: int = 20, delay: int = 5) -> bool:
+def _kibana_auth(poc_cfg: dict) -> HTTPBasicAuth:
+    """
+    Build HTTP Basic Auth credentials for Kibana API calls.
+
+    Resolution order (highest wins):
+    1. KIBANA_USERNAME / KIBANA_PASSWORD env vars
+    2. elasticsearch.username / elasticsearch.password from poc config
+    3. Hardcoded defaults: elastic / changeme
+    """
+    es_cfg = poc_cfg.get("elasticsearch", {})
+    username = (
+        os.environ.get("KIBANA_USERNAME")
+        or os.environ.get("ELASTIC_USERNAME")
+        or es_cfg.get("username", "elastic")
+    )
+    password = (
+        os.environ.get("KIBANA_PASSWORD")
+        or os.environ.get("ELASTIC_PASSWORD")
+        or es_cfg.get("password", "changeme")
+    )
+    return HTTPBasicAuth(username, password)
+
+
+def wait_for_kibana(base_url: str, auth: HTTPBasicAuth, retries: int = 20, delay: int = 5) -> bool:
     """Poll Kibana /api/status until it reports 'green'."""
     for attempt in range(1, retries + 1):
         try:
-            resp = requests.get(f"{base_url}/api/status", timeout=10)
+            resp = requests.get(f"{base_url}/api/status", auth=auth, timeout=10)
             if resp.status_code == 200:
                 status = resp.json().get("status", {}).get("overall", {}).get("level", "")
                 if status in {"available", "green", "degraded"}:
@@ -42,13 +67,13 @@ def wait_for_kibana(base_url: str, retries: int = 20, delay: int = 5) -> bool:
     return False
 
 
-def import_saved_objects(base_url: str, saved_objects_path: Path) -> None:
+def import_saved_objects(base_url: str, saved_objects_path: Path, auth: HTTPBasicAuth) -> None:
     """POST saved objects NDJSON file to Kibana import API."""
     url = f"{base_url}/api/saved_objects/_import?overwrite=true"
     headers = {"kbn-xsrf": "true"}
     with open(saved_objects_path, "rb") as fh:
         files = {"file": (saved_objects_path.name, fh, "application/ndjson")}
-        resp = requests.post(url, headers=headers, files=files, timeout=60)
+        resp = requests.post(url, headers=headers, files=files, auth=auth, timeout=60)
         resp.raise_for_status()
     result = resp.json()
     success = result.get("successCount", 0)
@@ -58,7 +83,7 @@ def import_saved_objects(base_url: str, saved_objects_path: Path) -> None:
         logger.warning("[kibana] %d import error(s): %s", len(errors), errors)
 
 
-def create_data_views(base_url: str, patterns: list) -> None:
+def create_data_views(base_url: str, patterns: list, auth: HTTPBasicAuth) -> None:
     """Create Kibana data views for all configured index patterns."""
     url = f"{base_url}/api/data_views/data_view"
     headers = {"kbn-xsrf": "true", "Content-Type": "application/json"}
@@ -70,7 +95,7 @@ def create_data_views(base_url: str, patterns: list) -> None:
             }
         }
         try:
-            resp = requests.post(url, headers=headers, json=payload, timeout=30)
+            resp = requests.post(url, headers=headers, json=payload, auth=auth, timeout=30)
             if resp.status_code in {200, 409}:  # 409 = already exists
                 logger.info("[kibana] Data view ready: %s", pattern)
             else:
@@ -80,7 +105,7 @@ def create_data_views(base_url: str, patterns: list) -> None:
 
 
 def main() -> None:
-    logging.basicConfig(level="INFO", format="%(asctime)s %(levelname)s %(name)s — %(message)s")
+    logging.basicConfig(level="INFO", format="%(asctime)s %(levelname)s %(name)s \u2014 %(message)s")
 
     poc_cfg = get_poc_config()
     if not poc_cfg.get("enabled", False):
@@ -96,16 +121,18 @@ def main() -> None:
         "dataobs-poc-telemetry-*",
     ])
 
-    if not wait_for_kibana(base_url):
+    auth = _kibana_auth(poc_cfg)
+
+    if not wait_for_kibana(base_url, auth):
         logger.error("[kibana] Kibana did not become ready. Aborting dashboard bootstrap.")
         return
 
     if poc_cfg.get("create_kibana_data_views", True):
-        create_data_views(base_url, dv_patterns)
+        create_data_views(base_url, dv_patterns, auth)
 
     so_path = Path(so_file)
     if poc_cfg.get("bootstrap_dashboards", True) and so_path.exists():
-        import_saved_objects(base_url, so_path)
+        import_saved_objects(base_url, so_path, auth)
     else:
         logger.info("[kibana] Skipping saved objects import (file=%s, bootstrap_dashboards=%s).",
                     so_path, poc_cfg.get("bootstrap_dashboards"))

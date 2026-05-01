@@ -1,118 +1,92 @@
 # ============================================================
-#  DataObs — POC Configuration  (Elastic Stack 9.3.3)
-#  Self-contained — no changes to config/dataobs.yaml needed.
-#
-#  All ${VAR:-default} values are resolved from .env.poc.local
-#  when running via docker-compose.poc.yml.
-#
-#  Full setup guide: docs/poc-setup.md
+#  DataObs POC — Primary Configuration
+#  Unified Elasticsearch cluster for observability + test data
 # ============================================================
 
-poc:
+tenant: poc
+environment: poc
+
+# ── Elasticsearch (UNIFIED cluster) ───────────────────────────
+# Single cluster hosts both observability indices and test data.
+#
+#  Observability indices (auto-created by OTel/APM):
+#    traces-apm-*          → APM distributed traces
+#    metrics-otel-poc-*    → OTel metrics (Spark, pipeline, Docker)
+#    logs-otel-poc-*       → OTel logs
+#
+#  Test / pipeline data indices (created by es-setup):
+#    dataobs-test-data     → synthetic pipeline test records
+#    dataobs-spark-results → Spark transformation output
+#    dataobs-lineage       → data lineage events
+elasticsearch:
+  host: "${ELASTICHOST:-http://elasticsearch:9200}"
+  username: elastic
+  password: "${ELASTIC_PASSWORD:-changeme}"
+  # Index prefix for custom DataObs indices
+  data_index_prefix: dataobs
+  # OTel metrics index (written by OTel Collector ES exporter)
+  otel_metrics_index: metrics-otel-poc
+  otel_logs_index: logs-otel-poc
+  otel_traces_index: traces-otel-poc
+
+# ── OpenTelemetry ─────────────────────────────────────────────
+otel:
+  endpoint: "${OTEL_EXPORTER_OTLP_ENDPOINT:-http://otel-collector:4318}"
+  service_name: "${OTEL_SERVICE_NAME:-dataobs-pipeline}"
+  # Resource attributes propagated to all signals
+  resource_attributes:
+    deployment.environment: poc
+    service.namespace: dataobs
+    telemetry.source: dataobs-poc
+
+# ── Spark ─────────────────────────────────────────────────────
+spark:
+  master: "${SPARK_MASTER:-local[*]}"
+  app_name: DataObs-POC
+  # OTel instrumentation — wraps every Spark job
+  otel_instrumentation_enabled: true
+  # Java agent injected via SPARK_SUBMIT_OPTS in docker-compose
+  java_agent_enabled: true
+
+# ── Pipeline ──────────────────────────────────────────────────
+pipeline:
+  runner: src.poc.pipeline_runner.DataObsPipelineRunner
+  stages:
+    - ingest
+    - spark_transform
+    - lineage
+  tenant: poc
+
+# ── Data Quality ──────────────────────────────────────────────
+quality:
   enabled: true
-  profile: local_gov_uk_demo
-  bootstrap_dashboards: true
-  create_kibana_data_views: true
+  rules:
+    - name: null_check
+      type: completeness
+      threshold: 0.99
+    - name: freshness_check
+      type: freshness
+      max_age_minutes: 60
 
-  # ── Runtime working directories ───────────────────────────
-  runtime:
-    spark_master:       "${SPARK_MASTER:-local[*]}"
-    checkpoint_dir:     "/tmp/dataobs/poc/checkpoints"
-    raw_download_dir:   "/tmp/dataobs/poc/raw"
-    curated_output_dir: "/tmp/dataobs/poc/curated"
-    temp_dir:           "/tmp/dataobs/poc/tmp"
+# ── Data Freshness ─────────────────────────────────────────────
+freshness:
+  enabled: true
+  check_interval_minutes: 15
+  datasets:
+    - name: dataobs-test-data
+      max_age_minutes: 60
+    - name: dataobs-spark-results
+      max_age_minutes: 30
 
-  # ── Elasticsearch 9.3.3 ───────────────────────────────────
-  elasticsearch:
-    host:         "${ELASTICHOST:-http://elasticsearch:9200}"
-    username:     "elastic"
-    password:     "${ELASTIC_PASSWORD:-dataobs_poc_secret}"
-    verify_certs: false
-    indices:
-      raw:               "dataobs-poc-raw"
-      curated:           "dataobs-poc-curated"
-      telemetry_logs:    "dataobs-poc-telemetry-logs"
-      telemetry_metrics: "dataobs-poc-telemetry-metrics"
-      telemetry_traces:  "dataobs-poc-telemetry-traces"
-      quality:           "dataobs-poc-quality"
-      lineage:           "dataobs-poc-lineage"
+# ── Data Lineage ──────────────────────────────────────────────
+lineage:
+  enabled: true
+  index: dataobs-lineage
+  track_spark_jobs: true
+  track_es_writes: true
 
-  # ── OpenTelemetry ─────────────────────────────────────────
-  # Traces  → OTel Collector → Elastic Agent APM :8200
-  # Metrics → OTel Collector → Elasticsearch :9200 directly
-  # Logs    → OTel Collector → Elasticsearch :9200 directly
-  opentelemetry:
-    service_name:            "dataobs-poc-pipeline"
-    exporter_otlp_endpoint:  "${OTEL_EXPORTER_OTLP_ENDPOINT:-http://otel-collector:4318}"
-    protocol:                "http/protobuf"
-    traces_enabled:          true
-    metrics_enabled:         true
-    logs_enabled:            true
-
-  # ── APM — Elastic Agent 9.x (built-in APM Server) ─────────
-  # APM Server runs inside Elastic Agent (managed by Fleet).
-  # Port 8200 accepts Elastic APM protocol + OTLP natively.
-  # Traces visible in: Kibana → Observability → APM → Services
-  apm:
-    server_url:      "${APM_SERVER_URL:-http://elastic-agent:8200}"
-    secret_token:    "${APM_SECRET_TOKEN:-dataobs_poc_apm_token}"
-    service_name:    "dataobs-poc-pipeline"
-    service_version: "poc-v1"
-    environment:     "poc"
-
-  # ── Data sources ──────────────────────────────────────────
-  # Leave data_sources empty → auto-discover from data.gov.uk
-  # Set explicit entries below to skip CKAN discovery.
-  source_defaults:
-    enabled:                 true
-    provider:                "data.gov.uk"
-    auto_discover_if_empty:  true
-    preferred_formats:       [csv, json]
-    max_datasets:            3
-    themes:
-      - transport
-#      - environment
-      - government
-
-  data_sources: []
-  # Uncomment to pin specific datasets:
-  # data_sources:
-  #   - name: road-safety
-  #     source_type: data.gov.uk
-  #     resource_url: "https://opendata.arcgis.com/datasets/0892f9a891614aaf82ea0fca5dc8b4d7_0.csv"
-  #     format: csv
-
-  # ── Processing & quality rules ────────────────────────────
-  processing:
-    datasets:
-      standardize_columns:    true
-      add_ingestion_metadata: true
-      row_limit:              5000
-    quality_rules:
-      freshness_max_age_hours:  168
-      fail_on_schema_drift:     false
-      max_null_pct_warn:        5.0
-      max_null_pct_fail:        20.0
-      duplicate_threshold_pct:  1.0
-      min_rows_warn:            10
-
-  # ── Telemetry emission ────────────────────────────────────
-  telemetry:
-    emit_stage_events:    true
-    emit_dataset_metrics: true
-    emit_quality_events:  true
-    emit_lineage_events:  true
-
-  # ── Kibana dashboards ─────────────────────────────────────
-  dashboards:
-    kibana_base_url:          "${KIBANA_URL:-http://kibana:5601}"
-    kibana_space:             "default"
-    load_saved_objects_file:  "kibana/dataobs-poc-saved-objects.ndjson"
-    create_data_views:
-      - "dataobs-poc-curated*"
-      - "dataobs-poc-quality*"
-      - "dataobs-poc-telemetry-*"
-      - "dataobs-poc-lineage*"
-      - "traces-apm*"       # APM distributed traces
-      - "metrics-apm*"      # APM service metrics
-      - "logs-apm*"         # APM log correlation
+# ── Kibana ────────────────────────────────────────────────────
+kibana:
+  url: "${KIBANA_URL:-http://kibana:5601}"
+  username: elastic
+  password: "${ELASTIC_PASSWORD:-changeme}"

@@ -239,9 +239,13 @@ services:
       - ./config/otel-collector-poc.yaml:/etc/otel/config.yaml:ro
       # Mount host root so hostmetrics can report real host stats (not container-scoped)
       - /:/hostfs:ro
+      # Mount /var/log for filelog system integration (read-only)
+      - /var/log:/var/log:ro
     ports:
       - "4317:4317"
       - "4318:4318"
+      # Expose health_check and metrics endpoints for Docker healthcheck
+      - "13133:13133"
     environment:
       APM_SERVER_URL: elastic-agent:8200
       APM_SECRET_TOKEN: ${APM_SECRET_TOKEN:-dataobs_poc_apm_token}
@@ -253,12 +257,20 @@ services:
         condition: service_healthy
       cadvisor:
         condition: service_healthy
+    # ---------------------------------------------------------------
+    # FIX: healthcheck was missing — pipeline service depends on
+    # otel-collector with condition: service_healthy which requires
+    # this stanza. Without it Compose immediately fails with:
+    # "container has no healthcheck configured"
+    # The health_check extension in otel-collector-poc.yaml listens
+    # on 0.0.0.0:13133 and returns HTTP 200 when the collector is ready.
+    # ---------------------------------------------------------------
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:13133/ || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 8
-      start_period: 20s
+      start_period: 30s
     networks: [dataobs-poc]
 
   pipeline:

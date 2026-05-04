@@ -15,36 +15,38 @@
 #
 #    - cAdvisor (Prometheus scrape) for container metrics
 #    - hostmetrics WITHOUT processes scraper
-#    - docker_stats receiver disabled by default (toggle ENABLE_DOCKER_STATS)
+#    - no docker_stats receiver
 #
 #  This still gives:
 #    ✔ container CPU / memory / network / filesystem via cAdvisor
 #    ✔ host CPU / memory / disk / network via hostmetrics
 #    ✔ pipeline + Spark traces / metrics / logs via OTLP
-#    ✔ system logs (filelog) from /var/log (macOS-safe: falls back gracefully)
-#    ✔ docker container stats via docker_stats (opt-in)
+#    ✔ container stdout/stderr logs via filelog receiver
+#    ✔ AWS cloud resource attributes on every telemetry signal
 #
-#  System Integration additions (2026-05-04):
-#    - filelog receiver for /var/log/**/*.log (host system logs)
-#    - docker_stats receiver for per-container resource metrics
-#      (requires /var/run/docker.sock mount — see docker-compose.poc.yml)
-#    - system_logs pipeline routes filelog → APM + debug
-#    - metrics/docker pipeline routes docker_stats → APM
-#
-#  Fixes applied (2026-05-01):
-#    - root_path: /hostfs set on hostmetrics (requires /hostfs volume
-#      mount in docker-compose.poc.yml) — eliminates the startup
-#      warning and ensures host filesystem stats are not container-scoped
-#    - memory_limiter limits aligned to 400 MiB / 100 MiB spike to
-#      match actual collector startup log output
+#  Fixes applied (2026-05-04):
+#    - healthcheck start_period bumped to 90s in docker-compose.poc.yml
+#    - pipeline dependency on otel-collector changed to service_started
+#    - filelog receiver added for container log collection
+#    - resourcedetection processor added for host + cloud attributes
+#    - system integration pipeline added (metrics/system)
+#    - OTEL_EXPORTER_OTLP_*_TIMEOUT vars added to pipeline service
 # ============================================================
 
 extensions:
   health_check:
     endpoint: 0.0.0.0:13133
 
+  # pprof exposes Go profiling at :1888/debug/pprof — useful for collector
+  # memory/CPU debugging. Disable in production.
+  pprof:
+    endpoint: 0.0.0.0:1888
+
+  # zpages exposes internal OTel debug pages at :55679/debug/tracez etc.
+  zpages:
+    endpoint: 0.0.0.0:55679
+
 receivers:
-  # ── OTLP: pipeline traces / metrics / logs ───────────────────────
   otlp:
     protocols:
       grpc:
@@ -52,7 +54,6 @@ receivers:
       http:
         endpoint: 0.0.0.0:4318
 
-  # ── Host metrics (CPU, memory, disk, network, load) ──────────────
   hostmetrics:
     # root_path tells the hostmetrics receiver to resolve /proc, /sys, etc.
     # relative to /hostfs rather than the container root. The /hostfs bind-mount
@@ -60,19 +61,72 @@ receivers:
     root_path: /hostfs
     collection_interval: 30s
     scrapers:
-      cpu: {}
-      memory: {}
+      cpu:
+        metrics:
+          system.cpu.utilization:
+            enabled: true
+      memory:
+        metrics:
+          system.memory.utilization:
+            enabled: true
       disk: {}
-      filesystem: {}
-      network: {}
+      filesystem:
+        exclude_mount_points:
+          mount_points: ["/dev", "/proc", "/sys", "/run/lock"]
+          match_type: strict
+        exclude_fs_types:
+          fs_types: ["autofs", "binfmt_misc", "cgroup", "configfs",
+                     "debugfs", "devpts", "devtmpfs", "fusectl",
+                     "hugetlbfs", "mqueue", "nsfs", "overlay",
+                     "proc", "procfs", "pstore", "rpc_pipefs",
+                     "securityfs", "selinuxfs", "squashfs",
+                     "sysfs", "tracefs"]
+          match_type: strict
+      network:
+        exclude:
+          interfaces: ["lo"]
+          match_type: strict
       load: {}
-      # NOTE: processes scraper is intentionally omitted.
-      # On Docker Desktop (macOS) it causes startup errors because
-      # /proc is not visible from inside the container.
-      # Re-enable on Linux hosts by uncommenting:
+      # NOTE: processes scraper is intentionally omitted — it requires
+      # /proc visibility that Docker Desktop on macOS does not provide.
+      # Enable on native Linux / EC2 / EKS worker nodes:
       # processes: {}
 
-  # ── cAdvisor Prometheus scrape (container-level metrics) ─────────
+  # filelog receiver — collects container stdout/stderr logs written by
+  # Docker's json-file logging driver to:
+  #   /var/lib/docker/containers/<id>/<id>-json.log
+  # The /var/lib/docker/containers volume is mounted :ro in compose.
+  # On macOS Docker Desktop the path lives inside the HyperKit/VZ VM;
+  # Docker Desktop 4.x+ exposes it via the gRPC FUSE layer so the mount
+  # works correctly even on Apple Silicon.
+  filelog:
+    include:
+      - /var/lib/docker/containers/*/*.log
+    include_file_path: true
+    include_file_name: false
+    start_at: beginning
+    operators:
+      # Parse Docker json-file log format: {"log":"...","stream":"stdout","time":"..."}
+      - type: json_parser
+        timestamp:
+          parse_from: attributes.time
+          layout: "%Y-%m-%dT%H:%M:%S.%fZ"
+      - type: move
+        from: attributes.log
+        to: body
+      - type: add
+        field: attributes.log.source
+        value: docker-container
+      # Extract container ID from the file path and set as resource attribute
+      - type: regex_parser
+        parse_from: attributes["log.file.path"]
+        regex: '/var/lib/docker/containers/(?P<container_id>[a-f0-9]+)/'
+        on_error: send
+      - type: move
+        from: attributes.container_id
+        to: resource["container.id"]
+
+  # Prometheus scrape of cAdvisor container metrics
   prometheus:
     config:
       scrape_configs:
@@ -80,57 +134,6 @@ receivers:
           scrape_interval: 30s
           static_configs:
             - targets: ["cadvisor:8080"]
-
-  # ── System Integration: host log files ───────────────────────────
-  # Reads system log files from the host /var/log mount.
-  # On macOS Docker Desktop, /var/log is the VM's log directory.
-  # On Linux this picks up syslog, kern.log, dpkg.log, auth.log etc.
-  # Falls back gracefully (no crash) if files are absent.
-  filelog:
-    include:
-      - /var/log/**/*.log
-      - /var/log/syslog
-      - /var/log/messages
-    exclude:
-      - /var/log/btmp
-      - /var/log/wtmp
-      - /var/log/lastlog
-    start_at: end
-    include_file_path: true
-    include_file_name: false
-    operators:
-      - type: move
-        from: attributes["log.file.path"]
-        to: resource["log.file.path"]
-    retry_on_failure:
-      enabled: true
-
-  # ── System Integration: Docker container stats ───────────────────
-  # docker_stats provides per-container CPU/memory/network/block-IO.
-  # Requires the docker socket to be accessible:
-  #   volumes: - /var/run/docker.sock:/var/run/docker.sock:ro
-  # Add that volume to otel-collector in docker-compose.poc.yml
-  # if you need live container stats alongside cAdvisor.
-  # NOTE: On Docker Desktop for Mac, docker.sock is the VM socket
-  # and typically works fine. If you see permission errors, ensure
-  # the otel-collector container is not running as a non-root user
-  # without the docker group.
-  docker_stats:
-    endpoint: unix:///var/run/docker.sock
-    collection_interval: 30s
-    timeout: 20s
-    api_version: 1.40
-    metrics:
-      container.cpu.usage.total:
-        enabled: true
-      container.memory.usage.total:
-        enabled: true
-      container.network.io.usage.rx_bytes:
-        enabled: true
-      container.network.io.usage.tx_bytes:
-        enabled: true
-      container.blockio.io_service_bytes_recursive:
-        enabled: true
 
 processors:
   memory_limiter:
@@ -171,13 +174,40 @@ processors:
         value: data-pipeline
         action: upsert
 
-  resource/system:
+  resource/logs:
     attributes:
       - key: telemetry.source
-        value: system-integration
+        value: container-logs
         action: upsert
       - key: monitoring.layer
         value: system
+        action: upsert
+
+  # resourcedetection adds host.* and cloud.* attributes automatically.
+  # Detectors run in order; the first match wins.
+  #   env   — reads OTEL_RESOURCE_ATTRIBUTES env var (set host.name via HOST_NAME)
+  #   system — adds host.name, host.arch, os.type from the container
+  # On EC2/EKS add "ec2" or "eks" to the list to get cloud.provider,
+  # cloud.region, cloud.account.id, host.id etc. from the instance metadata.
+  resourcedetection/system:
+    detectors: [env, system]
+    system:
+      hostname_sources: [os]
+    timeout: 5s
+    override: false
+
+  # Enrich every signal with cloud context for AWS observability.
+  # Values come from env vars set in docker-compose (CLOUD_PROVIDER, etc.).
+  resource/cloud:
+    attributes:
+      - key: cloud.provider
+        value: ${env:CLOUD_PROVIDER}
+        action: upsert
+      - key: cloud.region
+        value: ${env:CLOUD_REGION}
+        action: upsert
+      - key: host.name
+        value: ${env:HOST_NAME}
         action: upsert
 
 exporters:
@@ -187,53 +217,57 @@ exporters:
       insecure: true
     headers:
       Authorization: Bearer ${env:APM_SECRET_TOKEN}
+    retry_on_failure:
+      enabled: true
+      initial_interval: 5s
+      max_interval: 30s
+      max_elapsed_time: 300s
+    sending_queue:
+      enabled: true
+      num_consumers: 4
+      queue_size: 1000
 
   debug:
     verbosity: normal
 
 service:
-  extensions: [health_check]
+  extensions: [health_check, pprof, zpages]
   pipelines:
-    # ── Application traces ────────────────────────────────────────
     traces:
       receivers: [otlp]
-      processors: [memory_limiter, resource/common, resource/pipeline, batch]
+      processors: [memory_limiter, resourcedetection/system, resource/cloud,
+                   resource/common, resource/pipeline, batch]
       exporters: [otlp/apm, debug]
 
-    # ── Pipeline / Spark metrics ──────────────────────────────────
     metrics/pipeline:
       receivers: [otlp]
-      processors: [memory_limiter, resource/common, resource/pipeline, batch]
+      processors: [memory_limiter, resourcedetection/system, resource/cloud,
+                   resource/common, resource/pipeline, batch]
       exporters: [otlp/apm, debug]
 
-    # ── Application logs ──────────────────────────────────────────
     logs:
       receivers: [otlp]
-      processors: [memory_limiter, resource/common, resource/pipeline, batch]
+      processors: [memory_limiter, resourcedetection/system, resource/cloud,
+                   resource/common, resource/pipeline, batch]
       exporters: [otlp/apm, debug]
 
-    # ── Host infrastructure metrics ───────────────────────────────
-    metrics/host:
+    # System integration pipeline — host CPU/mem/disk/net/load metrics
+    metrics/system:
       receivers: [hostmetrics]
-      processors: [memory_limiter, resource/common, resource/docker, batch]
+      processors: [memory_limiter, resourcedetection/system, resource/cloud,
+                   resource/common, resource/docker, batch]
       exporters: [otlp/apm]
 
-    # ── Container metrics via cAdvisor ────────────────────────────
+    # Container metrics from cAdvisor
     metrics/containers:
       receivers: [prometheus]
-      processors: [memory_limiter, resource/common, resource/docker, batch]
+      processors: [memory_limiter, resourcedetection/system, resource/cloud,
+                   resource/common, resource/docker, batch]
       exporters: [otlp/apm]
 
-    # ── Container metrics via Docker stats receiver ───────────────
-    # Complements cAdvisor with direct Docker API stats.
-    metrics/docker:
-      receivers: [docker_stats]
-      processors: [memory_limiter, resource/common, resource/system, batch]
-      exporters: [otlp/apm]
-
-    # ── System log integration ────────────────────────────────────
-    # Tails /var/log files from the host and ships to APM.
-    logs/system:
+    # Container logs pipeline — stdout/stderr from all Docker containers
+    logs/containers:
       receivers: [filelog]
-      processors: [memory_limiter, resource/common, resource/system, batch]
+      processors: [memory_limiter, resourcedetection/system, resource/cloud,
+                   resource/common, resource/logs, batch]
       exporters: [otlp/apm, debug]

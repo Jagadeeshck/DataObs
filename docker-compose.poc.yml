@@ -239,12 +239,13 @@ services:
       - ./config/otel-collector-poc.yaml:/etc/otel/config.yaml:ro
       # Mount host root so hostmetrics can report real host stats (not container-scoped)
       - /:/hostfs:ro
-      # Mount /var/log for filelog system integration (read-only)
-      - /var/log:/var/log:ro
+      # Mount Docker socket for container log tailing (filelog receiver)
+      # On macOS Docker Desktop this path is inside the VM — logs are still captured
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
     ports:
       - "4317:4317"
       - "4318:4318"
-      # Expose health_check and metrics endpoints for Docker healthcheck
+      # Expose health check port for debugging: curl http://localhost:13133/
       - "13133:13133"
     environment:
       APM_SERVER_URL: elastic-agent:8200
@@ -252,25 +253,25 @@ services:
       # Fix: force Docker client API version negotiation to >= 1.40
       # Resolves: "client version 1.25 is too old. Minimum supported API version is 1.40"
       DOCKER_API_VERSION: "1.40"
+      # Cloud resource attributes — set for AWS context even in local POC
+      CLOUD_PROVIDER: ${CLOUD_PROVIDER:-aws}
+      CLOUD_REGION: ${CLOUD_REGION:-eu-west-1}
+      HOST_NAME: ${HOST_NAME:-dataobs-poc-host}
     depends_on:
       elastic-agent:
         condition: service_healthy
       cadvisor:
         condition: service_healthy
-    # ---------------------------------------------------------------
-    # FIX: healthcheck was missing — pipeline service depends on
-    # otel-collector with condition: service_healthy which requires
-    # this stanza. Without it Compose immediately fails with:
-    # "container has no healthcheck configured"
-    # The health_check extension in otel-collector-poc.yaml listens
-    # on 0.0.0.0:13133 and returns HTTP 200 when the collector is ready.
-    # ---------------------------------------------------------------
     healthcheck:
+      # FIX: increased start_period (20s → 90s) and retries (8 → 15) to allow
+      # the health_check extension time to bind on cold Docker Desktop starts.
+      # The interval is also bumped from 15s → 20s to reduce probe noise
+      # during the extension's startup phase.
       test: ["CMD-SHELL", "wget -qO- http://localhost:13133/ || exit 1"]
-      interval: 15s
+      interval: 20s
       timeout: 5s
-      retries: 8
-      start_period: 30s
+      retries: 15
+      start_period: 90s
     networks: [dataobs-poc]
 
   pipeline:
@@ -284,8 +285,15 @@ services:
         condition: service_healthy
       kibana:
         condition: service_healthy
+      # FIX: changed otel-collector dependency from service_healthy → service_started.
+      # The pipeline connects to OTLP ports 4317/4318 which are bound almost
+      # immediately on startup — waiting for the health extension (port 13133)
+      # to pass can cause `docker compose run --rm pipeline` to fail if the
+      # collector is already Running but not yet Healthy.
+      # The pipeline's OTLP SDK has built-in retry logic (OTEL_EXPORTER_OTLP_RETRY_*)
+      # so occasional early-start misses are handled gracefully.
       otel-collector:
-        condition: service_healthy
+        condition: service_started
     environment:
       ELASTICHOST: http://elasticsearch:9200
       ELASTIC_PASSWORD: ${ELASTIC_PASSWORD}
@@ -293,6 +301,13 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       OTEL_SERVICE_NAME: dataobs-pipeline
       OTEL_RESOURCE_ATTRIBUTES: deployment.environment=poc,service.namespace=dataobs
+      # OTLP exporter retry settings — ensures pipeline traces are not lost
+      # if the collector is still warming up when the pipeline starts
+      OTEL_EXPORTER_OTLP_TRACES_TIMEOUT: 30000
+      OTEL_EXPORTER_OTLP_METRICS_TIMEOUT: 30000
+      OTEL_EXPORTER_OTLP_LOGS_TIMEOUT: 30000
+      OTEL_BSP_MAX_EXPORT_BATCH_SIZE: 512
+      OTEL_BSP_SCHEDULE_DELAY: 5000
       DATAOBS_CONFIG: /app/config/dataobs_poc.yaml
       DATAOBS_TENANT_ID: poc
       DATAOBS_STORE_BACKEND: elasticsearch

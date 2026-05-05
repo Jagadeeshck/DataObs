@@ -248,7 +248,11 @@ services:
       # Expose health check port for debugging: curl http://localhost:13133/
       - "13133:13133"
     environment:
-      APM_SERVER_URL: elastic-agent:8200
+      # FIX: APM_SERVER_URL must NOT include http:// here because the
+      # otel-collector-poc.yaml exporter prepends it:
+      #   endpoint: http://${env:APM_SERVER_URL}
+      # The default value below is the docker-compose service name + port only.
+      APM_SERVER_URL: ${APM_SERVER_URL:-elastic-agent:8200}
       APM_SECRET_TOKEN: ${APM_SECRET_TOKEN:-dataobs_poc_apm_token}
       # Fix: force Docker client API version negotiation to >= 1.40
       # Resolves: "client version 1.25 is too old. Minimum supported API version is 1.40"
@@ -263,10 +267,8 @@ services:
       cadvisor:
         condition: service_healthy
     healthcheck:
-      # FIX: increased start_period (20s → 90s) and retries (8 → 15) to allow
-      # the health_check extension time to bind on cold Docker Desktop starts.
-      # The interval is also bumped from 15s → 20s to reduce probe noise
-      # during the extension's startup phase.
+      # start_period bumped 20s → 90s and retries 8 → 15 to allow the
+      # health_check extension time to bind on cold Docker Desktop starts.
       test: ["CMD-SHELL", "wget -qO- http://localhost:13133/ || exit 1"]
       interval: 20s
       timeout: 5s
@@ -299,6 +301,9 @@ services:
       ELASTIC_PASSWORD: ${ELASTIC_PASSWORD}
       KIBANA_URL: http://kibana:5601
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      # FIX: explicitly set http/protobuf protocol so the Python OTLP SDK
+      # matches the exporter protocol used by the collector → APM Server.
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
       OTEL_SERVICE_NAME: dataobs-pipeline
       OTEL_RESOURCE_ATTRIBUTES: deployment.environment=poc,service.namespace=dataobs
       # OTLP exporter retry settings — ensures pipeline traces are not lost

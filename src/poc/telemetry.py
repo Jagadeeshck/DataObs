@@ -12,15 +12,27 @@ Two modes
 
 The stage() context manager wraps each pipeline stage with a span/log
 bracket and records duration_ms + status as a metric.
+
+Environment variables
+---------------------
+  OTEL_SDK_DISABLED            Set to "true" to fully suppress OTel export
+                                (e.g. EMR environments without a collector).
+  OTEL_EXPORTER_OTLP_ENDPOINT  Override the OTLP endpoint (default: http://localhost:4318).
 """
 from __future__ import annotations
 
 import logging
+import os
 import time
 from contextlib import contextmanager
 from typing import Any, Dict, Optional
 
 logger = logging.getLogger(__name__)
+
+# FIX 2: Honour OTEL_SDK_DISABLED to match spark_instrumentation.py and src/telemetry.py.
+# This allows operators to silence all OTel export with a single env var in environments
+# where no collector is reachable (EMR bootstrap, unit tests, CI).
+_OTEL_DISABLED = os.environ.get("OTEL_SDK_DISABLED", "false").lower() == "true"
 
 try:
     from opentelemetry import metrics, trace
@@ -43,6 +55,8 @@ class TelemetryEmitter:
     Args:
         service_name:       OTel service.name attribute.
         otlp_endpoint:      OTLP HTTP endpoint, e.g. http://otel-collector:4318.
+                            In Docker Compose use the service name; outside Docker
+                            use http://localhost:4318 or set OTEL_EXPORTER_OTLP_ENDPOINT.
         use_otel_sdk:       Force-enable (True) or force-disable (False) OTel SDK.
                             Default None = auto-detect.
     """
@@ -59,6 +73,11 @@ class TelemetryEmitter:
         self._meter = None
         self._duration_histogram = None
         self._records_counter = None
+
+        # FIX 2: Respect OTEL_SDK_DISABLED globally before attempting SDK init.
+        if _OTEL_DISABLED:
+            logger.info("[telemetry] OTEL_SDK_DISABLED=true — running in logger-only mode.")
+            return
 
         sdk_requested = use_otel_sdk if use_otel_sdk is not None else _OTEL_AVAILABLE
         if sdk_requested and _OTEL_AVAILABLE and otlp_endpoint:

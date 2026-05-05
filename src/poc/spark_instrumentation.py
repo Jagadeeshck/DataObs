@@ -45,7 +45,29 @@ from opentelemetry.sdk.resources import Resource
 
 logger = logging.getLogger(__name__)
 
-OTEL_ENDPOINT = os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT", "http://otel-collector:4318")
+# FIX 2: Changed hardcoded 'http://otel-collector:4318' default to 'http://localhost:4318'.
+# 'otel-collector' is a Docker Compose service-name that is only DNS-resolvable inside
+# Docker networking. On EMR, bare EC2, or local runs it produces:
+#   NameResolutionError: Failed to resolve 'otel-collector' [Errno -2] Name or service not known
+# with continuous OTLP retry/backoff warnings flooding the logs.
+# Use OTEL_EXPORTER_OTLP_ENDPOINT env var to override in all environments.
+OTEL_ENDPOINT = os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4318")
+
+# FIX 2 (supplementary): honour OTEL_SDK_DISABLED to fully suppress OTel export
+# in environments where no collector is reachable (e.g. EMR bootstrap, unit tests).
+_OTEL_DISABLED = os.environ.get("OTEL_SDK_DISABLED", "false").lower() == "true"
+
+# FIX 1: Module-level strong reference to the registered SparkListener.
+# The _PythonSparkListener is a Py4J JavaObject proxy: the JVM holds only
+# a weak reference; Python's GC is the authoritative owner.  If the listener
+# is created as a local variable inside _register_spark_listener() and the
+# method returns, CPython's reference count immediately drops to zero,
+# CPython garbage-collects the object, Py4J tears down the callback channel,
+# and every subsequent JVM→Python event fires:
+#   Py4JException: Error while obtaining a new communication channel
+#   Caused by: java.net.ConnectException: Connection refused
+# Keeping a module-level reference prevents that.
+_listener_instance: Optional[Any] = None
 
 
 def _build_resource(job_name: str, extra: Dict[str, Any] = {}) -> Resource:
@@ -65,7 +87,8 @@ def _build_resource(job_name: str, extra: Dict[str, Any] = {}) -> Resource:
 
 def _py4j_callback_server_active(sc) -> bool:
     """
-    Return True only when the Py4J callback server is actually running.
+    Return True only when the Py4J callback server is actually running
+    and listening.
 
     Inside `docker compose run --rm pipeline` the GatewayServer callback
     thread may never start (depends on PySpark version and JVM config),
@@ -81,7 +104,11 @@ def _py4j_callback_server_active(sc) -> bool:
         cb = getattr(gw, "callback_server", None) or getattr(gw, "_callback_server", None)
         if cb is None:
             return False
-        # The server object exists but may not be listening yet
+        # The server object exists but may not be listening yet.
+        # py4j >= 0.10.9.7 exposes an is_listening flag; fall back to
+        # checking server_socket for older releases.
+        if hasattr(cb, "is_listening"):
+            return bool(cb.is_listening)
         return getattr(cb, "server_socket", None) is not None
     except Exception:
         return False
@@ -124,7 +151,8 @@ class SparkOtelInstrumentation:
 
     # ── Lifecycle ──────────────────────────────────────────────────────────
     def __enter__(self) -> "SparkOtelInstrumentation":
-        self._setup_providers()
+        if not _OTEL_DISABLED:
+            self._setup_providers()
         self._register_spark_listener()
         self._root_span, self._root_ctx = self._start_root_span()
         return self
@@ -186,7 +214,8 @@ class SparkOtelInstrumentation:
 
     def _start_root_span(self):
         self._job_start_time = time.time()
-        span = self._tracer.start_span(
+        tracer = self._tracer or trace.get_tracer("spark.instrumentation")
+        span = tracer.start_span(
             f"spark_job/{self.job_name}",
             attributes={
                 "spark.job.name": self.job_name,
@@ -210,10 +239,19 @@ class SparkOtelInstrumentation:
         without an explicit callback port) the listener is skipped and
         instrumentation continues via Python-side stage() context managers.
 
+        FIX 1: The listener object is stored at module level in
+        _listener_instance to prevent Python GC from destroying the Py4J
+        proxy before Spark's AsyncEventQueue has finished dispatching events.
+        Losing the Python-side reference causes:
+          Py4JException: Error while obtaining a new communication channel
+          Caused by: java.net.ConnectException: Connection refused
+        on every onTaskStart / onTaskEnd callback.
+
         Each callback is wrapped in an isolated try/except so a transient
         Connection-refused error is swallowed at DEBUG level and never
         bubbles up into Spark's AsyncEventQueue dispatch loop.
         """
+        global _listener_instance
         sc = self.spark.sparkContext
 
         if not _py4j_callback_server_active(sc):
@@ -225,7 +263,6 @@ class SparkOtelInstrumentation:
             return
 
         try:
-            jvm = sc._jvm  # noqa: F841  (kept for clarity; used via Py4J)
             jsc = sc._jsc
 
             # Py4J wrapper — calls back into Python when Spark events fire.
@@ -264,18 +301,28 @@ class SparkOtelInstrumentation:
 
                 def onTaskStart(self, task_start):  # noqa: N802
                     # High-cardinality; swallow silently to avoid log spam.
-                    pass
+                    try:
+                        pass
+                    except Exception:
+                        pass
 
                 def onTaskEnd(self, task_end):  # noqa: N802
                     # High-cardinality; skip individual task spans.
-                    pass
+                    try:
+                        pass
+                    except Exception:
+                        pass
 
                 class Java:
                     implements = ["org.apache.spark.scheduler.SparkListenerInterface"]
 
             listener = _PythonSparkListener()
+            # FIX 1: Assign to module-level variable BEFORE registering with the JVM.
+            # This guarantees the Python object outlives the registration call and
+            # remains alive for the entire duration of the Spark job.
+            _listener_instance = listener
             jsc.sc().addSparkListener(listener)
-            logger.info("[SparkOtel] SparkListener registered via Py4J")
+            logger.info("[SparkOtel] SparkListener registered via Py4J (GC-safe reference held)")
         except Exception as exc:
             logger.warning(
                 "[SparkOtel] SparkListener registration skipped (%s) — "
@@ -291,7 +338,8 @@ class SparkOtelInstrumentation:
         Creates a child span under the root job span.
         """
         t0 = time.time()
-        with self._tracer.start_as_current_span(
+        tracer = self._tracer or trace.get_tracer("spark.instrumentation")
+        with tracer.start_as_current_span(
             f"spark_stage/{stage_name}",
             attributes={
                 "spark.stage.name": stage_name,
@@ -309,9 +357,10 @@ class SparkOtelInstrumentation:
             finally:
                 duration = time.time() - t0
                 span.set_attribute("spark.stage.duration_seconds", round(duration, 3))
-                self._stage_duration.record(
-                    duration, {"spark.stage.name": stage_name, "spark.job.name": self.job_name}
-                )
+                if self._stage_duration:
+                    self._stage_duration.record(
+                        duration, {"spark.stage.name": stage_name, "spark.job.name": self.job_name}
+                    )
 
     def emit_metrics(self, df_or_rdd, stage: str = "unknown", extra: Dict[str, Any] = {}):
         """
@@ -322,13 +371,15 @@ class SparkOtelInstrumentation:
             attrs = {"spark.stage.name": stage, "spark.job.name": self.job_name, **extra}
             try:
                 row_count = df_or_rdd.count()
-                self._rows_processed.add(row_count, attrs)
+                if self._rows_processed:
+                    self._rows_processed.add(row_count, attrs)
                 logger.info("[SparkOtel] Stage '%s': %d rows emitted to metrics", stage, row_count)
             except Exception:
                 pass  # count() may fail on streamed/consumed DFs — that's fine
             try:
                 part_count = df_or_rdd.rdd.getNumPartitions()
-                self._partitions_gauge.add(part_count, attrs)
+                if self._partitions_gauge:
+                    self._partitions_gauge.add(part_count, attrs)
             except Exception:
                 pass
         except Exception as exc:
@@ -336,6 +387,7 @@ class SparkOtelInstrumentation:
 
     # ── Shutdown ───────────────────────────────────────────────────────────
     def _shutdown(self):
+        global _listener_instance
         try:
             if self._tracer_provider:
                 self._tracer_provider.shutdown()
@@ -344,3 +396,7 @@ class SparkOtelInstrumentation:
             logger.info("[SparkOtel] Providers shut down cleanly")
         except Exception as exc:
             logger.warning("[SparkOtel] Shutdown error: %s", exc)
+        finally:
+            # Release the strong reference after shutdown; the JVM listener
+            # is no longer needed once the job completes.
+            _listener_instance = None

@@ -33,14 +33,6 @@
 #            Elastic APM Server only accepts HTTP intake, not gRPC.
 #    FIX-3: Added explicit `protocol` field and corrected endpoint
 #            so the collector does not attempt a gRPC dial.
-#
-#  Previous fixes (2026-05-04):
-#    - healthcheck start_period bumped to 90s in docker-compose.poc.yml
-#    - pipeline dependency on otel-collector changed to service_started
-#    - filelog receiver added for container log collection
-#    - resourcedetection processor added for host + cloud attributes
-#    - system integration pipeline added (metrics/system)
-#    - OTEL_EXPORTER_OTLP_*_TIMEOUT vars added to pipeline service
 # ============================================================
 
 extensions:

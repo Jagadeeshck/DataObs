@@ -24,7 +24,17 @@
 #    ✔ container stdout/stderr logs via filelog receiver
 #    ✔ AWS cloud resource attributes on every telemetry signal
 #
-#  Fixes applied (2026-05-04):
+#  Fixes applied (2026-05-05):
+#    FIX-1: APM exporter endpoint now includes http:// scheme.
+#            Without it the collector crashed before health_check
+#            could bind port 13133 — causing the misleading
+#            "no healthcheck configured" compose error.
+#    FIX-2: otlp/apm exporter now declares protocol: http/protobuf.
+#            Elastic APM Server only accepts HTTP intake, not gRPC.
+#    FIX-3: Added explicit `protocol` field and corrected endpoint
+#            so the collector does not attempt a gRPC dial.
+#
+#  Previous fixes (2026-05-04):
 #    - healthcheck start_period bumped to 90s in docker-compose.poc.yml
 #    - pipeline dependency on otel-collector changed to service_started
 #    - filelog receiver added for container log collection
@@ -89,7 +99,7 @@ receivers:
       load: {}
       # NOTE: processes scraper is intentionally omitted — it requires
       # /proc visibility that Docker Desktop on macOS does not provide.
-      # Enable on native Linux / EC2 / EKS worker nodes:
+      # To enable on native Linux / EC2 / EKS worker nodes, uncomment:
       # processes: {}
 
   # filelog receiver — collects container stdout/stderr logs written by
@@ -212,7 +222,19 @@ processors:
 
 exporters:
   otlp/apm:
-    endpoint: ${env:APM_SERVER_URL}
+    # FIX-1: endpoint MUST include the http:// scheme.
+    # Previously this was `elastic-agent:8200` (no scheme), which caused
+    # the collector to attempt a gRPC TLS dial and crash immediately —
+    # before the health_check extension could bind port 13133. That
+    # manifests in `docker compose run` as:
+    #   "container dataobs-poc-otel has no healthcheck configured"
+    # even though the healthcheck stanza IS present in the compose file.
+    #
+    # FIX-2: protocol must be http/protobuf.
+    # Elastic APM Server only accepts HTTP/protobuf on port 8200.
+    # The default OTel exporter protocol is grpc, which is incompatible.
+    endpoint: http://${env:APM_SERVER_URL}
+    protocol: http/protobuf
     tls:
       insecure: true
     headers:
@@ -251,14 +273,17 @@ service:
                    resource/common, resource/pipeline, batch]
       exporters: [otlp/apm, debug]
 
-    # System integration pipeline — host CPU/mem/disk/net/load metrics
+    # System integration pipeline — host CPU/mem/disk/net/load metrics.
+    # Scrapers: cpu, memory, disk, filesystem, network, load.
+    # NOTE: processes scraper omitted for macOS Docker Desktop compatibility.
+    # Enable `processes: {}` in the hostmetrics receiver on Linux / EC2 / EKS.
     metrics/system:
       receivers: [hostmetrics]
       processors: [memory_limiter, resourcedetection/system, resource/cloud,
                    resource/common, resource/docker, batch]
       exporters: [otlp/apm]
 
-    # Container metrics from cAdvisor
+    # Container metrics from cAdvisor (Prometheus scrape)
     metrics/containers:
       receivers: [prometheus]
       processors: [memory_limiter, resourcedetection/system, resource/cloud,

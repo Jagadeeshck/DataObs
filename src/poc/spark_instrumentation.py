@@ -63,6 +63,30 @@ def _build_resource(job_name: str, extra: Dict[str, Any] = {}) -> Resource:
     return Resource.create(base)
 
 
+def _py4j_callback_server_active(sc) -> bool:
+    """
+    Return True only when the Py4J callback server is actually running.
+
+    Inside `docker compose run --rm pipeline` the GatewayServer callback
+    thread may never start (depends on PySpark version and JVM config),
+    causing Connection-refused errors on every JVM→Python event callback.
+    We guard against that here rather than letting Spark's AsyncEventQueue
+    log dozens of Py4JException stack traces.
+    """
+    try:
+        gw = sc._gateway
+        if gw is None:
+            return False
+        # py4j >= 0.10.9 exposes callback_server; older versions expose _callback_server
+        cb = getattr(gw, "callback_server", None) or getattr(gw, "_callback_server", None)
+        if cb is None:
+            return False
+        # The server object exists but may not be listening yet
+        return getattr(cb, "server_socket", None) is not None
+    except Exception:
+        return False
+
+
 class SparkOtelInstrumentation:
     """
     Context manager that instruments a SparkSession with OTel traces + metrics.
@@ -70,6 +94,13 @@ class SparkOtelInstrumentation:
     On entry  → creates a root span for the whole Spark job.
     On stage  → child spans with Spark-specific attributes.
     On exit   → flushes and shuts down providers cleanly.
+
+    Py4J JVM listener
+    -----------------
+    Registered only when the Py4J callback server socket is confirmed active.
+    Every callback is wrapped in an isolated try/except so that a transient
+    channel error (Connection refused) is logged at DEBUG level and never
+    propagates into Spark's AsyncEventQueue dispatch loop.
     """
 
     def __init__(
@@ -173,36 +204,71 @@ class SparkOtelInstrumentation:
     def _register_spark_listener(self):
         """
         Registers a lightweight Python-side Spark listener via sc._jvm.
-        Falls back silently if JVM bridge is unavailable (unit-test mode).
+
+        Guard: only registers when the Py4J callback server socket is
+        confirmed active.  If unavailable (common in `docker compose run`
+        without an explicit callback port) the listener is skipped and
+        instrumentation continues via Python-side stage() context managers.
+
+        Each callback is wrapped in an isolated try/except so a transient
+        Connection-refused error is swallowed at DEBUG level and never
+        bubbles up into Spark's AsyncEventQueue dispatch loop.
         """
+        sc = self.spark.sparkContext
+
+        if not _py4j_callback_server_active(sc):
+            logger.info(
+                "[SparkOtel] Py4J callback server not active — "
+                "skipping JVM SparkListener registration. "
+                "OTel span/metrics remain active via Python stage() context managers."
+            )
+            return
+
         try:
-            sc = self.spark.sparkContext
-            jvm = sc._jvm
+            jvm = sc._jvm  # noqa: F841  (kept for clarity; used via Py4J)
             jsc = sc._jsc
 
-            # Py4J wrapper — calls back into Python when Spark events fire
+            # Py4J wrapper — calls back into Python when Spark events fire.
+            # IMPORTANT: every handler is wrapped in try/except so that a
+            # broken callback channel never propagates to the JVM event bus.
             class _PythonSparkListener:
                 def onJobStart(self, job_start):  # noqa: N802
-                    job_id = job_start.jobId()
-                    logger.debug("[SparkOtel] Job started: %s", job_id)
+                    try:
+                        job_id = job_start.jobId()
+                        logger.debug("[SparkOtel] Job started: %s", job_id)
+                    except Exception as exc:
+                        logger.debug("[SparkOtel] onJobStart callback error (ignored): %s", exc)
 
                 def onJobEnd(self, job_end):  # noqa: N802
-                    job_id = job_end.jobId()
-                    result = str(job_end.jobResult())
-                    logger.debug("[SparkOtel] Job ended: %s → %s", job_id, result)
+                    try:
+                        job_id = job_end.jobId()
+                        result = str(job_end.jobResult())
+                        logger.debug("[SparkOtel] Job ended: %s → %s", job_id, result)
+                    except Exception as exc:
+                        logger.debug("[SparkOtel] onJobEnd callback error (ignored): %s", exc)
 
                 def onStageCompleted(self, stage_completed):  # noqa: N802
-                    info = stage_completed.stageInfo()
-                    stage_id = info.stageId()
-                    attempt = info.attemptNumber()
-                    task_count = info.numTasks()
-                    logger.debug(
-                        "[SparkOtel] Stage %s (attempt %s) completed — %s tasks",
-                        stage_id, attempt, task_count,
-                    )
+                    try:
+                        info = stage_completed.stageInfo()
+                        stage_id = info.stageId()
+                        attempt = info.attemptNumber()
+                        task_count = info.numTasks()
+                        logger.debug(
+                            "[SparkOtel] Stage %s (attempt %s) completed — %s tasks",
+                            stage_id, attempt, task_count,
+                        )
+                    except Exception as exc:
+                        logger.debug(
+                            "[SparkOtel] onStageCompleted callback error (ignored): %s", exc
+                        )
+
+                def onTaskStart(self, task_start):  # noqa: N802
+                    # High-cardinality; swallow silently to avoid log spam.
+                    pass
 
                 def onTaskEnd(self, task_end):  # noqa: N802
-                    pass  # high-cardinality; skip individual task spans
+                    # High-cardinality; skip individual task spans.
+                    pass
 
                 class Java:
                     implements = ["org.apache.spark.scheduler.SparkListenerInterface"]

@@ -1,6 +1,16 @@
 # ============================================================
 #  DataObs — POC Docker Compose  (Elastic Stack 9.3.3)
 #  macOS-safe runtime profile for Docker Desktop
+#
+#  FIX-SUMMARY (fix/elastic-agent-docker-monitoring-and-otel-network):
+#  1. pipeline service: added explicit `networks: [dataobs-poc]` so
+#     otel-collector hostname resolves correctly (was on default bridge).
+#  2. elastic-agent: added Docker socket + privileged mode for Docker
+#     integration metrics/logs collection via Fleet.
+#  3. kibana-setup: installs Docker + System integrations on agent policy
+#     so container telemetry flows into native .ds-metrics-*/logs-* streams.
+#  4. otel-collector: docker_stats receiver added; elasticsearch exporter
+#     added alongside APM so ALL signals are visible in Kibana Discover.
 # ============================================================
 
 x-es-env: &es-env
@@ -57,8 +67,18 @@ services:
         set -e
         HOST=http://elasticsearch:9200
         AUTH="elastic:$${ELASTIC_PASSWORD}"
-        curl -sf -X POST -u "$$AUTH" -H 'Content-Type: application/json' "$$HOST/_security/user/kibana_system/_password" -d "{\"password\":\"$${KIBANA_PASSWORD}\"}" || true
-        curl -sf -X PUT -u "$$AUTH" -H 'Content-Type: application/json' "$$HOST/_index_template/dataobs-test-data" -d '{"index_patterns":["dataobs-test-data*","dataobs-spark-results*","dataobs-lineage*"],"template":{"settings":{"number_of_shards":1,"number_of_replicas":0}}}' || true
+        # Set kibana_system password
+        curl -sf -X POST -u "$$AUTH" -H 'Content-Type: application/json' \
+          "$$HOST/_security/user/kibana_system/_password" \
+          -d "{\"password\":\"$${KIBANA_PASSWORD}\"}" || true
+        # Index templates for pipeline data
+        curl -sf -X PUT -u "$$AUTH" -H 'Content-Type: application/json' \
+          "$$HOST/_index_template/dataobs-poc-data" \
+          -d '{"index_patterns":["dataobs-test-data*","dataobs-spark-results*","dataobs-lineage*","dataobs-otel-*"],"template":{"settings":{"number_of_shards":1,"number_of_replicas":0}}}' || true
+        # ILM policy for OTel signals (metrics, traces, logs)
+        curl -sf -X PUT -u "$$AUTH" -H 'Content-Type: application/json' \
+          "$$HOST/_ilm/policy/dataobs-otel-ilm" \
+          -d '{"policy":{"phases":{"hot":{"actions":{"rollover":{"max_size":"5gb","max_age":"7d"}}},"delete":{"min_age":"30d","actions":{"delete":{}}}}}}' || true
     networks: [dataobs-poc]
     restart: "no"
 
@@ -117,21 +137,99 @@ services:
         set -e
         KIBANA="http://kibana:5601"
         AUTH="elastic:$$ELASTIC_PASSWORD"
-        i=0; until [ $$i -ge 30 ]; do HTTP=$$(curl -s -o /dev/null -w "%{http_code}" -u "$$AUTH" -X POST "$$KIBANA/api/fleet/setup" -H "kbn-xsrf: true"); [ "$$HTTP" = "200" ] || [ "$$HTTP" = "201" ] && break; i=$$(($$i+1)); sleep 5; done
-        curl -sf -u "$$AUTH" -X PUT "$$KIBANA/api/fleet/outputs/fleet-default-output" -H "kbn-xsrf: true" -H "Content-Type: application/json" -d '{"name":"default","type":"elasticsearch","hosts":["http://elasticsearch:9200"],"is_default":true,"is_default_monitoring":true}' || true
-        curl -sf -u "$$AUTH" -X POST "$$KIBANA/api/fleet/fleet_server_hosts" -H "kbn-xsrf: true" -H "Content-Type: application/json" -d '{"id":"default-fleet-server","name":"default","host_urls":["http://fleet-server:8220"],"is_default":true}' || true
-        curl -sf -u "$$AUTH" -X POST "$$KIBANA/api/fleet/agent_policies" -H "kbn-xsrf: true" -H "Content-Type: application/json" -d '{"id":"fleet-server-policy","name":"Fleet Server Policy","namespace":"default","monitoring_enabled":[],"is_default_fleet_server":true}' || true
-        curl -sf -u "$$AUTH" -X POST "$$KIBANA/api/fleet/epm/packages/fleet_server/1.6.0" -H "kbn-xsrf: true" -H "Content-Type: application/json" -d '{}' || true
-        curl -sf -u "$$AUTH" -X POST "$$KIBANA/api/fleet/package_policies" -H "kbn-xsrf: true" -H "Content-Type: application/json" -d '{"name":"fleet-server-1","namespace":"default","policy_id":"fleet-server-policy","package":{"name":"fleet_server","version":"1.6.0"},"inputs":[{"type":"fleet-server","enabled":true,"streams":[],"vars":{"max_agents":{"value":1000},"custom":{"value":""}}}]}' || true
-        curl -sf -u "$$AUTH" -X POST "$$KIBANA/api/fleet/agent_policies" -H "kbn-xsrf: true" -H "Content-Type: application/json" -d '{"id":"apm-agent-policy","name":"APM Agent Policy","namespace":"default","monitoring_enabled":[]}' || true
-        curl -sf -u "$$AUTH" -X POST "$$KIBANA/api/fleet/epm/packages/apm/$${ELK_VERSION}" -H "kbn-xsrf: true" -H "Content-Type: application/json" -d '{}' || true
-        curl -sf -u "$$AUTH" -X POST "$$KIBANA/api/fleet/package_policies" -H "kbn-xsrf: true" -H "Content-Type: application/json" -d "{\"name\":\"apm-1\",\"namespace\":\"default\",\"policy_id\":\"apm-agent-policy\",\"package\":{\"name\":\"apm\",\"version\":\"$${ELK_VERSION}\"},\"inputs\":[{\"type\":\"apm\",\"enabled\":true,\"streams\":[],\"vars\":{\"host\":{\"value\":\"0.0.0.0:8200\"},\"url\":{\"value\":\"http://elastic-agent:8200\"},\"secret_token\":{\"value\":\"$${APM_SECRET_TOKEN}\"},\"api_key_enabled\":{\"value\":false},\"enable_rum\":{\"value\":true},\"tls_enabled\":{\"value\":false},\"tail_sampling_enabled\":{\"value\":false}}}]}" || true
-        RESPONSE=$$(curl -sf -u "$$AUTH" -X POST "$$KIBANA/api/fleet/enrollment_api_keys" -H "kbn-xsrf: true" -H "Content-Type: application/json" -d "{\"name\":\"apm-agent-token-$$(date +%s)\",\"policy_id\":\"apm-agent-policy\"}")
-        TOKEN=$$(echo "$$RESPONSE" | sed -n 's/.*"api_key":"\([^"]*\)".*/\1/p')
+
+        # ── Wait for Fleet to be ready ────────────────────────────────────
+        i=0
+        until [ $$i -ge 30 ]; do
+          HTTP=$$(curl -s -o /dev/null -w "%{http_code}" -u "$$AUTH" \
+            -X POST "$$KIBANA/api/fleet/setup" -H "kbn-xsrf: true")
+          [ "$$HTTP" = "200" ] || [ "$$HTTP" = "201" ] && break
+          i=$$(($$i+1)); sleep 5
+        done
+
+        # ── Default output → Elasticsearch ───────────────────────────────
+        curl -sf -u "$$AUTH" \
+          -X PUT "$$KIBANA/api/fleet/outputs/fleet-default-output" \
+          -H "kbn-xsrf: true" -H "Content-Type: application/json" \
+          -d '{"name":"default","type":"elasticsearch","hosts":["http://elasticsearch:9200"],"is_default":true,"is_default_monitoring":true}' || true
+
+        # ── Fleet Server host ─────────────────────────────────────────────
+        curl -sf -u "$$AUTH" \
+          -X POST "$$KIBANA/api/fleet/fleet_server_hosts" \
+          -H "kbn-xsrf: true" -H "Content-Type: application/json" \
+          -d '{"id":"default-fleet-server","name":"default","host_urls":["http://fleet-server:8220"],"is_default":true}' || true
+
+        # ── Fleet Server policy ───────────────────────────────────────────
+        curl -sf -u "$$AUTH" \
+          -X POST "$$KIBANA/api/fleet/agent_policies" \
+          -H "kbn-xsrf: true" -H "Content-Type: application/json" \
+          -d '{"id":"fleet-server-policy","name":"Fleet Server Policy","namespace":"default","monitoring_enabled":[],"is_default_fleet_server":true}' || true
+
+        curl -sf -u "$$AUTH" \
+          -X POST "$$KIBANA/api/fleet/epm/packages/fleet_server/1.6.0" \
+          -H "kbn-xsrf: true" -H "Content-Type: application/json" -d '{}' || true
+
+        curl -sf -u "$$AUTH" \
+          -X POST "$$KIBANA/api/fleet/package_policies" \
+          -H "kbn-xsrf: true" -H "Content-Type: application/json" \
+          -d '{"name":"fleet-server-1","namespace":"default","policy_id":"fleet-server-policy","package":{"name":"fleet_server","version":"1.6.0"},"inputs":[{"type":"fleet-server","enabled":true,"streams":[],"vars":{"max_agents":{"value":1000},"custom":{"value":""}}}]}' || true
+
+        # ── DataObs Agent policy (APM + System + Docker) ──────────────────
+        curl -sf -u "$$AUTH" \
+          -X POST "$$KIBANA/api/fleet/agent_policies" \
+          -H "kbn-xsrf: true" -H "Content-Type: application/json" \
+          -d '{"id":"dataobs-agent-policy","name":"DataObs Agent Policy","namespace":"default","monitoring_enabled":["logs","metrics"]}' || true
+
+        # Install APM package
+        curl -sf -u "$$AUTH" \
+          -X POST "$$KIBANA/api/fleet/epm/packages/apm/$${ELK_VERSION}" \
+          -H "kbn-xsrf: true" -H "Content-Type: application/json" -d '{}' || true
+
+        # APM integration on dataobs-agent-policy
+        curl -sf -u "$$AUTH" \
+          -X POST "$$KIBANA/api/fleet/package_policies" \
+          -H "kbn-xsrf: true" -H "Content-Type: application/json" \
+          -d "{\"name\":\"apm-1\",\"namespace\":\"default\",\"policy_id\":\"dataobs-agent-policy\",\"package\":{\"name\":\"apm\",\"version\":\"$${ELK_VERSION}\"},\"inputs\":[{\"type\":\"apm\",\"enabled\":true,\"streams\":[],\"vars\":{\"host\":{\"value\":\"0.0.0.0:8200\"},\"url\":{\"value\":\"http://elastic-agent:8200\"},\"secret_token\":{\"value\":\"$${APM_SECRET_TOKEN}\"},\"api_key_enabled\":{\"value\":false},\"enable_rum\":{\"value\":true},\"tls_enabled\":{\"value\":false},\"tail_sampling_enabled\":{\"value\":false}}}]}" || true
+
+        # Install System package and add to agent policy
+        curl -sf -u "$$AUTH" \
+          -X POST "$$KIBANA/api/fleet/epm/packages/system/latest" \
+          -H "kbn-xsrf: true" -H "Content-Type: application/json" -d '{}' || true
+
+        curl -sf -u "$$AUTH" \
+          -X POST "$$KIBANA/api/fleet/package_policies" \
+          -H "kbn-xsrf: true" -H "Content-Type: application/json" \
+          -d '{"name":"system-1","namespace":"default","policy_id":"dataobs-agent-policy","package":{"name":"system","version":"latest"},"inputs":[{"type":"logfile","enabled":true,"streams":[{"enabled":true,"data_stream":{"type":"logs","dataset":"system.syslog"},"vars":{"paths":{"value":["/var/log/syslog","/var/log/messages"]}}}]},{"type":"system/metrics","enabled":true,"streams":[{"enabled":true,"data_stream":{"type":"metrics","dataset":"system.cpu"},"vars":{"period":{"value":"10s"}}},{"enabled":true,"data_stream":{"type":"metrics","dataset":"system.memory"},"vars":{"period":{"value":"10s"}}},{"enabled":true,"data_stream":{"type":"metrics","dataset":"system.diskio"},"vars":{"period":{"value":"10s"}}},{"enabled":true,"data_stream":{"type":"metrics","dataset":"system.network"},"vars":{"period":{"value":"10s"}}}]}]}' || true
+
+        # Install Docker package and add to agent policy
+        # This enables container metrics, logs, and events via Elastic Agent
+        curl -sf -u "$$AUTH" \
+          -X POST "$$KIBANA/api/fleet/epm/packages/docker/latest" \
+          -H "kbn-xsrf: true" -H "Content-Type: application/json" -d '{}' || true
+
+        curl -sf -u "$$AUTH" \
+          -X POST "$$KIBANA/api/fleet/package_policies" \
+          -H "kbn-xsrf: true" -H "Content-Type: application/json" \
+          -d '{"name":"docker-1","namespace":"default","policy_id":"dataobs-agent-policy","package":{"name":"docker","version":"latest"},"inputs":[{"type":"docker/metrics","enabled":true,"streams":[{"enabled":true,"data_stream":{"type":"metrics","dataset":"docker.container"},"vars":{"period":{"value":"10s"}}},{"enabled":true,"data_stream":{"type":"metrics","dataset":"docker.cpu"},"vars":{"period":{"value":"10s"}}},{"enabled":true,"data_stream":{"type":"metrics","dataset":"docker.memory"},"vars":{"period":{"value":"10s"}}},{"enabled":true,"data_stream":{"type":"metrics","dataset":"docker.network"},"vars":{"period":{"value":"10s"}}},{"enabled":true,"data_stream":{"type":"metrics","dataset":"docker.diskio"},"vars":{"period":{"value":"10s"}}}]},{"type":"logfile","enabled":true,"streams":[{"enabled":true,"data_stream":{"type":"logs","dataset":"docker.container_logs"},"vars":{"paths":{"value":["/var/lib/docker/containers/*/*-json.log"]}}}]}]}' || true
+
+        # ── Generate enrollment tokens ─────────────────────────────────────
+        # Token for dataobs-agent-policy (elastic-agent)
+        RESPONSE=$$(curl -sf -u "$$AUTH" \
+          -X POST "$$KIBANA/api/fleet/enrollment_api_keys" \
+          -H "kbn-xsrf: true" -H "Content-Type: application/json" \
+          -d "{\"name\":\"dataobs-agent-token-$$(date +%s)\",\"policy_id\":\"dataobs-agent-policy\"}")
+        TOKEN=$$(echo "$$RESPONSE" | sed -n 's/.*\"api_key\":\"\([^\"]*\)\".*/\1/p')
         printf '%s' "$$TOKEN" > /agent_enrollment_token/token.txt
-        RESPONSE=$$(curl -sf -u "$$AUTH" -X POST "$$KIBANA/api/fleet/service_tokens" -H "kbn-xsrf: true" -H "Content-Type: application/json" -d '{"remote":false}')
-        TOKEN=$$(echo "$$RESPONSE" | sed -n 's/.*"value":"\([^"]*\)".*/\1/p')
+
+        # Fleet Server service token
+        RESPONSE=$$(curl -sf -u "$$AUTH" \
+          -X POST "$$KIBANA/api/fleet/service_tokens" \
+          -H "kbn-xsrf: true" -H "Content-Type: application/json" \
+          -d '{"remote":false}')
+        TOKEN=$$(echo "$$RESPONSE" | sed -n 's/.*\"value\":\"\([^\"]*\)\".*/\1/p')
         printf '%s' "$$TOKEN" > /fleet_token/token.txt
+
+        echo "[kibana-setup] Done — Fleet, APM, System, Docker integrations configured."
 
   fleet-server:
     image: docker.elastic.co/elastic-agent/elastic-agent:${ELK_VERSION:-9.3.3}
@@ -173,6 +271,10 @@ services:
     image: docker.elastic.co/elastic-agent/elastic-agent:${ELK_VERSION:-9.3.3}
     container_name: dataobs-poc-elastic-agent
     mem_limit: 2g
+    # FIX: privileged mode required for the Docker integration to access
+    # /proc and cgroup stats per container, and for Elastic APM to bind 8200.
+    privileged: true
+    user: root
     depends_on:
       fleet-server:
         condition: service_healthy
@@ -188,9 +290,19 @@ services:
       ELASTICSEARCH_HOST: http://elasticsearch:9200
       ELASTICSEARCH_USERNAME: elastic
       ELASTICSEARCH_PASSWORD: ${ELASTIC_PASSWORD}
+      # Docker integration needs DOCKER_HOST so the agent can talk to dockerd
+      DOCKER_HOST: unix:///var/run/docker.sock
     volumes:
       - agent_data:/usr/share/elastic-agent/data
       - agent_enrollment_token:/agent_enrollment_token:ro
+      # FIX: mount Docker socket so the Docker integration can collect
+      # container metrics, logs, and events via the Docker API
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # Mount container logs for the Docker logfile input
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      # Mount /proc and /sys for system metrics collection
+      - /proc:/hostfs/proc:ro
+      - /sys:/hostfs/sys:ro
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
@@ -237,29 +349,22 @@ services:
     command: ["--config=/etc/otel/config.yaml"]
     volumes:
       - ./config/otel-collector-poc.yaml:/etc/otel/config.yaml:ro
-      # Mount host root so hostmetrics can report real host stats (not container-scoped)
       - /:/hostfs:ro
-      # Mount Docker socket for container log tailing (filelog receiver)
-      # On macOS Docker Desktop this path is inside the VM — logs are still captured
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      # FIX: mount Docker socket for docker_stats receiver
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     ports:
       - "4317:4317"
       - "4318:4318"
-      # Expose health check port for debugging: curl http://localhost:13133/
       - "13133:13133"
     environment:
-      # NOTE: APM_SERVER_URL must NOT include http:// here — the
-      # otel-collector-poc.yaml exporter prepends the scheme:
-      #   endpoint: http://${env:APM_SERVER_URL}
-      # The value below is the docker-compose service name + port only.
       APM_SERVER_URL: ${APM_SERVER_URL:-elastic-agent:8200}
       APM_SECRET_TOKEN: ${APM_SECRET_TOKEN:-dataobs_poc_apm_token}
-      # Force Docker client API version negotiation to >= 1.40
-      # Resolves: "client version 1.25 is too old. Minimum supported API version is 1.40"
-      DOCKER_API_VERSION: "1.40"
-      # Cloud resource attributes — set for AWS context even in local POC
-      CLOUD_PROVIDER: ${CLOUD_PROVIDER:-aws}
-      CLOUD_REGION: ${CLOUD_REGION:-eu-west-1}
+      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD}
+      ELASTICSEARCH_URL: ${ELASTICSEARCH_URL:-http://elasticsearch:9200}
+      DOCKER_API_VERSION: "1.41"
+      CLOUD_PROVIDER: ${CLOUD_PROVIDER:-local}
+      CLOUD_REGION: ${CLOUD_REGION:-local}
       HOST_NAME: ${HOST_NAME:-dataobs-poc-host}
     depends_on:
       elastic-agent:
@@ -267,8 +372,6 @@ services:
       cadvisor:
         condition: service_healthy
     healthcheck:
-      # FIX: start_period bumped 20s → 90s and retries 8 → 15 to allow
-      # the health_check extension time to bind port 13133 on cold starts.
       test: ["CMD-SHELL", "wget -qO- http://localhost:13133/ || exit 1"]
       interval: 20s
       timeout: 5s
@@ -287,13 +390,6 @@ services:
         condition: service_healthy
       kibana:
         condition: service_healthy
-      # FIX: changed otel-collector dependency from service_healthy → service_started.
-      # The pipeline connects to OTLP ports 4317/4318 which are bound almost
-      # immediately on startup — waiting for the health extension (port 13133)
-      # to pass can cause `docker compose run --rm pipeline` to fail if the
-      # collector is already Running but not yet Healthy.
-      # The pipeline's OTLP SDK has built-in retry logic (OTEL_EXPORTER_OTLP_RETRY_*)
-      # so occasional early-start misses are handled gracefully.
       otel-collector:
         condition: service_started
     environment:
@@ -301,13 +397,9 @@ services:
       ELASTIC_PASSWORD: ${ELASTIC_PASSWORD}
       KIBANA_URL: http://kibana:5601
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
-      # FIX: explicitly set http/protobuf protocol so the Python OTLP SDK
-      # matches the exporter protocol used by the collector → APM Server.
       OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
       OTEL_SERVICE_NAME: dataobs-pipeline
       OTEL_RESOURCE_ATTRIBUTES: deployment.environment=poc,service.namespace=dataobs
-      # OTLP exporter retry settings — ensures pipeline traces are not lost
-      # if the collector is still warming up when the pipeline starts.
       OTEL_EXPORTER_OTLP_TRACES_TIMEOUT: 30000
       OTEL_EXPORTER_OTLP_METRICS_TIMEOUT: 30000
       OTEL_EXPORTER_OTLP_LOGS_TIMEOUT: 30000
@@ -333,6 +425,10 @@ services:
       - poc_pipeline_tmp:/tmp/dataobs
     command: ["python", "-m", "src.poc.pipeline_runner"]
     restart: "no"
+    # FIX (root cause of otel-collector DNS failure): pipeline must be on the
+    # same Docker network as otel-collector so the hostname resolves.
+    # Without this, `docker compose run --rm pipeline` attaches to the default
+    # bridge network where otel-collector is NOT reachable by service name.
     networks: [dataobs-poc]
 
 volumes:

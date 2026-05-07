@@ -2,49 +2,23 @@
 #  OpenTelemetry Collector — POC Configuration (macOS-safe)
 #  otel-collector-contrib:0.99.0  /  Elastic Stack 9.3.3
 #
-#  IMPORTANT:
-#  Docker Desktop on macOS does not expose Linux host internals
-#  the same way as native Linux. The two biggest sources of OTel
-#  collector crashes in Docker Desktop are:
-#
-#    1. docker_stats receiver → docker.sock access/runtime issues
-#    2. hostmetrics.processes scraper → /proc visibility issues
-#
-#  To keep the POC stable on macOS while still giving container
-#  observability, this config uses:
-#
-#    - cAdvisor (Prometheus scrape) for container metrics
-#    - hostmetrics WITHOUT processes scraper
-#    - no docker_stats receiver
-#
-#  This still gives:
-#    ✔ container CPU / memory / network / filesystem via cAdvisor
-#    ✔ host CPU / memory / disk / network via hostmetrics
-#    ✔ pipeline + Spark traces / metrics / logs via OTLP
-#    ✔ container stdout/stderr logs via filelog receiver
-#    ✔ AWS cloud resource attributes on every telemetry signal
-#
-#  Fixes applied (2026-05-05):
-#    FIX-1: APM exporter endpoint now includes http:// scheme.
-#            Without it the collector crashed before health_check
-#            could bind port 13133 — causing the misleading
-#            "no healthcheck configured" compose error.
-#    FIX-2: otlp/apm exporter now declares protocol: http/protobuf.
-#            Elastic APM Server only accepts HTTP intake, not gRPC.
-#    FIX-3: Added explicit `protocol` field and corrected endpoint
-#            so the collector does not attempt a gRPC dial.
+#  CHANGES (fix/elastic-agent-docker-monitoring-and-otel-network):
+#  - Added elasticsearch exporter so ALL signals land in Kibana Discover
+#    (traces → dataobs-otel-traces, metrics → dataobs-otel-metrics,
+#     logs → dataobs-otel-logs, container logs → dataobs-otel-container-logs)
+#  - Added docker_stats receiver for supplementary container metrics
+#    (works on native Linux/Docker Desktop 4.x+; skips on permission error)
+#  - APM exporter retained for APM UI experience
+#  - DOCKER_API_VERSION bumped to 1.41
 # ============================================================
 
 extensions:
   health_check:
     endpoint: 0.0.0.0:13133
 
-  # pprof exposes Go profiling at :1888/debug/pprof — useful for collector
-  # memory/CPU debugging. Disable in production.
   pprof:
     endpoint: 0.0.0.0:1888
 
-  # zpages exposes internal OTel debug pages at :55679/debug/tracez etc.
   zpages:
     endpoint: 0.0.0.0:55679
 
@@ -57,9 +31,6 @@ receivers:
         endpoint: 0.0.0.0:4318
 
   hostmetrics:
-    # root_path tells the hostmetrics receiver to resolve /proc, /sys, etc.
-    # relative to /hostfs rather than the container root. The /hostfs bind-mount
-    # must be set in docker-compose (- /:/hostfs:ro) for this to work.
     root_path: /hostfs
     collection_interval: 30s
     scrapers:
@@ -89,18 +60,33 @@ receivers:
           interfaces: ["lo"]
           match_type: strict
       load: {}
-      # NOTE: processes scraper is intentionally omitted — it requires
-      # /proc visibility that Docker Desktop on macOS does not provide.
-      # To enable on native Linux / EC2 / EKS worker nodes, uncomment:
-      # processes: {}
 
-  # filelog receiver — collects container stdout/stderr logs written by
-  # Docker's json-file logging driver to:
-  #   /var/lib/docker/containers/<id>/<id>-json.log
-  # The /var/lib/docker/containers volume is mounted :ro in compose.
-  # On macOS Docker Desktop the path lives inside the HyperKit/VZ VM;
-  # Docker Desktop 4.x+ exposes it via the gRPC FUSE layer so the mount
-  # works correctly even on Apple Silicon.
+  # Docker stats receiver — container CPU/mem/net/block-IO metrics from Docker API
+  # Requires /var/run/docker.sock mounted in the collector container (see compose).
+  # Falls back gracefully if the socket is not available.
+  docker_stats:
+    endpoint: unix:///var/run/docker.sock
+    collection_interval: 30s
+    timeout: 10s
+    api_version: 1.41
+    # Collect all containers (stopped ones have no live stats, safely skipped)
+    excluded_images: []
+    metrics:
+      container.cpu.usage.system:
+        enabled: true
+      container.cpu.usage.total:
+        enabled: true
+      container.memory.usage.total:
+        enabled: true
+      container.memory.usage.limit:
+        enabled: true
+      container.network.io.usage.rx_bytes:
+        enabled: true
+      container.network.io.usage.tx_bytes:
+        enabled: true
+      container.blockio.io_service_bytes_recursive:
+        enabled: true
+
   filelog:
     include:
       - /var/lib/docker/containers/*/*.log
@@ -108,7 +94,6 @@ receivers:
     include_file_name: false
     start_at: beginning
     operators:
-      # Parse Docker json-file log format: {"log":"...","stream":"stdout","time":"..."}
       - type: json_parser
         timestamp:
           parse_from: attributes.time
@@ -119,7 +104,6 @@ receivers:
       - type: add
         field: attributes.log.source
         value: docker-container
-      # Extract container ID from the file path and set as resource attribute
       - type: regex_parser
         parse_from: attributes["log.file.path"]
         regex: '/var/lib/docker/containers/(?P<container_id>[a-f0-9]+)/'
@@ -128,7 +112,7 @@ receivers:
         from: attributes.container_id
         to: resource["container.id"]
 
-  # Prometheus scrape of cAdvisor container metrics
+  # Prometheus scrape of cAdvisor container metrics (supplementary)
   prometheus:
     config:
       scrape_configs:
@@ -140,8 +124,6 @@ receivers:
 processors:
   memory_limiter:
     check_interval: 5s
-    # Aligned to actual collector startup log (limit_mib: 400, spike_limit_mib: 100)
-    # Container mem_limit in compose is 768m so this leaves ~268 MiB headroom
     limit_mib: 400
     spike_limit_mib: 100
 
@@ -185,12 +167,6 @@ processors:
         value: system
         action: upsert
 
-  # resourcedetection adds host.* and cloud.* attributes automatically.
-  # Detectors run in order; the first match wins.
-  #   env   — reads OTEL_RESOURCE_ATTRIBUTES env var (set host.name via HOST_NAME)
-  #   system — adds host.name, host.arch, os.type from the container
-  # On EC2/EKS add "ec2" or "eks" to the list to get cloud.provider,
-  # cloud.region, cloud.account.id, host.id etc. from the instance metadata.
   resourcedetection/system:
     detectors: [env, system]
     system:
@@ -198,8 +174,6 @@ processors:
     timeout: 5s
     override: false
 
-  # Enrich every signal with cloud context for AWS observability.
-  # Values come from env vars set in docker-compose (CLOUD_PROVIDER, etc.).
   resource/cloud:
     attributes:
       - key: cloud.provider
@@ -213,18 +187,8 @@ processors:
         action: upsert
 
 exporters:
+  # Primary: APM Server — feeds Kibana APM UI (traces, services, errors)
   otlp/apm:
-    # FIX-1: endpoint MUST include the http:// scheme.
-    # Previously this was `elastic-agent:8200` (no scheme), which caused
-    # the collector to attempt a gRPC TLS dial and crash immediately —
-    # before the health_check extension could bind port 13133. That
-    # manifests in `docker compose run` as:
-    #   "container dataobs-poc-otel has no healthcheck configured"
-    # even though the healthcheck stanza IS present in the compose file.
-    #
-    # FIX-2: protocol must be http/protobuf.
-    # Elastic APM Server only accepts HTTP/protobuf on port 8200.
-    # The default OTel exporter protocol is grpc, which is incompatible.
     endpoint: http://${env:APM_SERVER_URL}
     protocol: http/protobuf
     tls:
@@ -241,50 +205,84 @@ exporters:
       num_consumers: 4
       queue_size: 1000
 
+  # Secondary: Direct Elasticsearch — feeds Kibana Discover / Dashboards
+  # This ensures ALL signals (traces, metrics, logs) are visible in Kibana
+  # even without APM-specific dashboards. Uses ECS-compatible index names
+  # so the data appears in the correct data streams.
+  elasticsearch:
+    endpoint: ${env:ELASTICSEARCH_URL}
+    user: elastic
+    password: ${env:ELASTIC_PASSWORD}
+    tls:
+      insecure: true
+    # Map OTel signals to dedicated dataobs indices
+    traces_index: dataobs-otel-traces
+    logs_index: dataobs-otel-logs
+    metrics_index: dataobs-otel-metrics
+    # Use ECS-compatible document structure
+    mapping:
+      mode: ecs
+    retry:
+      enabled: true
+      initial_interval: 5s
+      max_interval: 30s
+      max_elapsed_time: 300s
+    sending_queue:
+      enabled: true
+      num_consumers: 4
+      queue_size: 1000
+
   debug:
     verbosity: normal
 
 service:
   extensions: [health_check, pprof, zpages]
   pipelines:
+    # Pipeline traces → APM (APM UI) + ES (Discover)
     traces:
       receivers: [otlp]
       processors: [memory_limiter, resourcedetection/system, resource/cloud,
                    resource/common, resource/pipeline, batch]
-      exporters: [otlp/apm, debug]
+      exporters: [otlp/apm, elasticsearch, debug]
 
+    # Pipeline metrics → APM + ES
     metrics/pipeline:
       receivers: [otlp]
       processors: [memory_limiter, resourcedetection/system, resource/cloud,
                    resource/common, resource/pipeline, batch]
-      exporters: [otlp/apm, debug]
+      exporters: [otlp/apm, elasticsearch, debug]
 
+    # Pipeline/service logs → APM + ES
     logs:
       receivers: [otlp]
       processors: [memory_limiter, resourcedetection/system, resource/cloud,
                    resource/common, resource/pipeline, batch]
-      exporters: [otlp/apm, debug]
+      exporters: [otlp/apm, elasticsearch, debug]
 
-    # System integration pipeline — host CPU/mem/disk/net/load metrics.
-    # Scrapers: cpu, memory, disk, filesystem, network, load.
-    # NOTE: processes scraper omitted for macOS Docker Desktop compatibility.
-    # Enable `processes: {}` in the hostmetrics receiver on Linux / EC2 / EKS.
+    # Host system metrics (CPU/mem/disk/net/load) → APM + ES
     metrics/system:
       receivers: [hostmetrics]
       processors: [memory_limiter, resourcedetection/system, resource/cloud,
                    resource/common, resource/docker, batch]
-      exporters: [otlp/apm]
+      exporters: [otlp/apm, elasticsearch]
 
-    # Container metrics from cAdvisor (Prometheus scrape)
+    # Docker container metrics via docker_stats receiver → APM + ES
+    metrics/docker:
+      receivers: [docker_stats]
+      processors: [memory_limiter, resourcedetection/system, resource/cloud,
+                   resource/common, resource/docker, batch]
+      exporters: [otlp/apm, elasticsearch]
+
+    # Container metrics from cAdvisor (Prometheus scrape) → APM + ES
     metrics/containers:
       receivers: [prometheus]
       processors: [memory_limiter, resourcedetection/system, resource/cloud,
                    resource/common, resource/docker, batch]
-      exporters: [otlp/apm]
+      exporters: [otlp/apm, elasticsearch]
 
-    # Container logs pipeline — stdout/stderr from all Docker containers
+    # Container stdout/stderr logs → APM + ES
     logs/containers:
       receivers: [filelog]
       processors: [memory_limiter, resourcedetection/system, resource/cloud,
                    resource/common, resource/logs, batch]
-      exporters: [otlp/apm, debug]
+      exporters: [otlp/apm, elasticsearch, debug]

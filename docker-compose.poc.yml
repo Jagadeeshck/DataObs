@@ -388,21 +388,17 @@ services:
       retries: 5
       start_period: 30s
 
-  # ── OTel Collector (contrib) ─────────────────────────────────
-  # Image is a `FROM scratch` distroless build — no shell, no curl,
-  # no wget. Two consequences:
-  #   1. The Compose `healthcheck:` block CANNOT use CMD-SHELL or
-  #      wget/curl; any such test will exit non-zero and leave the
-  #      container "unhealthy" forever (this was previously breaking
-  #      `pipeline.depends_on.otel-collector: service_healthy`).
-  #   2. The collector's own `health_check` extension is still bound
-  #      on 0.0.0.0:13133 inside the network, so producers and the
-  #      `make verify` script can probe it via HTTP from another
-  #      container or from the host.
-  # Pinned to 0.111.0 (Oct 2024) which is widely deployed and
-  # compatible with the elasticsearchexporter `mapping.mode: ecs`
-  # used in config/otel-collector-poc.yaml.
+  # ── OTel Collector (OPTIONAL — disabled by default) ─────────
+  # The standalone OTel Collector is no longer the default telemetry
+  # path for the POC. All traces/metrics/logs flow through the
+  # Elastic Agent (Fleet) + Elastic APM Server path instead. The
+  # `otel-collector` service is retained behind the `otel` Compose
+  # profile for users who still want to experiment with EDOT/OTLP
+  # ingestion. It is NOT started by `docker compose up` or
+  # `docker compose run pipeline` unless the profile is enabled:
+  #   docker compose -f docker-compose.poc.yml --profile otel up -d
   otel-collector:
+    profiles: ["otel"]
     image: otel/opentelemetry-collector-contrib:0.111.0
     container_name: dataobs-poc-otel
     mem_limit: 768m
@@ -421,35 +417,15 @@ services:
       APM_SECRET_TOKEN: ${APM_SECRET_TOKEN:-dataobs_poc_apm_token}
       ELASTIC_PASSWORD: ${ELASTIC_PASSWORD}
       ELASTICSEARCH_URL: ${ELASTICSEARCH_URL:-http://es01:9200}
-      # MUST be a string. The docker_stats receiver also enforces
-      # this in its config; bumping to 1.44 matches Docker Engine 25.x.
       DOCKER_API_VERSION: "1.44"
       CLOUD_PROVIDER: ${CLOUD_PROVIDER:-local}
       CLOUD_REGION: ${CLOUD_REGION:-local}
       HOST_NAME: ${HOST_NAME:-dataobs-poc-host}
     depends_on:
-      # Loosened to service_started: the elastic-agent /api/status
-      # endpoint takes ~2 minutes to become "HEALTHY" and a slow
-      # agent must not block telemetry collection. APM ingestion
-      # has retry/backoff in the otlp/apm exporter (see
-      # otel-collector-poc.yaml).
       elastic-agent:
         condition: service_started
       cadvisor:
-        # service_started: cadvisor runs distroless and a CMD-SHELL based
-        # healthcheck is unreliable. The OTel collector's prometheus scrape
-        # of cadvisor:8080 retries on its own scrape_interval, so missing
-        # initial samples are acceptable for the POC.
         condition: service_started
-    # No container-level healthcheck: the collector image is FROM
-    # scratch, so any CMD-SHELL test (curl, wget, sh -c) fails for
-    # missing-binary reasons rather than missing-service. Downstream
-    # services use `service_started` and the OTel SDKs retry on
-    # connection refused.
-    # Multiple DNS aliases so producers can reach the collector by either
-    # `otel-collector` (Compose service name) or `otel` (short alias —
-    # matches the container suffix `dataobs-poc-otel` and avoids hyphenated-
-    # name DNS edge cases observed on `docker compose run --rm pipeline`).
     networks:
       dataobs-poc:
         aliases:
@@ -465,42 +441,38 @@ services:
     depends_on:
       es01: { condition: service_healthy }
       kibana: { condition: service_healthy }
-      # service_started (not service_healthy): the otel-collector image is
-      # `FROM scratch` so a Compose-level healthcheck cannot be expressed
-      # with curl/wget. The OTel exporter SDK retries on connection refused
-      # and the OTLP receiver is up within a couple of seconds of the
-      # process starting. Network DNS for `otel-collector` is registered
-      # the moment the container is started, so the original
-      # NameResolutionError race is already covered by the network alias.
-      otel-collector: { condition: service_started }
+      # APM intake is provided by the Elastic Agent (Fleet APM
+      # integration) at http://elastic-agent:8200. The pipeline does
+      # not depend on it being healthy — the Elastic APM Python agent
+      # buffers events and retries with exponential backoff if the
+      # endpoint is briefly unavailable.
+      elastic-agent:
+        condition: service_started
     environment:
       ELASTICHOST: http://es01:9200
       ELASTICSEARCH_URL: http://es01:9200
       ELASTIC_PASSWORD: ${ELASTIC_PASSWORD}
       KIBANA_URL: http://kibana:5601
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
-      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
-      OTEL_SERVICE_NAME: dataobs-pipeline
-      OTEL_RESOURCE_ATTRIBUTES: deployment.environment=poc,service.namespace=dataobs
-      OTEL_EXPORTER_OTLP_TRACES_TIMEOUT: 30000
-      OTEL_EXPORTER_OTLP_METRICS_TIMEOUT: 30000
-      OTEL_EXPORTER_OTLP_LOGS_TIMEOUT: 30000
-      OTEL_BSP_MAX_EXPORT_BATCH_SIZE: 512
-      OTEL_BSP_SCHEDULE_DELAY: 5000
+      # ── Elastic APM (default telemetry path) ──────────────────
+      # The Elastic APM Python agent ships traces (transactions/spans),
+      # custom metrics, and log correlation directly to the APM Server
+      # exposed by the elastic-agent container. No standalone OTel
+      # Collector is required.
+      ELASTIC_APM_SERVER_URL: http://elastic-agent:8200
+      ELASTIC_APM_SECRET_TOKEN: ${APM_SECRET_TOKEN:-dataobs_poc_apm_token}
+      ELASTIC_APM_SERVICE_NAME: dataobs-poc-pipeline
+      ELASTIC_APM_ENVIRONMENT: poc
+      ELASTIC_APM_GLOBAL_LABELS: "service.namespace=dataobs,deployment.environment=poc"
+      # Disable the OpenTelemetry SDK exporters by default so the
+      # pipeline never tries to dial otel-collector:4318. Set to
+      # "false" only when running with `--profile otel`.
+      OTEL_SDK_DISABLED: "true"
       DATAOBS_CONFIG: /app/config/dataobs_poc.yaml
       DATAOBS_TENANT_ID: poc
       DATAOBS_STORE_BACKEND: elasticsearch
       SPARK_MASTER: local[*]
       PYTHONPATH: /app
       DEPLOYMENT_ENV: poc
-      SPARK_SUBMIT_OPTS: >-
-        -Dotel.service.name=spark-driver
-        -Dotel.exporter.otlp.endpoint=http://otel-collector:4318
-        -Dotel.exporter.otlp.protocol=http/protobuf
-        -Dotel.traces.exporter=otlp
-        -Dotel.metrics.exporter=otlp
-        -Dotel.logs.exporter=otlp
-        -Dotel.resource.attributes=deployment.environment=poc,service.namespace=dataobs
     volumes:
       - ./config:/app/config:ro
       - ./kibana:/app/kibana:ro

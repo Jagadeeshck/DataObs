@@ -1,23 +1,23 @@
 """
-Telemetry emitter for the POC pipeline.
+Legacy telemetry emitter for the POC pipeline.
 
-Two modes
----------
-1. **OTel SDK** (preferred) — if ``opentelemetry-sdk`` and
-   ``opentelemetry-exporter-otlp-proto-http`` are installed the emitter
-   exports real OTLP traces/metrics to the configured endpoint.
-2. **Logger fallback** — when the SDK is not installed every event is
-   still emitted as a structured log line so the pipeline always runs
-   regardless of whether a full OTel stack is present.
+The default POC telemetry path is now the Elastic APM Python agent
+(see ``src/poc/apm.py``). This module is kept for the older
+``src/poc/spark_job.py`` entry point and offers two modes:
 
-The stage() context manager wraps each pipeline stage with a span/log
-bracket and records duration_ms + status as a metric.
+1. **OTel SDK** — only initialised when an explicit ``otlp_endpoint``
+   is provided AND ``OTEL_SDK_DISABLED`` is not "true". The POC default
+   leaves OTEL_SDK_DISABLED=true so this branch is dormant and the
+   emitter never tries to dial an OTLP collector.
+2. **Logger fallback** — always available; emits structured log lines.
 
 Environment variables
 ---------------------
-  OTEL_SDK_DISABLED            Set to "true" to fully suppress OTel export
-                                (e.g. EMR environments without a collector).
-  OTEL_EXPORTER_OTLP_ENDPOINT  Override the OTLP endpoint (default: http://localhost:4318).
+  OTEL_SDK_DISABLED            "true" (the POC default) suppresses every
+                                OTel export attempt — no NameResolutionError
+                                spam when the standalone collector is absent.
+  OTEL_EXPORTER_OTLP_ENDPOINT  Optional override; only honoured when
+                                OTEL_SDK_DISABLED is not "true".
 """
 from __future__ import annotations
 

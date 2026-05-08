@@ -1,151 +1,181 @@
-# POC Observability Architecture — Elastic Agent + OTel
+# POC Observability Architecture — Elastic Agent + Elastic APM
 
 ## Overview
 
-The DataObs POC uses a **dual telemetry path** to maximise observability coverage:
+The DataObs POC ships **all** telemetry through the Elastic Stack: the
+Fleet-managed **Elastic Agent** collects host/container/system signals,
+and the **Elastic APM Python agent** in the pipeline emits trace
+transactions/spans plus custom metrics straight to the APM Server
+hosted by the same Elastic Agent. The standalone OpenTelemetry
+Collector is no longer part of the default path — it is gated behind
+an optional `otel` Compose profile for users who want to experiment
+with EDOT/OTLP ingestion.
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
 │                     Signal Sources                           │
 │  Pipeline (Python/Spark)  │  Docker Containers  │  Host OS   │
 └────────┬──────────────────┴──────────┬──────────┴────────────┘
-         │ OTLP HTTP (port 4318)       │ Docker API / filelog
+         │ Elastic APM Python agent     │ Docker API / filelog
+         │ (HTTP POST /intake/v2/events)│
          ▼                             ▼
-┌─────────────────────┐   ┌────────────────────────────────────┐
-│  OTel Collector     │   │  Elastic Agent (Fleet-managed)     │
-│  (contrib:0.99.0)   │   │  Integrations:                     │
-│                     │   │  - APM Server (port 8200)          │
-│  Receivers:         │   │  - Docker integration (metrics)    │
-│  - otlp (pipeline)  │   │  - System integration (host)       │
-│  - hostmetrics      │   │  - Log collection                  │
-│  - docker_stats     │   └──────────────┬─────────────────────┘
-│  - prometheus/cadv  │                  │
-│  - filelog          │                  │ Enrolled via Fleet Server
-└──────┬──────────────┘                  │
-       │                                 │
-       │ Dual export                     │
-       ├──────────────────────────────────
-       │
-       ├──► APM Server (elastic-agent:8200)  → Kibana APM UI
-       │
-       └──► Elasticsearch (elasticsearch:9200)
-               └──► dataobs-otel-traces
-               └──► dataobs-otel-metrics
-               └──► dataobs-otel-logs
-               └──► dataobs-otel-container-logs
-                    ↕ Kibana Discover / Dashboards
+┌──────────────────────────────────────────────────────────────┐
+│  Elastic Agent (Fleet-managed) — single container            │
+│  ─────────────────────────────────────────────────────────── │
+│  Integrations enrolled by kibana-setup:                      │
+│    • APM Server         (port 8200) → traces / metrics       │
+│    • Docker integration → .ds-metrics-docker.*               │
+│                          → .ds-logs-docker.*                 │
+│    • System integration → .ds-metrics-system.*               │
+│                          → .ds-logs-system.*                 │
+└──────────────┬───────────────────────────────────────────────┘
+               │
+               ▼
+        Elasticsearch (es01:9200)
+        ├── traces-apm-*           ← APM transactions / spans
+        ├── metrics-apm.*          ← APM custom metrics + agent metrics
+        ├── logs-apm.error-*       ← APM captured exceptions
+        ├── .ds-metrics-docker.*   ← Container metrics
+        ├── .ds-logs-docker.*      ← Container logs
+        ├── .ds-metrics-system.*   ← Host metrics
+        ├── dataobs-poc-* / dataobs-test-data / dataobs-spark-results
+        └── dataobs-{assets,quality,freshness,volume,schema,lineage,alerts}
+                                   ↕ Kibana Discover / APM UI / Dashboards
 ```
 
 ## What Gets Monitored
 
-| Signal | Source | Destination | Kibana View |
-|--------|--------|-------------|-------------|
-| Pipeline traces (Python/Spark) | OTel SDK → OTel Collector | ES `dataobs-otel-traces` + APM | APM UI + Discover |
-| Pipeline metrics | OTel SDK → OTel Collector | ES `dataobs-otel-metrics` + APM | Discover + Dashboards |
-| Pipeline logs | OTel SDK → OTel Collector | ES `dataobs-otel-logs` + APM | Discover |
-| Host CPU/mem/disk/net | OTel hostmetrics | ES `dataobs-otel-metrics` + APM | Discover |
-| Docker container metrics (OTel) | OTel docker_stats | ES `dataobs-otel-metrics` + APM | Discover |
-| Docker container metrics (cAdvisor) | Prometheus scrape | ES `dataobs-otel-metrics` + APM | Discover |
-| Docker container metrics (Fleet) | Elastic Agent Docker integration | `.ds-metrics-docker.*` | Infrastructure → Containers |
-| Docker container logs (filelog) | OTel filelog receiver | ES `dataobs-otel-container-logs` + APM | Discover |
-| Docker container logs (Fleet) | Elastic Agent Docker integration | `.ds-logs-docker.*` | Logs |
-| Host system metrics (Fleet) | Elastic Agent System integration | `.ds-metrics-system.*` | Infrastructure |
-| APM transactions/errors | elastic-agent APM Server | `.ds-traces-apm.*` | APM UI |
+| Signal | Source | Data stream / Index | Kibana View |
+|---|---|---|---|
+| Pipeline traces (Python) | `elastic-apm` Python agent | `traces-apm-*` | APM UI |
+| Pipeline custom metrics | `elastic-apm` Python agent | `metrics-apm.*` | APM UI / Discover |
+| Pipeline log correlation | `elastic-apm` log integration | linked via `trace.id` | APM UI |
+| Spark stage spans | `SparkApmInstrumentation` | `traces-apm-*` | APM UI |
+| Container metrics | Elastic Agent Docker integration | `.ds-metrics-docker.*` | Infrastructure → Containers |
+| Container logs | Elastic Agent Docker integration | `.ds-logs-docker.*` | Logs |
+| Host metrics | Elastic Agent System integration | `.ds-metrics-system.*` | Infrastructure |
+| Host logs | Elastic Agent System integration | `.ds-logs-system.*` | Logs |
+| Pipeline raw + curated rows | Direct ES bulk index | `dataobs-test-data`, `dataobs-spark-results` | Discover |
+| Data observability docs | `ObservabilityWriter` | `dataobs-{assets,quality,freshness,volume,schema,lineage,alerts}` | Discover |
 
-## Root Cause Fixes Applied
+## Why we removed the standalone OTel Collector from the default path
 
-### Fix 1: OTel DNS Resolution (`NameResolutionError`)
+Repeated local runs hit the same failure mode:
 
-**Symptom:** `Failed to resolve 'otel-collector' ([Errno -2] Name or service not known)`
-
-**Root Cause:** `docker compose run --rm pipeline` attaches the container to the **default Docker bridge network**, not to `dataobs-poc`. Service names (like `otel-collector`) are only resolvable within the custom named network.
-
-**Fix:** Added explicit `networks: [dataobs-poc]` to the `pipeline` service in `docker-compose.poc.yml`.
-
-### Fix 2: No Docker Metrics in Elastic
-
-**Root Cause 1 (Elastic Agent):** The `elastic-agent` container had no Docker socket mount (`/var/run/docker.sock`), so the Docker integration installed via Fleet had no access to the Docker API.
-
-**Fix:** Added volume mounts to `elastic-agent`:
-```yaml
-volumes:
-  - /var/run/docker.sock:/var/run/docker.sock:ro
-  - /var/lib/docker/containers:/var/lib/docker/containers:ro
-  - /proc:/hostfs/proc:ro
-  - /sys:/hostfs/sys:ro
+```
+NameResolutionError(host='otel-collector', port=4318)
 ```
 
-**Root Cause 2 (OTel Collector):** Only cAdvisor (Prometheus scrape) was used for container metrics. The `docker_stats` receiver was not configured.
+Root causes (each fixed in a previous PR, but the issue kept resurfacing):
 
-**Fix:** Added `docker_stats` receiver to `otel-collector-poc.yaml` and new `metrics/docker` pipeline.
+1. `docker compose run --rm pipeline` attached to the default bridge
+   network in some Docker Desktop versions, so `otel-collector` was
+   not DNS-resolvable.
+2. The `FROM scratch` collector image has no shell/curl/wget, so
+   `service_healthy` could never gate the pipeline.
+3. Stale `.env.poc.local` files re-introduced
+   `OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318` even when
+   the compose file had been fixed.
 
-### Fix 3: No Data Visible in Kibana Discover
+The Fleet-managed Elastic Agent already runs APM Server, so routing
+the pipeline directly at `http://elastic-agent:8200` collapses three
+hop points (pipeline → otel-collector → elastic-agent → ES) into one
+(`pipeline → elastic-agent → ES`). It also removes the `FROM scratch`
+healthcheck quirk and a separate Docker socket mount.
 
-**Root Cause:** All OTel data was being exported exclusively to APM Server via `otlp/apm` exporter. APM data only appears in the APM UI, not in Kibana Discover.
+## Default run
 
-**Fix:** Added `elasticsearch` exporter in OTel collector config. All signals now export to **both** APM and Elasticsearch directly.
+```bash
+docker compose -f docker-compose.poc.yml --env-file .env.poc up -d
+docker compose -f docker-compose.poc.yml --env-file .env.poc run --rm pipeline
+```
 
-### Fix 4: Missing Docker + System Fleet Integrations
-
-**Root Cause:** `kibana-setup` only configured APM and Fleet Server integrations. No System or Docker integrations were enrolled on the agent policy.
-
-**Fix:** `kibana-setup` now installs and configures:
-- `system` integration (CPU, memory, disk, network + syslog)
-- `docker` integration (container metrics, container logs)
+The `pipeline` service depends on `elastic-agent`, sets
+`ELASTIC_APM_SERVER_URL=http://elastic-agent:8200`, and exports
+`OTEL_SDK_DISABLED=true` so the OTel SDK is never bootstrapped.
 
 ## Verification
 
-After `docker compose -f docker-compose.poc.yml --env-file .env.poc up -d`:
-
 ```bash
-# 1. Check all containers are healthy
+# 1. Containers
 docker compose -f docker-compose.poc.yml ps
 
-# 2. Verify OTel collector is receiving and exporting
-curl http://localhost:13133/       # health check
-curl http://localhost:55679/debug/servicez  # zpages service list
+# 2. APM Server is reachable inside the network
+docker compose -f docker-compose.poc.yml exec elastic-agent \
+  curl -sf http://localhost:8200/
 
-# 3. Verify data in Elasticsearch
-curl -u elastic:$ELASTIC_PASSWORD http://localhost:9200/_cat/indices/dataobs-otel*
-# Should show: dataobs-otel-traces, dataobs-otel-metrics, dataobs-otel-logs
+# 3. APM data in Elasticsearch (traces + metrics)
+curl -u elastic:$ELASTIC_PASSWORD http://localhost:9200/_cat/indices/traces-apm*
+curl -u elastic:$ELASTIC_PASSWORD http://localhost:9200/_cat/indices/metrics-apm*
 
-# 4. Check Elastic Agent is enrolled and Docker integration is active
-curl -u elastic:$ELASTIC_PASSWORD http://localhost:9200/.ds-metrics-docker.*/_search?size=1
+# 4. Pipeline + Spark transaction count
+curl -u elastic:$ELASTIC_PASSWORD \
+  'http://localhost:9200/traces-apm-*/_count?q=service.name:dataobs-poc-pipeline'
 
-# 5. Run pipeline and confirm traces reach ES
-docker compose -f docker-compose.poc.yml --env-file .env.poc run --rm pipeline
-curl -u elastic:$ELASTIC_PASSWORD 'http://localhost:9200/dataobs-otel-traces/_count'
-# Expected: count > 0
+# 5. Container + system data streams
+curl -u elastic:$ELASTIC_PASSWORD http://localhost:9200/_cat/indices/.ds-metrics-docker*
+curl -u elastic:$ELASTIC_PASSWORD http://localhost:9200/_cat/indices/.ds-logs-docker*
+curl -u elastic:$ELASTIC_PASSWORD http://localhost:9200/_cat/indices/.ds-metrics-system*
+
+# 6. DataObs observability docs
+curl -u elastic:$ELASTIC_PASSWORD http://localhost:9200/_cat/indices/dataobs-*
 ```
 
-## APM Agent Setup (Python & Java)
+In Kibana:
 
-For **Python** services, use the `elastic-apm` library:
+* **APM → Services → `dataobs-poc-pipeline`** for transactions,
+  span timings, and errors.
+* **Observability → Logs / Infrastructure** for container + host
+  signals.
+* **Discover → `dataobs-quality` / `dataobs-lineage` / etc.** for the
+  Soda/Monte-Carlo/Acceldata-style data observability docs.
 
-```python
-# requirements.txt
-elastic-apm>=6.22.0
+## Optional: standalone OTel Collector (`--profile otel`)
 
-# In your Python service:
-import elasticapm
-elasticapm.instrument()
-client = elasticapm.Client(
-    service_name="my-python-service",
-    server_url="http://localhost:8200",  # elastic-agent APM port
-    secret_token=os.environ["APM_SECRET_TOKEN"],
-    environment="poc",
-)
-```
-
-For **Java** services (e.g. Spark executors), attach the Elastic APM Java agent:
+The `otel-collector` service is retained behind the `otel` Compose
+profile for EDOT experiments. To enable it:
 
 ```bash
-# Download the agent jar
-curl -L -o elastic-apm-agent.jar \
-  https://repo1.maven.org/maven2/co/elastic/apm/elastic-apm-agent/1.51.0/elastic-apm-agent-1.51.0.jar
+docker compose -f docker-compose.poc.yml --env-file .env.poc \
+  --profile otel up -d
+```
 
-# Add to JVM opts (SPARK_SUBMIT_OPTS or spark-defaults.conf)
--javaagent:/path/to/elastic-apm-agent.jar
+When you also want the pipeline to send OTLP to that collector,
+override two env vars on the `run` invocation:
+
+```bash
+docker compose -f docker-compose.poc.yml --env-file .env.poc \
+  --profile otel run --rm \
+  -e OTEL_SDK_DISABLED=false \
+  -e OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318 \
+  pipeline
+```
+
+This mode is **not part of the default POC** and is documented for
+completeness only.
+
+## APM Agent Setup (reference)
+
+The pipeline already wires this in `src/poc/apm.py`. For other Python
+services in this repo, the same config applies:
+
+```python
+import elasticapm
+elasticapm.instrument()
+client = elasticapm.Client({
+    "SERVICE_NAME": "my-python-service",
+    "SERVER_URL": "http://elastic-agent:8200",  # default Docker URL
+    "SECRET_TOKEN": os.environ["APM_SECRET_TOKEN"],
+    "ENVIRONMENT": "poc",
+    "GLOBAL_LABELS": "service.namespace=dataobs,deployment.environment=poc",
+})
+```
+
+For Java services (e.g. Spark executors when running outside the
+local POC), attach the Elastic APM Java agent:
+
+```
+-javaagent:/opt/elastic-apm-agent.jar
 -Delastic.apm.service_name=spark-driver
 -Delastic.apm.server_url=http://elastic-agent:8200
 -Delastic.apm.secret_token=${APM_SECRET_TOKEN}

@@ -7,9 +7,17 @@ requests>=2.31.0
 PyYAML>=6.0
 elasticsearch[async]>=9.3,<10.0
 
-# OpenTelemetry SDK + OTLP HTTP exporter (optional but recommended)
-# Remove if running without an OTel collector — the pipeline gracefully
-# falls back to logger-only telemetry when these are not installed.
+# Elastic APM Python agent — default telemetry path for the POC.
+# Ships traces/spans + custom metrics directly to the APM Server
+# hosted by the Fleet-managed elastic-agent container at
+# http://elastic-agent:8200. Falls back gracefully when the endpoint
+# is unreachable (events are buffered/dropped, no retry-spam in logs).
+elastic-apm>=6.20.0
+
+# OpenTelemetry SDK + OTLP HTTP exporter — OPTIONAL. Only used when
+# OTEL_SDK_DISABLED=false (i.e. running with `docker compose --profile otel`).
+# When disabled, the pipeline uses Elastic APM exclusively and never
+# attempts to dial otel-collector:4318.
 opentelemetry-sdk>=1.24.0
 opentelemetry-exporter-otlp-proto-http>=1.24.0
 opentelemetry-instrumentation>=0.45b0

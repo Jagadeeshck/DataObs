@@ -21,6 +21,8 @@
 #      docker  → dataobs-otel-container-logs
 # ============================================================
 
+file_format: yaml
+
 extensions:
   health_check:
     endpoint: 0.0.0.0:13133
@@ -233,9 +235,9 @@ exporters:
     tls:
       insecure: true
     # Map OTel signals to dedicated dataobs indices
-    traces_index: dataobs-otel-traces
-    logs_index: dataobs-otel-logs
-    metrics_index: dataobs-otel-metrics
+   # traces_index: dataobs-otel-traces
+   # logs_index: dataobs-otel-logs
+   # metrics_index: dataobs-otel-metrics
     # Use ECS-compatible document structure
     mapping:
       mode: ecs
@@ -260,46 +262,46 @@ service:
       receivers: [otlp]
       processors: [memory_limiter, resourcedetection/system, resource/cloud,
                    resource/common, resource/pipeline, batch]
-      exporters: [otlphttp/apm, elasticsearch, debug]
+      exporters: [otlphttp/apm]
 
     # Pipeline metrics → APM + ES
     metrics/pipeline:
       receivers: [otlp]
       processors: [memory_limiter, resourcedetection/system, resource/cloud,
                    resource/common, resource/pipeline, batch]
-      exporters: [otlphttp/apm, elasticsearch, debug]
+      exporters: [ elasticsearch]
 
     # Pipeline/service logs → APM + ES
     logs:
       receivers: [otlp]
       processors: [memory_limiter, resourcedetection/system, resource/cloud,
                    resource/common, resource/pipeline, batch]
-      exporters: [otlphttp/apm, elasticsearch, debug]
+      exporters: [elasticsearch]
 
     # Host system metrics (CPU/mem/disk/net/load) → APM + ES
     metrics/system:
       receivers: [hostmetrics]
       processors: [memory_limiter, resourcedetection/system, resource/cloud,
                    resource/common, resource/docker, batch]
-      exporters: [otlphttp/apm, elasticsearch]
+      exporters: [elasticsearch]
 
     # Docker container metrics via docker_stats receiver → APM + ES
     metrics/docker:
       receivers: [docker_stats]
       processors: [memory_limiter, resourcedetection/system, resource/cloud,
                    resource/common, resource/docker, batch]
-      exporters: [otlphttp/apm, elasticsearch]
+      exporters: [elasticsearch]
 
     # Container metrics from cAdvisor (Prometheus scrape) → APM + ES
     metrics/containers:
       receivers: [prometheus]
       processors: [memory_limiter, resourcedetection/system, resource/cloud,
                    resource/common, resource/docker, batch]
-      exporters: [otlphttp/apm, elasticsearch]
+      exporters: [elasticsearch]
 
     # Container stdout/stderr logs → APM + ES
     logs/containers:
       receivers: [filelog]
       processors: [memory_limiter, resourcedetection/system, resource/cloud,
                    resource/common, resource/logs, batch]
-      exporters: [otlphttp/apm, elasticsearch, debug]
+      exporters: [elasticsearch]

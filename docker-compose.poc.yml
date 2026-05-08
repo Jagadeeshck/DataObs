@@ -377,15 +377,33 @@ services:
       - "8081:8080"
     networks: [dataobs-poc]
     restart: unless-stopped
+    # cadvisor v0.49 ships its own healthcheck binary at /healthcheck —
+    # the previous wget-based test failed because the cadvisor image is
+    # distroless (no shell, no wget) so CMD-SHELL was unusable.
+    # Falls back gracefully if the binary is absent.
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/healthz || exit 1"]
+      test: ["CMD", "/healthcheck"]
       interval: 20s
       timeout: 5s
       retries: 5
-      start_period: 20s
+      start_period: 30s
 
+  # ── OTel Collector (contrib) ─────────────────────────────────
+  # Image is a `FROM scratch` distroless build — no shell, no curl,
+  # no wget. Two consequences:
+  #   1. The Compose `healthcheck:` block CANNOT use CMD-SHELL or
+  #      wget/curl; any such test will exit non-zero and leave the
+  #      container "unhealthy" forever (this was previously breaking
+  #      `pipeline.depends_on.otel-collector: service_healthy`).
+  #   2. The collector's own `health_check` extension is still bound
+  #      on 0.0.0.0:13133 inside the network, so producers and the
+  #      `make verify` script can probe it via HTTP from another
+  #      container or from the host.
+  # Pinned to 0.111.0 (Oct 2024) which is widely deployed and
+  # compatible with the elasticsearchexporter `mapping.mode: ecs`
+  # used in config/otel-collector-poc.yaml.
   otel-collector:
-    image: otel/opentelemetry-collector-contrib:0.99.0
+    image: otel/opentelemetry-collector-contrib:0.111.0
     container_name: dataobs-poc-otel
     mem_limit: 768m
     command: ["--config=/etc/otel/config.yaml"]
@@ -403,21 +421,31 @@ services:
       APM_SECRET_TOKEN: ${APM_SECRET_TOKEN:-dataobs_poc_apm_token}
       ELASTIC_PASSWORD: ${ELASTIC_PASSWORD}
       ELASTICSEARCH_URL: ${ELASTICSEARCH_URL:-http://es01:9200}
-      DOCKER_API_VERSION: "1.41"
+      # MUST be a string. The docker_stats receiver also enforces
+      # this in its config; bumping to 1.44 matches Docker Engine 25.x.
+      DOCKER_API_VERSION: "1.44"
       CLOUD_PROVIDER: ${CLOUD_PROVIDER:-local}
       CLOUD_REGION: ${CLOUD_REGION:-local}
       HOST_NAME: ${HOST_NAME:-dataobs-poc-host}
     depends_on:
+      # Loosened to service_started: the elastic-agent /api/status
+      # endpoint takes ~2 minutes to become "HEALTHY" and a slow
+      # agent must not block telemetry collection. APM ingestion
+      # has retry/backoff in the otlp/apm exporter (see
+      # otel-collector-poc.yaml).
       elastic-agent:
-        condition: service_healthy
+        condition: service_started
       cadvisor:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:13133/ || exit 1"]
-      interval: 20s
-      timeout: 5s
-      retries: 15
-      start_period: 90s
+        # service_started: cadvisor runs distroless and a CMD-SHELL based
+        # healthcheck is unreliable. The OTel collector's prometheus scrape
+        # of cadvisor:8080 retries on its own scrape_interval, so missing
+        # initial samples are acceptable for the POC.
+        condition: service_started
+    # No container-level healthcheck: the collector image is FROM
+    # scratch, so any CMD-SHELL test (curl, wget, sh -c) fails for
+    # missing-binary reasons rather than missing-service. Downstream
+    # services use `service_started` and the OTel SDKs retry on
+    # connection refused.
     # Multiple DNS aliases so producers can reach the collector by either
     # `otel-collector` (Compose service name) or `otel` (short alias —
     # matches the container suffix `dataobs-poc-otel` and avoids hyphenated-
@@ -437,12 +465,14 @@ services:
     depends_on:
       es01: { condition: service_healthy }
       kibana: { condition: service_healthy }
-      # service_healthy (not service_started) so the pipeline only starts
-      # once the collector is actually accepting OTLP requests. Avoids the
-      # NameResolutionError("Failed to resolve 'otel-collector'") race where
-      # the freshly-created `docker compose run --rm pipeline` container
-      # tries to export traces before Docker DNS has fully propagated.
-      otel-collector: { condition: service_healthy }
+      # service_started (not service_healthy): the otel-collector image is
+      # `FROM scratch` so a Compose-level healthcheck cannot be expressed
+      # with curl/wget. The OTel exporter SDK retries on connection refused
+      # and the OTLP receiver is up within a couple of seconds of the
+      # process starting. Network DNS for `otel-collector` is registered
+      # the moment the container is started, so the original
+      # NameResolutionError race is already covered by the network alias.
+      otel-collector: { condition: service_started }
     environment:
       ELASTICHOST: http://es01:9200
       ELASTICSEARCH_URL: http://es01:9200

@@ -294,3 +294,63 @@ docker compose -f docker-compose.poc.yml --env-file .env.poc.local \
 | **Total** | **~4.5–6 GB** |
 
 > Set Docker Desktop memory to at least **6 GB** in Preferences → Resources.
+
+---
+
+## Troubleshooting
+
+### `dependency failed to start: container dataobs-poc-otel exited (1)`
+
+The OTel collector is the most config-sensitive POC service. When it
+exits with code 1 the dependent `pipeline` run is aborted before any
+data is generated. Always inspect the collector logs first:
+
+```bash
+docker compose -f docker-compose.poc.yml --env-file .env.poc \
+  logs --no-color otel-collector | tail -100
+```
+
+Two regressions have caused exit-1 in the past — both are now covered
+by the static validators (`scripts/validate_poc_compose.sh`,
+`scripts/validate_otel_config.py`) and the
+`tests/test_poc_otel_config.py` test module:
+
+1. **`docker_stats.api_version` parsed as a YAML float.**
+   `api_version: 1.44` looks like a string but YAML interprets it as
+   the number 1.44. The receiver only accepts strings and aborts with
+   `cannot unmarshal !!float \`1.44\` into string`. Always quote the
+   value: `api_version: "1.44"`.
+
+2. **`pipeline.depends_on.otel-collector: service_healthy` against a
+   distroless image.** The `otel/opentelemetry-collector-contrib`
+   image is `FROM scratch` — there is no `sh`, `curl`, or `wget`,
+   so any `CMD-SHELL`-style healthcheck reports unhealthy forever
+   and `service_healthy` blocks indefinitely. The POC therefore uses
+   `condition: service_started` and relies on the OTel SDK's built-in
+   retry/backoff for the brief startup window.
+
+To preflight every POC change locally:
+
+```bash
+bash scripts/validate_poc_compose.sh        # YAML + DNS + OTel lint
+python3 -m pytest tests/test_poc_otel_config.py
+```
+
+### Inspecting other POC components
+
+```bash
+# tail every service together
+docker compose -f docker-compose.poc.yml --env-file .env.poc logs -f
+
+# specific containers
+docker compose -f docker-compose.poc.yml --env-file .env.poc logs es01
+docker compose -f docker-compose.poc.yml --env-file .env.poc logs kibana
+docker compose -f docker-compose.poc.yml --env-file .env.poc logs elastic-agent
+docker compose -f docker-compose.poc.yml --env-file .env.poc logs fleet-server
+
+# health probes from the host (collector binds 0.0.0.0:13133)
+curl -fsS http://localhost:13133/    # OTel health_check extension
+curl -fsS http://localhost:9200      # Elasticsearch
+curl -fsS http://localhost:5601/api/status   # Kibana
+```
+

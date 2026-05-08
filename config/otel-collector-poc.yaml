@@ -72,7 +72,12 @@ receivers:
     endpoint: unix:///var/run/docker.sock
     collection_interval: 30s
     timeout: 10s
-    api_version: 1.41
+    # MUST be quoted: the docker_stats receiver requires `api_version` to
+    # be a string, not a YAML float. An unquoted `1.44` parses as the
+    # float 1.44 and the collector aborts with `cannot unmarshal !!float
+    # `1.44` into string` on startup (exit 1). 1.44 matches the Docker
+    # Engine 25.x API and is the default in recent collector releases.
+    api_version: "1.44"
     # Collect all containers (stopped ones have no live stats, safely skipped)
     excluded_images: []
     metrics:

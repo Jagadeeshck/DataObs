@@ -26,6 +26,11 @@ if [ -z "${PY}" ]; then
   exit 2
 fi
 
+# ── OTel collector config lint (catches the docker_stats float
+#    api_version bug that crashes the container with exit code 1) ──
+"${PY}" "${REPO_ROOT}/scripts/validate_otel_config.py" \
+  "${REPO_ROOT}/config/otel-collector-poc.yaml"
+
 "${PY}" - "${COMPOSE_FILE}" "${ENV_FILE}" <<'PYEOF'
 import os
 import re

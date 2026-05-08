@@ -18,6 +18,11 @@ collector container (exit code 1 at startup):
   * The health_check extension, if used, must bind to 0.0.0.0 (not
     127.0.0.1) so the host port mapping in docker-compose.poc.yml
     can reach it.
+  * `otlp/*` exporters (gRPC) must NOT carry an `otlphttp`-only key
+    such as `protocol`. The OTel collector aborts with
+        '' has invalid keys: protocol
+    when this slips in. If you actually want OTLP/HTTP, rename the
+    component id to `otlphttp/<suffix>` and drop the `protocol` key.
 
 Usage:
     python3 scripts/validate_otel_config.py [path/to/config.yaml]
@@ -116,6 +121,26 @@ def validate(path: Path) -> list[str]:
             f"extensions {sorted(unused)} are declared but not referenced "
             f"in service.extensions; they will not be started.",
         )
+
+    # ── otlp/* exporters must not carry otlphttp-only keys ────────
+    # The OTLP gRPC exporter has no `protocol` field and the collector
+    # rejects it at startup with `'' has invalid keys: protocol`. Same
+    # for `encoding`, which only the otlphttp exporter understands.
+    for name, cfg_block in exporters.items():
+        if not isinstance(name, str):
+            continue
+        base_id = name.split("/", 1)[0]
+        if base_id != "otlp":
+            continue
+        for forbidden_key in ("protocol", "encoding"):
+            if isinstance(cfg_block, dict) and forbidden_key in cfg_block:
+                _err(
+                    problems,
+                    f"exporters.{name}: the `otlp` exporter is gRPC-only "
+                    f"and has no `{forbidden_key}` field. To export over "
+                    f"OTLP/HTTP rename the component id to "
+                    f"`otlphttp/<suffix>` and drop `{forbidden_key}`.",
+                )
 
     # ── Every pipeline component must exist in its top-level map ──
     pipelines = (service.get("pipelines") or {})

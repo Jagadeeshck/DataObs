@@ -152,3 +152,68 @@ def test_validator_script_catches_float_api_version(tmp_path: Path) -> None:
     )
     assert proc.returncode == 1
     assert "api_version" in proc.stdout
+
+
+def test_apm_exporter_uses_otlphttp_not_otlp(otel_cfg: dict) -> None:
+    """APM Server speaks OTLP/HTTP on :8200; the gRPC `otlp` exporter has
+    no `protocol` key and aborts the collector at config-load time.
+    """
+    exporters = otel_cfg["exporters"]
+    assert "otlphttp/apm" in exporters, (
+        "APM exporter must be `otlphttp/apm` (HTTP). The contrib "
+        "collector's `otlp` exporter is gRPC-only and rejects the "
+        "`protocol` key, which previously crashed the POC at startup."
+    )
+    assert "otlp/apm" not in exporters, (
+        "Rename `otlp/apm` → `otlphttp/apm`; the OTLP gRPC exporter "
+        "rejects the `protocol` field and the POC sends to APM Server "
+        "on :8200 over HTTP."
+    )
+    apm = exporters["otlphttp/apm"]
+    # Bare otlphttp config — `protocol` is not a valid key on either
+    # otlp or otlphttp; if someone re-introduces it the validator
+    # below catches it and so does the collector.
+    assert "protocol" not in apm
+
+
+def test_pipelines_reference_otlphttp_apm(otel_cfg: dict) -> None:
+    for name, pipe in otel_cfg["service"]["pipelines"].items():
+        for ref in pipe.get("exporters", []):
+            assert ref != "otlp/apm", (
+                f"pipeline {name}: stale `otlp/apm` reference; the "
+                f"exporter is now `otlphttp/apm`."
+            )
+
+
+def test_validator_script_catches_otlp_with_protocol_key(tmp_path: Path) -> None:
+    """Regression: `otlp/apm: { protocol: http/protobuf, ... }` is the
+    exact misconfiguration that produced
+        'has invalid keys: protocol' under 'otlp/apm'
+    on container start. The static linter must reject it before we
+    ever launch the collector.
+    """
+    bad = yaml.safe_load(OTEL_CONFIG.read_text())
+    # Re-introduce the broken shape under the gRPC component id.
+    bad["exporters"].pop("otlphttp/apm", None)
+    bad["exporters"]["otlp/apm"] = {
+        "endpoint": "http://elastic-agent:8200",
+        "protocol": "http/protobuf",
+        "tls": {"insecure": True},
+    }
+    # Keep pipelines consistent so we trip *only* the otlp/protocol check.
+    for pipe in bad["service"]["pipelines"].values():
+        pipe["exporters"] = [
+            "otlp/apm" if e == "otlphttp/apm" else e
+            for e in pipe.get("exporters", [])
+        ]
+    bad_path = tmp_path / "bad-otel.yaml"
+    bad_path.write_text(yaml.safe_dump(bad))
+    proc = subprocess.run(
+        [sys.executable, str(VALIDATOR), str(bad_path)],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert proc.returncode == 1, proc.stdout + proc.stderr
+    assert "protocol" in proc.stdout
+    assert "otlp/apm" in proc.stdout

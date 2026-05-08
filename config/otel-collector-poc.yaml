@@ -9,10 +9,15 @@
 #    POC we keep otel-collector-contrib here, while the Fleet-managed
 #    `elastic-agent` service in docker-compose.poc.yml provides the
 #    Fleet-style "OTel agent" view in Kibana → Fleet.
+#  - APM Server (inside elastic-agent) speaks OTLP/HTTP on :8200, so we
+#    use the `otlphttp` exporter (component id `otlphttp/apm`). The
+#    `otlp` exporter is gRPC-only and rejects a `protocol:` key — that
+#    mistake produces the startup error
+#       'has invalid keys: protocol' under exporter 'otlp/apm'.
 #  - Routing:
-#      traces  → otlp/apm + dataobs-otel-traces
-#      metrics → otlp/apm + dataobs-otel-metrics
-#      logs    → otlp/apm + dataobs-otel-logs
+#      traces  → otlphttp/apm + dataobs-otel-traces
+#      metrics → otlphttp/apm + dataobs-otel-metrics
+#      logs    → otlphttp/apm + dataobs-otel-logs
 #      docker  → dataobs-otel-container-logs
 # ============================================================
 
@@ -196,10 +201,13 @@ processors:
         action: upsert
 
 exporters:
-  # Primary: APM Server — feeds Kibana APM UI (traces, services, errors)
-  otlp/apm:
+  # Primary: APM Server (embedded in elastic-agent) — feeds Kibana APM UI.
+  # APM Server accepts OTLP/HTTP on :8200, so we use the `otlphttp`
+  # exporter. Do NOT use `otlp` here: that component id is gRPC-only
+  # and has no `protocol` field, which is what produced
+  #   "'' has invalid keys: protocol" under exporters.otlp/apm.
+  otlphttp/apm:
     endpoint: http://${env:APM_SERVER_URL}
-    protocol: http/protobuf
     tls:
       insecure: true
     headers:
@@ -252,46 +260,46 @@ service:
       receivers: [otlp]
       processors: [memory_limiter, resourcedetection/system, resource/cloud,
                    resource/common, resource/pipeline, batch]
-      exporters: [otlp/apm, elasticsearch, debug]
+      exporters: [otlphttp/apm, elasticsearch, debug]
 
     # Pipeline metrics → APM + ES
     metrics/pipeline:
       receivers: [otlp]
       processors: [memory_limiter, resourcedetection/system, resource/cloud,
                    resource/common, resource/pipeline, batch]
-      exporters: [otlp/apm, elasticsearch, debug]
+      exporters: [otlphttp/apm, elasticsearch, debug]
 
     # Pipeline/service logs → APM + ES
     logs:
       receivers: [otlp]
       processors: [memory_limiter, resourcedetection/system, resource/cloud,
                    resource/common, resource/pipeline, batch]
-      exporters: [otlp/apm, elasticsearch, debug]
+      exporters: [otlphttp/apm, elasticsearch, debug]
 
     # Host system metrics (CPU/mem/disk/net/load) → APM + ES
     metrics/system:
       receivers: [hostmetrics]
       processors: [memory_limiter, resourcedetection/system, resource/cloud,
                    resource/common, resource/docker, batch]
-      exporters: [otlp/apm, elasticsearch]
+      exporters: [otlphttp/apm, elasticsearch]
 
     # Docker container metrics via docker_stats receiver → APM + ES
     metrics/docker:
       receivers: [docker_stats]
       processors: [memory_limiter, resourcedetection/system, resource/cloud,
                    resource/common, resource/docker, batch]
-      exporters: [otlp/apm, elasticsearch]
+      exporters: [otlphttp/apm, elasticsearch]
 
     # Container metrics from cAdvisor (Prometheus scrape) → APM + ES
     metrics/containers:
       receivers: [prometheus]
       processors: [memory_limiter, resourcedetection/system, resource/cloud,
                    resource/common, resource/docker, batch]
-      exporters: [otlp/apm, elasticsearch]
+      exporters: [otlphttp/apm, elasticsearch]
 
     # Container stdout/stderr logs → APM + ES
     logs/containers:
       receivers: [filelog]
       processors: [memory_limiter, resourcedetection/system, resource/cloud,
                    resource/common, resource/logs, batch]
-      exporters: [otlp/apm, elasticsearch, debug]
+      exporters: [otlphttp/apm, elasticsearch, debug]

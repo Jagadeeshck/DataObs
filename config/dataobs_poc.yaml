@@ -19,15 +19,33 @@ environment: poc
 #    dataobs-spark-results → Spark transformation output
 #    dataobs-lineage       → data lineage events
 elasticsearch:
-  host: "${ELASTICHOST:-http://elasticsearch:9200}"
+  # 3-node POC cluster — pipeline can talk to any node, es01 is the seed.
+  host: "${ELASTICHOST:-http://es01:9200}"
+  hosts:
+    - "${ELASTICHOST:-http://es01:9200}"
+    - "http://es02:9200"
+    - "http://es03:9200"
   username: elastic
   password: "${ELASTIC_PASSWORD:-changeme}"
   # Index prefix for custom DataObs indices
   data_index_prefix: dataobs
   # OTel metrics index (written by OTel Collector ES exporter)
-  otel_metrics_index: metrics-otel-poc
-  otel_logs_index: logs-otel-poc
-  otel_traces_index: traces-otel-poc
+  otel_metrics_index: dataobs-otel-metrics
+  otel_logs_index: dataobs-otel-logs
+  otel_traces_index: dataobs-otel-traces
+  # Data-observability indices (Soda / Monte Carlo / Acceldata patterns).
+  # See config/elasticsearch/poc-templates.json for the full mappings.
+  indices:
+    raw:          dataobs-poc-raw
+    curated:      dataobs-poc-curated
+    quality:      dataobs-quality
+    freshness:    dataobs-freshness
+    volume:       dataobs-volume
+    schema:       dataobs-schema
+    lineage:      dataobs-lineage
+    assets:       dataobs-assets
+    alerts:       dataobs-alerts
+    ranger_audit: dataobs-ranger-audit
 
 # ── OpenTelemetry ─────────────────────────────────────────────
 otel:

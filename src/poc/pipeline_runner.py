@@ -37,8 +37,20 @@ from opentelemetry.exporter.otlp.proto.http._log_exporter import OTLPLogExporter
 logger = logging.getLogger(__name__)
 
 OTEL_ENDPOINT = os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT", "http://otel-collector:4318")
-ES_HOST = os.environ.get("ELASTICHOST", "http://elasticsearch:9200")
+ES_HOST = os.environ.get("ELASTICHOST", "http://es01:9200")
 ES_PASS = os.environ.get("ELASTIC_PASSWORD", "changeme")
+
+# Data-observability indices (also defined in config/dataobs_poc.yaml).
+# Kept here as constants so the runner does not need YAML at import time.
+IDX_ASSETS    = "dataobs-assets"
+IDX_QUALITY   = "dataobs-quality"
+IDX_FRESHNESS = "dataobs-freshness"
+IDX_VOLUME    = "dataobs-volume"
+IDX_SCHEMA    = "dataobs-schema"
+IDX_LINEAGE   = "dataobs-lineage"
+IDX_ALERTS    = "dataobs-alerts"
+IDX_CURATED   = "dataobs-poc-curated"
+IDX_RAW       = "dataobs-poc-raw"
 
 
 class DataObsPipelineRunner:
@@ -287,14 +299,151 @@ class DataObsPipelineRunner:
             "@timestamp": datetime.utcnow().isoformat(),
             "run_id": self.run_id,
             "tenant": self.tenant,
+            "source": "dataobs-test-data",
+            "target": "dataobs-spark-results",
             "source_index": "dataobs-test-data",
             "sink_index": "dataobs-spark-results",
             "pipeline": self.SERVICE_NAME,
             "lineage_type": "transformation",
+            "relation": "transformation",
             "row_count": 100,
         }
         es.index(index="dataobs-lineage", document=lineage_doc)
         logger.info("[Pipeline] Lineage event written to dataobs-lineage")
+
+    def _stage_observability(self):
+        """
+        Emit data-observability documents for the POC datasets.
+
+        Encodes Soda / Monte Carlo / Acceldata-style monitors as ES docs:
+          - asset catalog entries  (dataobs-assets)
+          - quality check results  (dataobs-quality)
+          - freshness observations (dataobs-freshness)
+          - volume / row-count     (dataobs-volume)
+          - schema snapshot        (dataobs-schema)
+          - lineage event          (dataobs-lineage)
+          - alerts on failures     (dataobs-alerts)
+        """
+        from src.poc.observability_writer import ObservabilityWriter
+
+        ow = ObservabilityWriter(host=ES_HOST, password=ES_PASS, tenant=self.tenant)
+
+        # Two demo POC assets — same indices the pipeline writes to.
+        ow.register_asset(
+            asset_id="dataobs-test-data",
+            name="dataobs-test-data",
+            asset_type="elasticsearch_index",
+            platform="elasticsearch",
+            location=f"{ES_HOST}/dataobs-test-data",
+            tags=["poc", "raw", "ingest"],
+            row_count=50,
+            column_count=5,
+            reliability_score=98.0,
+        )
+        ow.register_asset(
+            asset_id="dataobs-spark-results",
+            name="dataobs-spark-results",
+            asset_type="elasticsearch_index",
+            platform="elasticsearch",
+            location=f"{ES_HOST}/dataobs-spark-results",
+            tags=["poc", "curated", "spark"],
+            row_count=100,
+            column_count=6,
+            reliability_score=99.0,
+        )
+
+        # Quality checks (Soda contract style)
+        ow.emit_quality_check(
+            run_id=self.run_id,
+            asset_id="dataobs-spark-results",
+            asset_name="dataobs-spark-results",
+            check_name="row_count_min",
+            check_type="volume",
+            column=None,
+            value=100.0, threshold=10.0, status="pass",
+            expression="row_count >= 10",
+            score=100.0,
+            message="Row count above minimum",
+        )
+        ow.emit_quality_check(
+            run_id=self.run_id,
+            asset_id="dataobs-spark-results",
+            asset_name="dataobs-spark-results",
+            check_name="value_not_null",
+            check_type="completeness",
+            column="value",
+            value=100.0, threshold=99.0, status="pass",
+            expression="not_null(value) >= 99%",
+            score=100.0,
+            message="No null values detected",
+        )
+        # Intentional failing duplicate-check example so users see an alert.
+        ow.emit_quality_check(
+            run_id=self.run_id,
+            asset_id="dataobs-spark-results",
+            asset_name="dataobs-spark-results",
+            check_name="record_id_unique",
+            check_type="uniqueness",
+            column="record_id",
+            value=2.0, threshold=0.0, status="warn",
+            severity="warning",
+            expression="duplicate_count(record_id) == 0",
+            score=98.0,
+            message="2 duplicate record_id values detected",
+        )
+
+        # Freshness — within SLA
+        ow.emit_freshness(
+            asset_id="dataobs-spark-results",
+            asset_name="dataobs-spark-results",
+            last_seen=datetime.utcnow().isoformat(),
+            lag_seconds=30,
+            sla_seconds=1800,
+        )
+        # Freshness — stale (alert)
+        ow.emit_freshness(
+            asset_id="dataobs-test-data",
+            asset_name="dataobs-test-data",
+            last_seen=datetime.utcnow().isoformat(),
+            lag_seconds=7200,
+            sla_seconds=3600,
+        )
+
+        # Volume monitor
+        ow.emit_volume(
+            asset_id="dataobs-spark-results",
+            asset_name="dataobs-spark-results",
+            row_count=100, expected_min=80, expected_max=120,
+        )
+
+        # Schema snapshot
+        ow.snapshot_schema(
+            asset_id="dataobs-spark-results",
+            asset_name="dataobs-spark-results",
+            columns=[
+                {"name": "record_id", "type": "long"},
+                {"name": "value", "type": "double"},
+                {"name": "value_doubled", "type": "double"},
+                {"name": "run_id", "type": "keyword"},
+                {"name": "processed_at", "type": "date"},
+            ],
+        )
+
+        # Lineage (Monte Carlo / Acceldata style)
+        ow.emit_lineage(
+            run_id=self.run_id,
+            source="dataobs-test-data",
+            target="dataobs-spark-results",
+            relation="transformation",
+            pipeline=self.SERVICE_NAME,
+            row_count=100,
+            fields=[
+                {"source": "value", "target": "value"},
+                {"source": "value", "target": "value_doubled"},
+                {"source": "record_id", "target": "record_id"},
+            ],
+        )
+        logger.info("[Pipeline] Observability docs emitted (assets/quality/freshness/volume/schema/lineage/alerts)")
 
     # ── Main run ───────────────────────────────────────────────────────────
     def run(self):
@@ -313,6 +462,7 @@ class DataObsPipelineRunner:
                 self._run_stage("ingest", self._stage_ingest)
                 self._run_stage("spark_transform", self._stage_spark_transform)
                 self._run_stage("lineage", self._stage_lineage)
+                self._run_stage("observability", self._stage_observability)
 
                 total = round(time.time() - self._pipeline_start, 3)
                 root_span.set_attribute("pipeline.total_duration_seconds", total)

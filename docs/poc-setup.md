@@ -1,6 +1,6 @@
 # DataObs POC — Setup & Run Guide
 
-> **Elastic Stack:** 9.3.3 (latest stable, April 2026)
+> **Elastic Stack:** 9.4.0 (latest stable, April 2026)
 > **APM Server:** Built into Elasticsearch 9.x via Elastic Agent — **no separate `apm-server` container**.
 
 This guide gets DataObs running end-to-end locally in **under 10 minutes** using three dedicated files that don't touch the main stack config at all:
@@ -80,21 +80,29 @@ The defaults work out of the box. Only edit `.env.poc.local` if you want custom 
 
 ## Step 2 — Start the infrastructure
 
+The POC now boots a **three-node Elasticsearch cluster** (`es01`, `es02`, `es03`)
+in a single `cluster.name=dataobs-poc-unified` cluster. Pipelines, Kibana and
+Fleet write to all three; `es01` is the canonical seed used in `.env.poc`.
+
 ```bash
 docker compose -f docker-compose.poc.yml --env-file .env.poc.local \
-  up -d elasticsearch kibana fleet-server elastic-agent otel-collector
+  up -d es01 es02 es03 kibana fleet-server elastic-agent otel-collector
 ```
 
 Services start in this order (healthchecks enforce it automatically):
 
 ```
-elasticsearch
-    └─► es-setup (one-shot: sets passwords + Fleet token)
+es01 / es02 / es03           (3-node ES cluster)
+    └─► es-setup             (one-shot: passwords, ILM, index templates)
             ├─► kibana
             └─► fleet-server
-                    └─► elastic-agent  (APM Server on :8200)
+                    └─► elastic-agent  (APM + Fleet OTel agent)
                             └─► otel-collector
 ```
+
+> **Upgrade gotcha:** if you previously ran the POC on Elastic 8.x or 9.3
+> the old `es_poc_data` Docker volume is incompatible with 9.4. Wipe it
+> with `docker compose -f docker-compose.poc.yml down -v` before starting.
 
 Wait until all services show **healthy** (~60–90 s on first pull):
 
@@ -125,6 +133,25 @@ The pipeline runs once and exits. It will:
 Typical run time: **3–6 minutes**.
 
 ---
+
+## Step 3a — Verify indices, schemas & doc counts
+
+```bash
+ELASTIC_PASSWORD=dataobs_poc_elastic ./scripts/verify_poc.sh
+```
+
+The script prints cluster health, lists nodes, and walks every POC index
+(`dataobs-test-data`, `dataobs-spark-results`, `dataobs-assets`,
+`dataobs-quality`, `dataobs-freshness`, `dataobs-volume`, `dataobs-schema`,
+`dataobs-lineage`, `dataobs-alerts`) showing doc counts and mapped fields.
+
+Equivalent manual check in Kibana → Dev Tools:
+
+```
+GET _cat/indices/dataobs-*?v
+GET dataobs-quality/_search
+GET dataobs-spark-results/_mapping
+```
 
 ## Step 4 — Open Kibana
 
@@ -232,8 +259,8 @@ docker compose -f docker-compose.poc.yml --env-file .env.poc.local \
 
 | Service | RAM (approx) |
 |---|---|
-| Elasticsearch 9.3.3 | 1.5 GB |
-| Kibana 9.3.3 | 1 GB |
+| Elasticsearch 9.4.0 | 1.5 GB |
+| Kibana 9.4.0 | 1 GB |
 | Fleet Server | 256 MB |
 | Elastic Agent (APM) | 512 MB |
 | OTel Collector | 256 MB |

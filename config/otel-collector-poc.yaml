@@ -1,15 +1,19 @@
 # ============================================================
 #  OpenTelemetry Collector — POC Configuration (macOS-safe)
-#  otel-collector-contrib:0.99.0  /  Elastic Stack 9.3.3
+#  otel-collector-contrib:0.99.0  /  Elastic Stack 9.4.0
 #
-#  CHANGES (fix/elastic-agent-docker-monitoring-and-otel-network):
-#  - Added elasticsearch exporter so ALL signals land in Kibana Discover
-#    (traces → dataobs-otel-traces, metrics → dataobs-otel-metrics,
-#     logs → dataobs-otel-logs, container logs → dataobs-otel-container-logs)
-#  - Added docker_stats receiver for supplementary container metrics
-#    (works on native Linux/Docker Desktop 4.x+; skips on permission error)
-#  - APM exporter retained for APM UI experience
-#  - DOCKER_API_VERSION bumped to 1.41
+#  Notes on Elastic 9.4 + EDOT (Elastic Distribution of OpenTelemetry):
+#  - From Elastic 9.2 the Elastic Agent ships an embedded EDOT collector
+#    runtime; Fleet-managed agents can run OTel inputs.
+#  - The standalone EDOT collector is NOT Fleet-managed yet, so for the
+#    POC we keep otel-collector-contrib here, while the Fleet-managed
+#    `elastic-agent` service in docker-compose.poc.yml provides the
+#    Fleet-style "OTel agent" view in Kibana → Fleet.
+#  - Routing:
+#      traces  → otlp/apm + dataobs-otel-traces
+#      metrics → otlp/apm + dataobs-otel-metrics
+#      logs    → otlp/apm + dataobs-otel-logs
+#      docker  → dataobs-otel-container-logs
 # ============================================================
 
 extensions:

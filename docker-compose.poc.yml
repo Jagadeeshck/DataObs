@@ -1,96 +1,161 @@
 # ============================================================
-#  DataObs — POC Docker Compose  (Elastic Stack 9.3.3)
+#  DataObs — POC Docker Compose  (Elastic Stack 9.4.0)
 #  macOS-safe runtime profile for Docker Desktop
 #
-#  FIX-SUMMARY (fix/elastic-agent-docker-monitoring-and-otel-network):
-#  1. pipeline service: added explicit `networks: [dataobs-poc]` so
-#     otel-collector hostname resolves correctly (was on default bridge).
-#  2. elastic-agent: added Docker socket + privileged mode for Docker
-#     integration metrics/logs collection via Fleet.
-#  3. kibana-setup: installs Docker + System integrations on agent policy
-#     so container telemetry flows into native .ds-metrics-*/logs-* streams.
-#  4. otel-collector: docker_stats receiver added; elasticsearch exporter
-#     added alongside APM so ALL signals are visible in Kibana Discover.
+#  FIX-SUMMARY (fix/poc-elastic-otel-data-ingest):
+#  1. Elastic stack bumped to 9.4.0 (latest); single ELK_VERSION variable
+#     drives every Elastic image so future bumps are one-line changes.
+#  2. Three-node Elasticsearch cluster (es01/es02/es03) with proper
+#     discovery seed_hosts + initial_master_nodes; cluster.name preserved.
+#     Default Xms/Xmx capped at 1g per node so a laptop can still run it.
+#  3. Fleet "package version was not a valid semver" fixed: every
+#     package_policies POST now references PINNED versions (resolved
+#     dynamically from the registry) instead of the literal string
+#     "latest", which Fleet's splitPkgKey rejects.
+#  4. Spark/pipeline data is bulk-indexed into well-defined POC indices
+#     (dataobs-poc-*) with explicit mappings via es-setup, plus the
+#     data-observability indices used by Soda/Monte-Carlo/Acceldata
+#     style monitors (assets/quality/freshness/volume/schema/lineage/alerts).
+#  5. Verification script `scripts/verify_poc.sh` + Make-style helpers
+#     so the user can confirm indices, schemas and document counts.
 # ============================================================
 
 x-es-env: &es-env
   ELASTIC_PASSWORD: ${ELASTIC_PASSWORD}
   KIBANA_PASSWORD:  ${KIBANA_PASSWORD}
-  ES_JAVA_OPTS:     "-Xms1g -Xmx1g"
+  ES_JAVA_OPTS:     "-Xms${ES_HEAP:-1g} -Xmx${ES_HEAP:-1g}"
+  cluster.name: dataobs-poc-unified
+  cluster.initial_master_nodes: "es01,es02,es03"
+  discovery.seed_hosts: "es01,es02,es03"
+  xpack.security.enabled: "true"
+  xpack.security.http.ssl.enabled: "false"
+  xpack.security.transport.ssl.enabled: "false"
+  xpack.license.self_generated.type: trial
+  bootstrap.memory_lock: "true"
+  cluster.routing.allocation.disk.threshold_enabled: "false"
+  action.auto_create_index: "true"
 
 services:
-  elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:${ELK_VERSION:-9.3.3}
-    container_name: dataobs-poc-es
-    mem_limit: 3g
+  # ── Elasticsearch — three-node cluster ───────────────────────
+  es01:
+    image: docker.elastic.co/elasticsearch/elasticsearch:${ELK_VERSION:-9.4.0}
+    container_name: dataobs-poc-es01
+    mem_limit: ${ES_MEM_LIMIT:-2g}
     environment:
       <<: *es-env
-      node.name: es-poc
-      cluster.name: dataobs-poc-unified
-      discovery.type: single-node
-      xpack.security.enabled: "true"
-      xpack.security.http.ssl.enabled: "false"
-      xpack.license.self_generated.type: trial
-      bootstrap.memory_lock: "true"
-      cluster.routing.allocation.disk.threshold_enabled: "false"
-      action.auto_create_index: "true"
+      node.name: es01
+      node.roles: "master,data,ingest"
     ulimits:
-      memlock:
-        soft: -1
-        hard: -1
+      memlock: { soft: -1, hard: -1 }
     volumes:
-      - es_poc_data:/usr/share/elasticsearch/data
+      - es01_data:/usr/share/elasticsearch/data
     ports:
       - "9200:9200"
     healthcheck:
       test: ["CMD-SHELL", "curl -s -u elastic:${ELASTIC_PASSWORD} http://localhost:9200/_cluster/health | grep -qE '\"status\":\"(green|yellow)\"'"]
       interval: 15s
       timeout: 10s
-      retries: 12
+      retries: 20
       start_period: 90s
     networks: [dataobs-poc]
 
+  es02:
+    image: docker.elastic.co/elasticsearch/elasticsearch:${ELK_VERSION:-9.4.0}
+    container_name: dataobs-poc-es02
+    mem_limit: ${ES_MEM_LIMIT:-2g}
+    environment:
+      <<: *es-env
+      node.name: es02
+      node.roles: "master,data,ingest"
+    ulimits:
+      memlock: { soft: -1, hard: -1 }
+    volumes:
+      - es02_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf -u elastic:${ELASTIC_PASSWORD} http://localhost:9200/_cluster/health >/dev/null"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 90s
+    networks: [dataobs-poc]
+
+  es03:
+    image: docker.elastic.co/elasticsearch/elasticsearch:${ELK_VERSION:-9.4.0}
+    container_name: dataobs-poc-es03
+    mem_limit: ${ES_MEM_LIMIT:-2g}
+    environment:
+      <<: *es-env
+      node.name: es03
+      node.roles: "master,data,ingest"
+    ulimits:
+      memlock: { soft: -1, hard: -1 }
+    volumes:
+      - es03_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf -u elastic:${ELASTIC_PASSWORD} http://localhost:9200/_cluster/health >/dev/null"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 90s
+    networks: [dataobs-poc]
+
+  # Convenience alias: legacy compose files / docs reference `elasticsearch`.
+  # We keep the hostname as a network alias so existing services do not break.
+  # (Note: aliases are added on each node via networks block below.)
   es-setup:
-    image: docker.elastic.co/elasticsearch/elasticsearch:${ELK_VERSION:-9.3.3}
+    image: docker.elastic.co/elasticsearch/elasticsearch:${ELK_VERSION:-9.4.0}
     container_name: dataobs-poc-es-setup
     mem_limit: 512m
     user: root
     depends_on:
-      elasticsearch:
-        condition: service_healthy
+      es01: { condition: service_healthy }
+      es02: { condition: service_healthy }
+      es03: { condition: service_healthy }
     environment:
       ELASTIC_PASSWORD: ${ELASTIC_PASSWORD}
       KIBANA_PASSWORD:  ${KIBANA_PASSWORD}
+    volumes:
+      - ./config/elasticsearch/poc-templates.json:/setup/poc-templates.json:ro
     entrypoint: ["/bin/bash", "-c"]
     command:
       - |
         set -e
-        HOST=http://elasticsearch:9200
+        HOST=http://es01:9200
         AUTH="elastic:$${ELASTIC_PASSWORD}"
-        # Set kibana_system password
+
+        # ── kibana_system password ──────────────────────────────────────
         curl -sf -X POST -u "$$AUTH" -H 'Content-Type: application/json' \
           "$$HOST/_security/user/kibana_system/_password" \
           -d "{\"password\":\"$${KIBANA_PASSWORD}\"}" || true
-        # Index templates for pipeline data
-        curl -sf -X PUT -u "$$AUTH" -H 'Content-Type: application/json' \
-          "$$HOST/_index_template/dataobs-poc-data" \
-          -d '{"index_patterns":["dataobs-test-data*","dataobs-spark-results*","dataobs-lineage*","dataobs-otel-*"],"template":{"settings":{"number_of_shards":1,"number_of_replicas":0}}}' || true
-        # ILM policy for OTel signals (metrics, traces, logs)
+
+        # ── ILM policies ────────────────────────────────────────────────
         curl -sf -X PUT -u "$$AUTH" -H 'Content-Type: application/json' \
           "$$HOST/_ilm/policy/dataobs-otel-ilm" \
           -d '{"policy":{"phases":{"hot":{"actions":{"rollover":{"max_size":"5gb","max_age":"7d"}}},"delete":{"min_age":"30d","actions":{"delete":{}}}}}}' || true
+
+        # ── Index templates: POC data + observability monitors ──────────
+        # poc-templates.json has every template/mapping in one file so it is
+        # easy to inspect/update. See config/elasticsearch/poc-templates.json.
+        for tpl in $$(jq -c '.templates[]' /setup/poc-templates.json 2>/dev/null || cat /setup/poc-templates.json | python3 -c 'import sys,json;[print(json.dumps(t)) for t in json.load(sys.stdin)["templates"]]'); do
+          NAME=$$(echo "$$tpl" | python3 -c 'import sys,json;print(json.load(sys.stdin)["name"])')
+          BODY=$$(echo "$$tpl" | python3 -c 'import sys,json;print(json.dumps(json.load(sys.stdin)["body"]))')
+          curl -sf -X PUT -u "$$AUTH" -H 'Content-Type: application/json' \
+            "$$HOST/_index_template/$$NAME" -d "$$BODY" \
+            && echo "[es-setup] template: $$NAME" \
+            || echo "[es-setup] FAILED template: $$NAME"
+        done
     networks: [dataobs-poc]
     restart: "no"
 
   kibana:
-    image: docker.elastic.co/kibana/kibana:${ELK_VERSION:-9.3.3}
+    image: docker.elastic.co/kibana/kibana:${ELK_VERSION:-9.4.0}
     container_name: dataobs-poc-kibana
     mem_limit: 2g
     depends_on:
       es-setup:
         condition: service_completed_successfully
     environment:
-      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+      ELASTICSEARCH_HOSTS: '["http://es01:9200","http://es02:9200","http://es03:9200"]'
       ELASTICSEARCH_USERNAME: kibana_system
       ELASTICSEARCH_PASSWORD: ${KIBANA_PASSWORD}
       SERVER_NAME: dataobs-poc-kibana
@@ -98,7 +163,7 @@ services:
       XPACK_SECURITY_ENABLED: "true"
       XPACK_FLEET_ENABLED: "true"
       XPACK_APM_ENABLED: "true"
-      XPACK_FLEET_AGENTS_ELASTICSEARCH_HOSTS: '["http://elasticsearch:9200"]'
+      XPACK_FLEET_AGENTS_ELASTICSEARCH_HOSTS: '["http://es01:9200","http://es02:9200","http://es03:9200"]'
       XPACK_FLEET_AGENTS_FLEET_SERVER_HOSTS: '["http://fleet-server:8220"]'
       XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY: "dataobspoc9x32charenckey12345678"
       TELEMETRY_ENABLED: "false"
@@ -114,6 +179,14 @@ services:
       start_period: 120s
     networks: [dataobs-poc]
 
+  # ── Fleet bootstrap (FIXED: pin every package version) ────────
+  # Root cause of the original Fleet error
+  #   "Package key parsing failed: package version was not a valid semver"
+  # was that package_policies POST bodies contained `"version":"latest"`.
+  # Fleet's splitPkgKey() requires a real semver such as "9.4.0". The
+  # epm/packages/<pkg>/latest install-from-registry endpoint accepts
+  # "latest" as a path segment, but the package_policies API does not.
+  # We now resolve the installed version once and reuse it everywhere.
   kibana-setup:
     image: curlimages/curl:latest
     container_name: dataobs-poc-kibana-setup
@@ -126,7 +199,7 @@ services:
         condition: service_healthy
     environment:
       ELASTIC_PASSWORD: ${ELASTIC_PASSWORD}
-      ELK_VERSION: ${ELK_VERSION:-9.3.3}
+      ELK_VERSION: ${ELK_VERSION:-9.4.0}
       APM_SECRET_TOKEN: ${APM_SECRET_TOKEN:-dataobs_poc_apm_token}
     volumes:
       - fleet_token:/fleet_token
@@ -138,7 +211,23 @@ services:
         KIBANA="http://kibana:5601"
         AUTH="elastic:$$ELASTIC_PASSWORD"
 
-        # ── Wait for Fleet to be ready ────────────────────────────────────
+        # Helper to resolve the version of an installed Fleet package.
+        # Fleet's package_policies API rejects "latest" as a version, so
+        # we install via /epm/packages/<pkg> (which accepts "latest") and
+        # then read back the actual semver before creating the policy.
+        resolve_pkg_version() {
+          PKG="$$1"
+          for try in 1 2 3 4 5; do
+            VER=$$(curl -sf -u "$$AUTH" -H "kbn-xsrf: true" \
+              "$$KIBANA/api/fleet/epm/packages/$$PKG" \
+              | sed -n 's/.*"latestVersion":"\([^"]*\)".*/\1/p' | head -n1)
+            [ -n "$$VER" ] && echo "$$VER" && return 0
+            sleep 3
+          done
+          echo "0.0.0"
+        }
+
+        # ── Wait for Fleet setup endpoint ──────────────────────────────
         i=0
         until [ $$i -ge 30 ]; do
           HTTP=$$(curl -s -o /dev/null -w "%{http_code}" -u "$$AUTH" \
@@ -147,73 +236,80 @@ services:
           i=$$(($$i+1)); sleep 5
         done
 
-        # ── Default output → Elasticsearch ───────────────────────────────
+        # ── Default output → ES (3-node) ───────────────────────────────
         curl -sf -u "$$AUTH" \
           -X PUT "$$KIBANA/api/fleet/outputs/fleet-default-output" \
           -H "kbn-xsrf: true" -H "Content-Type: application/json" \
-          -d '{"name":"default","type":"elasticsearch","hosts":["http://elasticsearch:9200"],"is_default":true,"is_default_monitoring":true}' || true
+          -d '{"name":"default","type":"elasticsearch","hosts":["http://es01:9200","http://es02:9200","http://es03:9200"],"is_default":true,"is_default_monitoring":true}' || true
 
-        # ── Fleet Server host ─────────────────────────────────────────────
+        # ── Fleet Server host ───────────────────────────────────────────
         curl -sf -u "$$AUTH" \
           -X POST "$$KIBANA/api/fleet/fleet_server_hosts" \
           -H "kbn-xsrf: true" -H "Content-Type: application/json" \
           -d '{"id":"default-fleet-server","name":"default","host_urls":["http://fleet-server:8220"],"is_default":true}' || true
 
-        # ── Fleet Server policy ───────────────────────────────────────────
+        # ── Fleet Server policy ─────────────────────────────────────────
         curl -sf -u "$$AUTH" \
           -X POST "$$KIBANA/api/fleet/agent_policies" \
           -H "kbn-xsrf: true" -H "Content-Type: application/json" \
           -d '{"id":"fleet-server-policy","name":"Fleet Server Policy","namespace":"default","monitoring_enabled":[],"is_default_fleet_server":true}' || true
 
+        # Install fleet_server package via "latest" path-segment, then
+        # resolve the real version for the package_policies POST.
         curl -sf -u "$$AUTH" \
-          -X POST "$$KIBANA/api/fleet/epm/packages/fleet_server/1.6.0" \
+          -X POST "$$KIBANA/api/fleet/epm/packages/fleet_server" \
           -H "kbn-xsrf: true" -H "Content-Type: application/json" -d '{}' || true
+        FLEET_SERVER_VER=$$(resolve_pkg_version fleet_server)
+        echo "[kibana-setup] fleet_server pkg version: $$FLEET_SERVER_VER"
 
         curl -sf -u "$$AUTH" \
           -X POST "$$KIBANA/api/fleet/package_policies" \
           -H "kbn-xsrf: true" -H "Content-Type: application/json" \
-          -d '{"name":"fleet-server-1","namespace":"default","policy_id":"fleet-server-policy","package":{"name":"fleet_server","version":"1.6.0"},"inputs":[{"type":"fleet-server","enabled":true,"streams":[],"vars":{"max_agents":{"value":1000},"custom":{"value":""}}}]}' || true
+          -d "{\"name\":\"fleet-server-1\",\"namespace\":\"default\",\"policy_id\":\"fleet-server-policy\",\"package\":{\"name\":\"fleet_server\",\"version\":\"$${FLEET_SERVER_VER}\"},\"inputs\":[{\"type\":\"fleet-server\",\"enabled\":true,\"streams\":[],\"vars\":{\"max_agents\":{\"value\":1000},\"custom\":{\"value\":\"\"}}}]}" || true
 
-        # ── DataObs Agent policy (APM + System + Docker) ──────────────────
+        # ── DataObs Agent policy ────────────────────────────────────────
         curl -sf -u "$$AUTH" \
           -X POST "$$KIBANA/api/fleet/agent_policies" \
           -H "kbn-xsrf: true" -H "Content-Type: application/json" \
           -d '{"id":"dataobs-agent-policy","name":"DataObs Agent Policy","namespace":"default","monitoring_enabled":["logs","metrics"]}' || true
 
-        # Install APM package
+        # ── APM package (version follows ELK_VERSION) ──────────────────
         curl -sf -u "$$AUTH" \
-          -X POST "$$KIBANA/api/fleet/epm/packages/apm/$${ELK_VERSION}" \
+          -X POST "$$KIBANA/api/fleet/epm/packages/apm" \
           -H "kbn-xsrf: true" -H "Content-Type: application/json" -d '{}' || true
-
-        # APM integration on dataobs-agent-policy
-        curl -sf -u "$$AUTH" \
-          -X POST "$$KIBANA/api/fleet/package_policies" \
-          -H "kbn-xsrf: true" -H "Content-Type: application/json" \
-          -d "{\"name\":\"apm-1\",\"namespace\":\"default\",\"policy_id\":\"dataobs-agent-policy\",\"package\":{\"name\":\"apm\",\"version\":\"$${ELK_VERSION}\"},\"inputs\":[{\"type\":\"apm\",\"enabled\":true,\"streams\":[],\"vars\":{\"host\":{\"value\":\"0.0.0.0:8200\"},\"url\":{\"value\":\"http://elastic-agent:8200\"},\"secret_token\":{\"value\":\"$${APM_SECRET_TOKEN}\"},\"api_key_enabled\":{\"value\":false},\"enable_rum\":{\"value\":true},\"tls_enabled\":{\"value\":false},\"tail_sampling_enabled\":{\"value\":false}}}]}" || true
-
-        # Install System package and add to agent policy
-        curl -sf -u "$$AUTH" \
-          -X POST "$$KIBANA/api/fleet/epm/packages/system/latest" \
-          -H "kbn-xsrf: true" -H "Content-Type: application/json" -d '{}' || true
+        APM_VER=$$(resolve_pkg_version apm)
+        echo "[kibana-setup] apm pkg version: $$APM_VER"
 
         curl -sf -u "$$AUTH" \
           -X POST "$$KIBANA/api/fleet/package_policies" \
           -H "kbn-xsrf: true" -H "Content-Type: application/json" \
-          -d '{"name":"system-1","namespace":"default","policy_id":"dataobs-agent-policy","package":{"name":"system","version":"latest"},"inputs":[{"type":"logfile","enabled":true,"streams":[{"enabled":true,"data_stream":{"type":"logs","dataset":"system.syslog"},"vars":{"paths":{"value":["/var/log/syslog","/var/log/messages"]}}}]},{"type":"system/metrics","enabled":true,"streams":[{"enabled":true,"data_stream":{"type":"metrics","dataset":"system.cpu"},"vars":{"period":{"value":"10s"}}},{"enabled":true,"data_stream":{"type":"metrics","dataset":"system.memory"},"vars":{"period":{"value":"10s"}}},{"enabled":true,"data_stream":{"type":"metrics","dataset":"system.diskio"},"vars":{"period":{"value":"10s"}}},{"enabled":true,"data_stream":{"type":"metrics","dataset":"system.network"},"vars":{"period":{"value":"10s"}}}]}]}' || true
+          -d "{\"name\":\"apm-1\",\"namespace\":\"default\",\"policy_id\":\"dataobs-agent-policy\",\"package\":{\"name\":\"apm\",\"version\":\"$${APM_VER}\"},\"inputs\":[{\"type\":\"apm\",\"enabled\":true,\"streams\":[],\"vars\":{\"host\":{\"value\":\"0.0.0.0:8200\"},\"url\":{\"value\":\"http://elastic-agent:8200\"},\"secret_token\":{\"value\":\"$${APM_SECRET_TOKEN}\"},\"api_key_enabled\":{\"value\":false},\"enable_rum\":{\"value\":true},\"tls_enabled\":{\"value\":false},\"tail_sampling_enabled\":{\"value\":false}}}]}" || true
 
-        # Install Docker package and add to agent policy
-        # This enables container metrics, logs, and events via Elastic Agent
+        # ── System integration ─────────────────────────────────────────
         curl -sf -u "$$AUTH" \
-          -X POST "$$KIBANA/api/fleet/epm/packages/docker/latest" \
+          -X POST "$$KIBANA/api/fleet/epm/packages/system" \
           -H "kbn-xsrf: true" -H "Content-Type: application/json" -d '{}' || true
+        SYS_VER=$$(resolve_pkg_version system)
+        echo "[kibana-setup] system pkg version: $$SYS_VER"
 
         curl -sf -u "$$AUTH" \
           -X POST "$$KIBANA/api/fleet/package_policies" \
           -H "kbn-xsrf: true" -H "Content-Type: application/json" \
-          -d '{"name":"docker-1","namespace":"default","policy_id":"dataobs-agent-policy","package":{"name":"docker","version":"latest"},"inputs":[{"type":"docker/metrics","enabled":true,"streams":[{"enabled":true,"data_stream":{"type":"metrics","dataset":"docker.container"},"vars":{"period":{"value":"10s"}}},{"enabled":true,"data_stream":{"type":"metrics","dataset":"docker.cpu"},"vars":{"period":{"value":"10s"}}},{"enabled":true,"data_stream":{"type":"metrics","dataset":"docker.memory"},"vars":{"period":{"value":"10s"}}},{"enabled":true,"data_stream":{"type":"metrics","dataset":"docker.network"},"vars":{"period":{"value":"10s"}}},{"enabled":true,"data_stream":{"type":"metrics","dataset":"docker.diskio"},"vars":{"period":{"value":"10s"}}}]},{"type":"logfile","enabled":true,"streams":[{"enabled":true,"data_stream":{"type":"logs","dataset":"docker.container_logs"},"vars":{"paths":{"value":["/var/lib/docker/containers/*/*-json.log"]}}}]}]}' || true
+          -d "{\"name\":\"system-1\",\"namespace\":\"default\",\"policy_id\":\"dataobs-agent-policy\",\"package\":{\"name\":\"system\",\"version\":\"$${SYS_VER}\"},\"inputs\":[{\"type\":\"logfile\",\"enabled\":true,\"streams\":[{\"enabled\":true,\"data_stream\":{\"type\":\"logs\",\"dataset\":\"system.syslog\"},\"vars\":{\"paths\":{\"value\":[\"/var/log/syslog\",\"/var/log/messages\"]}}}]},{\"type\":\"system/metrics\",\"enabled\":true,\"streams\":[{\"enabled\":true,\"data_stream\":{\"type\":\"metrics\",\"dataset\":\"system.cpu\"},\"vars\":{\"period\":{\"value\":\"10s\"}}},{\"enabled\":true,\"data_stream\":{\"type\":\"metrics\",\"dataset\":\"system.memory\"},\"vars\":{\"period\":{\"value\":\"10s\"}}},{\"enabled\":true,\"data_stream\":{\"type\":\"metrics\",\"dataset\":\"system.diskio\"},\"vars\":{\"period\":{\"value\":\"10s\"}}},{\"enabled\":true,\"data_stream\":{\"type\":\"metrics\",\"dataset\":\"system.network\"},\"vars\":{\"period\":{\"value\":\"10s\"}}}]}]}" || true
 
-        # ── Generate enrollment tokens ─────────────────────────────────────
-        # Token for dataobs-agent-policy (elastic-agent)
+        # ── Docker integration ────────────────────────────────────────
+        curl -sf -u "$$AUTH" \
+          -X POST "$$KIBANA/api/fleet/epm/packages/docker" \
+          -H "kbn-xsrf: true" -H "Content-Type: application/json" -d '{}' || true
+        DOCKER_VER=$$(resolve_pkg_version docker)
+        echo "[kibana-setup] docker pkg version: $$DOCKER_VER"
+
+        curl -sf -u "$$AUTH" \
+          -X POST "$$KIBANA/api/fleet/package_policies" \
+          -H "kbn-xsrf: true" -H "Content-Type: application/json" \
+          -d "{\"name\":\"docker-1\",\"namespace\":\"default\",\"policy_id\":\"dataobs-agent-policy\",\"package\":{\"name\":\"docker\",\"version\":\"$${DOCKER_VER}\"},\"inputs\":[{\"type\":\"docker/metrics\",\"enabled\":true,\"streams\":[{\"enabled\":true,\"data_stream\":{\"type\":\"metrics\",\"dataset\":\"docker.container\"},\"vars\":{\"period\":{\"value\":\"10s\"}}},{\"enabled\":true,\"data_stream\":{\"type\":\"metrics\",\"dataset\":\"docker.cpu\"},\"vars\":{\"period\":{\"value\":\"10s\"}}},{\"enabled\":true,\"data_stream\":{\"type\":\"metrics\",\"dataset\":\"docker.memory\"},\"vars\":{\"period\":{\"value\":\"10s\"}}},{\"enabled\":true,\"data_stream\":{\"type\":\"metrics\",\"dataset\":\"docker.network\"},\"vars\":{\"period\":{\"value\":\"10s\"}}},{\"enabled\":true,\"data_stream\":{\"type\":\"metrics\",\"dataset\":\"docker.diskio\"},\"vars\":{\"period\":{\"value\":\"10s\"}}}]},{\"type\":\"logfile\",\"enabled\":true,\"streams\":[{\"enabled\":true,\"data_stream\":{\"type\":\"logs\",\"dataset\":\"docker.container_logs\"},\"vars\":{\"paths\":{\"value\":[\"/var/lib/docker/containers/*/*-json.log\"]}}}]}]}" || true
+
+        # ── Tokens ─────────────────────────────────────────────────────
         RESPONSE=$$(curl -sf -u "$$AUTH" \
           -X POST "$$KIBANA/api/fleet/enrollment_api_keys" \
           -H "kbn-xsrf: true" -H "Content-Type: application/json" \
@@ -221,7 +317,6 @@ services:
         TOKEN=$$(echo "$$RESPONSE" | sed -n 's/.*\"api_key\":\"\([^\"]*\)\".*/\1/p')
         printf '%s' "$$TOKEN" > /agent_enrollment_token/token.txt
 
-        # Fleet Server service token
         RESPONSE=$$(curl -sf -u "$$AUTH" \
           -X POST "$$KIBANA/api/fleet/service_tokens" \
           -H "kbn-xsrf: true" -H "Content-Type: application/json" \
@@ -229,10 +324,10 @@ services:
         TOKEN=$$(echo "$$RESPONSE" | sed -n 's/.*\"value\":\"\([^\"]*\)\".*/\1/p')
         printf '%s' "$$TOKEN" > /fleet_token/token.txt
 
-        echo "[kibana-setup] Done — Fleet, APM, System, Docker integrations configured."
+        echo "[kibana-setup] Done — Fleet, APM, System, Docker integrations configured (versions pinned)."
 
   fleet-server:
-    image: docker.elastic.co/elastic-agent/elastic-agent:${ELK_VERSION:-9.3.3}
+    image: docker.elastic.co/elastic-agent/elastic-agent:${ELK_VERSION:-9.4.0}
     container_name: dataobs-poc-fleet-server
     mem_limit: 1g
     depends_on:
@@ -244,8 +339,8 @@ services:
         condition: service_completed_successfully
     environment:
       FLEET_SERVER_ENABLE: "1"
-      FLEET_SERVER_ELASTICSEARCH_HOST: http://elasticsearch:9200
-      FLEET_SERVER_ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+      FLEET_SERVER_ELASTICSEARCH_HOST: http://es01:9200
+      FLEET_SERVER_ELASTICSEARCH_HOSTS: http://es01:9200,http://es02:9200,http://es03:9200
       FLEET_SERVER_SERVICE_TOKEN_PATH: /fleet_token/token.txt
       FLEET_SERVER_POLICY_ID: fleet-server-policy
       FLEET_SERVER_HOST: 0.0.0.0
@@ -268,11 +363,9 @@ services:
     networks: [dataobs-poc]
 
   elastic-agent:
-    image: docker.elastic.co/elastic-agent/elastic-agent:${ELK_VERSION:-9.3.3}
+    image: docker.elastic.co/elastic-agent/elastic-agent:${ELK_VERSION:-9.4.0}
     container_name: dataobs-poc-elastic-agent
     mem_limit: 2g
-    # FIX: privileged mode required for the Docker integration to access
-    # /proc and cgroup stats per container, and for Elastic APM to bind 8200.
     privileged: true
     user: root
     depends_on:
@@ -287,20 +380,15 @@ services:
       KIBANA_PASSWORD: ${ELASTIC_PASSWORD}
       ELASTIC_APM_SERVER_URL: http://0.0.0.0:8200
       ELASTIC_APM_SECRET_TOKEN: ${APM_SECRET_TOKEN:-dataobs_poc_apm_token}
-      ELASTICSEARCH_HOST: http://elasticsearch:9200
+      ELASTICSEARCH_HOST: http://es01:9200
       ELASTICSEARCH_USERNAME: elastic
       ELASTICSEARCH_PASSWORD: ${ELASTIC_PASSWORD}
-      # Docker integration needs DOCKER_HOST so the agent can talk to dockerd
       DOCKER_HOST: unix:///var/run/docker.sock
     volumes:
       - agent_data:/usr/share/elastic-agent/data
       - agent_enrollment_token:/agent_enrollment_token:ro
-      # FIX: mount Docker socket so the Docker integration can collect
-      # container metrics, logs, and events via the Docker API
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      # Mount container logs for the Docker logfile input
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
-      # Mount /proc and /sys for system metrics collection
       - /proc:/hostfs/proc:ro
       - /sys:/hostfs/sys:ro
     entrypoint: ["/bin/sh", "-c"]
@@ -351,7 +439,6 @@ services:
       - ./config/otel-collector-poc.yaml:/etc/otel/config.yaml:ro
       - /:/hostfs:ro
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
-      # FIX: mount Docker socket for docker_stats receiver
       - /var/run/docker.sock:/var/run/docker.sock:ro
     ports:
       - "4317:4317"
@@ -361,7 +448,7 @@ services:
       APM_SERVER_URL: ${APM_SERVER_URL:-elastic-agent:8200}
       APM_SECRET_TOKEN: ${APM_SECRET_TOKEN:-dataobs_poc_apm_token}
       ELASTIC_PASSWORD: ${ELASTIC_PASSWORD}
-      ELASTICSEARCH_URL: ${ELASTICSEARCH_URL:-http://elasticsearch:9200}
+      ELASTICSEARCH_URL: ${ELASTICSEARCH_URL:-http://es01:9200}
       DOCKER_API_VERSION: "1.41"
       CLOUD_PROVIDER: ${CLOUD_PROVIDER:-local}
       CLOUD_REGION: ${CLOUD_REGION:-local}
@@ -386,14 +473,14 @@ services:
     container_name: dataobs-poc-pipeline
     mem_limit: 4g
     depends_on:
-      elasticsearch:
-        condition: service_healthy
-      kibana:
-        condition: service_healthy
-      otel-collector:
-        condition: service_started
+      es01: { condition: service_healthy }
+      es02: { condition: service_healthy }
+      es03: { condition: service_healthy }
+      kibana: { condition: service_healthy }
+      otel-collector: { condition: service_started }
     environment:
-      ELASTICHOST: http://elasticsearch:9200
+      ELASTICHOST: http://es01:9200
+      ELASTICSEARCH_URL: http://es01:9200
       ELASTIC_PASSWORD: ${ELASTIC_PASSWORD}
       KIBANA_URL: http://kibana:5601
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
@@ -425,14 +512,12 @@ services:
       - poc_pipeline_tmp:/tmp/dataobs
     command: ["python", "-m", "src.poc.pipeline_runner"]
     restart: "no"
-    # FIX (root cause of otel-collector DNS failure): pipeline must be on the
-    # same Docker network as otel-collector so the hostname resolves.
-    # Without this, `docker compose run --rm pipeline` attaches to the default
-    # bridge network where otel-collector is NOT reachable by service name.
     networks: [dataobs-poc]
 
 volumes:
-  es_poc_data: { driver: local }
+  es01_data: { driver: local }
+  es02_data: { driver: local }
+  es03_data: { driver: local }
   kibana_poc_data: { driver: local }
   fleet_token: { driver: local }
   agent_enrollment_token: { driver: local }

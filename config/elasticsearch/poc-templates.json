@@ -1,0 +1,267 @@
+{
+  "templates": [
+    {
+      "name": "dataobs-poc-data",
+      "body": {
+        "index_patterns": [
+          "dataobs-test-data*",
+          "dataobs-spark-results*",
+          "dataobs-poc-raw*",
+          "dataobs-poc-curated*"
+        ],
+        "priority": 200,
+        "template": {
+          "settings": { "number_of_shards": 1, "number_of_replicas": 1 },
+          "mappings": {
+            "properties": {
+              "@timestamp":     { "type": "date" },
+              "run_id":         { "type": "keyword" },
+              "tenant":         { "type": "keyword" },
+              "dataset":        { "type": "keyword" },
+              "dataset_name":   { "type": "keyword" },
+              "pipeline_name":  { "type": "keyword" },
+              "source_url":     { "type": "keyword" },
+              "source":         { "type": "keyword" },
+              "record_id":      { "type": "long" },
+              "value":          { "type": "double" },
+              "value_doubled":  { "type": "double" },
+              "processed_at":   { "type": "date" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "dataobs-otel",
+      "body": {
+        "index_patterns": ["dataobs-otel-*"],
+        "priority": 200,
+        "template": {
+          "settings": {
+            "number_of_shards": 1,
+            "number_of_replicas": 1,
+            "index.lifecycle.name": "dataobs-otel-ilm"
+          }
+        }
+      }
+    },
+    {
+      "name": "dataobs-assets",
+      "body": {
+        "index_patterns": ["dataobs-assets*"],
+        "priority": 200,
+        "template": {
+          "settings": { "number_of_shards": 1, "number_of_replicas": 1 },
+          "mappings": {
+            "properties": {
+              "@timestamp":      { "type": "date" },
+              "asset.id":        { "type": "keyword" },
+              "asset.name":      { "type": "keyword" },
+              "asset.type":      { "type": "keyword" },
+              "asset.platform":  { "type": "keyword" },
+              "asset.location":  { "type": "keyword" },
+              "asset.owner":     { "type": "keyword" },
+              "asset.tags":      { "type": "keyword" },
+              "asset.row_count": { "type": "long" },
+              "asset.size_bytes":{ "type": "long" },
+              "asset.column_count":{ "type": "integer" },
+              "asset.last_updated":{ "type": "date" },
+              "asset.reliability_score": { "type": "float" },
+              "tenant":          { "type": "keyword" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "dataobs-quality",
+      "body": {
+        "index_patterns": ["dataobs-quality*"],
+        "priority": 200,
+        "template": {
+          "settings": { "number_of_shards": 1, "number_of_replicas": 1 },
+          "mappings": {
+            "properties": {
+              "@timestamp":   { "type": "date" },
+              "run_id":       { "type": "keyword" },
+              "tenant":       { "type": "keyword" },
+              "asset.id":     { "type": "keyword" },
+              "asset.name":   { "type": "keyword" },
+              "check.name":   { "type": "keyword" },
+              "check.type":   { "type": "keyword" },
+              "check.column": { "type": "keyword" },
+              "check.expression": { "type": "text" },
+              "check.threshold":  { "type": "float" },
+              "check.value":      { "type": "float" },
+              "check.status":     { "type": "keyword" },
+              "check.severity":   { "type": "keyword" },
+              "check.message":    { "type": "text" },
+              "score":            { "type": "float" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "dataobs-freshness",
+      "body": {
+        "index_patterns": ["dataobs-freshness*"],
+        "priority": 200,
+        "template": {
+          "settings": { "number_of_shards": 1, "number_of_replicas": 1 },
+          "mappings": {
+            "properties": {
+              "@timestamp":          { "type": "date" },
+              "asset.id":            { "type": "keyword" },
+              "asset.name":          { "type": "keyword" },
+              "freshness.last_seen": { "type": "date" },
+              "freshness.lag_seconds":{ "type": "long" },
+              "freshness.sla_seconds":{ "type": "long" },
+              "freshness.status":    { "type": "keyword" },
+              "tenant":              { "type": "keyword" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "dataobs-volume",
+      "body": {
+        "index_patterns": ["dataobs-volume*"],
+        "priority": 200,
+        "template": {
+          "settings": { "number_of_shards": 1, "number_of_replicas": 1 },
+          "mappings": {
+            "properties": {
+              "@timestamp":     { "type": "date" },
+              "asset.id":       { "type": "keyword" },
+              "asset.name":     { "type": "keyword" },
+              "volume.row_count":     { "type": "long" },
+              "volume.expected_min":  { "type": "long" },
+              "volume.expected_max":  { "type": "long" },
+              "volume.delta_pct":     { "type": "float" },
+              "volume.status":        { "type": "keyword" },
+              "tenant":               { "type": "keyword" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "dataobs-schema",
+      "body": {
+        "index_patterns": ["dataobs-schema*"],
+        "priority": 200,
+        "template": {
+          "settings": { "number_of_shards": 1, "number_of_replicas": 1 },
+          "mappings": {
+            "properties": {
+              "@timestamp":     { "type": "date" },
+              "asset.id":       { "type": "keyword" },
+              "asset.name":     { "type": "keyword" },
+              "schema.snapshot_hash":{ "type": "keyword" },
+              "schema.columns": {
+                "type": "nested",
+                "properties": {
+                  "name": { "type": "keyword" },
+                  "type": { "type": "keyword" }
+                }
+              },
+              "schema.drift_event": { "type": "keyword" },
+              "schema.added_columns":   { "type": "keyword" },
+              "schema.removed_columns": { "type": "keyword" },
+              "tenant":         { "type": "keyword" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "dataobs-lineage",
+      "body": {
+        "index_patterns": ["dataobs-lineage*"],
+        "priority": 200,
+        "template": {
+          "settings": { "number_of_shards": 1, "number_of_replicas": 1 },
+          "mappings": {
+            "properties": {
+              "@timestamp":  { "type": "date" },
+              "run_id":      { "type": "keyword" },
+              "tenant":      { "type": "keyword" },
+              "source":      { "type": "keyword" },
+              "target":      { "type": "keyword" },
+              "source_index":{ "type": "keyword" },
+              "sink_index":  { "type": "keyword" },
+              "relation":    { "type": "keyword" },
+              "lineage_type":{ "type": "keyword" },
+              "pipeline":    { "type": "keyword" },
+              "row_count":   { "type": "long" },
+              "fields": {
+                "type": "nested",
+                "properties": {
+                  "source": { "type": "keyword" },
+                  "target": { "type": "keyword" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "dataobs-alerts",
+      "body": {
+        "index_patterns": ["dataobs-alerts*"],
+        "priority": 200,
+        "template": {
+          "settings": { "number_of_shards": 1, "number_of_replicas": 1 },
+          "mappings": {
+            "properties": {
+              "@timestamp":   { "type": "date" },
+              "alert.id":     { "type": "keyword" },
+              "alert.title":  { "type": "text" },
+              "alert.severity": { "type": "keyword" },
+              "alert.status": { "type": "keyword" },
+              "alert.source": { "type": "keyword" },
+              "alert.rule":   { "type": "keyword" },
+              "asset.id":     { "type": "keyword" },
+              "asset.name":   { "type": "keyword" },
+              "tenant":       { "type": "keyword" },
+              "details":      { "type": "object", "enabled": true }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "dataobs-ranger-audit",
+      "body": {
+        "index_patterns": ["dataobs-ranger-audit*"],
+        "priority": 200,
+        "template": {
+          "settings": { "number_of_shards": 1, "number_of_replicas": 1 },
+          "mappings": {
+            "properties": {
+              "@timestamp":      { "type": "date" },
+              "tenant":          { "type": "keyword" },
+              "ranger.repoType": { "type": "keyword" },
+              "ranger.repo":     { "type": "keyword" },
+              "ranger.reqUser":  { "type": "keyword" },
+              "ranger.access":   { "type": "keyword" },
+              "ranger.action":   { "type": "keyword" },
+              "ranger.result":   { "type": "keyword" },
+              "ranger.resource": { "type": "keyword" },
+              "ranger.agentHost":{ "type": "keyword" },
+              "ranger.cliIP":    { "type": "ip" },
+              "ranger.policyId": { "type": "keyword" },
+              "edi_business_day":{ "type": "date" },
+              "dataset":         { "type": "keyword" },
+              "table":           { "type": "keyword" },
+              "source_path":     { "type": "keyword" }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

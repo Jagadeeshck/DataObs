@@ -96,5 +96,5 @@ if [ "${fail}" -eq 0 ]; then
   exit 0
 fi
 echo "❌ FAIL — ${fail} expected indices missing. Run the pipeline first:"
-echo "   docker compose -f docker-compose.poc.yml --env-file .env.poc.local run --rm pipeline"
+echo "   docker compose -f docker-compose.poc.yml --env-file .env.poc run --rm pipeline"
 exit 1

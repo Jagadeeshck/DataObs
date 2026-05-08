@@ -95,7 +95,7 @@ volumes:
 
 ## Verification
 
-After `docker compose -f docker-compose.poc.yml --env-file .env.poc.local up -d`:
+After `docker compose -f docker-compose.poc.yml --env-file .env.poc up -d`:
 
 ```bash
 # 1. Check all containers are healthy
@@ -113,7 +113,7 @@ curl -u elastic:$ELASTIC_PASSWORD http://localhost:9200/_cat/indices/dataobs-ote
 curl -u elastic:$ELASTIC_PASSWORD http://localhost:9200/.ds-metrics-docker.*/_search?size=1
 
 # 5. Run pipeline and confirm traces reach ES
-docker compose -f docker-compose.poc.yml --env-file .env.poc.local run --rm pipeline
+docker compose -f docker-compose.poc.yml --env-file .env.poc run --rm pipeline
 curl -u elastic:$ELASTIC_PASSWORD 'http://localhost:9200/dataobs-otel-traces/_count'
 # Expected: count > 0
 ```

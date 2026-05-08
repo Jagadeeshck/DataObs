@@ -66,15 +66,30 @@ No Python, Java, or Spark installation needed — everything runs inside Docker.
 
 ---
 
-## Step 1 — Copy the env file
+## Step 1 — Use the committed env file
+
+The repo ships `.env.poc` with safe POC defaults — every command in this
+guide uses it directly:
 
 ```bash
-cp .env.poc .env.poc.local
+docker compose -f docker-compose.poc.yml --env-file .env.poc up -d
 ```
 
-The defaults work out of the box. Only edit `.env.poc.local` if you want custom passwords.
+If you want custom passwords or cloud endpoints, copy it to a local
+override (gitignored) **and pass that file instead**:
 
-> ⚠️ `.env.poc.local` is gitignored. Never commit it.
+```bash
+cp .env.poc .env.poc.local           # gitignored, never committed
+# edit .env.poc.local, then run:
+docker compose -f docker-compose.poc.yml --env-file .env.poc.local up -d
+```
+
+> ⚠️ `.env.poc.local` is **optional** and gitignored. If you keep one
+> around from an older checkout, make sure its values match the current
+> `.env.poc` template (e.g. `OTEL_EXPORTER_OTLP_ENDPOINT`,
+> `CADVISOR_PORT`, `OTEL_SERVICE_NAME`). Stale local overrides are the
+> single most common cause of broken POC runs — when in doubt, delete
+> `.env.poc.local` and start from `.env.poc`.
 
 ---
 
@@ -93,7 +108,7 @@ POC. Pipeline, Kibana and Fleet all write to this one node.
 > scaling this compose file out for production.
 
 ```bash
-docker compose -f docker-compose.poc.yml --env-file .env.poc.local \
+docker compose -f docker-compose.poc.yml --env-file .env.poc \
   up -d es01 kibana fleet-server elastic-agent otel-collector
 ```
 
@@ -116,7 +131,7 @@ es01                         (single-node ES, discovery.type=single-node)
 Wait until all services show **healthy** (~60–90 s on first pull):
 
 ```bash
-docker compose -f docker-compose.poc.yml --env-file .env.poc.local ps
+docker compose -f docker-compose.poc.yml --env-file .env.poc ps
 ```
 
 ---
@@ -124,7 +139,7 @@ docker compose -f docker-compose.poc.yml --env-file .env.poc.local ps
 ## Step 3 — Run the pipeline
 
 ```bash
-docker compose -f docker-compose.poc.yml --env-file .env.poc.local \
+docker compose -f docker-compose.poc.yml --env-file .env.poc \
   run --rm pipeline
 ```
 
@@ -167,7 +182,7 @@ GET dataobs-spark-results/_mapping
 Navigate to **[http://localhost:5601](http://localhost:5601)**
 
 - **Username:** `elastic`
-- **Password:** value of `ELASTIC_PASSWORD` in `.env.poc.local` (default: `dataobs_poc_elastic`)
+- **Password:** value of `ELASTIC_PASSWORD` in `.env.poc` (default: `dataobs_poc_elastic`)
 
 ### Where to look
 
@@ -215,7 +230,7 @@ The `dataobs-poc-pipeline` service appears here with:
 
 ```bash
 # Stop containers and remove all volumes
-docker compose -f docker-compose.poc.yml --env-file .env.poc.local down -v
+docker compose -f docker-compose.poc.yml --env-file .env.poc down -v
 ```
 
 ---
@@ -248,8 +263,10 @@ poc:
 
 ### Point at AWS OpenSearch instead of local ES
 
-In `.env.poc.local`:
+Create `.env.poc.local` with the override (gitignored):
 ```bash
+cp .env.poc .env.poc.local
+# then edit .env.poc.local:
 ELASTICHOST=https://your-domain.eu-west-1.es.amazonaws.com
 ELASTIC_PASSWORD=your-master-password
 ```

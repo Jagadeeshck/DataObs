@@ -418,7 +418,15 @@ services:
       timeout: 5s
       retries: 15
       start_period: 90s
-    networks: [dataobs-poc]
+    # Multiple DNS aliases so producers can reach the collector by either
+    # `otel-collector` (Compose service name) or `otel` (short alias —
+    # matches the container suffix `dataobs-poc-otel` and avoids hyphenated-
+    # name DNS edge cases observed on `docker compose run --rm pipeline`).
+    networks:
+      dataobs-poc:
+        aliases:
+          - otel
+          - otel-collector
 
   pipeline:
     build:
@@ -429,7 +437,12 @@ services:
     depends_on:
       es01: { condition: service_healthy }
       kibana: { condition: service_healthy }
-      otel-collector: { condition: service_started }
+      # service_healthy (not service_started) so the pipeline only starts
+      # once the collector is actually accepting OTLP requests. Avoids the
+      # NameResolutionError("Failed to resolve 'otel-collector'") race where
+      # the freshly-created `docker compose run --rm pipeline` container
+      # tries to export traces before Docker DNS has fully propagated.
+      otel-collector: { condition: service_healthy }
     environment:
       ELASTICHOST: http://es01:9200
       ELASTICSEARCH_URL: http://es01:9200

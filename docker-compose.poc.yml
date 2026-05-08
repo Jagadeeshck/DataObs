@@ -5,9 +5,13 @@
 #  FIX-SUMMARY (fix/poc-elastic-otel-data-ingest):
 #  1. Elastic stack bumped to 9.4.0 (latest); single ELK_VERSION variable
 #     drives every Elastic image so future bumps are one-line changes.
-#  2. Three-node Elasticsearch cluster (es01/es02/es03) with proper
-#     discovery seed_hosts + initial_master_nodes; cluster.name preserved.
-#     Default Xms/Xmx capped at 1g per node so a laptop can still run it.
+#  2. Single-node Elasticsearch (service `es01`, discovery.type=single-node)
+#     for local POC simplicity. ES 9.x requires transport TLS once the
+#     cluster bootstraps with multiple master-eligible nodes; single-node
+#     mode skips that bootstrap check entirely so the POC starts cleanly
+#     on a laptop. Production / AWS reference architecture uses a
+#     multi-node cluster with proper transport TLS / cert setup — see
+#     docs/poc-setup.md for the upgrade path.
 #  3. Fleet "package version was not a valid semver" fixed: every
 #     package_policies POST now references PINNED versions (resolved
 #     dynamically from the registry) instead of the literal string
@@ -20,31 +24,26 @@
 #     so the user can confirm indices, schemas and document counts.
 # ============================================================
 
-x-es-env: &es-env
-  ELASTIC_PASSWORD: ${ELASTIC_PASSWORD}
-  KIBANA_PASSWORD:  ${KIBANA_PASSWORD}
-  ES_JAVA_OPTS:     "-Xms${ES_HEAP:-1g} -Xmx${ES_HEAP:-1g}"
-  cluster.name: dataobs-poc-unified
-  cluster.initial_master_nodes: "es01,es02,es03"
-  discovery.seed_hosts: "es01,es02,es03"
-  xpack.security.enabled: "true"
-  xpack.security.http.ssl.enabled: "false"
-  xpack.security.transport.ssl.enabled: "false"
-  xpack.license.self_generated.type: trial
-  bootstrap.memory_lock: "true"
-  cluster.routing.allocation.disk.threshold_enabled: "false"
-  action.auto_create_index: "true"
-
 services:
-  # ── Elasticsearch — three-node cluster ───────────────────────
+  # ── Elasticsearch — single-node POC ──────────────────────────
   es01:
     image: docker.elastic.co/elasticsearch/elasticsearch:${ELK_VERSION:-9.4.0}
     container_name: dataobs-poc-es01
     mem_limit: ${ES_MEM_LIMIT:-2g}
     environment:
-      <<: *es-env
+      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD}
+      KIBANA_PASSWORD:  ${KIBANA_PASSWORD}
+      ES_JAVA_OPTS:     "-Xms${ES_HEAP:-1g} -Xmx${ES_HEAP:-1g}"
+      cluster.name: dataobs-poc-unified
       node.name: es01
-      node.roles: "master,data,ingest"
+      discovery.type: single-node
+      xpack.security.enabled: "true"
+      xpack.security.http.ssl.enabled: "false"
+      xpack.security.transport.ssl.enabled: "false"
+      xpack.license.self_generated.type: trial
+      bootstrap.memory_lock: "true"
+      cluster.routing.allocation.disk.threshold_enabled: "false"
+      action.auto_create_index: "true"
     ulimits:
       memlock: { soft: -1, hard: -1 }
     volumes:
@@ -59,49 +58,6 @@ services:
       start_period: 90s
     networks: [dataobs-poc]
 
-  es02:
-    image: docker.elastic.co/elasticsearch/elasticsearch:${ELK_VERSION:-9.4.0}
-    container_name: dataobs-poc-es02
-    mem_limit: ${ES_MEM_LIMIT:-2g}
-    environment:
-      <<: *es-env
-      node.name: es02
-      node.roles: "master,data,ingest"
-    ulimits:
-      memlock: { soft: -1, hard: -1 }
-    volumes:
-      - es02_data:/usr/share/elasticsearch/data
-    healthcheck:
-      test: ["CMD-SHELL", "curl -sf -u elastic:${ELASTIC_PASSWORD} http://localhost:9200/_cluster/health >/dev/null"]
-      interval: 15s
-      timeout: 10s
-      retries: 20
-      start_period: 90s
-    networks: [dataobs-poc]
-
-  es03:
-    image: docker.elastic.co/elasticsearch/elasticsearch:${ELK_VERSION:-9.4.0}
-    container_name: dataobs-poc-es03
-    mem_limit: ${ES_MEM_LIMIT:-2g}
-    environment:
-      <<: *es-env
-      node.name: es03
-      node.roles: "master,data,ingest"
-    ulimits:
-      memlock: { soft: -1, hard: -1 }
-    volumes:
-      - es03_data:/usr/share/elasticsearch/data
-    healthcheck:
-      test: ["CMD-SHELL", "curl -sf -u elastic:${ELASTIC_PASSWORD} http://localhost:9200/_cluster/health >/dev/null"]
-      interval: 15s
-      timeout: 10s
-      retries: 20
-      start_period: 90s
-    networks: [dataobs-poc]
-
-  # Convenience alias: legacy compose files / docs reference `elasticsearch`.
-  # We keep the hostname as a network alias so existing services do not break.
-  # (Note: aliases are added on each node via networks block below.)
   es-setup:
     image: docker.elastic.co/elasticsearch/elasticsearch:${ELK_VERSION:-9.4.0}
     container_name: dataobs-poc-es-setup
@@ -109,8 +65,6 @@ services:
     user: root
     depends_on:
       es01: { condition: service_healthy }
-      es02: { condition: service_healthy }
-      es03: { condition: service_healthy }
     environment:
       ELASTIC_PASSWORD: ${ELASTIC_PASSWORD}
       KIBANA_PASSWORD:  ${KIBANA_PASSWORD}
@@ -155,7 +109,7 @@ services:
       es-setup:
         condition: service_completed_successfully
     environment:
-      ELASTICSEARCH_HOSTS: '["http://es01:9200","http://es02:9200","http://es03:9200"]'
+      ELASTICSEARCH_HOSTS: '["http://es01:9200"]'
       ELASTICSEARCH_USERNAME: kibana_system
       ELASTICSEARCH_PASSWORD: ${KIBANA_PASSWORD}
       SERVER_NAME: dataobs-poc-kibana
@@ -163,7 +117,7 @@ services:
       XPACK_SECURITY_ENABLED: "true"
       XPACK_FLEET_ENABLED: "true"
       XPACK_APM_ENABLED: "true"
-      XPACK_FLEET_AGENTS_ELASTICSEARCH_HOSTS: '["http://es01:9200","http://es02:9200","http://es03:9200"]'
+      XPACK_FLEET_AGENTS_ELASTICSEARCH_HOSTS: '["http://es01:9200"]'
       XPACK_FLEET_AGENTS_FLEET_SERVER_HOSTS: '["http://fleet-server:8220"]'
       XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY: "dataobspoc9x32charenckey12345678"
       TELEMETRY_ENABLED: "false"
@@ -236,11 +190,11 @@ services:
           i=$$(($$i+1)); sleep 5
         done
 
-        # ── Default output → ES (3-node) ───────────────────────────────
+        # ── Default output → ES (single-node POC) ──────────────────────
         curl -sf -u "$$AUTH" \
           -X PUT "$$KIBANA/api/fleet/outputs/fleet-default-output" \
           -H "kbn-xsrf: true" -H "Content-Type: application/json" \
-          -d '{"name":"default","type":"elasticsearch","hosts":["http://es01:9200","http://es02:9200","http://es03:9200"],"is_default":true,"is_default_monitoring":true}' || true
+          -d '{"name":"default","type":"elasticsearch","hosts":["http://es01:9200"],"is_default":true,"is_default_monitoring":true}' || true
 
         # ── Fleet Server host ───────────────────────────────────────────
         curl -sf -u "$$AUTH" \
@@ -340,7 +294,7 @@ services:
     environment:
       FLEET_SERVER_ENABLE: "1"
       FLEET_SERVER_ELASTICSEARCH_HOST: http://es01:9200
-      FLEET_SERVER_ELASTICSEARCH_HOSTS: http://es01:9200,http://es02:9200,http://es03:9200
+      FLEET_SERVER_ELASTICSEARCH_HOSTS: http://es01:9200
       FLEET_SERVER_SERVICE_TOKEN_PATH: /fleet_token/token.txt
       FLEET_SERVER_POLICY_ID: fleet-server-policy
       FLEET_SERVER_HOST: 0.0.0.0
@@ -474,8 +428,6 @@ services:
     mem_limit: 4g
     depends_on:
       es01: { condition: service_healthy }
-      es02: { condition: service_healthy }
-      es03: { condition: service_healthy }
       kibana: { condition: service_healthy }
       otel-collector: { condition: service_started }
     environment:
@@ -516,8 +468,6 @@ services:
 
 volumes:
   es01_data: { driver: local }
-  es02_data: { driver: local }
-  es03_data: { driver: local }
   kibana_poc_data: { driver: local }
   fleet_token: { driver: local }
   agent_enrollment_token: { driver: local }

@@ -80,19 +80,27 @@ The defaults work out of the box. Only edit `.env.poc.local` if you want custom 
 
 ## Step 2 — Start the infrastructure
 
-The POC now boots a **three-node Elasticsearch cluster** (`es01`, `es02`, `es03`)
-in a single `cluster.name=dataobs-poc-unified` cluster. Pipelines, Kibana and
-Fleet write to all three; `es01` is the canonical seed used in `.env.poc`.
+The POC boots a **single-node Elasticsearch** instance (`es01`) running ES
+9.4.0 with `discovery.type=single-node`. Single-node mode skips the cluster
+bootstrap check that — on ES 9.x with security enabled — would otherwise
+require transport TLS / certificate setup, which is overkill for a local
+POC. Pipeline, Kibana and Fleet all write to this one node.
+
+> **Production / AWS reference architecture:** multi-node ES (3 master-
+> eligible nodes) is the recommended topology, but it requires
+> `xpack.security.transport.ssl.enabled=true` plus a CA + per-node certs.
+> Use the Helm chart in `helm/` or your AWS OpenSearch domain instead of
+> scaling this compose file out for production.
 
 ```bash
 docker compose -f docker-compose.poc.yml --env-file .env.poc.local \
-  up -d es01 es02 es03 kibana fleet-server elastic-agent otel-collector
+  up -d es01 kibana fleet-server elastic-agent otel-collector
 ```
 
 Services start in this order (healthchecks enforce it automatically):
 
 ```
-es01 / es02 / es03           (3-node ES cluster)
+es01                         (single-node ES, discovery.type=single-node)
     └─► es-setup             (one-shot: passwords, ILM, index templates)
             ├─► kibana
             └─► fleet-server
@@ -100,9 +108,10 @@ es01 / es02 / es03           (3-node ES cluster)
                             └─► otel-collector
 ```
 
-> **Upgrade gotcha:** if you previously ran the POC on Elastic 8.x or 9.3
-> the old `es_poc_data` Docker volume is incompatible with 9.4. Wipe it
-> with `docker compose -f docker-compose.poc.yml down -v` before starting.
+> **Upgrade gotcha:** if you previously ran the POC on Elastic 8.x, 9.3
+> or the multi-node 9.4 variant, the old `es*_data` Docker volumes are
+> incompatible. Wipe them with
+> `docker compose -f docker-compose.poc.yml down -v` before starting.
 
 Wait until all services show **healthy** (~60–90 s on first pull):
 

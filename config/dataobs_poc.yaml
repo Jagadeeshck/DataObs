@@ -19,12 +19,12 @@ environment: poc
 #    dataobs-spark-results → Spark transformation output
 #    dataobs-lineage       → data lineage events
 elasticsearch:
-  # 3-node POC cluster — pipeline can talk to any node, es01 is the seed.
+  # Single-node POC cluster (discovery.type=single-node).
+  # Production / AWS reference architecture uses multi-node with transport TLS;
+  # see docs/poc-setup.md for the upgrade path.
   host: "${ELASTICHOST:-http://es01:9200}"
   hosts:
     - "${ELASTICHOST:-http://es01:9200}"
-    - "http://es02:9200"
-    - "http://es03:9200"
   username: elastic
   password: "${ELASTIC_PASSWORD:-changeme}"
   # Index prefix for custom DataObs indices

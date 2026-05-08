@@ -158,7 +158,7 @@ GET dataobs-spark-results/_mapping
 Navigate to **[http://localhost:5601](http://localhost:5601)**
 
 - **Username:** `elastic`
-- **Password:** value of `ELASTIC_PASSWORD` in `.env.poc.local` (default: `dataobs_poc_secret`)
+- **Password:** value of `ELASTIC_PASSWORD` in `.env.poc.local` (default: `dataobs_poc_elastic`)
 
 ### Where to look
 

@@ -16,6 +16,15 @@ This eliminates the ``NameResolutionError(host='otel-collector')``
 warnings that previously appeared when the standalone collector
 was missing.
 
+Spark JVM listener integration (SparkListenerInterface via Py4J):
+  The JVM listener is registered only when the Py4J callback server is
+  active (i.e. when PySpark started the Java gateway with callbacks
+  enabled). In docker compose ``local[*]`` mode this callback server is
+  NOT started by default, so the listener registration is intentionally
+  skipped. Spark app-level spans still flow from Python stage() context
+  managers; container logs / metrics / traces come from Elastic Agent,
+  cAdvisor, and Docker integrations.
+
 Usage
 -----
     from src.poc.apm import build_default_apm
@@ -50,7 +59,7 @@ logger = logging.getLogger(__name__)
 # and the method returns, CPython's reference count immediately drops to
 # zero and Py4J tears down the callback channel, producing
 #   Py4JException: Error while obtaining a new communication channel
-# on every subsequent JVM→Python event. Holding a module-level reference
+# on every subsequent JVM->Python event. Holding a module-level reference
 # keeps the proxy alive for the lifetime of the Spark job.
 _listener_instance: Optional[Any] = None
 
@@ -92,6 +101,10 @@ class SparkApmInstrumentation:
         self.apm: ApmTelemetry = apm or build_default_apm()
         self._job_start_time: float = 0.0
         self._root_ctx: Optional[Any] = None
+        # FIX: Declare _stage_duration explicitly so any residual caller that
+        # inspects this attribute (e.g. from the old SparkOtelInstrumentation API)
+        # gets a well-defined float instead of an AttributeError.
+        self._stage_duration: float = 0.0
 
     # ── Lifecycle ──────────────────────────────────────────────────────────
     def __enter__(self) -> "SparkApmInstrumentation":
@@ -119,6 +132,7 @@ class SparkApmInstrumentation:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         duration = time.time() - self._job_start_time
+        self._stage_duration = round(duration, 3)  # update for any late readers
         if self._root_ctx is not None:
             try:
                 self._root_ctx.__exit__(exc_type, exc_val, exc_tb)
@@ -158,7 +172,7 @@ class SparkApmInstrumentation:
                 def onJobEnd(self, job_end):  # noqa: N802
                     try:
                         logger.debug(
-                            "[SparkApm] Job ended: %s → %s",
+                            "[SparkApm] Job ended: %s -> %s",
                             job_end.jobId(), job_end.jobResult(),
                         )
                     except Exception as exc:
@@ -214,8 +228,8 @@ class SparkApmInstrumentation:
             ):
                 yield
         finally:
-            duration = round(time.time() - t0, 3)
-            self.apm.label(**{f"stage_duration_seconds.{stage_name}": duration})
+            self._stage_duration = round(time.time() - t0, 3)
+            self.apm.label(**{f"stage_duration_seconds.{stage_name}": self._stage_duration})
 
     def emit_metrics(
         self,
@@ -270,3 +284,8 @@ class SparkOtelInstrumentation(SparkApmInstrumentation):
             job_name=job_name,
             extra_labels=extra_resource or {},
         )
+        # FIX: Explicitly declare _stage_duration so any code path that
+        # references this attribute (surviving from the old OTel implementation
+        # at spark_instrumentation.py:360) gets a float instead of AttributeError.
+        # The parent __init__ also sets this; this line is a belt-and-suspenders guard.
+        self._stage_duration: float = 0.0

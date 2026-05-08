@@ -11,8 +11,8 @@ environment: poc
 #
 #  Observability indices (auto-created by OTel/APM):
 #    traces-apm-*          → APM distributed traces
-#    metrics-otel-poc-*    → OTel metrics (Spark, pipeline, Docker)
-#    logs-otel-poc-*       → OTel logs
+#    metrics-apm-*         → APM metrics (Spark, pipeline)
+#    logs-*                → Agent-collected logs
 #
 #  Test / pipeline data indices (created by es-setup):
 #    dataobs-test-data     → synthetic pipeline test records
@@ -29,10 +29,9 @@ elasticsearch:
   password: "${ELASTIC_PASSWORD:-changeme}"
   # Index prefix for custom DataObs indices
   data_index_prefix: dataobs
-  # OTel metrics index (written by OTel Collector ES exporter)
-  otel_metrics_index: dataobs-otel-metrics
-  otel_logs_index: dataobs-otel-logs
-  otel_traces_index: dataobs-otel-traces
+  # APM / observability indices (auto-created by Elastic APM Server)
+  apm_traces_index: traces-apm-*
+  apm_metrics_index: metrics-apm-*
   # Data-observability indices (Soda / Monte Carlo / Acceldata patterns).
   # See config/elasticsearch/poc-templates.json for the full mappings.
   indices:
@@ -48,8 +47,16 @@ elasticsearch:
     ranger_audit: dataobs-ranger-audit
 
 # ── OpenTelemetry ─────────────────────────────────────────────
+# Default POC path: Elastic APM only. OTel is isolated behind
+# the `otel` Compose profile (docker compose --profile otel ...).
+#
+# IMPORTANT: endpoint MUST be an empty string (not the otel-collector
+# hostname) in the default config. TelemetryEmitter reads this value
+# at construction time — before OTEL_SDK_DISABLED is checked — so a
+# non-empty value causes the OTel bootstrap log even when the SDK is
+# disabled.  Only set this when running with --profile otel.
 otel:
-  endpoint: "${OTEL_EXPORTER_OTLP_ENDPOINT:-http://otel-collector:4318}"
+  endpoint: ""
   service_name: "${OTEL_SERVICE_NAME:-dataobs-pipeline}"
   # Resource attributes propagated to all signals
   resource_attributes:
@@ -61,10 +68,17 @@ otel:
 spark:
   master: "${SPARK_MASTER:-local[*]}"
   app_name: DataObs-POC
-  # OTel instrumentation — wraps every Spark job
-  otel_instrumentation_enabled: true
-  # Java agent injected via SPARK_SUBMIT_OPTS in docker-compose
-  java_agent_enabled: true
+  # OTel instrumentation disabled in the default POC path.
+  # Enabling this causes Spark to resolve and download the OTel Java agent
+  # (io.opentelemetry:opentelemetry-api:1.38.0) via ivy on every run.
+  # Spark app-level spans are emitted via Python SparkApmInstrumentation
+  # context managers (see src/poc/spark_instrumentation.py).
+  # Container-level logs/metrics/traces flow through Elastic Agent / APM.
+  # Set to true ONLY when running with: docker compose --profile otel
+  otel_instrumentation_enabled: false
+  # The Java OTel agent requires the otel-collector to be running.
+  # Disabled by default; enable only with the `otel` Compose profile.
+  java_agent_enabled: false
 
 # ── Pipeline ──────────────────────────────────────────────────
 pipeline:

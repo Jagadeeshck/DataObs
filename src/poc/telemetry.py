@@ -29,10 +29,11 @@ from typing import Any, Dict, Optional
 
 logger = logging.getLogger(__name__)
 
-# FIX 2: Honour OTEL_SDK_DISABLED to match spark_instrumentation.py and src/telemetry.py.
-# This allows operators to silence all OTel export with a single env var in environments
-# where no collector is reachable (EMR bootstrap, unit tests, CI).
-_OTEL_DISABLED = os.environ.get("OTEL_SDK_DISABLED", "false").lower() == "true"
+# FIX: Default is "true" (safe) — OTel SDK only activates when the operator
+# explicitly sets OTEL_SDK_DISABLED=false AND provides a non-empty endpoint.
+# Previously defaulted to "false" which meant the guard never fired unless
+# the env var was explicitly set, causing OTel bootstrap in the default path.
+_OTEL_DISABLED = os.environ.get("OTEL_SDK_DISABLED", "true").lower() == "true"
 
 try:
     from opentelemetry import metrics, trace
@@ -55,8 +56,8 @@ class TelemetryEmitter:
     Args:
         service_name:       OTel service.name attribute.
         otlp_endpoint:      OTLP HTTP endpoint, e.g. http://otel-collector:4318.
-                            In Docker Compose use the service name; outside Docker
-                            use http://localhost:4318 or set OTEL_EXPORTER_OTLP_ENDPOINT.
+                            Only used when OTEL_SDK_DISABLED is not "true" AND
+                            the endpoint is a non-empty string.
         use_otel_sdk:       Force-enable (True) or force-disable (False) OTel SDK.
                             Default None = auto-detect.
     """
@@ -74,25 +75,29 @@ class TelemetryEmitter:
         self._duration_histogram = None
         self._records_counter = None
 
-        # FIX 2: Respect OTEL_SDK_DISABLED globally before attempting SDK init.
+        # FIX: Check OTEL_SDK_DISABLED FIRST, before touching any endpoint.
+        # This prevents the OTel bootstrap log appearing in the default path
+        # even when an endpoint string is passed in (e.g. from config YAML).
         if _OTEL_DISABLED:
             logger.info("[telemetry] OTEL_SDK_DISABLED=true — running in logger-only mode.")
             return
 
+        # Only attempt SDK init when endpoint is non-empty
+        effective_endpoint = otlp_endpoint or os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT", "")
         sdk_requested = use_otel_sdk if use_otel_sdk is not None else _OTEL_AVAILABLE
-        if sdk_requested and _OTEL_AVAILABLE and otlp_endpoint:
+        if sdk_requested and _OTEL_AVAILABLE and effective_endpoint:
             try:
                 resource = Resource.create({"service.name": service_name})
                 # Traces
                 tracer_provider = TracerProvider(resource=resource)
                 tracer_provider.add_span_processor(
-                    BatchSpanProcessor(OTLPSpanExporter(endpoint=f"{otlp_endpoint}/v1/traces"))
+                    BatchSpanProcessor(OTLPSpanExporter(endpoint=f"{effective_endpoint}/v1/traces"))
                 )
                 trace.set_tracer_provider(tracer_provider)
                 self._tracer = trace.get_tracer(service_name)
                 # Metrics
                 metric_reader = PeriodicExportingMetricReader(
-                    OTLPMetricExporter(endpoint=f"{otlp_endpoint}/v1/metrics")
+                    OTLPMetricExporter(endpoint=f"{effective_endpoint}/v1/metrics")
                 )
                 meter_provider = MeterProvider(resource=resource, metric_readers=[metric_reader])
                 metrics.set_meter_provider(meter_provider)
@@ -104,7 +109,7 @@ class TelemetryEmitter:
                     "poc.records.ingested", unit="{records}", description="Records ingested per dataset"
                 )
                 self._otel_enabled = True
-                logger.info("[telemetry] OTel SDK initialised — exporting to %s", otlp_endpoint)
+                logger.info("[telemetry] OTel SDK initialised — exporting to %s", effective_endpoint)
             except Exception as exc:  # noqa: BLE001
                 logger.warning("[telemetry] OTel SDK init failed, falling back to logger: %s", exc)
         else:

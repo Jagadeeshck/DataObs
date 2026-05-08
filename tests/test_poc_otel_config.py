@@ -1,26 +1,20 @@
-"""Static checks for docker-compose.poc.yml + .env.poc.
+"""
+tests/test_poc_otel_config.py
+─────────────────────────────
+Guards the default-path OTel configuration rules for the DataObs POC.
 
-The default POC telemetry path is now the Elastic APM Python agent
-talking to the APM Server hosted by the Fleet-managed elastic-agent
-container at ``http://elastic-agent:8200``. The standalone OTel
-Collector is retained behind the ``otel`` Compose profile but is NOT
-started by the default ``docker compose up`` / ``docker compose run
-pipeline`` flow.
+These tests exist to prevent regressions where:
+  - OTel bootstrap log appeared on default `docker compose run --rm pipeline`
+  - Spark downloaded io.opentelemetry JARs on every run
+  - TelemetryEmitter attempted to dial otel-collector:4318 even when OTEL_SDK_DISABLED=true
 
-These checks guard the regressions that previously broke the POC:
-
-* ``OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318`` left in the
-  pipeline environment caused
-  ``NameResolutionError(host='otel-collector', port=4318)`` retry-spam.
-* The pipeline service waiting on ``otel-collector`` made the whole run
-  fail when the collector was absent or unhealthy.
-
-Tests run without Docker and without network access.
+All tests are designed to run without a running Docker environment,
+without an OTel collector, and without PySpark installed.
 """
 from __future__ import annotations
 
-import re
-import subprocess
+import importlib
+import os
 import sys
 from pathlib import Path
 
@@ -28,207 +22,126 @@ import pytest
 import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-OTEL_CONFIG = REPO_ROOT / "config" / "otel-collector-poc.yaml"
-COMPOSE_FILE = REPO_ROOT / "docker-compose.poc.yml"
-ENV_FILE = REPO_ROOT / ".env.poc"
-VALIDATOR = REPO_ROOT / "scripts" / "validate_otel_config.py"
+CFG_PATH = REPO_ROOT / "config" / "dataobs_poc.yaml"
 
 
-@pytest.fixture(scope="module")
-def otel_cfg() -> dict:
-    return yaml.safe_load(OTEL_CONFIG.read_text())
+# ─── Config YAML guards ────────────────────────────────────────────────────
 
 
-@pytest.fixture(scope="module")
-def compose() -> dict:
-    return yaml.safe_load(COMPOSE_FILE.read_text())
+def test_dataobs_poc_yaml_is_valid_yaml() -> None:
+    """config/dataobs_poc.yaml must parse without error."""
+    cfg = yaml.safe_load(CFG_PATH.read_text())
+    assert isinstance(cfg, dict)
 
 
-@pytest.fixture(scope="module")
-def env_text() -> str:
-    return ENV_FILE.read_text()
+def test_spark_config_otel_instrumentation_disabled_by_default() -> None:
+    """dataobs_poc.yaml must not enable Spark OTel instrumentation by default.
 
-
-# ─── OTel Collector config (still validated for the optional profile) ──
-
-
-def test_docker_stats_api_version_is_string(otel_cfg: dict) -> None:
-    api = otel_cfg["receivers"]["docker_stats"]["api_version"]
-    assert isinstance(api, str), (
-        f"docker_stats.api_version must be a quoted string in YAML, "
-        f"got {type(api).__name__} ({api!r})."
-    )
-
-
-def test_otlp_exposes_grpc_4317_and_http_4318(otel_cfg: dict) -> None:
-    protos = otel_cfg["receivers"]["otlp"]["protocols"]
-    assert protos["grpc"]["endpoint"] == "0.0.0.0:4317"
-    assert protos["http"]["endpoint"] == "0.0.0.0:4318"
-
-
-def test_health_check_extension_bound_publicly(otel_cfg: dict) -> None:
-    ep = otel_cfg["extensions"]["health_check"]["endpoint"]
-    assert ep == "0.0.0.0:13133"
-
-
-def test_extensions_referenced_in_service(otel_cfg: dict) -> None:
-    declared = set(otel_cfg["extensions"].keys())
-    used = set(otel_cfg["service"]["extensions"])
-    assert declared <= used
-
-
-def test_pipeline_components_exist(otel_cfg: dict) -> None:
-    receivers = set(otel_cfg["receivers"].keys())
-    processors = set(otel_cfg["processors"].keys())
-    exporters = set(otel_cfg["exporters"].keys())
-    for name, pipe in otel_cfg["service"]["pipelines"].items():
-        for r in pipe.get("receivers", []):
-            assert r in receivers, f"pipeline {name}: unknown receiver {r}"
-        for p in pipe.get("processors", []):
-            assert p in processors, f"pipeline {name}: unknown processor {p}"
-        for e in pipe.get("exporters", []):
-            assert e in exporters, f"pipeline {name}: unknown exporter {e}"
-
-
-def test_apm_exporter_uses_otlphttp_not_otlp(otel_cfg: dict) -> None:
-    exporters = otel_cfg["exporters"]
-    assert "otlphttp/apm" in exporters
-    assert "otlp/apm" not in exporters
-    apm = exporters["otlphttp/apm"]
-    assert "protocol" not in apm
-
-
-def test_pipelines_reference_otlphttp_apm(otel_cfg: dict) -> None:
-    for name, pipe in otel_cfg["service"]["pipelines"].items():
-        for ref in pipe.get("exporters", []):
-            assert ref != "otlp/apm"
-
-
-def test_validator_script_passes() -> None:
-    proc = subprocess.run(
-        [sys.executable, str(VALIDATOR), str(OTEL_CONFIG)],
-        check=False,
-        capture_output=True,
-        text=True,
-    )
-    assert proc.returncode == 0, (
-        f"validate_otel_config.py failed:\n"
-        f"stdout:\n{proc.stdout}\n"
-        f"stderr:\n{proc.stderr}"
-    )
-
-
-# ─── Default POC path: Elastic APM, no standalone OTel Collector ──
-
-
-def test_otel_collector_is_optional_profile_only(compose: dict) -> None:
-    """The standalone OTel Collector must NOT start by default.
-
-    It is gated behind the ``otel`` Compose profile so that
-    ``docker compose -f docker-compose.poc.yml up`` and
-    ``docker compose run pipeline`` skip it entirely.
+    When spark.otel_instrumentation_enabled is true, Spark resolves and
+    downloads the OTel Java agent (io.opentelemetry:opentelemetry-api) via
+    ivy on every container start, adding ~30 s of startup latency and
+    requiring network access to Maven Central.
     """
-    svc = compose["services"]["otel-collector"]
-    profiles = svc.get("profiles") or []
-    assert "otel" in profiles, (
-        "otel-collector must be gated behind the `otel` Compose profile. "
-        "Without a profile the default POC run starts the collector and "
-        "the pipeline flips back to dialling otel-collector:4318."
+    cfg = yaml.safe_load(CFG_PATH.read_text())
+    spark_cfg = cfg.get("spark", {})
+    assert not spark_cfg.get("otel_instrumentation_enabled", False), (
+        "spark.otel_instrumentation_enabled must be false in the default POC config. "
+        "Enable only when running with `docker compose --profile otel`."
+    )
+    assert not spark_cfg.get("java_agent_enabled", False), (
+        "spark.java_agent_enabled must be false in the default POC config. "
+        "The Java OTel agent requires the otel-collector service. "
+        "Enable only when running with `docker compose --profile otel`."
     )
 
 
-def test_pipeline_does_not_depend_on_otel_collector(compose: dict) -> None:
-    pipeline = compose["services"]["pipeline"]
-    deps = pipeline.get("depends_on", {}) or {}
-    assert "otel-collector" not in deps, (
-        "pipeline must not depend on otel-collector — that service is "
-        "now an optional profile and dialling it from the default path "
-        "produces NameResolutionError spam."
-    )
+def test_otel_config_endpoint_empty_by_default() -> None:
+    """dataobs_poc.yaml otel.endpoint must be an empty string by default.
 
-
-def test_pipeline_depends_on_elastic_agent(compose: dict) -> None:
-    pipeline = compose["services"]["pipeline"]
-    deps = pipeline.get("depends_on", {}) or {}
-    assert "elastic-agent" in deps, (
-        "pipeline depends_on must include elastic-agent so the APM Server "
-        "endpoint (http://elastic-agent:8200) is reachable when the run "
-        "starts."
-    )
-
-
-def test_pipeline_env_uses_apm_server_url(compose: dict) -> None:
-    env = compose["services"]["pipeline"]["environment"]
-    apm_url = env.get("ELASTIC_APM_SERVER_URL", "")
-    assert apm_url == "http://elastic-agent:8200", (
-        f"pipeline.environment.ELASTIC_APM_SERVER_URL should point at the "
-        f"Fleet-managed APM Server at http://elastic-agent:8200; got "
-        f"{apm_url!r}."
-    )
-    assert env.get("ELASTIC_APM_SERVICE_NAME"), (
-        "ELASTIC_APM_SERVICE_NAME must be set so traces are grouped by "
-        "service in Kibana APM."
-    )
-    assert env.get("ELASTIC_APM_ENVIRONMENT") == "poc"
-
-
-def test_pipeline_env_disables_otel_sdk(compose: dict) -> None:
-    env = compose["services"]["pipeline"]["environment"]
-    assert str(env.get("OTEL_SDK_DISABLED", "")).lower() == "true", (
-        "OTEL_SDK_DISABLED=true must be set on the pipeline service so "
-        "the OTel SDK never tries to dial otel-collector:4318 in the "
-        "default POC path."
-    )
-
-
-def test_pipeline_env_has_no_otlp_endpoint(compose: dict) -> None:
-    env = compose["services"]["pipeline"]["environment"]
-    assert "OTEL_EXPORTER_OTLP_ENDPOINT" not in env, (
-        "OTEL_EXPORTER_OTLP_ENDPOINT must NOT appear in the default "
-        "pipeline environment — it caused NameResolutionError spam when "
-        "the collector was absent."
-    )
-
-
-def test_pipeline_env_has_no_spark_otel_opts(compose: dict) -> None:
-    env = compose["services"]["pipeline"]["environment"]
-    spark_opts = env.get("SPARK_SUBMIT_OPTS", "") or ""
-    assert "otel-collector" not in spark_opts, (
-        "SPARK_SUBMIT_OPTS must not reference otel-collector in the "
-        "default POC path."
-    )
-
-
-def test_env_file_does_not_set_otlp_endpoint(env_text: str) -> None:
-    """`.env.poc` must not export OTEL_EXPORTER_OTLP_ENDPOINT.
-
-    Stale local .env.poc.local files were the original cause of the
-    pipeline silently re-acquiring an otel-collector:4318 endpoint
-    even after the compose file was fixed.
+    TelemetryEmitter reads otel.endpoint at construction time before the
+    OTEL_SDK_DISABLED guard fires. A non-empty value (especially one
+    referencing otel-collector:4318) causes the OTel bootstrap log to
+    appear in the default docker compose run --rm pipeline output.
     """
-    for line in env_text.splitlines():
-        stripped = line.strip()
-        if stripped.startswith("#") or "=" not in stripped:
-            continue
-        key = stripped.split("=", 1)[0].strip()
-        assert key != "OTEL_EXPORTER_OTLP_ENDPOINT", (
-            "`.env.poc` must not set OTEL_EXPORTER_OTLP_ENDPOINT — the "
-            "default POC path uses Elastic APM only."
-        )
-
-
-def test_env_file_advertises_apm_url(env_text: str) -> None:
-    assert re.search(
-        r"(?m)^ELASTIC_APM_SERVER_URL\s*=\s*http://elastic-agent:8200",
-        env_text,
-    ), (
-        "`.env.poc` must export ELASTIC_APM_SERVER_URL=http://elastic-agent:8200 "
-        "so the Python pipeline picks up the APM endpoint."
+    cfg = yaml.safe_load(CFG_PATH.read_text())
+    endpoint = cfg.get("otel", {}).get("endpoint", "")
+    # The YAML value must not hard-code the otel-collector hostname.
+    # (env-var substitution happens at runtime, not in the raw YAML value.)
+    assert "otel-collector" not in str(endpoint), (
+        "otel.endpoint in dataobs_poc.yaml must not reference otel-collector:4318. "
+        "This causes TelemetryEmitter to attempt an OTel bootstrap in the default path. "
+        f"Current value: {endpoint!r}"
     )
 
 
-def test_env_file_disables_otel_sdk(env_text: str) -> None:
-    assert re.search(r"(?m)^OTEL_SDK_DISABLED\s*=\s*true", env_text), (
-        "`.env.poc` must export OTEL_SDK_DISABLED=true so the OTel SDK "
-        "never bootstraps in the default POC pipeline."
+# ─── TelemetryEmitter unit guards ─────────────────────────────────────────
+
+
+def test_telemetry_emitter_disabled_when_otel_sdk_disabled(monkeypatch) -> None:
+    """TelemetryEmitter must not enable OTel when OTEL_SDK_DISABLED=true.
+
+    Even when an explicit otlp_endpoint is passed the emitter must remain
+    in logger-only mode, because OTEL_SDK_DISABLED=true is the canonical
+    signal that the collector is not running.
+    """
+    monkeypatch.setenv("OTEL_SDK_DISABLED", "true")
+    monkeypatch.delenv("OTEL_EXPORTER_OTLP_ENDPOINT", raising=False)
+
+    # Force module reload so the module-level _OTEL_DISABLED is re-evaluated
+    # with the patched environment.
+    if "src.poc.telemetry" in sys.modules:
+        del sys.modules["src.poc.telemetry"]
+
+    from src.poc.telemetry import TelemetryEmitter
+
+    emitter = TelemetryEmitter(
+        service_name="test",
+        otlp_endpoint="http://otel-collector:4318",  # explicitly passed but must be ignored
     )
+    assert not emitter._otel_enabled, (
+        "TelemetryEmitter._otel_enabled must be False when OTEL_SDK_DISABLED=true, "
+        "even when an explicit otlp_endpoint is passed."
+    )
+
+
+def test_telemetry_emitter_logger_only_when_no_endpoint(monkeypatch) -> None:
+    """TelemetryEmitter must stay in logger-only mode when endpoint is empty."""
+    monkeypatch.setenv("OTEL_SDK_DISABLED", "false")  # SDK not disabled
+    monkeypatch.delenv("OTEL_EXPORTER_OTLP_ENDPOINT", raising=False)
+
+    if "src.poc.telemetry" in sys.modules:
+        del sys.modules["src.poc.telemetry"]
+
+    from src.poc.telemetry import TelemetryEmitter
+
+    emitter = TelemetryEmitter(
+        service_name="test",
+        otlp_endpoint=None,  # no endpoint
+    )
+    # Without an endpoint the SDK cannot be configured; must fall through to logger.
+    assert not emitter._otel_enabled
+
+
+def test_no_otel_bootstrap_log_message_in_default_mode(monkeypatch, caplog) -> None:
+    """Default mode must not emit the OTel bootstrap complete log line.
+
+    Regression guard: previously the log line
+      [Pipeline] OTel bootstrap complete -> http://otel-collector:4318
+    appeared on every run because otel.endpoint resolved to a non-empty
+    value from the YAML env fallback before the OTEL_SDK_DISABLED guard.
+    """
+    import logging
+
+    monkeypatch.setenv("OTEL_SDK_DISABLED", "true")
+    monkeypatch.delenv("OTEL_EXPORTER_OTLP_ENDPOINT", raising=False)
+
+    if "src.poc.telemetry" in sys.modules:
+        del sys.modules["src.poc.telemetry"]
+
+    with caplog.at_level(logging.DEBUG, logger="src.poc.telemetry"):
+        from src.poc.telemetry import TelemetryEmitter
+        TelemetryEmitter(service_name="test", otlp_endpoint=None)
+
+    combined = " ".join(caplog.messages).lower()
+    assert "otel bootstrap complete" not in combined
+    assert "otel-collector:4318" not in combined

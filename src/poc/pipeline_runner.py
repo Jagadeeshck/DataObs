@@ -39,7 +39,9 @@ try:
     from elastic_transport import ConnectionTimeout as ElasticTransportConnectionTimeout
 except ImportError:  # pragma: no cover - elasticsearch is optional in tests.
     ElasticTransportConnectionError = ConnectionError
-    ElasticTransportConnectionTimeout = TimeoutError
+
+    class ElasticTransportConnectionTimeout(Exception):
+        pass
 
 try:
     from py4j.protocol import Py4JError
@@ -68,7 +70,7 @@ ES_USER = _env_or_default(
 def _module_available(module: str) -> bool:
     try:
         return importlib.util.find_spec(module) is not None
-    except ModuleNotFoundError:
+    except (ImportError, ModuleNotFoundError, ValueError):
         return False
 
 

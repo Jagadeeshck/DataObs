@@ -36,7 +36,7 @@ def _expand_env_placeholders(value: str) -> str:
 
     def replace(match: re.Match[str]) -> str:
         name, default = match.group(1), match.group(2)
-        return os.environ.get(name, default or "")
+        return os.environ.get(name, default if default is not None else "")
 
     return _ENV_PATTERN.sub(replace, value)
 
@@ -62,12 +62,13 @@ def load_config(path: str | None = None) -> Dict[str, Any]:
 def _is_standalone_poc_config(cfg: Dict[str, Any]) -> bool:
     """Return True for the dedicated config/dataobs_poc.yaml shape."""
     pipeline = cfg.get("pipeline") or {}
+    otel = cfg.get("otel") or {}
     runner = str(pipeline.get("runner", ""))
     return (
         cfg.get("tenant") == "poc"
         or cfg.get("environment") == "poc"
         or "src.poc" in runner
-        or "dataobs-poc" in str(cfg.get("otel", {})).lower()
+        or "dataobs-poc" in str(otel.get("service_name", "")).lower()
     )
 
 

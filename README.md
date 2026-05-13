@@ -136,6 +136,8 @@ See the detailed model: [`docs/architecture/four-tower-model.md`](docs/architect
 
 ## Repository Layout
 
+DataObs separates production modules, proof-of-concept helpers, deployment assets, integrations, and documentation so new features have an obvious home. See the maintainer-focused [repository structure and feature-development guide](docs/development/repository-structure.md) for extension points, quality-check registration, and issue-readiness notes.
+
 ```
 DataObs/
 ├── .github/

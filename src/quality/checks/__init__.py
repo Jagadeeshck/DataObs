@@ -1,22 +1,31 @@
-"""
-DataObs Quality Checks
+"""Built-in DataObs quality checks.
 
-All check implementations are registered here.
+Import check classes directly for custom orchestration, or use
+``CHECK_REGISTRY``/``build_check`` when resolving checks from configuration.
 """
+
+from .base import BaseCheck, CheckResult
+from .distribution_drift_check import DistributionDriftCheck, DriftBaseline
 from .null_check import NullCheck
-from .row_count_check import RowCountCheck
-from .uniqueness_check import UniquenessCheck
-from .schema_check import SchemaCheck
 from .referential_integrity_check import ReferentialIntegrityCheck
+from .registry import CHECK_REGISTRY, build_check, supported_check_types
+from .row_count_check import RowCountCheck
+from .schema_check import SchemaCheck
+from .uniqueness_check import UniquenessCheck
 from .value_range_check import ValueRangeCheck
 
-CHECK_REGISTRY = {
-    "null_check": NullCheck,
-    "row_count": RowCountCheck,
-    "uniqueness": UniquenessCheck,
-    "schema_change": SchemaCheck,
-    "referential_integrity": ReferentialIntegrityCheck,
-    "value_range": ValueRangeCheck,
-}
-
-__all__ = list(CHECK_REGISTRY.keys()) + ["CHECK_REGISTRY"]
+__all__ = [
+    "BaseCheck",
+    "CheckResult",
+    "CHECK_REGISTRY",
+    "DistributionDriftCheck",
+    "DriftBaseline",
+    "NullCheck",
+    "ReferentialIntegrityCheck",
+    "RowCountCheck",
+    "SchemaCheck",
+    "UniquenessCheck",
+    "ValueRangeCheck",
+    "build_check",
+    "supported_check_types",
+]

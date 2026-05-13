@@ -29,3 +29,6 @@ APScheduler>=3.10,<4.0
 
 # Config loading
 pyyaml>=6.0,<7.0
+
+# HTTP client used by tests and integration helpers
+requests>=2.31,<3.0

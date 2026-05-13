@@ -12,6 +12,7 @@ from typing import Any, List
 import sqlalchemy
 
 from .base import BaseCheck, CheckResult
+from .sql import table_name_from_dataset, validate_column_names
 
 logger = logging.getLogger(__name__)
 
@@ -21,9 +22,9 @@ class UniquenessCheck(BaseCheck):
 
     def run(self, config: dict, connection: Any) -> CheckResult:
         dataset = config["dataset"]
-        columns: List[str] = config["columns"]
+        columns: List[str] = validate_column_names(config["columns"])
         severity = config.get("severity", "critical")
-        table_name = dataset.split(".")[-1]
+        table_name = table_name_from_dataset(dataset)
         col_expr = ", ".join(columns)
 
         try:

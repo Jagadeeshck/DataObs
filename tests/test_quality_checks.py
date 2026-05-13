@@ -416,3 +416,40 @@ def test_schema_check_fails_on_column_removed_vs_stored_baseline():
         connection=None,
     )
     assert result.status == "FAIL"
+
+# ===========================================================================
+# Registry, SQL safety, and distribution drift extensibility
+# ===========================================================================
+
+def test_quality_check_registry_exposes_supported_types():
+    from src.quality.checks.registry import build_check, supported_check_types
+
+    assert "row_count" in supported_check_types()
+    assert "distribution_drift" in supported_check_types()
+    assert build_check("row_count").check_type == "row_count"
+    with pytest.raises(ValueError, match="Unsupported check type"):
+        build_check("not_a_real_check")
+
+
+def test_identifier_validation_rejects_sql_fragments():
+    from src.quality.checks.sql import table_name_from_dataset, validate_column_names
+
+    assert table_name_from_dataset("prod.public.orders") == "orders"
+    assert validate_column_names(["customer_id", "total_amount"]) == ["customer_id", "total_amount"]
+    with pytest.raises(ValueError):
+        table_name_from_dataset("orders; DROP TABLE orders")
+    with pytest.raises(ValueError):
+        validate_column_names(["customer_id) IS NULL OR 1=1 --"])
+
+
+def test_distribution_drift_check_returns_standard_check_result():
+    from src.quality.checks.distribution_drift_check import DistributionDriftCheck
+
+    check = DistributionDriftCheck(table="orders", column="total_amount")
+    result = check.run([10.0, 11.0, 12.0, 13.0])
+
+    assert result.check_type == "distribution_drift"
+    assert result.dataset == "orders"
+    assert result.status == "PASS"
+    assert result.details["column"] == "total_amount"
+    assert result.to_es_doc()["check_type"] == "distribution_drift"

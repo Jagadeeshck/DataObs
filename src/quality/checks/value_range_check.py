@@ -12,6 +12,7 @@ from typing import Any
 import sqlalchemy
 
 from .base import BaseCheck, CheckResult
+from .sql import table_name_from_dataset, validate_simple_identifier
 
 logger = logging.getLogger(__name__)
 
@@ -21,11 +22,11 @@ class ValueRangeCheck(BaseCheck):
 
     def run(self, config: dict, connection: Any) -> CheckResult:
         dataset = config["dataset"]
-        column = config["column"]
+        column = validate_simple_identifier(config["column"], "column")
         min_value = config.get("min_value")
         max_value = config.get("max_value")
         severity = config.get("severity", "high")
-        table_name = dataset.split(".")[-1]
+        table_name = table_name_from_dataset(dataset)
 
         try:
             with connection.connect() as conn:

@@ -38,12 +38,7 @@ from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
-from src.quality.checks.null_check import NullCheck
-from src.quality.checks.referential_integrity_check import ReferentialIntegrityCheck
-from src.quality.checks.row_count_check import RowCountCheck
-from src.quality.checks.schema_check import SchemaCheck
-from src.quality.checks.uniqueness_check import UniquenessCheck
-from src.quality.checks.value_range_check import ValueRangeCheck
+from src.quality.checks.registry import build_check, supported_check_types
 from src.quality.freshness import FreshnessMonitor
 
 # ---------------------------------------------------------------------------
@@ -54,18 +49,6 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s %(name)s — %(message)s",
 )
 logger = logging.getLogger("dataobs.engine")
-
-# ---------------------------------------------------------------------------
-# Check registry — maps config type strings to check classes
-# ---------------------------------------------------------------------------
-CHECK_REGISTRY = {
-    "row_count": RowCountCheck,
-    "null_check": NullCheck,
-    "uniqueness": UniquenessCheck,
-    "value_range": ValueRangeCheck,
-    "referential_integrity": ReferentialIntegrityCheck,
-    "schema_change": SchemaCheck,
-}
 
 # ---------------------------------------------------------------------------
 # OTel bootstrap
@@ -153,19 +136,14 @@ def _run_checks_for_dataset(
 
         for check_cfg in checks_config:
             check_type = check_cfg.get("type")
-            check_cls = CHECK_REGISTRY.get(check_type)
 
-            if check_cls is None:
-                logger.warning("Unknown check type '%s' for dataset %s — skipping", check_type, dataset)
+            try:
+                check = build_check(check_type, es_client=es_client, config={"dataset": dataset, **check_cfg})
+            except ValueError as exc:
+                logger.warning("Skipping check for dataset %s: %s", dataset, exc)
                 continue
 
             try:
-                # RowCountCheck optionally accepts an ES client for anomaly detection
-                if check_type == "row_count":
-                    check = check_cls(es_client=es_client)
-                else:
-                    check = check_cls()
-
                 # Freshness checks are handled by FreshnessMonitor separately
                 result = check.run({"dataset": dataset, **check_cfg}, None)
 

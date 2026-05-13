@@ -1,0 +1,8 @@
+[tool.pytest.ini_options]
+addopts = "-ra"
+testpaths = ["tests"]
+pythonpath = ["."]
+markers = [
+  "integration: marks tests that require external services or Docker Compose",
+  "asyncio: marks async tests that need pytest-asyncio when enabled",
+]

@@ -12,6 +12,7 @@ from typing import Any
 import sqlalchemy
 
 from .base import BaseCheck, CheckResult
+from .sql import table_name_from_dataset, validate_column_names
 
 logger = logging.getLogger(__name__)
 
@@ -28,12 +29,12 @@ class NullCheck(BaseCheck):
           severity: str
         """
         dataset = config["dataset"]
-        columns = config["columns"]
+        columns = validate_column_names(config["columns"])
         max_null_pct = config.get("max_null_pct", 0.0)
         severity = config.get("severity", "high")
 
         try:
-            table_name = dataset.split(".")[-1]
+            table_name = table_name_from_dataset(dataset)
             with connection.connect() as conn:
                 # Get total row count
                 total_result = conn.execute(sqlalchemy.text(f"SELECT COUNT(*) FROM {table_name}"))

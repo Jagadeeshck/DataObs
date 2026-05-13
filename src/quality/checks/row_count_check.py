@@ -7,7 +7,6 @@ Detects anomalous row counts using static thresholds or ML-based baselines.
 from __future__ import annotations
 
 import logging
-import re
 import statistics
 from typing import Any, List, Optional
 
@@ -16,22 +15,9 @@ from elasticsearch import Elasticsearch
 from tenacity import retry, stop_after_attempt, wait_exponential, before_sleep_log
 
 from .base import BaseCheck, CheckResult
+from .sql import table_name_from_dataset
 
 logger = logging.getLogger(__name__)
-
-# ── SQL identifier validation ───────────────────────────────────────────────────
-_IDENTIFIER_RE = re.compile(r'^[A-Za-z_][A-Za-z0-9_.]*$')
-
-
-def _validate_sql_identifier(value: str, label: str) -> str:
-    """Raise ValueError if *value* is not a safe SQL identifier."""
-    if not _IDENTIFIER_RE.match(value):
-        raise ValueError(
-            f"Invalid SQL identifier for {label!r}: {value!r}. "
-            "Only letters, digits, underscores, and dots are allowed."
-        )
-    return value
-
 
 class RowCountCheck(BaseCheck):
     check_type = "row_count"
@@ -57,10 +43,7 @@ class RowCountCheck(BaseCheck):
         severity = config.get("severity", "high")
 
         try:
-            # --- Security: validate table identifier before interpolation ---
-            raw_table = dataset.split(".")[-1]
-            table_name = _validate_sql_identifier(raw_table, "dataset/table_name")
-            # -----------------------------------------------------------------
+            table_name = table_name_from_dataset(dataset)
 
             with connection.connect() as conn:
                 result = conn.execute(sqlalchemy.text(f"SELECT COUNT(*) FROM {table_name}"))

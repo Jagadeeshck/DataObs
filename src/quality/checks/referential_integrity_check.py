@@ -12,6 +12,7 @@ from typing import Any
 import sqlalchemy
 
 from .base import BaseCheck, CheckResult
+from .sql import table_name_from_dataset, validate_simple_identifier, validate_sql_identifier
 
 logger = logging.getLogger(__name__)
 
@@ -21,14 +22,14 @@ class ReferentialIntegrityCheck(BaseCheck):
 
     def run(self, config: dict, connection: Any) -> CheckResult:
         dataset = config["dataset"]
-        column = config["column"]
-        references = config["references"]   # e.g. "schema.parent_table.id"
+        column = validate_simple_identifier(config["column"], "column")
+        references = validate_sql_identifier(config["references"], "references")   # e.g. "schema.parent_table.id"
         severity = config.get("severity", "high")
 
         parts = references.split(".")
         ref_table = ".".join(parts[:-1])
-        ref_column = parts[-1]
-        child_table = dataset.split(".")[-1]
+        ref_column = validate_simple_identifier(parts[-1], "reference column")
+        child_table = table_name_from_dataset(dataset)
 
         try:
             with connection.connect() as conn:

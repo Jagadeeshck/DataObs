@@ -101,9 +101,12 @@ class DistributionDriftCheck(BaseCheck):
 
             if len(values) < 2:
                 result = CheckResult(
-                    status="skipped",
+                    check_type=self.check_type,
+                    dataset=self.table,
+                    status="WARN",
+                    severity="low",
                     message=f"Insufficient non-null values ({len(values)}) for drift check.",
-                    metadata={"null_rate": null_rate},
+                    details={"column": self.column, "null_rate": null_rate},
                 )
                 span.set_attribute("check.status", "skipped")
                 return result
@@ -147,15 +150,20 @@ class DistributionDriftCheck(BaseCheck):
             self._update_baseline(baseline, values, null_rate)
 
             return CheckResult(
-                status="failed" if breached else "passed",
+                check_type=self.check_type,
+                dataset=self.table,
+                status="FAIL" if breached else "PASS",
+                severity="high" if breached else "low",
                 message=(
                     f"Drift score {drift_score:.3f} exceeds threshold {threshold:.3f}"
                     if breached
                     else f"No drift detected (score={drift_score:.3f})"
                 ),
-                metadata={
+                metric_value=drift_score,
+                threshold=threshold,
+                details={
+                    "column": self.column,
                     "drift_score": drift_score,
-                    "threshold": threshold,
                     "baseline_mean": baseline.mean,
                     "current_mean": current_mean,
                     "current_std": current_std,

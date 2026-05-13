@@ -89,7 +89,7 @@ class ApmTelemetry:
         )
         self.global_labels = global_labels or {
             "service.namespace": "dataobs",
-            "deployment.environment": self.environment,
+            "deployment.environment.name": self.environment,
         }
         self._client: Optional[Any] = None
         self._enabled = False

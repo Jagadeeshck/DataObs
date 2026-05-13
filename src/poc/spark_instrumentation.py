@@ -123,7 +123,7 @@ class SparkApmInstrumentation:
                 "spark.master": self.spark.sparkContext.master,
                 "spark.app.id": self.spark.sparkContext.applicationId,
                 "spark.app.name": self.spark.sparkContext.appName,
-                "deployment.environment": os.environ.get("DEPLOYMENT_ENV", "poc"),
+                "deployment.environment.name": os.environ.get("DEPLOYMENT_ENV", "poc"),
                 **self.extra_labels,
             },
         )

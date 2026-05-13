@@ -8,6 +8,8 @@ These tests stub out Elasticsearch so they can run offline. They verify:
 """
 from __future__ import annotations
 
+import json
+from pathlib import Path
 from typing import Any, Dict, List
 from unittest.mock import MagicMock, patch
 
@@ -43,6 +45,12 @@ def test_register_asset_writes_to_assets_index(writer_and_calls):
     assert doc["asset.id"] == "a"
     assert doc["asset.name"] == "a"
     assert doc["tenant"] == "poc"
+    assert doc["ecs.version"]
+    assert doc["event.dataset"] == "dataobs.assets"
+    assert doc["data_stream.dataset"] == "dataobs.assets"
+    assert doc["data_stream.namespace"] == "poc"
+    assert doc["service.name"] == "dataobs-poc-pipeline"
+    assert doc["deployment.environment.name"] == "poc"
 
 
 def test_failing_quality_check_emits_alert(writer_and_calls):
@@ -58,6 +66,8 @@ def test_failing_quality_check_emits_alert(writer_and_calls):
     alert = next(c["doc"] for c in calls if c["index"] == "dataobs-alerts")
     assert alert["alert.severity"] == "critical"
     assert alert["alert.source"] == "quality"
+    assert alert["event.dataset"] == "dataobs.alerts"
+    assert alert["event.outcome"] == "failure"
 
 
 def test_passing_quality_check_no_alert(writer_and_calls):
@@ -117,6 +127,9 @@ def test_lineage_writes_full_doc(writer_and_calls):
     doc = calls[0]["doc"]
     assert doc["source"] == "src"
     assert doc["target"] == "tgt"
+    assert doc["lineage.source"] == "src"
+    assert doc["lineage.target"] == "tgt"
+    assert doc["event.dataset"] == "dataobs.lineage"
     assert doc["row_count"] == 42
 
 
@@ -124,3 +137,47 @@ def test_schema_hash_is_order_independent():
     h1 = _hash_schema([{"name": "a", "type": "long"}, {"name": "b", "type": "keyword"}])
     h2 = _hash_schema([{"name": "b", "type": "keyword"}, {"name": "a", "type": "long"}])
     assert h1 == h2
+
+
+def test_poc_templates_include_ecs_and_otel_common_fields():
+    template_path = Path("config/elasticsearch/poc-templates.json")
+    data = json.loads(template_path.read_text())
+    required = {
+        "ecs.version",
+        "data_stream.type",
+        "data_stream.dataset",
+        "data_stream.namespace",
+        "event.kind",
+        "event.category",
+        "event.type",
+        "event.dataset",
+        "event.module",
+        "event.provider",
+        "event.action",
+        "event.outcome",
+        "service.name",
+        "service.namespace",
+        "service.type",
+        "deployment.environment.name",
+        "telemetry.sdk.language",
+        "telemetry.distro.name",
+        "observer.type",
+        "labels.tenant",
+    }
+    custom_templates = {
+        "dataobs-assets",
+        "dataobs-quality",
+        "dataobs-freshness",
+        "dataobs-volume",
+        "dataobs-schema",
+        "dataobs-lineage",
+        "dataobs-alerts",
+    }
+    by_name = {tpl["name"]: tpl for tpl in data["templates"]}
+
+    for name in custom_templates:
+        props = by_name[name]["body"]["template"]["mappings"]["properties"]
+        assert required <= set(props), name
+
+    lineage_props = by_name["dataobs-lineage"]["body"]["template"]["mappings"]["properties"]
+    assert {"lineage.source", "lineage.target"} <= set(lineage_props)

@@ -149,7 +149,7 @@ processors:
 
   resource/common:
     attributes:
-      - key: deployment.environment
+      - key: deployment.environment.name
         value: poc
         action: upsert
       - key: service.namespace

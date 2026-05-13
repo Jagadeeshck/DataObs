@@ -60,7 +60,7 @@ For Java services (including Spark JVM processes), use the OpenTelemetry Java ag
 
 ```bash
 export OTEL_SERVICE_NAME="spark-driver"
-export OTEL_RESOURCE_ATTRIBUTES="service.namespace=dataobs,deployment.environment=prod"
+export OTEL_RESOURCE_ATTRIBUTES="service.namespace=dataobs,deployment.environment.name=prod"
 export OTEL_EXPORTER_OTLP_ENDPOINT="http://127.0.0.1:4317"
 export OTEL_TRACES_EXPORTER="otlp"
 export OTEL_METRICS_EXPORTER="otlp"
@@ -78,7 +78,7 @@ For Spark, apply similar environment variables in `spark-env.sh` or job launcher
 
 ```bash
 export OTEL_SERVICE_NAME="python-etl"
-export OTEL_RESOURCE_ATTRIBUTES="service.namespace=dataobs,deployment.environment=prod"
+export OTEL_RESOURCE_ATTRIBUTES="service.namespace=dataobs,deployment.environment.name=prod"
 export OTEL_EXPORTER_OTLP_ENDPOINT="http://127.0.0.1:4317"
 
 opentelemetry-instrument python your_job.py

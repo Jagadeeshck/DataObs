@@ -19,7 +19,7 @@ import time
 import traceback
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Callable, Dict, Iterable, Optional, Protocol
+from typing import Any, Callable, Dict, Iterable, List, Optional, Protocol
 
 from src.poc.apm import ApmTelemetry, build_default_apm
 
@@ -38,7 +38,8 @@ try:
     from elastic_transport import ConnectionError as ElasticTransportConnectionError
     from elastic_transport import ConnectionTimeout as ElasticTransportConnectionTimeout
 except ImportError:  # pragma: no cover - elasticsearch is optional in tests.
-    ElasticTransportConnectionError = ConnectionError
+    class ElasticTransportConnectionError(Exception):
+        pass
 
     class ElasticTransportConnectionTimeout(Exception):
         pass
@@ -159,7 +160,7 @@ class DataObsPipelineRunner:
         self._sink = sink
         self._apm: ApmTelemetry = build_default_apm()
         self._pipeline_start = 0.0
-        self._etl_summaries: list[Dict[str, Any]] = []
+        self._etl_summaries: List[Dict[str, Any]] = []
         self.last_summary: Dict[str, Any] = {}
 
     def _bootstrap_telemetry(self) -> None:

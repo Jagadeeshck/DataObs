@@ -11,7 +11,7 @@ from __future__ import annotations
 import os
 import re
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import yaml
 
@@ -23,7 +23,7 @@ _DEFAULT_CONFIG_CANDIDATES = (
 _ENV_PATTERN = re.compile(r"\$\{([^}:]+)(?::-([^}]*))?\}")
 
 
-def _env_or_none(*names: str) -> str | None:
+def _env_or_none(*names: str) -> Optional[str]:
     for name in names:
         value = os.environ.get(name)
         if value:
@@ -41,7 +41,7 @@ def _expand_env_placeholders(value: str) -> str:
     return _ENV_PATTERN.sub(replace, value)
 
 
-def _candidate_paths(path: str | None = None) -> list[str]:
+def _candidate_paths(path: Optional[str] = None) -> list[str]:
     if path:
         return [path]
     env_path = _env_or_none("DATAOBS_CONFIG", "DATAOBS_POC_CONFIG")
@@ -50,7 +50,7 @@ def _candidate_paths(path: str | None = None) -> list[str]:
     return list(_DEFAULT_CONFIG_CANDIDATES)
 
 
-def load_config(path: str | None = None) -> Dict[str, Any]:
+def load_config(path: Optional[str] = None) -> Dict[str, Any]:
     """Load the first available DataObs configuration file."""
     for candidate in _candidate_paths(path):
         if os.path.exists(candidate):
@@ -72,7 +72,7 @@ def _is_standalone_poc_config(cfg: Dict[str, Any]) -> bool:
     )
 
 
-def get_poc_config(path: str | None = None) -> Dict[str, Any]:
+def get_poc_config(path: Optional[str] = None) -> Dict[str, Any]:
     """
     Return normalized POC settings.
 

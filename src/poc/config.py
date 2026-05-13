@@ -23,6 +23,14 @@ _DEFAULT_CONFIG_CANDIDATES = (
 _ENV_PATTERN = re.compile(r"\$\{([^}:]+)(?::-([^}]*))?\}")
 
 
+def _env_or_none(*names: str) -> str | None:
+    for name in names:
+        value = os.environ.get(name)
+        if value:
+            return value
+    return None
+
+
 def _expand_env_placeholders(value: str) -> str:
     """Expand shell-style environment placeholders in a config string."""
 
@@ -36,7 +44,7 @@ def _expand_env_placeholders(value: str) -> str:
 def _candidate_paths(path: str | None = None) -> list[str]:
     if path:
         return [path]
-    env_path = os.environ.get("DATAOBS_CONFIG") or os.environ.get("DATAOBS_POC_CONFIG")
+    env_path = _env_or_none("DATAOBS_CONFIG", "DATAOBS_POC_CONFIG")
     if env_path:
         return [env_path, *_DEFAULT_CONFIG_CANDIDATES]
     return list(_DEFAULT_CONFIG_CANDIDATES)

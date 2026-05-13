@@ -25,14 +25,43 @@ from src.poc.apm import ApmTelemetry, build_default_apm
 
 logger = logging.getLogger(__name__)
 
-ES_HOST = os.environ.get("ELASTICHOST") or os.environ.get(
-    "ELASTICSEARCH_URL", "http://es01:9200"
-)
+
+def _env_or_default(*names: str, default: str) -> str:
+    for name in names:
+        value = os.environ.get(name)
+        if value:
+            return value
+    return default
+
+
+try:
+    from elastic_transport import ConnectionError as ElasticTransportConnectionError
+    from elastic_transport import ConnectionTimeout as ElasticTransportConnectionTimeout
+except ImportError:  # pragma: no cover - elasticsearch is optional in tests.
+    ElasticTransportConnectionError = ConnectionError
+    ElasticTransportConnectionTimeout = TimeoutError
+
+try:
+    from py4j.protocol import Py4JError
+except ImportError:  # pragma: no cover - py4j is optional in tests.
+    class Py4JError(RuntimeError):
+        pass
+
+
+try:
+    from pyspark.errors import PySparkException
+except ImportError:  # pragma: no cover - pyspark is optional in tests.
+    class PySparkException(RuntimeError):
+        pass
+
+
+ES_HOST = _env_or_default("ELASTICHOST", "ELASTICSEARCH_URL", default="http://es01:9200")
 ES_PASS = os.environ.get("ELASTIC_PASSWORD", "changeme")
-ES_USER = (
-    os.environ.get("ELASTIC_USERNAME")
-    or os.environ.get("ELASTICSEARCH_USER")
-    or os.environ.get("ELASTIC_USER", "elastic")
+ES_USER = _env_or_default(
+    "ELASTIC_USERNAME",
+    "ELASTICSEARCH_USER",
+    "ELASTIC_USER",
+    default="elastic",
 )
 
 
@@ -171,7 +200,15 @@ class DataObsPipelineRunner:
                 self._sink = es_sink
                 return self._sink
             raise ConnectionError(f"Elasticsearch ping failed for {ES_HOST}")
-        except Exception as exc:  # noqa: BLE001
+        except (
+            ConnectionError,
+            ElasticTransportConnectionError,
+            ElasticTransportConnectionTimeout,
+            ImportError,
+            OSError,
+            TimeoutError,
+            ValueError,
+        ) as exc:
             if mode == "elasticsearch":
                 raise
             logger.warning(
@@ -367,7 +404,7 @@ class DataObsPipelineRunner:
 
             logger.info("[Pipeline] Spark transform stage complete")
             return row_count
-        except Exception as exc:  # noqa: BLE001
+        except (OSError, Py4JError, PySparkException, RuntimeError) as exc:
             if mode == "spark":
                 raise
             logger.warning(

@@ -11,7 +11,10 @@ Pipeline stages
   6. load       — bulk-index raw, curated, quality, lineage into Elasticsearch
   7. complete   — summary log with counts per dataset
 
-All stages emit telemetry via TelemetryEmitter (OTel SDK or logger fallback).
+All stages emit telemetry via TelemetryEmitter (Elastic APM or logger fallback).
+The OTel SDK path in TelemetryEmitter is dormant unless OTEL_SDK_DISABLED=false
+AND a non-empty otlp_endpoint is supplied (docker compose --profile otel only).
+
 Run with::
 
     PYTHONPATH=. python -m src.poc.spark_job
@@ -26,6 +29,7 @@ import csv
 import io
 import json
 import logging
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List
@@ -153,17 +157,31 @@ def main() -> None:
 
     ensure_dirs(poc_cfg)
 
-    otel_cfg = poc_cfg.get("opentelemetry", {})
+    # FIX: Read from the correct 'otel' key (not the legacy 'opentelemetry' key).
+    # CRITICAL: Only pass a non-empty endpoint when OTEL_SDK_DISABLED is not 'true'.
+    # Previously this passed otel_cfg.get('exporter_otlp_endpoint') which:
+    #   (a) read the wrong key (config uses 'endpoint', not 'exporter_otlp_endpoint')
+    #   (b) even when the key was absent the YAML env fallback resolved to
+    #       http://otel-collector:4318, triggering the OTel bootstrap log.
+    otel_cfg = poc_cfg.get("otel", poc_cfg.get("opentelemetry", {}))
+    _otel_disabled = os.environ.get("OTEL_SDK_DISABLED", "true").lower() == "true"
+    _raw_endpoint = otel_cfg.get("endpoint", "") if not _otel_disabled else ""
+    # Treat the otel-collector hostname as a signal that OTel is not intended
+    # for this run (default YAML had a fallback pointing to otel-collector).
+    _otlp_endpoint: str | None = _raw_endpoint if (
+        _raw_endpoint and "otel-collector" not in _raw_endpoint
+    ) else None
+
     telemetry = TelemetryEmitter(
         service_name=otel_cfg.get("service_name", "dataobs-poc-pipeline"),
-        otlp_endpoint=otel_cfg.get("exporter_otlp_endpoint"),
+        otlp_endpoint=_otlp_endpoint,
     )
 
     writer = POCElasticWriter(poc_cfg)
     runtime = poc_cfg["runtime"]
     raw_dir = Path(runtime["raw_download_dir"])
 
-    # \u2500\u2500 1. Discover sources \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+    # ── 1. Discover sources ────────────────────────────────────────────────
     with telemetry.stage("discover"):
         sources = resolve_sources(poc_cfg)
         if not sources:
@@ -173,7 +191,7 @@ def main() -> None:
             )
         logger.info("[discover] %d source(s) resolved.", len(sources))
 
-    # \u2500\u2500 Ensure ES indices \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+    # ── Ensure ES indices ──────────────────────────────────────────────────
     writer.ensure_indices()
 
     spark = _build_spark(runtime["spark_master"])
@@ -191,23 +209,23 @@ def main() -> None:
             current_stage = "download"
 
             try:
-                # \u2500\u2500 2. Download \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+                # ── 2. Download ────────────────────────────────────────────
                 with telemetry.stage("download", dataset=dataset_name, url=url):
                     _download(url, local_path)
 
-                # \u2500\u2500 3. Parse \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+                # ── 3. Parse ───────────────────────────────────────────────
                 current_stage = "parse"
                 with telemetry.stage("parse", dataset=dataset_name, format=fmt):
                     records = _parse(local_path, fmt)
                     logger.info("[parse] %d rows parsed from %s", len(records), dataset_name)
 
-                # \u2500\u2500 4. Spark transform \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+                # ── 4. Spark transform ─────────────────────────────────────
                 current_stage = "transform"
                 with telemetry.stage("transform", dataset=dataset_name, rows_in=len(records)):
                     raw_annotated = _normalize(records, dataset_name, url)
                     curated = _spark_transform(spark, raw_annotated, limit=5000)
 
-                # \u2500\u2500 5. Quality checks \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+                # ── 5. Quality checks ──────────────────────────────────────
                 current_stage = "quality_check"
                 with telemetry.stage("quality_check", dataset=dataset_name):
                     quality_results = run_basic_quality_checks(
@@ -225,7 +243,7 @@ def main() -> None:
                             score=qr.get("score", 0),
                         )
 
-                # \u2500\u2500 6. Load into Elasticsearch \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+                # ── 6. Load into Elasticsearch ─────────────────────────────
                 current_stage = "load_elasticsearch"
                 with telemetry.stage("load_elasticsearch", dataset=dataset_name):
                     writer.write_raw(raw_annotated[:5000])

@@ -1,6 +1,6 @@
 # DataObs POC — Setup & Run Guide
 
-> **Elastic Stack:** 9.3.3 (latest stable, April 2026)
+> **Elastic Stack:** 9.4.0 (latest stable, April 2026)
 > **APM Server:** Built into Elasticsearch 9.x via Elastic Agent — **no separate `apm-server` container**.
 
 This guide gets DataObs running end-to-end locally in **under 10 minutes** using three dedicated files that don't touch the main stack config at all:
@@ -66,40 +66,72 @@ No Python, Java, or Spark installation needed — everything runs inside Docker.
 
 ---
 
-## Step 1 — Copy the env file
+## Step 1 — Use the committed env file
+
+The repo ships `.env.poc` with safe POC defaults — every command in this
+guide uses it directly:
 
 ```bash
-cp .env.poc .env.poc.local
+docker compose -f docker-compose.poc.yml --env-file .env.poc up -d
 ```
 
-The defaults work out of the box. Only edit `.env.poc.local` if you want custom passwords.
+If you want custom passwords or cloud endpoints, copy it to a local
+override (gitignored) **and pass that file instead**:
 
-> ⚠️ `.env.poc.local` is gitignored. Never commit it.
+```bash
+cp .env.poc .env.poc.local           # gitignored, never committed
+# edit .env.poc.local, then run:
+docker compose -f docker-compose.poc.yml --env-file .env.poc.local up -d
+```
+
+> ⚠️ `.env.poc.local` is **optional** and gitignored. If you keep one
+> around from an older checkout, make sure its values match the current
+> `.env.poc` template (e.g. `OTEL_EXPORTER_OTLP_ENDPOINT`,
+> `CADVISOR_PORT`, `OTEL_SERVICE_NAME`). Stale local overrides are the
+> single most common cause of broken POC runs — when in doubt, delete
+> `.env.poc.local` and start from `.env.poc`.
 
 ---
 
 ## Step 2 — Start the infrastructure
 
+The POC boots a **single-node Elasticsearch** instance (`es01`) running ES
+9.4.0 with `discovery.type=single-node`. Single-node mode skips the cluster
+bootstrap check that — on ES 9.x with security enabled — would otherwise
+require transport TLS / certificate setup, which is overkill for a local
+POC. Pipeline, Kibana and Fleet all write to this one node.
+
+> **Production / AWS reference architecture:** multi-node ES (3 master-
+> eligible nodes) is the recommended topology, but it requires
+> `xpack.security.transport.ssl.enabled=true` plus a CA + per-node certs.
+> Use the Helm chart in `helm/` or your AWS OpenSearch domain instead of
+> scaling this compose file out for production.
+
 ```bash
-docker compose -f docker-compose.poc.yml --env-file .env.poc.local \
-  up -d elasticsearch kibana fleet-server elastic-agent otel-collector
+docker compose -f docker-compose.poc.yml --env-file .env.poc \
+  up -d es01 kibana fleet-server elastic-agent otel-collector
 ```
 
 Services start in this order (healthchecks enforce it automatically):
 
 ```
-elasticsearch
-    └─► es-setup (one-shot: sets passwords + Fleet token)
+es01                         (single-node ES, discovery.type=single-node)
+    └─► es-setup             (one-shot: passwords, ILM, index templates)
             ├─► kibana
             └─► fleet-server
-                    └─► elastic-agent  (APM Server on :8200)
+                    └─► elastic-agent  (APM + Fleet OTel agent)
                             └─► otel-collector
 ```
+
+> **Upgrade gotcha:** if you previously ran the POC on Elastic 8.x, 9.3
+> or the multi-node 9.4 variant, the old `es*_data` Docker volumes are
+> incompatible. Wipe them with
+> `docker compose -f docker-compose.poc.yml down -v` before starting.
 
 Wait until all services show **healthy** (~60–90 s on first pull):
 
 ```bash
-docker compose -f docker-compose.poc.yml --env-file .env.poc.local ps
+docker compose -f docker-compose.poc.yml --env-file .env.poc ps
 ```
 
 ---
@@ -107,7 +139,7 @@ docker compose -f docker-compose.poc.yml --env-file .env.poc.local ps
 ## Step 3 — Run the pipeline
 
 ```bash
-docker compose -f docker-compose.poc.yml --env-file .env.poc.local \
+docker compose -f docker-compose.poc.yml --env-file .env.poc \
   run --rm pipeline
 ```
 
@@ -126,12 +158,31 @@ Typical run time: **3–6 minutes**.
 
 ---
 
+## Step 3a — Verify indices, schemas & doc counts
+
+```bash
+ELASTIC_PASSWORD=dataobs_poc_elastic ./scripts/verify_poc.sh
+```
+
+The script prints cluster health, lists nodes, and walks every POC index
+(`dataobs-test-data`, `dataobs-spark-results`, `dataobs-assets`,
+`dataobs-quality`, `dataobs-freshness`, `dataobs-volume`, `dataobs-schema`,
+`dataobs-lineage`, `dataobs-alerts`) showing doc counts and mapped fields.
+
+Equivalent manual check in Kibana → Dev Tools:
+
+```
+GET _cat/indices/dataobs-*?v
+GET dataobs-quality/_search
+GET dataobs-spark-results/_mapping
+```
+
 ## Step 4 — Open Kibana
 
 Navigate to **[http://localhost:5601](http://localhost:5601)**
 
 - **Username:** `elastic`
-- **Password:** value of `ELASTIC_PASSWORD` in `.env.poc.local` (default: `dataobs_poc_secret`)
+- **Password:** value of `ELASTIC_PASSWORD` in `.env.poc` (default: `dataobs_poc_elastic`)
 
 ### Where to look
 
@@ -179,7 +230,7 @@ The `dataobs-poc-pipeline` service appears here with:
 
 ```bash
 # Stop containers and remove all volumes
-docker compose -f docker-compose.poc.yml --env-file .env.poc.local down -v
+docker compose -f docker-compose.poc.yml --env-file .env.poc down -v
 ```
 
 ---
@@ -212,8 +263,10 @@ poc:
 
 ### Point at AWS OpenSearch instead of local ES
 
-In `.env.poc.local`:
+Create `.env.poc.local` with the override (gitignored):
 ```bash
+cp .env.poc .env.poc.local
+# then edit .env.poc.local:
 ELASTICHOST=https://your-domain.eu-west-1.es.amazonaws.com
 ELASTIC_PASSWORD=your-master-password
 ```
@@ -232,8 +285,8 @@ docker compose -f docker-compose.poc.yml --env-file .env.poc.local \
 
 | Service | RAM (approx) |
 |---|---|
-| Elasticsearch 9.3.3 | 1.5 GB |
-| Kibana 9.3.3 | 1 GB |
+| Elasticsearch 9.4.0 | 1.5 GB |
+| Kibana 9.4.0 | 1 GB |
 | Fleet Server | 256 MB |
 | Elastic Agent (APM) | 512 MB |
 | OTel Collector | 256 MB |
@@ -241,3 +294,63 @@ docker compose -f docker-compose.poc.yml --env-file .env.poc.local \
 | **Total** | **~4.5–6 GB** |
 
 > Set Docker Desktop memory to at least **6 GB** in Preferences → Resources.
+
+---
+
+## Troubleshooting
+
+### `dependency failed to start: container dataobs-poc-otel exited (1)`
+
+The OTel collector is the most config-sensitive POC service. When it
+exits with code 1 the dependent `pipeline` run is aborted before any
+data is generated. Always inspect the collector logs first:
+
+```bash
+docker compose -f docker-compose.poc.yml --env-file .env.poc \
+  logs --no-color otel-collector | tail -100
+```
+
+Two regressions have caused exit-1 in the past — both are now covered
+by the static validators (`scripts/validate_poc_compose.sh`,
+`scripts/validate_otel_config.py`) and the
+`tests/test_poc_otel_config.py` test module:
+
+1. **`docker_stats.api_version` parsed as a YAML float.**
+   `api_version: 1.44` looks like a string but YAML interprets it as
+   the number 1.44. The receiver only accepts strings and aborts with
+   `cannot unmarshal !!float \`1.44\` into string`. Always quote the
+   value: `api_version: "1.44"`.
+
+2. **`pipeline.depends_on.otel-collector: service_healthy` against a
+   distroless image.** The `otel/opentelemetry-collector-contrib`
+   image is `FROM scratch` — there is no `sh`, `curl`, or `wget`,
+   so any `CMD-SHELL`-style healthcheck reports unhealthy forever
+   and `service_healthy` blocks indefinitely. The POC therefore uses
+   `condition: service_started` and relies on the OTel SDK's built-in
+   retry/backoff for the brief startup window.
+
+To preflight every POC change locally:
+
+```bash
+bash scripts/validate_poc_compose.sh        # YAML + DNS + OTel lint
+python3 -m pytest tests/test_poc_otel_config.py
+```
+
+### Inspecting other POC components
+
+```bash
+# tail every service together
+docker compose -f docker-compose.poc.yml --env-file .env.poc logs -f
+
+# specific containers
+docker compose -f docker-compose.poc.yml --env-file .env.poc logs es01
+docker compose -f docker-compose.poc.yml --env-file .env.poc logs kibana
+docker compose -f docker-compose.poc.yml --env-file .env.poc logs elastic-agent
+docker compose -f docker-compose.poc.yml --env-file .env.poc logs fleet-server
+
+# health probes from the host (collector binds 0.0.0.0:13133)
+curl -fsS http://localhost:13133/    # OTel health_check extension
+curl -fsS http://localhost:9200      # Elasticsearch
+curl -fsS http://localhost:5601/api/status   # Kibana
+```
+

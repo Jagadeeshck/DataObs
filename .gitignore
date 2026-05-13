@@ -1,6 +1,13 @@
 # ── Secrets and local config ─────────────────────────────────────────────────
-# NEVER commit real credentials or local config overrides
+# NEVER commit real credentials or local config overrides.
+# Committed templates: .env.example, .env.poc (safe POC defaults only).
+# Local overrides (always gitignored):
+#   .env                   — top-level local
+#   .env.local             — top-level local override
+#   .env.*.local           — per-stack local override (e.g. .env.poc.local)
 .env
+.env.local
+.env.*.local
 *.env
 config/dataobs.yaml
 

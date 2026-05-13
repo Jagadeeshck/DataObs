@@ -11,7 +11,7 @@ from __future__ import annotations
 import os
 import re
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import yaml
 
@@ -23,26 +23,34 @@ _DEFAULT_CONFIG_CANDIDATES = (
 _ENV_PATTERN = re.compile(r"\$\{([^}:]+)(?::-([^}]*))?\}")
 
 
+def _env_or_none(*names: str) -> Optional[str]:
+    for name in names:
+        value = os.environ.get(name)
+        if value:
+            return value
+    return None
+
+
 def _expand_env_placeholders(value: str) -> str:
     """Expand shell-style environment placeholders in a config string."""
 
     def replace(match: re.Match[str]) -> str:
         name, default = match.group(1), match.group(2)
-        return os.environ.get(name, default or "")
+        return os.environ.get(name, default if default is not None else "")
 
     return _ENV_PATTERN.sub(replace, value)
 
 
-def _candidate_paths(path: str | None = None) -> list[str]:
+def _candidate_paths(path: Optional[str] = None) -> list[str]:
     if path:
         return [path]
-    env_path = os.environ.get("DATAOBS_CONFIG") or os.environ.get("DATAOBS_POC_CONFIG")
+    env_path = _env_or_none("DATAOBS_CONFIG", "DATAOBS_POC_CONFIG")
     if env_path:
         return [env_path, *_DEFAULT_CONFIG_CANDIDATES]
     return list(_DEFAULT_CONFIG_CANDIDATES)
 
 
-def load_config(path: str | None = None) -> Dict[str, Any]:
+def load_config(path: Optional[str] = None) -> Dict[str, Any]:
     """Load the first available DataObs configuration file."""
     for candidate in _candidate_paths(path):
         if os.path.exists(candidate):
@@ -54,16 +62,17 @@ def load_config(path: str | None = None) -> Dict[str, Any]:
 def _is_standalone_poc_config(cfg: Dict[str, Any]) -> bool:
     """Return True for the dedicated config/dataobs_poc.yaml shape."""
     pipeline = cfg.get("pipeline") or {}
+    otel = cfg.get("otel") or {}
     runner = str(pipeline.get("runner", ""))
     return (
         cfg.get("tenant") == "poc"
         or cfg.get("environment") == "poc"
         or "src.poc" in runner
-        or "dataobs-poc" in str(cfg.get("otel", {})).lower()
+        or "dataobs-poc" in str(otel.get("service_name", "")).lower()
     )
 
 
-def get_poc_config(path: str | None = None) -> Dict[str, Any]:
+def get_poc_config(path: Optional[str] = None) -> Dict[str, Any]:
     """
     Return normalized POC settings.
 

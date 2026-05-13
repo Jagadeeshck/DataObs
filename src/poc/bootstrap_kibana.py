@@ -112,9 +112,15 @@ def main() -> None:
         logger.info("POC mode disabled. Exiting.")
         return
 
-    dash_cfg  = poc_cfg.get("dashboards", {})
-    base_url  = dash_cfg.get("kibana_base_url", "http://localhost:5601")
-    so_file   = dash_cfg.get("load_saved_objects_file", "kibana/dataobs-poc-saved-objects.ndjson")
+    dash_cfg = poc_cfg.get("dashboards", {})
+    kibana_cfg = poc_cfg.get("kibana", {})
+    base_url = (
+        os.environ.get("KIBANA_URL")
+        or dash_cfg.get("kibana_base_url")
+        or kibana_cfg.get("url")
+        or "http://localhost:5601"
+    )
+    so_file = dash_cfg.get("load_saved_objects_file", "kibana/dataobs-poc-saved-objects.ndjson")
     dv_patterns = dash_cfg.get("create_data_views", [
         "dataobs-poc-curated*",
         "dataobs-poc-quality*",

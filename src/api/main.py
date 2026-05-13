@@ -52,6 +52,22 @@ from src.core.enterprise_blueprint import enterprise_backlog
 
 logger = logging.getLogger(__name__)
 
+
+def _active_store() -> Any:
+    """Return the unified store, falling back to legacy test/dev globals."""
+    return _store or _rule_store or _lineage_store
+
+
+def _rules_store() -> Any:
+    """Return the store that owns quality rules."""
+    return _store or _rule_store
+
+
+def _lineage_source() -> Any:
+    """Return the store that owns lineage queries."""
+    return _lineage_store or _store
+
+
 # ---------------------------------------------------------------------------
 # Globals (set once in main(), read by handler)
 # ---------------------------------------------------------------------------
@@ -145,15 +161,15 @@ class DataObsHandler(BaseHTTPRequestHandler):
             return
 
         if path == "/rules":
-            rules = _store.get_all_rules()
+            rules = _rules_store().get_all_rules()
             _send_json(self, 200, {"rules": rules, "count": len(rules)})
 
         elif path == "/lineage/nodes":
-            nodes = _lineage_store.get_all_nodes() if _lineage_store else _store.get_all_nodes()
+            nodes = _lineage_source().get_all_nodes()
             _send_json(self, 200, {"nodes": nodes, "count": len(nodes)})
 
         elif path == "/lineage/edges":
-            edges = _lineage_store.get_all_edges() if _lineage_store else _store.get_all_edges()
+            edges = _lineage_source().get_all_edges()
             _send_json(self, 200, {"edges": edges, "count": len(edges)})
 
         elif path.startswith("/lineage/impact/"):
@@ -161,12 +177,12 @@ class DataObsHandler(BaseHTTPRequestHandler):
             if not node_id:
                 _send_json(self, 400, {"error": "node_id is required"})
                 return
-            src = _lineage_store if _lineage_store else _store
+            src = _lineage_source()
             affected = src.get_downstream_impact(node_id)
             _send_json(self, 200, {"root_node": node_id, "affected": affected, "count": len(affected)})
 
         elif path == "/quality/results":
-            results = _store.list_quality_results()
+            results = _active_store().list_quality_results()
             _send_json(self, 200, {"results": results, "count": len(results)})
 
         elif path == "/strategy/enterprise-backlog":
@@ -187,7 +203,7 @@ class DataObsHandler(BaseHTTPRequestHandler):
         if path == "/rules":
             try:
                 rule = _read_json_body(self)
-                rule_id = _store.add_rule(rule)
+                rule_id = _rules_store().add_rule(rule)
                 _send_json(self, 201, {"rule_id": rule_id, "status": "created"})
             except (json.JSONDecodeError, ValueError) as exc:
                 _send_json(self, 400, {"error": f"Invalid JSON body: {exc}"})
@@ -195,7 +211,7 @@ class DataObsHandler(BaseHTTPRequestHandler):
         elif path == "/quality/results":
             try:
                 result = _read_json_body(self)
-                doc_id = _store.save_quality_result(result)
+                doc_id = _active_store().save_quality_result(result)
                 _send_json(self, 201, {"id": doc_id, "status": "created"})
             except (json.JSONDecodeError, ValueError) as exc:
                 _send_json(self, 400, {"error": f"Invalid JSON body: {exc}"})
@@ -216,7 +232,7 @@ class DataObsHandler(BaseHTTPRequestHandler):
             if not rule_id:
                 _send_json(self, 400, {"error": "rule_id is required"})
                 return
-            deleted = _store.delete_rule(rule_id)
+            deleted = _rules_store().delete_rule(rule_id)
             if deleted:
                 _send_json(self, 200, {"rule_id": rule_id, "status": "deleted"})
             else:

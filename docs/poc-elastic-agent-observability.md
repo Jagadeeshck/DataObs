@@ -58,6 +58,36 @@ with EDOT/OTLP ingestion.
 | Pipeline raw + curated rows | Direct ES bulk index | `dataobs-test-data`, `dataobs-spark-results` | Discover |
 | Data observability docs | `ObservabilityWriter` | `dataobs-{assets,quality,freshness,volume,schema,lineage,alerts}` | Discover |
 
+
+## ECS + OpenTelemetry schema contract
+
+The selected POC path is Elastic-native: Elastic Agent/Fleet integrations
+write host, container, Docker, system and APM data streams that already use
+Elastic Common Schema (ECS). For the DataObs-specific documents written
+directly to Elasticsearch (`dataobs-assets`, `dataobs-quality`,
+`dataobs-freshness`, `dataobs-volume`, `dataobs-schema`, `dataobs-lineage`
+and `dataobs-alerts`), `ObservabilityWriter` adds the same common envelope so
+these records correlate cleanly with Elastic Agent-collected telemetry:
+
+| Contract area | Fields populated | Purpose |
+|---|---|---|
+| ECS versioning | `ecs.version` | Marks records as ECS-shaped events. |
+| Data streams | `data_stream.type`, `data_stream.dataset`, `data_stream.namespace`, `event.dataset` | Keeps custom records aligned with Elastic data stream naming conventions. |
+| Event taxonomy | `event.kind`, `event.category`, `event.type`, `event.module`, `event.provider`, `event.action`, `event.outcome` | Makes checks, freshness, volume, schema, lineage and alert records queryable with standard ECS filters. |
+| Service/resource identity | `service.name`, `service.namespace`, `service.type`, `deployment.environment.name` | Mirrors OpenTelemetry resource semantic conventions and Elastic APM service identity. |
+| Telemetry provenance | `telemetry.sdk.language`, `telemetry.distro.name`, `observer.type` | Documents that pipeline signals come from Python/Elastic APM via the Elastic Agent-hosted APM Server. |
+| Tenant labels | `labels.tenant` plus legacy `tenant` | Provides ECS-style filtering while preserving existing DataObs queries. |
+
+Dataset names use dotted ECS-style values (`dataobs.assets`,
+`dataobs.quality`, `dataobs.freshness`, `dataobs.volume`,
+`dataobs.schema`, `dataobs.lineage`, `dataobs.alerts`). The legacy custom
+fields remain in place for backwards compatibility, but new fields should use
+ECS or OpenTelemetry semantic-convention names where an equivalent exists.
+
+References: [Elastic ECS reference](https://www.elastic.co/docs/reference/ecs/),
+[ECS data stream fields](https://www.elastic.co/docs/reference/ecs/ecs-data_stream),
+and [OpenTelemetry resource semantic conventions](https://opentelemetry.io/docs/specs/semconv/resource/).
+
 ## Why we removed the standalone OTel Collector from the default path
 
 Repeated local runs hit the same failure mode:
@@ -167,7 +197,7 @@ client = elasticapm.Client({
     "SERVER_URL": "http://elastic-agent:8200",  # default Docker URL
     "SECRET_TOKEN": os.environ["APM_SECRET_TOKEN"],
     "ENVIRONMENT": "poc",
-    "GLOBAL_LABELS": "service.namespace=dataobs,deployment.environment=poc",
+    "GLOBAL_LABELS": "service.namespace=dataobs,deployment.environment.name=poc",
 })
 ```
 

@@ -60,7 +60,8 @@ otel:
   service_name: "${OTEL_SERVICE_NAME:-dataobs-pipeline}"
   # Resource attributes propagated to all signals
   resource_attributes:
-    deployment.environment: poc
+    # OTel semantic convention names. Elastic exporter/APM maps these to ECS.
+    deployment.environment.name: poc
     service.namespace: dataobs
     telemetry.source: dataobs-poc
 

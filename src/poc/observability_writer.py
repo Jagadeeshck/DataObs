@@ -27,6 +27,11 @@ from elasticsearch import Elasticsearch, helpers
 
 logger = logging.getLogger(__name__)
 
+_ECS_VERSION = "8.17.0"
+_SERVICE_NAME = "dataobs-poc-pipeline"
+_SERVICE_NAMESPACE = "dataobs"
+_SERVICE_TYPE = "data-pipeline"
+
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -35,6 +40,41 @@ def _now() -> str:
 def _hash_schema(columns: List[Dict[str, str]]) -> str:
     payload = "|".join(f"{c['name']}:{c['type']}" for c in sorted(columns, key=lambda c: c["name"]))
     return hashlib.sha1(payload.encode("utf-8")).hexdigest()[:16]
+
+
+def _ecs_envelope(
+    *,
+    dataset: str,
+    tenant: str,
+    event_action: str,
+    event_type: str = "info",
+    event_outcome: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Return ECS + OTel semantic-convention metadata for custom docs."""
+    doc: Dict[str, Any] = {
+        "ecs.version": _ECS_VERSION,
+        "data_stream.type": "logs",
+        "data_stream.dataset": dataset,
+        "data_stream.namespace": tenant,
+        "event.kind": "event",
+        "event.category": ["database"],
+        "event.type": [event_type],
+        "event.dataset": dataset,
+        "event.module": "dataobs",
+        "event.provider": "dataobs-poc",
+        "event.action": event_action,
+        "service.name": _SERVICE_NAME,
+        "service.namespace": _SERVICE_NAMESPACE,
+        "service.type": _SERVICE_TYPE,
+        "deployment.environment.name": tenant,
+        "telemetry.sdk.language": "python",
+        "telemetry.distro.name": "elastic-apm-python",
+        "observer.type": "apm-server",
+        "labels.tenant": tenant,
+    }
+    if event_outcome:
+        doc["event.outcome"] = event_outcome
+    return doc
 
 
 class ObservabilityWriter:
@@ -84,7 +124,11 @@ class ObservabilityWriter:
         size_bytes: int = 0,
         reliability_score: float = 100.0,
     ) -> None:
-        doc = {
+        doc = _ecs_envelope(
+            dataset="dataobs.assets",
+            tenant=self.tenant,
+            event_action="asset.register",
+        ) | {
             "@timestamp": _now(),
             "asset.id": asset_id,
             "asset.name": name,
@@ -119,7 +163,13 @@ class ObservabilityWriter:
         score: Optional[float] = None,
         message: str = "",
     ) -> None:
-        doc = {
+        doc = _ecs_envelope(
+            dataset="dataobs.quality",
+            tenant=self.tenant,
+            event_action=f"quality.{check_type}",
+            event_type="info" if status == "pass" else "error",
+            event_outcome="success" if status == "pass" else "failure",
+        ) | {
             "@timestamp": _now(),
             "run_id": run_id,
             "tenant": self.tenant,
@@ -158,7 +208,13 @@ class ObservabilityWriter:
         sla_seconds: int,
     ) -> None:
         status = "ok" if lag_seconds <= sla_seconds else "stale"
-        doc = {
+        doc = _ecs_envelope(
+            dataset="dataobs.freshness",
+            tenant=self.tenant,
+            event_action="freshness.evaluate",
+            event_type="info" if status == "ok" else "error",
+            event_outcome="success" if status == "ok" else "failure",
+        ) | {
             "@timestamp": _now(),
             "asset.id": asset_id,
             "asset.name": asset_name,
@@ -196,7 +252,13 @@ class ObservabilityWriter:
         delta_pct = 0.0
         if expected_max > 0:
             delta_pct = round((row_count - expected_max) / expected_max * 100.0, 2)
-        doc = {
+        doc = _ecs_envelope(
+            dataset="dataobs.volume",
+            tenant=self.tenant,
+            event_action="volume.evaluate",
+            event_type="info" if status == "ok" else "error",
+            event_outcome="success" if status == "ok" else "failure",
+        ) | {
             "@timestamp": _now(),
             "asset.id": asset_id,
             "asset.name": asset_name,
@@ -237,7 +299,13 @@ class ObservabilityWriter:
         removed: List[str] = []
         if previous_hash and previous_hash != h:
             drift = "drift_detected"
-        doc = {
+        doc = _ecs_envelope(
+            dataset="dataobs.schema",
+            tenant=self.tenant,
+            event_action="schema.snapshot",
+            event_type="info" if drift == "stable" else "change",
+            event_outcome="success" if drift == "stable" else "failure",
+        ) | {
             "@timestamp": _now(),
             "asset.id": asset_id,
             "asset.name": asset_name,
@@ -272,10 +340,18 @@ class ObservabilityWriter:
         row_count: int = 0,
         fields: Optional[List[Dict[str, str]]] = None,
     ) -> None:
-        doc = {
+        doc = _ecs_envelope(
+            dataset="dataobs.lineage",
+            tenant=self.tenant,
+            event_action=f"lineage.{relation}",
+            event_type="info",
+            event_outcome="success",
+        ) | {
             "@timestamp": _now(),
             "run_id": run_id,
             "tenant": self.tenant,
+            "lineage.source": source,
+            "lineage.target": target,
             "source": source,
             "target": target,
             "source_index": source,
@@ -299,7 +375,13 @@ class ObservabilityWriter:
         asset_name: str,
         details: Dict[str, Any],
     ) -> None:
-        doc = {
+        doc = _ecs_envelope(
+            dataset="dataobs.alerts",
+            tenant=self.tenant,
+            event_action=f"alert.{rule}",
+            event_type="error",
+            event_outcome="failure",
+        ) | {
             "@timestamp": _now(),
             "alert.id": f"{source}-{rule}-{int(time.time() * 1000)}",
             "alert.title": title,

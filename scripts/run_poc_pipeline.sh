@@ -18,8 +18,8 @@ echo " DataObs POC Pipeline"
 echo "════════════════════════════════════════════"
 
 echo ""
-echo "[1/2] Running Spark pipeline..."
-python -m src.poc.spark_job
+echo "[1/2] Running resilient POC pipeline..."
+python -m src.poc.pipeline_runner
 
 echo ""
 echo "[2/2] Bootstrapping Kibana saved objects & data views..."

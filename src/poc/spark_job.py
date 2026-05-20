@@ -30,6 +30,7 @@ import io
 import json
 import logging
 import os
+from urllib.parse import urlparse
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List
@@ -63,12 +64,18 @@ def _build_spark(master: str):
 
 
 def _download(url: str, target: Path, timeout: int = 120) -> None:
-    resp = requests.get(url, timeout=timeout, stream=True)
-    resp.raise_for_status()
-    with open(target, "wb") as fh:
-        for chunk in resp.iter_content(chunk_size=65536):
-            fh.write(chunk)
-    logger.info("[download] Saved %s bytes \u2192 %s", target.stat().st_size, target)
+    parsed = urlparse(url)
+    if parsed.scheme == "file":
+        target.write_bytes(Path(parsed.path).read_bytes())
+    elif parsed.scheme in {"", "local"} and Path(url).exists():
+        target.write_bytes(Path(url).read_bytes())
+    else:
+        resp = requests.get(url, timeout=timeout, stream=True)
+        resp.raise_for_status()
+        with open(target, "wb") as fh:
+            for chunk in resp.iter_content(chunk_size=65536):
+                fh.write(chunk)
+    logger.info("[download] Saved %s bytes → %s", target.stat().st_size, target)
 
 
 def _parse(path: Path, fmt: str) -> List[Dict[str, Any]]:

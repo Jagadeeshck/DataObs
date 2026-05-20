@@ -34,7 +34,9 @@ import logging
 import re
 import time
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Dict, Generator, Iterable, Iterator, List, Optional, Tuple
+from urllib.parse import urlparse
 
 import requests
 from elasticsearch import Elasticsearch, helpers
@@ -98,8 +100,14 @@ def _infer_mapping(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
 
 
 def _download(url: str, timeout: int = 120) -> bytes:
-    """Stream-download a URL, logging progress every 10 MB."""
+    """Stream-download a URL (or read fixture file:// URI)."""
     logger.info("[etl] Downloading %s", url)
+    parsed = urlparse(url)
+    if parsed.scheme == "file":
+        return Path(parsed.path).read_bytes()
+    if parsed.scheme in {"", "local"} and Path(url).exists():
+        return Path(url).read_bytes()
+
     buf = io.BytesIO()
     resp = requests.get(url, stream=True, timeout=timeout,
                         headers={"User-Agent": "DataObs-POC/1.0"})

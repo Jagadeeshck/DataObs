@@ -109,7 +109,7 @@ POC. Pipeline, Kibana and Fleet all write to this one node.
 
 ```bash
 docker compose -f docker-compose.poc.yml --env-file .env.poc \
-  up -d es01 kibana fleet-server elastic-agent otel-collector
+  up -d es01 kibana fleet-server elastic-agent
 ```
 
 Services start in this order (healthchecks enforce it automatically):
@@ -150,9 +150,8 @@ The pipeline runs once and exits. It will:
 3. **Parse & transform** with PySpark (`local[*]`)
 4. **Quality-check** each dataset (null %, duplicates, row count, schema)
 5. **Index** raw, curated, quality, and lineage docs into Elasticsearch
-6. **Emit OTel traces** → OTel Collector → Elastic Agent APM (Kibana APM UI)
-7. **Emit OTel metrics/logs** → OTel Collector → Elasticsearch directly
-8. **Bootstrap** Kibana data views and 3 pre-built dashboards
+6. **Emit APM traces/metrics** via Elastic Agent-managed APM (default path)
+7. **Bootstrap** Kibana data views and pre-built dashboards
 
 Typical run time: **3–6 minutes**.
 
@@ -225,6 +224,17 @@ The `dataobs-poc-pipeline` service appears here with:
 | `logs-apm*` | APM log correlation |
 
 ---
+
+
+## Optional OTel collector profile
+
+The default demo path **does not require** `otel-collector`.
+
+Use collector mode only when needed:
+
+```bash
+docker compose -f docker-compose.poc.yml --env-file .env.poc --profile otel up -d
+```
 
 ## Tear down
 
@@ -301,9 +311,7 @@ docker compose -f docker-compose.poc.yml --env-file .env.poc.local \
 
 ### `dependency failed to start: container dataobs-poc-otel exited (1)`
 
-The OTel collector is the most config-sensitive POC service. When it
-exits with code 1 the dependent `pipeline` run is aborted before any
-data is generated. Always inspect the collector logs first:
+The optional OTel collector profile is only needed when you explicitly run with `--profile otel`.
 
 ```bash
 docker compose -f docker-compose.poc.yml --env-file .env.poc \

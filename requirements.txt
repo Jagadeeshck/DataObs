@@ -36,3 +36,4 @@ pyyaml>=6.0,<7.0
 
 # HTTP client used by tests and integration helpers
 requests>=2.31,<3.0
+httpx>=0.27,<1.0

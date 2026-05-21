@@ -26,6 +26,12 @@ INDICES=(
   "dataobs-schema"
   "dataobs-lineage"
   "dataobs-alerts"
+  "dataobs-spark-metrics"
+  "dataobs-rs-accident-facts"
+  "dataobs-rs-authority-risk-summary"
+  "dataobs-rs-road-risk-summary"
+  "dataobs-rs-vehicle-risk-summary"
+  "dataobs-rs-casualty-severity-summary"
 )
 
 # OTel-fed indices (may be data streams) — counted but not required to pass.

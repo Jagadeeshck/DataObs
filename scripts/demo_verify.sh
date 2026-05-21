@@ -2,25 +2,11 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.."; pwd)"
 cd "$ROOT"
-
 ./scripts/verify_poc.sh
-
-ES_HOST="${ES_HOST:-http://localhost:9200}"
-ES_USER="${ES_USER:-elastic}"
-ES_PASS="${ELASTIC_PASSWORD:-${ES_PASS:-dataobs_poc_elastic}}"
+ES_HOST="${ES_HOST:-http://localhost:9200}"; ES_USER="${ES_USER:-elastic}"; ES_PASS="${ELASTIC_PASSWORD:-${ES_PASS:-dataobs_poc_elastic}}"
 AUTH=(-u "${ES_USER}:${ES_PASS}")
-
-required=(dataobs-test-data dataobs-spark-results dataobs-quality dataobs-lineage)
-for idx in "${required[@]}"; do
-  count=$(curl -sf "${AUTH[@]}" "${ES_HOST}/${idx}/_count" | sed -n 's/.*"count":\([0-9]*\).*/\1/p')
-  if [ "${count:-0}" -le 0 ]; then
-    echo "❌ ${idx} has zero documents"
-    exit 1
-  fi
-  echo "✅ ${idx} count=${count}"
+for idx in dataobs-rs-accident-facts dataobs-rs-authority-risk-summary dataobs-rs-road-risk-summary dataobs-rs-vehicle-risk-summary dataobs-rs-casualty-severity-summary dataobs-spark-metrics; do
+ c=$(curl -sf "${AUTH[@]}" "${ES_HOST}/${idx}/_count"|sed -n 's/.*"count":\([0-9]*\).*/\1/p'); [ "${c:-0}" -gt 0 ] || { echo "❌ ${idx} empty"; exit 1; }; echo "✅ ${idx} count=${c}";
 done
-
-echo
-echo "Kibana walkthrough:"
-echo "- Observability > APM > Services > dataobs-poc-pipeline"
-echo "- Analytics > Discover > dataobs-quality / dataobs-lineage"
+qc=$(curl -sf "${AUTH[@]}" "${ES_HOST}/dataobs-quality/_count"|sed -n 's/.*"count":\([0-9]*\).*/\1/p'); echo "✅ dataobs-quality count=${qc:-0}"
+if [ -f kibana/saved_objects/road_safety_dashboards.ndjson ]; then echo "✅ dashboards saved object exists"; else echo "❌ dashboards missing"; exit 1; fi

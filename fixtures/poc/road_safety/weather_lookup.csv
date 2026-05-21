@@ -1,0 +1,5 @@
+weather_code,weather_description,weather_risk_category
+W1,Fine no high winds,LOW
+W2,Raining no high winds,MEDIUM
+W3,Snowing no high winds,HIGH
+W4,Fog or mist,MEDIUM

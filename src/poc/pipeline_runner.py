@@ -634,6 +634,41 @@ class DataObsPipelineRunner:
         self._bootstrap_telemetry()
         self._pipeline_start = time.time()
         summary: Dict[str, Any] = {"run_id": self.run_id, "tenant": self.tenant}
+        scenario = os.environ.get("DATAOBS_DEMO_SCENARIO", "").strip().lower()
+        if scenario == "road_safety":
+            from pathlib import Path
+            from src.poc.scenarios.road_safety.generator import generate_scaled
+            from src.poc.scenarios.road_safety.pipeline import run_road_safety_scenario
+            scale = os.environ.get("DATAOBS_DEMO_SCALE", "small").lower()
+            run_mode = os.environ.get("DATAOBS_DEMO_RUN_MODE", "good").lower()
+            seed_dir = Path("fixtures/poc/road_safety")
+            data_dir = Path("/tmp/dataobs/tmp/road_safety") / f"{self.run_id}-{scale}"
+            generated = generate_scaled(seed_dir, data_dir, scale=scale)
+            result = run_road_safety_scenario(data_dir, self.run_id, run_mode=run_mode)
+            if isinstance(self._resolve_sink(), ElasticsearchPipelineSink):
+                from elasticsearch import Elasticsearch
+                es = Elasticsearch(ES_HOST, basic_auth=(ES_USER, ES_PASS), verify_certs=False)
+                for index, docs in result["outputs"].items():
+                    for d in docs:
+                        es.index(index=index, document=d)
+                for q in result["quality"]:
+                    es.index(index="dataobs-quality", document=q)
+                    if q["status"] != "pass":
+                        es.index(index="dataobs-alerts", document={"run_id": self.run_id, "source": "quality", "severity": "high", "check_name": q["check_name"], "@timestamp": _utc_now()})
+                        es.index(index="dataobs-schema", document={"run_id": self.run_id, "status": "drift", "check_name": q["check_name"], "@timestamp": _utc_now()})
+                        es.index(index="dataobs-volume", document={"run_id": self.run_id, "status": "anomaly", "check_name": q["check_name"], "@timestamp": _utc_now()})
+                        es.index(index="dataobs-freshness", document={"run_id": self.run_id, "status": "stale", "check_name": q["check_name"], "@timestamp": _utc_now()})
+                for m in result["spark_metrics"]:
+                    es.index(index="dataobs-spark-metrics", document=m)
+                es.index(index="dataobs-lineage", document={"run_id": self.run_id, "source": "road_safety_raw", "target": "dataobs-rs-accident-facts", "relation": "transformation", "@timestamp": _utc_now()})
+            summary["scenario"] = "road_safety"
+            summary["scale"] = scale
+            summary["run_mode"] = run_mode
+            summary["generated_files"] = {k: str(v) for k, v in generated.items()}
+            summary["duration_seconds"] = round(time.time() - self._pipeline_start, 3)
+            self.last_summary = summary
+            self._shutdown_telemetry()
+            return summary
 
         try:
             with self._apm.transaction(

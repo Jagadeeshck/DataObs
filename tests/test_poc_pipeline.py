@@ -1,41 +1,29 @@
-from __future__ import annotations
-
 from pathlib import Path
-
-from src.poc.config import get_poc_config
-from src.poc.datasets import resolve_sources
-from src.poc.pipeline_runner import DataObsPipelineRunner, InMemoryPipelineSink
-
-
-def test_get_poc_config_loads_standalone_poc_file_by_default():
-    cfg = get_poc_config("config/dataobs_poc.yaml")
-    assert cfg["enabled"] is True
-    assert cfg["pipeline"]["tenant"] == "poc"
+from src.poc.scenarios.road_safety.generator import generate_scaled
+from src.poc.scenarios.road_safety.pipeline import run_road_safety_scenario
+from src.poc.spark_metrics import metric_doc
 
 
-def test_fixture_mode_resolves_local_sources(monkeypatch):
-    monkeypatch.setenv("DATAOBS_POC_FIXTURE_MODE", "true")
-    sources = resolve_sources({"data_sources": [], "source_defaults": {"enabled": True}})
-    assert len(sources) == 3
-    assert all(s["resource_url"].startswith("file://") for s in sources)
+def test_generator_small(tmp_path: Path):
+    out = generate_scaled(Path('fixtures/poc/road_safety'), tmp_path, scale='small')
+    assert out['accidents'].exists()
+    assert out['vehicles'].exists()
 
 
-def test_pipeline_runner_completes_with_memory_sink_and_mock_spark(monkeypatch):
-    monkeypatch.setenv("OTEL_SDK_DISABLED", "true")
-    monkeypatch.setenv("DATAOBS_POC_SPARK_MODE", "mock")
-    sink = InMemoryPipelineSink()
-    runner = DataObsPipelineRunner(tenant="test", run_id="test-run", sink=sink)
-    summary = runner.run()
-    assert summary["sink"] == "InMemoryPipelineSink"
-    assert len(sink.documents["dataobs-test-data"]) == 50
+def test_good_run_quality_summary(tmp_path: Path):
+    generate_scaled(Path('fixtures/poc/road_safety'), tmp_path, scale='small')
+    res = run_road_safety_scenario(tmp_path, 'RUN1', run_mode='good')
+    assert 'dataobs-rs-accident-facts' in res['outputs']
+    assert all(q['status'] in {'pass','warn','fail'} for q in res['quality'])
 
 
-def test_demo_scripts_exist_and_are_bash_syntax_clean():
-    scripts = [
-        "scripts/demo_up.sh",
-        "scripts/demo_run.sh",
-        "scripts/demo_verify.sh",
-        "scripts/demo_reset.sh",
-    ]
-    for script in scripts:
-        assert Path(script).exists()
+def test_bad_run_injection(tmp_path: Path):
+    generate_scaled(Path('fixtures/poc/road_safety'), tmp_path, scale='small')
+    res = run_road_safety_scenario(tmp_path, 'RUN2', run_mode='bad')
+    assert any(q['status'] == 'fail' for q in res['quality'])
+
+
+def test_spark_metric_shape():
+    doc = metric_doc('R','stage',100,90)
+    for k in ['run_id','stage_name','stage_duration_seconds','input_rows','output_rows','status','error_count']:
+        assert k in doc

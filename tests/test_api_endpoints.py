@@ -25,17 +25,6 @@ class _FakeRuleStore:
         return self.rules.pop(rule_id, None) is not None
 
 
-class _FakeLineageStore:
-    def get_all_nodes(self) -> List[Dict[str, Any]]:
-        return [{"node_id": "rds.prod.orders", "type": "table"}]
-
-    def get_all_edges(self) -> List[Dict[str, Any]]:
-        return [{"source_node_id": "rds.prod.orders", "target_node_id": "rds.prod.reports"}]
-
-    def get_downstream_impact(self, node_id: str, depth: int = 5) -> List[str]:
-        return ["rds.prod.reports"] if node_id == "rds.prod.orders" else []
-
-
 class _FakeActiveStore(_FakeRuleStore):
     def __init__(self) -> None:
         super().__init__()
@@ -49,13 +38,22 @@ class _FakeActiveStore(_FakeRuleStore):
     def list_quality_results(self) -> List[Dict[str, Any]]:
         return list(self.results.values())
 
+    def get_all_nodes(self) -> List[Dict[str, Any]]:
+        return [{"node_id": "rds.prod.orders", "type": "table"}]
+
+    def get_all_edges(self) -> List[Dict[str, Any]]:
+        return [{"source_node_id": "rds.prod.orders", "target_node_id": "rds.prod.reports"}]
+
+    def get_downstream_impact(self, node_id: str, depth: int = 5) -> List[str]:
+        return ["rds.prod.reports"] if node_id == "rds.prod.orders" else []
+
 
 @pytest.fixture()
 def client() -> TestClient:
     store = _FakeActiveStore()
     app = create_app(
         settings=APISettings(api_token=None, store_backend="memory"),
-        store_bundle=StoreBundle(store=store, lineage_store=_FakeLineageStore()),
+        store_bundle=StoreBundle(store=store),
     )
     return TestClient(app)
 
@@ -65,7 +63,7 @@ def client_with_auth() -> TestClient:
     store = _FakeActiveStore()
     app = create_app(
         settings=APISettings(api_token="test-secret-token", store_backend="memory"),
-        store_bundle=StoreBundle(store=store, lineage_store=_FakeLineageStore()),
+        store_bundle=StoreBundle(store=store),
     )
     return TestClient(app)
 

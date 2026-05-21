@@ -200,6 +200,24 @@ class TestLineage:
         store._es.get.side_effect = NotFoundError(404, {}, {})
         assert store.get_lineage_node("missing") is None
 
+    def test_save_lineage_edge_persists_with_tenant(self):
+        store = _make_store(tenant_id="tenant-x")
+        store._es.index.return_value = {}
+        edge_id = store.save_lineage_edge({"source_node_id": "a", "target_node_id": "b"})
+        assert isinstance(edge_id, str) and len(edge_id) > 0
+        doc = store._es.index.call_args.kwargs["document"]
+        assert doc["tenant_id"] == "tenant-x"
+        assert doc["doc_type"] == "edge"
+
+    def test_get_all_edges_applies_tenant_filter(self):
+        store = _make_store(tenant_id="acme")
+        store._es.search.return_value = {"hits": {"hits": []}}
+        store.get_all_edges()
+        query = store._es.search.call_args.kwargs["query"]
+        must_terms = [c["term"] for c in query["bool"]["must"] if "term" in c]
+        assert {"tenant_id": "acme"} in must_terms
+        assert {"doc_type": "edge"} in must_terms
+
 
 # ---------------------------------------------------------------------------
 # Factory — get_store()
@@ -273,3 +291,13 @@ class TestInMemoryStore:
         a, b = InMemoryStore(), InMemoryStore()
         a.save_rule({"rule_id": "r1", "dataset": "d"})
         assert b.get_all_rules() == []
+
+    def test_lineage_edges_and_downstream_bfs(self):
+        s = self._store()
+        s.save_lineage_node({"node_id": "a"})
+        s.save_lineage_node({"node_id": "b"})
+        s.save_lineage_node({"node_id": "c"})
+        s.save_lineage_edge({"source_node_id": "a", "target_node_id": "b"})
+        s.save_lineage_edge({"source_node_id": "b", "target_node_id": "c"})
+        assert len(s.get_all_edges()) == 2
+        assert s.get_downstream_impact("a", depth=5) == ["b", "c"]

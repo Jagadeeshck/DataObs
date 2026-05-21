@@ -25,6 +25,14 @@ from src.poc.apm import ApmTelemetry, build_default_apm
 
 logger = logging.getLogger(__name__)
 
+REQUIRED_ROAD_SAFETY_INDICES = {
+    "dataobs-rs-accident-facts",
+    "dataobs-rs-authority-risk-summary",
+    "dataobs-rs-road-risk-summary",
+    "dataobs-rs-vehicle-risk-summary",
+    "dataobs-rs-casualty-severity-summary",
+}
+
 
 def _env_or_default(*names: str, default: str) -> str:
     for name in names:
@@ -81,6 +89,15 @@ def _otel_sdk_enabled() -> bool:
 
 def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _ensure_scenario_fields(doc: Dict[str, Any], run_id: str, run_mode: str) -> Dict[str, Any]:
+    out = dict(doc)
+    out.setdefault("@timestamp", _utc_now())
+    out["run_id"] = run_id
+    out["run_mode"] = run_mode
+    out["scenario"] = "road_safety"
+    return out
 
 
 class PipelineSink(Protocol):
@@ -641,26 +658,46 @@ class DataObsPipelineRunner:
             from src.poc.scenarios.road_safety.pipeline import run_road_safety_scenario
             scale = os.environ.get("DATAOBS_DEMO_SCALE", "small").lower()
             run_mode = os.environ.get("DATAOBS_DEMO_RUN_MODE", "good").lower()
+            logger.info("[Pipeline][road_safety] DATAOBS_DEMO_SCENARIO=%s", scenario)
+            logger.info("[Pipeline][road_safety] DATAOBS_DEMO_RUN_MODE=%s", run_mode)
+            logger.info("[Pipeline][road_safety] DATAOBS_DEMO_SCALE=%s", scale)
             seed_dir = Path("fixtures/poc/road_safety")
             data_dir = Path("/tmp/dataobs/tmp/road_safety") / f"{self.run_id}-{scale}"
             generated = generate_scaled(seed_dir, data_dir, scale=scale)
+            logger.info("[Pipeline][road_safety] Generated fixture files: %s", {k: str(v) for k, v in generated.items()})
             result = run_road_safety_scenario(data_dir, self.run_id, run_mode=run_mode)
+
+            outputs = result.get("outputs", {})
+            missing = sorted(REQUIRED_ROAD_SAFETY_INDICES - set(outputs.keys()))
+            if missing:
+                raise RuntimeError(f"Road safety scenario missing required output indices: {missing}")
+            empty = sorted([name for name, docs in outputs.items() if not docs])
+            if empty:
+                raise RuntimeError(f"Road safety scenario returned empty outputs for indices: {empty}")
+            if not result.get("spark_metrics"):
+                raise RuntimeError("Road safety scenario returned no spark_metrics")
+
+            output_counts = {name: len(docs) for name, docs in outputs.items()}
+            logger.info("[Pipeline][road_safety] Output index counts: %s", output_counts)
+            logger.info("[Pipeline][road_safety] Spark metrics count: %s", len(result["spark_metrics"]))
+
             if isinstance(self._resolve_sink(), ElasticsearchPipelineSink):
                 from elasticsearch import Elasticsearch
                 es = Elasticsearch(ES_HOST, basic_auth=(ES_USER, ES_PASS), verify_certs=False)
-                for index, docs in result["outputs"].items():
+                for index, docs in outputs.items():
                     for d in docs:
-                        es.index(index=index, document=d)
+                        es.index(index=index, document=_ensure_scenario_fields(d, self.run_id, run_mode))
                 for q in result["quality"]:
-                    es.index(index="dataobs-quality", document=q)
+                    q_doc = _ensure_scenario_fields(q, self.run_id, run_mode)
+                    es.index(index="dataobs-quality", document=q_doc)
                     if q["status"] != "pass":
-                        es.index(index="dataobs-alerts", document={"run_id": self.run_id, "source": "quality", "severity": "high", "check_name": q["check_name"], "@timestamp": _utc_now()})
-                        es.index(index="dataobs-schema", document={"run_id": self.run_id, "status": "drift", "check_name": q["check_name"], "@timestamp": _utc_now()})
-                        es.index(index="dataobs-volume", document={"run_id": self.run_id, "status": "anomaly", "check_name": q["check_name"], "@timestamp": _utc_now()})
-                        es.index(index="dataobs-freshness", document={"run_id": self.run_id, "status": "stale", "check_name": q["check_name"], "@timestamp": _utc_now()})
+                        es.index(index="dataobs-alerts", document=_ensure_scenario_fields({"source": "quality", "severity": "high", "check_name": q["check_name"]}, self.run_id, run_mode))
+                        es.index(index="dataobs-schema", document=_ensure_scenario_fields({"status": "drift", "check_name": q["check_name"]}, self.run_id, run_mode))
+                        es.index(index="dataobs-volume", document=_ensure_scenario_fields({"status": "anomaly", "check_name": q["check_name"]}, self.run_id, run_mode))
+                        es.index(index="dataobs-freshness", document=_ensure_scenario_fields({"status": "stale", "check_name": q["check_name"]}, self.run_id, run_mode))
                 for m in result["spark_metrics"]:
-                    es.index(index="dataobs-spark-metrics", document=m)
-                es.index(index="dataobs-lineage", document={"run_id": self.run_id, "source": "road_safety_raw", "target": "dataobs-rs-accident-facts", "relation": "transformation", "@timestamp": _utc_now()})
+                    es.index(index="dataobs-spark-metrics", document=_ensure_scenario_fields(m, self.run_id, run_mode))
+                es.index(index="dataobs-lineage", document=_ensure_scenario_fields({"source": "road_safety_raw", "target": "dataobs-rs-accident-facts", "relation": "transformation"}, self.run_id, run_mode))
             summary["scenario"] = "road_safety"
             summary["scale"] = scale
             summary["run_mode"] = run_mode

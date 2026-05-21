@@ -28,14 +28,14 @@ def run_road_safety_scenario(data_dir: Path, run_id: str, run_mode: str = "good"
         if not a or not v: continue
         dt=datetime.fromisoformat(a["accident_date"])
         age=int(c["casualty_age"]) if c["casualty_age"].lstrip("-").isdigit() else -1
-        facts.append({"run_id":run_id,"accident_id":a["accident_id"],"accident_month":dt.month,"accident_year":dt.year,
+        facts.append({"@timestamp": datetime.now(timezone.utc).isoformat(),"run_id":run_id,"run_mode":run_mode,"scenario":"road_safety","accident_id":a["accident_id"],"accident_month":dt.month,"accident_year":dt.year,
             "severity_label":SEVERITY.get(a["severity_code"],"Unknown"),"casualty_age_band":"0-17" if age<18 else "18-64" if age<65 else "65+",
             "road_risk_category":"HIGH" if a["road_type"] in {"Roundabout","One way street"} else "MEDIUM",
             "weather_risk_category":w.get(a["weather_code"],{}).get("weather_risk_category","UNKNOWN"),
             "local_authority_name":la.get(a.get("local_authority_code",""),{}).get("local_authority_name","Unknown"),"vehicle_type":v.get("vehicle_type","Unknown")})
     sev=Counter(f["severity_label"] for f in facts)
     checks=[]
-    def add(name,status,details): checks.append({"run_id":run_id,"check_name":name,"status":status,"details":details,"@timestamp":datetime.now(timezone.utc).isoformat()})
+    def add(name,status,details): checks.append({"@timestamp": datetime.now(timezone.utc).isoformat(),"run_id":run_id,"run_mode":run_mode,"scenario":"road_safety","check_name":name,"status":status,"details":details,"@timestamp":datetime.now(timezone.utc).isoformat()})
     add("duplicate_accident_ids","fail" if len({a['accident_id'] for a in accidents})<len(accidents) else "pass",{})
     add("invalid_severity_codes","fail" if any(a["severity_code"] not in SEVERITY for a in accidents) else "pass",{})
     add("invalid_age_values","fail" if any((not c["casualty_age"].lstrip('-').isdigit()) or int(c["casualty_age"])<0 or int(c["casualty_age"])>110 for c in casualties) else "pass",{})
@@ -44,9 +44,9 @@ def run_road_safety_scenario(data_dir: Path, run_id: str, run_mode: str = "good"
     add("volume_threshold","fail" if run_mode=="bad" else "pass", {"rows":len(accidents)})
     add("severity_distribution_drift","fail" if sev.get("Fatal",0) > max(1,len(facts)*0.4) else "pass", dict(sev))
     outputs={"dataobs-rs-accident-facts":facts,
-      "dataobs-rs-authority-risk-summary":[{"run_id":run_id,"local_authority_name":k,"incident_count":v} for k,v in Counter(f["local_authority_name"] for f in facts).items()],
-      "dataobs-rs-road-risk-summary":[{"run_id":run_id,"road_risk_category":k,"incident_count":v} for k,v in Counter(f["road_risk_category"] for f in facts).items()],
-      "dataobs-rs-vehicle-risk-summary":[{"run_id":run_id,"vehicle_type":k,"incident_count":v} for k,v in Counter(f["vehicle_type"] for f in facts).items()],
-      "dataobs-rs-casualty-severity-summary":[{"run_id":run_id,"severity_label":k,"incident_count":v} for k,v in sev.items()]}
+      "dataobs-rs-authority-risk-summary":[{"@timestamp": datetime.now(timezone.utc).isoformat(),"run_id":run_id,"run_mode":run_mode,"scenario":"road_safety","local_authority_name":k,"incident_count":v} for k,v in Counter(f["local_authority_name"] for f in facts).items()],
+      "dataobs-rs-road-risk-summary":[{"@timestamp": datetime.now(timezone.utc).isoformat(),"run_id":run_id,"run_mode":run_mode,"scenario":"road_safety","road_risk_category":k,"incident_count":v} for k,v in Counter(f["road_risk_category"] for f in facts).items()],
+      "dataobs-rs-vehicle-risk-summary":[{"@timestamp": datetime.now(timezone.utc).isoformat(),"run_id":run_id,"run_mode":run_mode,"scenario":"road_safety","vehicle_type":k,"incident_count":v} for k,v in Counter(f["vehicle_type"] for f in facts).items()],
+      "dataobs-rs-casualty-severity-summary":[{"@timestamp": datetime.now(timezone.utc).isoformat(),"run_id":run_id,"run_mode":run_mode,"scenario":"road_safety","severity_label":k,"incident_count":v} for k,v in sev.items()]}
     spark=[metric_doc(run_id,"road_safety_transform",len(casualties),len(facts),"success",0)]
     return {"outputs":outputs,"quality":checks,"spark_metrics":spark}

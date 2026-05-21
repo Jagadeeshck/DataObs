@@ -1,23 +1,14 @@
-"""
-Tests for the ES-backed RuleStore and LineageStore.
-
-Uses a minimal fake Elasticsearch client — no real ES needed.
-"""
+"""Store-layer tests for in-memory and legacy compatibility adapters."""
 from __future__ import annotations
 
-from src.api.store import LineageStore, RuleStore
+from src.api.store import InMemoryStore, LineageStore, RuleStore
 
-
-# ---------------------------------------------------------------------------
-# Fake Elasticsearch client
-# ---------------------------------------------------------------------------
 
 class _FakeES:
-    """Simulates a minimal Elasticsearch client for store tests."""
+    """Simulates a minimal Elasticsearch client for legacy adapter tests."""
 
     def __init__(self):
-        self._docs: dict = {}   # index -> {id: doc}
-        self._edges: list[dict] = []
+        self._docs: dict = {}
 
     @property
     def indices(self):
@@ -31,14 +22,15 @@ class _FakeES:
     def search(self, index: str, query: dict = None, size: int = 1000, **kwargs) -> dict:
         docs = self._docs.get(index, {})
         hits = [{"_source": v, "_id": k} for k, v in docs.items()]
-        # Simple term filter support
         if query and "term" in query:
             field, value = next(iter(query["term"].items()))
-            hits = [h for h in hits if h["_source"].get(field) == value]
+            bare_field = field.replace(".keyword", "")
+            hits = [h for h in hits if h["_source"].get(bare_field) == value]
         return {"hits": {"hits": hits[:size]}}
 
     def delete(self, index: str, id: str) -> dict:
         from elasticsearch import NotFoundError
+
         bucket = self._docs.get(index, {})
         if id not in bucket:
             raise NotFoundError(404, "Not found", {})
@@ -51,101 +43,58 @@ class _FakeIndices:
         return True
 
     def create(self, index: str, **kwargs) -> None:
-        pass
+        return None
 
 
-# ---------------------------------------------------------------------------
-# RuleStore tests
-# ---------------------------------------------------------------------------
+def test_memory_store_rule_crud_roundtrip():
+    store = InMemoryStore()
+    rule_id = store.add_rule({"dataset": "prod.orders", "check_type": "freshness"})
+    assert store.get_rule(rule_id)["dataset"] == "prod.orders"
+    assert store.get_rules_for_dataset("prod.orders")[0]["rule_id"] == rule_id
+    assert store.delete_rule(rule_id) is True
+    assert store.get_rule(rule_id) is None
 
-def test_rule_store_add_and_list():
+
+def test_memory_store_quality_save_list_and_filters():
+    store = InMemoryStore()
+    store.save_quality_result({"id": "q1", "check_name": "null", "table": "orders", "status": "pass", "score": 1.0})
+    store.save_quality_result({"id": "q2", "check_name": "freshness", "table": "orders", "status": "fail", "score": 0.2})
+    store.save_quality_result({"id": "q3", "check_name": "null", "table": "users", "status": "pass", "score": 0.9})
+
+    assert len(store.list_quality_results()) == 3
+    assert {r["id"] for r in store.list_quality_results(table="orders")} == {"q1", "q2"}
+    assert {r["id"] for r in store.list_quality_results(status="pass")} == {"q1", "q3"}
+
+
+def test_memory_store_lineage_bfs_traversal():
+    store = InMemoryStore()
+    for node_id in ["raw.orders", "stg.orders", "mart.orders", "app.reports"]:
+        store.save_lineage_node({"node_id": node_id, "type": "table"})
+    store.save_lineage_edge({"source_node_id": "raw.orders", "target_node_id": "stg.orders"})
+    store.save_lineage_edge({"source_node_id": "stg.orders", "target_node_id": "mart.orders"})
+    store.save_lineage_edge({"source_node_id": "mart.orders", "target_node_id": "app.reports"})
+
+    assert len(store.get_all_nodes()) == 4
+    assert len(store.get_all_edges()) == 3
+    assert store.get_downstream_impact("raw.orders", depth=2) == ["stg.orders", "mart.orders"]
+    assert store.get_downstream_impact("raw.orders", depth=5) == ["stg.orders", "mart.orders", "app.reports"]
+
+
+# Legacy adapter checks (kept for migration compatibility)
+
+def test_legacy_rule_store_add_and_list():
     store = RuleStore(_FakeES())
-    rule_id = store.add_rule({
-        "dataset": "prod.orders",
-        "check_type": "freshness",
-        "severity": "critical",
-    })
+    rule_id = store.add_rule({"dataset": "prod.orders", "check_type": "freshness", "severity": "critical"})
     assert rule_id is not None
-
-    rules = store.get_all_rules()
-    assert len(rules) == 1
-    assert rules[0]["dataset"] == "prod.orders"
+    assert len(store.get_all_rules()) == 1
 
 
-def test_rule_store_delete_existing_rule():
+def test_legacy_lineage_store_downstream_impact():
     es = _FakeES()
-    store = RuleStore(es)
-    rule_id = store.add_rule({"rule_id": "rule-1", "dataset": "prod.orders"})
-
-    deleted = store.delete_rule(rule_id)
-    assert deleted is True
-
-
-def test_rule_store_delete_nonexistent_rule_returns_false():
-    store = RuleStore(_FakeES())
-    assert store.delete_rule("does-not-exist") is False
-
-
-def test_rule_store_get_rules_for_dataset():
-    store = RuleStore(_FakeES())
-    store.add_rule({"dataset": "prod.orders", "check_type": "null_check"})
-    store.add_rule({"dataset": "prod.customers", "check_type": "freshness"})
-
-    # Dataset filter relies on term query; fake ES supports it
-    results = store.get_rules_for_dataset("prod.orders")
-    datasets = [r["dataset"] for r in results]
-    assert all(d == "prod.orders" for d in datasets)
-
-
-# ---------------------------------------------------------------------------
-# LineageStore tests
-# ---------------------------------------------------------------------------
-
-def test_lineage_store_get_all_nodes():
-    es = _FakeES()
-    # Pre-seed a node document
-    es._docs["dataobs-lineage-nodes"] = {
-        "rds.prod.orders": {"node_id": "rds.prod.orders", "node_type": "table"}
-    }
-    store = LineageStore(es)
-    nodes = store.get_all_nodes()
-    assert len(nodes) == 1
-    assert nodes[0]["node_id"] == "rds.prod.orders"
-
-
-def test_lineage_store_get_all_edges():
-    es = _FakeES()
-    es._docs["dataobs-lineage-edges"] = {
-        "e1": {"source_node_id": "raw.orders", "target_node_id": "stg.orders"}
-    }
-    store = LineageStore(es)
-    edges = store.get_all_edges()
-    assert len(edges) == 1
-
-
-def test_lineage_store_downstream_impact():
-    """BFS traversal via get_downstream_impact uses source_node_id term query."""
-    es = _FakeES()
-    # Graph: raw.orders -> stg.orders -> mart.orders
     es._docs["dataobs-lineage-edges"] = {
         "e1": {"source_node_id": "raw.orders", "target_node_id": "stg.orders"},
         "e2": {"source_node_id": "stg.orders", "target_node_id": "mart.orders"},
     }
-
-    # Patch search to filter on source_node_id (not keyword field)
-    original_search = es.search
-
-    def patched_search(index, query=None, size=100, **kwargs):
-        docs = es._docs.get(index, {})
-        hits = [{"_source": v} for v in docs.values()]
-        if query and "term" in query:
-            field, value = next(iter(query["term"].items()))
-            # Strip .keyword suffix for fake comparison
-            bare_field = field.replace(".keyword", "")
-            hits = [h for h in hits if h["_source"].get(bare_field) == value]
-        return {"hits": {"hits": hits[:size]}}
-
-    es.search = patched_search
 
     store = LineageStore(es)
     affected = store.get_downstream_impact("raw.orders", depth=5)

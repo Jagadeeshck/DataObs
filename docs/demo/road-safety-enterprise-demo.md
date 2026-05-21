@@ -49,3 +49,6 @@
 - `DATAOBS_POC_FIXTURE_MODE=true`
 
 Large scale is synthetic and generated locally in `/tmp/dataobs/tmp/road_safety`, so 5GB-10GB is opt-in without committing large files.
+
+## Dashboard walkthrough update
+The saved objects now provide production-style Lens-heavy dashboards. Verify all five dashboards render populated KPI/cards/charts after running a good then bad scenario run.

@@ -80,6 +80,8 @@ def import_saved_objects(base_url: str, saved_objects_path: Path, auth: HTTPBasi
     success_count = result.get("successCount", 0)
     errors = result.get("errors", [])
     logger.info("[kibana] Import response success=%s count=%d file=%s", success, success_count, saved_objects_path)
+    if not success:
+        raise RuntimeError(f"Kibana saved object import failed: {result}")
     if errors:
         for err in errors:
             logger.error("[kibana] import error: %s", err)

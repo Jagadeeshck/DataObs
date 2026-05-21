@@ -56,3 +56,6 @@ Use live mode only when needed; public URLs may change or disappear.
 ./scripts/demo_run.sh good small live
 ```
 If a source URL is unavailable, the pipeline now skips that source with a warning.
+
+## Dashboard first look
+Use `scripts/demo_verify.sh` and open the five Kibana dashboards; each now includes multiple Lens KPI/chart/table panels (not markdown-only placeholders).

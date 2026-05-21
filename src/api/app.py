@@ -7,7 +7,6 @@ FastAPI, Pydantic models, and explicit dependency injection.
 from __future__ import annotations
 
 import logging
-import os
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
@@ -20,6 +19,7 @@ from pydantic import BaseModel, ConfigDict
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from src.api.store import StoreProtocol, get_store
+from src.config.settings import AppSettings, load_settings
 from src.core.enterprise_blueprint import enterprise_backlog
 
 logger = logging.getLogger(__name__)
@@ -32,25 +32,7 @@ class DataObsModel(BaseModel):
     model_config = ConfigDict(extra="allow")
 
 
-class APISettings(BaseModel):
-    """Runtime settings loaded from environment or injected by tests."""
-
-    api_token: Optional[str] = None
-    host: str = "0.0.0.0"
-    port: int = 8080
-    store_backend: str = "memory"
-    tenant_id: str = "default"
-    elasticsearch_url: str = "http://localhost:9200"
-    elasticsearch_user: str = "elastic"
-    elasticsearch_password: str = ""
-    log_level: str = "INFO"
-    allow_unauthenticated_dev: bool = True
-
-    @property
-    def auth_mode(self) -> str:
-        if self.api_token:
-            return "bearer"
-        return "development-unauthenticated" if self.allow_unauthenticated_dev else "required"
+APISettings = AppSettings
 
 
 class HealthResponse(BaseModel):
@@ -138,28 +120,14 @@ class StoreBundle:
 
 
 def settings_from_env() -> APISettings:
-    """Load API settings from environment variables."""
-    return APISettings(
-        api_token=os.getenv("API_TOKEN") or None,
-        host=os.getenv("API_HOST", "0.0.0.0"),
-        port=int(os.getenv("API_PORT", "8080")),
-        store_backend=os.getenv("DATAOBS_STORE_BACKEND", "memory"),
-        tenant_id=os.getenv("DATAOBS_TENANT_ID", "default"),
-        elasticsearch_url=os.getenv("ELASTICSEARCH_URL", "http://localhost:9200"),
-        elasticsearch_user=os.getenv("ELASTICSEARCH_USER", "elastic"),
-        elasticsearch_password=os.getenv("ELASTICSEARCH_PASSWORD", ""),
-        log_level=os.getenv("LOG_LEVEL", "INFO"),
-        allow_unauthenticated_dev=(
-            os.getenv("DATAOBS_ALLOW_UNAUTHENTICATED_DEV", "true").lower()
-            in {"1", "true", "yes", "on"}
-        ),
-    )
+    """Load API settings from the unified typed settings layer."""
+    return load_settings()
 
 
 def make_es_client(settings: APISettings) -> Elasticsearch:
     return Elasticsearch(
-        [settings.elasticsearch_url],
-        basic_auth=(settings.elasticsearch_user, settings.elasticsearch_password),
+        [settings.elasticsearch.url],
+        basic_auth=(settings.elasticsearch.user, settings.elasticsearch.password),
         request_timeout=30,
     )
 
@@ -193,7 +161,7 @@ def create_app(
     resolved_bundle = store_bundle or create_store_bundle(resolved_settings)
 
     if resolved_settings.api_token is None:
-        if not resolved_settings.allow_unauthenticated_dev:
+        if not resolved_settings.auth.allow_unauthenticated_dev:
             logger.warning("API_TOKEN is not set and unauthenticated dev mode is disabled.")
         else:
             logger.warning(
@@ -229,7 +197,7 @@ def create_app(
         authorization: str | None = Header(default=None),
     ) -> None:
         if settings.api_token is None:
-            if settings.allow_unauthenticated_dev:
+            if settings.auth.allow_unauthenticated_dev:
                 return
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,

@@ -597,3 +597,7 @@ All PRs must pass the full CI pipeline (validate → test → build) before merg
 ## License
 
 This project is licensed under the [MIT License](LICENSE).
+
+
+## Configuration
+See `docs/production/configuration.md` for mode-aware and production-safe settings.

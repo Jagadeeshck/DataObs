@@ -139,6 +139,43 @@ class TestParseDataset:
         assert rows[0]["x"] == "1"
 
 
+class TestParseCsvEdgeCases:
+    def test_extra_values_beyond_headers(self):
+        from src.poc.etl import _parse_csv
+        raw = b"a,b\n1,2,3,4\n"
+        headers, rows = _parse_csv(raw)
+        assert headers == ["a", "b"]
+        assert rows[0]["extra_field_1"] == "3"
+        assert rows[0]["extra_field_2"] == "4"
+
+    def test_blank_and_duplicate_headers_deduped(self):
+        from src.poc.etl import _parse_csv
+        raw = b"field,,field\n1,2,3\n"
+        headers, rows = _parse_csv(raw)
+        assert headers == ["field", "field_2", "field_3"]
+        assert rows[0]["field_2"] == "2"
+
+    def test_skips_empty_rows(self):
+        from src.poc.etl import _parse_csv
+        raw = b"a,b\n,\n1,2\n"
+        _, rows = _parse_csv(raw)
+        assert len(rows) == 1
+        assert rows[0]["a"] == "1"
+
+    def test_safe_field_none_and_non_string(self):
+        from src.poc.etl import _safe_field
+        assert _safe_field(None) == "unknown_field"
+        assert _safe_field(123) == "123"
+
+    def test_malformed_recoverable_rows(self):
+        from src.poc.etl import _parse_csv
+        raw = b"name,age\nAlice,30,extra\nBob,31\n"
+        headers, rows = _parse_csv(raw)
+        assert headers == ["name", "age"]
+        assert rows[0]["extra_field_1"] == "extra"
+        assert rows[1]["name"] == "Bob"
+
+
 class TestEnrich:
     def test_envelope_fields_added(self):
         from src.poc.etl import _enrich

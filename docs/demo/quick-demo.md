@@ -7,7 +7,7 @@
 
 ## 2) Run the pipeline (say: "Fixture mode keeps this demo offline-stable")
 ```bash
-./scripts/demo_run.sh good
+./scripts/demo_run.sh good small
 ```
 
 ## 3) Verify output and Kibana dashboard import
@@ -47,4 +47,12 @@
 - In Spark dashboard, show failed or slow stages.
 
 ## Road Safety enterprise POC
-See `docs/demo/road-safety-enterprise-demo.md` and run `./scripts/demo_run.sh good|bad [small|medium|large]`.
+See `docs/demo/road-safety-enterprise-demo.md` and run `./scripts/demo_run.sh good small|bad [small|medium|large]`.
+
+
+## Live public-data mode (best-effort)
+Use live mode only when needed; public URLs may change or disappear.
+```bash
+./scripts/demo_run.sh good small live
+```
+If a source URL is unavailable, the pipeline now skips that source with a warning.

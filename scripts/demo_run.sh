@@ -4,12 +4,17 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.."; pwd)"
 cd "$ROOT"
 RUN_MODE="${1:-good}"
 SCALE="${2:-small}"
+MODE="${3:-fixture}"
 export DATAOBS_POC_SINK=elasticsearch
-export DATAOBS_POC_FIXTURE_MODE="${DATAOBS_POC_FIXTURE_MODE:-true}"
+if [[ "$MODE" == "live" ]]; then
+  export DATAOBS_POC_FIXTURE_MODE=false
+else
+  export DATAOBS_POC_FIXTURE_MODE="${DATAOBS_POC_FIXTURE_MODE:-true}"
+fi
 export DATAOBS_DEMO_SCENARIO=road_safety
 export DATAOBS_DEMO_RUN_MODE="$RUN_MODE"
 export DATAOBS_DEMO_SCALE="$SCALE"
-echo "[demo_run] scenario=$DATAOBS_DEMO_SCENARIO run_mode=$RUN_MODE scale=$SCALE"
+echo "[demo_run] scenario=$DATAOBS_DEMO_SCENARIO run_mode=$RUN_MODE scale=$SCALE mode=$MODE fixture_mode=$DATAOBS_POC_FIXTURE_MODE"
 docker compose -f docker-compose.poc.yml --env-file .env.poc run --rm pipeline
 cat <<EOF
 

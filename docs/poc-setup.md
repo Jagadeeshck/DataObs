@@ -145,8 +145,8 @@ docker compose -f docker-compose.poc.yml --env-file .env.poc \
 
 The pipeline runs once and exits. It will:
 
-1. **Discover** 3 public datasets from data.gov.uk via CKAN API
-2. **Download** each CSV/JSON file
+1. **Resolve sources** (recommended default is local fixtures for demos)
+2. **Download** each CSV/JSON file (live public-data mode is best-effort)
 3. **Parse & transform** with PySpark (`local[*]`)
 4. **Quality-check** each dataset (null %, duplicates, row count, schema)
 5. **Index** raw, curated, quality, and lineage docs into Elasticsearch
@@ -362,3 +362,14 @@ curl -fsS http://localhost:9200      # Elasticsearch
 curl -fsS http://localhost:5601/api/status   # Kibana
 ```
 
+
+
+## Demo source modes
+- **Fixture mode (recommended for demos):** stable and offline-friendly.
+  ```bash
+  ./scripts/demo_run.sh good small
+  ```
+- **Live public-data mode (best-effort):** validates URLs and skips bad sources gracefully.
+  ```bash
+  ./scripts/demo_run.sh good small live
+  ```

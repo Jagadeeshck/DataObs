@@ -71,12 +71,18 @@ def _infer_type(values: List[str]) -> str:
     return "keyword" if avg_len <= 128 else "text"
 
 
-def _safe_field(name: str) -> str:
-    """Sanitise a CSV header to a valid ES field name."""
-    name = name.strip()
-    name = re.sub(r"[^a-zA-Z0-9_]", "_", name)
-    name = re.sub(r"_+", "_", name).strip("_").lower()
-    return name or "field"
+def _safe_field(name: Any) -> str:
+    """Sanitise a header/key to a valid ES field name."""
+    if name is None:
+        raw_name = "unknown_field"
+    elif isinstance(name, str):
+        raw_name = name
+    else:
+        raw_name = str(name)
+    clean = raw_name.strip()
+    clean = re.sub(r"[^a-zA-Z0-9_]", "_", clean)
+    clean = re.sub(r"_+", "_", clean).strip("_").lower()
+    return clean or "field"
 
 
 def _infer_mapping(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -132,6 +138,17 @@ def _detect_encoding(raw: bytes) -> str:
         return "utf-8"
 
 
+def _dedupe_headers(headers: List[Any]) -> List[str]:
+    counts: Dict[str, int] = {}
+    out: List[str] = []
+    for header in headers:
+        base = _safe_field(header)
+        count = counts.get(base, 0) + 1
+        counts[base] = count
+        out.append(base if count == 1 else f"{base}_{count}")
+    return out
+
+
 def _parse_csv(raw: bytes, max_rows: int = 50_000) -> Tuple[List[str], List[Dict[str, Any]]]:
     """Parse CSV bytes → (headers, rows-as-dicts)."""
     enc = _detect_encoding(raw)
@@ -139,14 +156,51 @@ def _parse_csv(raw: bytes, max_rows: int = 50_000) -> Tuple[List[str], List[Dict
     reader = csv.DictReader(io.StringIO(text))
     if reader.fieldnames is None:
         return [], []
-    headers = [_safe_field(h) for h in reader.fieldnames]
+
+    original_headers = list(reader.fieldnames)
+    headers = _dedupe_headers(original_headers)
+    header_map: Dict[Any, List[str]] = {}
+    for idx, raw in enumerate(original_headers):
+        header_map.setdefault(raw, []).append(headers[idx])
     rows: List[Dict[str, Any]] = []
+    malformed_count = 0
+
     for i, row in enumerate(reader):
         if i >= max_rows:
             logger.warning("[etl] Truncating at %d rows (max_rows limit)", max_rows)
             break
-        cleaned = {_safe_field(k): (v.strip() if v else None) for k, v in row.items()}
-        rows.append(cleaned)
+
+        cleaned: Dict[str, Any] = {}
+        extra_values: List[Any] = []
+        key_seen: Dict[Any, int] = {}
+        for key, value in row.items():
+            if key is None:
+                if isinstance(value, list):
+                    extra_values.extend(value)
+                elif value is not None:
+                    extra_values.append(value)
+                continue
+
+            mapped_keys = header_map.get(key) or [_safe_field(key)]
+            key_seen[key] = key_seen.get(key, 0) + 1
+            pos = min(key_seen[key] - 1, len(mapped_keys) - 1)
+            cleaned_key = mapped_keys[pos]
+            cleaned[cleaned_key] = value.strip() if isinstance(value, str) else value
+
+        for n, extra in enumerate(extra_values, start=1):
+            cleaned[f"extra_field_{n}"] = extra.strip() if isinstance(extra, str) else extra
+
+        if extra_values:
+            malformed_count += 1
+            if malformed_count <= 3 or malformed_count % 100 == 0:
+                logger.warning("[etl] Malformed CSV row %d: %d extra values captured", i + 1, len(extra_values))
+
+        if any(v not in (None, "") for v in cleaned.values()):
+            rows.append(cleaned)
+
+    if malformed_count:
+        logger.info("[etl] Recovered %d malformed CSV rows with extra columns", malformed_count)
+
     return headers, rows
 
 

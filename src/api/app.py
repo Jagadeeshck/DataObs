@@ -19,7 +19,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, ConfigDict
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from src.api.store import LineageStore, RuleStore, get_store
+from src.api.store import StoreProtocol, get_store
 from src.core.enterprise_blueprint import enterprise_backlog
 
 logger = logging.getLogger(__name__)
@@ -134,21 +134,7 @@ class EnterpriseBacklogResponse(BaseModel):
 class StoreBundle:
     """Injected store handles used by route dependencies."""
 
-    store: Any
-    rule_store: Any | None = None
-    lineage_store: Any | None = None
-
-    @property
-    def active_store(self) -> Any:
-        return self.store or self.rule_store or self.lineage_store
-
-    @property
-    def rules_store(self) -> Any:
-        return self.store or self.rule_store
-
-    @property
-    def lineage_source(self) -> Any:
-        return self.lineage_store or self.store
+    store: StoreProtocol
 
 
 def settings_from_env() -> APISettings:
@@ -184,12 +170,7 @@ def create_store_bundle(settings: APISettings) -> StoreBundle:
     if settings.store_backend.lower() == "elasticsearch":
         es_client = make_es_client(settings)
         store = get_store(es_client=es_client, tenant_id=settings.tenant_id)
-        # Keep the legacy lineage facade for data written by LineageTracker.
-        return StoreBundle(
-            store=store,
-            rule_store=RuleStore(es_client),
-            lineage_store=LineageStore(es_client),
-        )
+        return StoreBundle(store=store)
 
     store = get_store(es_client=None, tenant_id=settings.tenant_id)
     return StoreBundle(store=store)
@@ -306,43 +287,43 @@ def create_app(
 
     @app.get("/rules", response_model=RulesResponse, dependencies=[Depends(require_auth)])
     async def get_rules(stores: StoreBundle = Depends(get_stores)) -> Dict[str, Any]:
-        rules = stores.rules_store.get_all_rules()
+        rules = stores.store.get_all_rules()
         return {"rules": rules, "count": len(rules)}
 
     @app.post("/rules", status_code=201, response_model=RuleCreateResponse, dependencies=[Depends(require_auth)])
     async def create_rule(rule: RuleRequest, stores: StoreBundle = Depends(get_stores)) -> Dict[str, Any]:
-        rule_id = stores.rules_store.add_rule(_as_dict(rule))
+        rule_id = stores.store.add_rule(_as_dict(rule))
         return {"rule_id": rule_id, "status": "created"}
 
     @app.delete("/rules/{rule_id}", response_model=RuleDeleteResponse, dependencies=[Depends(require_auth)])
     async def delete_rule(rule_id: str, stores: StoreBundle = Depends(get_stores)) -> Dict[str, Any]:
         if not rule_id:
             raise HTTPException(status_code=400, detail="rule_id is required")
-        deleted = stores.rules_store.delete_rule(rule_id)
+        deleted = stores.store.delete_rule(rule_id)
         if not deleted:
             raise HTTPException(status_code=404, detail=f"Rule '{rule_id}' not found")
         return {"rule_id": rule_id, "status": "deleted"}
 
     @app.get("/lineage/nodes", response_model=LineageNodesResponse, dependencies=[Depends(require_auth)])
     async def get_lineage_nodes(stores: StoreBundle = Depends(get_stores)) -> Dict[str, Any]:
-        nodes = stores.lineage_source.get_all_nodes()
+        nodes = stores.store.get_all_nodes()
         return {"nodes": nodes, "count": len(nodes)}
 
     @app.get("/lineage/edges", response_model=LineageEdgesResponse, dependencies=[Depends(require_auth)])
     async def get_lineage_edges(stores: StoreBundle = Depends(get_stores)) -> Dict[str, Any]:
-        edges = stores.lineage_source.get_all_edges()
+        edges = stores.store.get_all_edges()
         return {"edges": edges, "count": len(edges)}
 
     @app.get("/lineage/impact/{node_id:path}", response_model=LineageImpactResponse, dependencies=[Depends(require_auth)])
     async def get_lineage_impact(node_id: str, stores: StoreBundle = Depends(get_stores)) -> Dict[str, Any]:
         if not node_id:
             raise HTTPException(status_code=400, detail="node_id is required")
-        affected = stores.lineage_source.get_downstream_impact(node_id)
+        affected = stores.store.get_downstream_impact(node_id)
         return {"root_node": node_id, "affected": affected, "count": len(affected)}
 
     @app.get("/quality/results", response_model=QualityResultsResponse, dependencies=[Depends(require_auth)])
     async def get_quality_results(stores: StoreBundle = Depends(get_stores)) -> Dict[str, Any]:
-        results = stores.active_store.list_quality_results()
+        results = stores.store.list_quality_results()
         return {"results": results, "count": len(results)}
 
     @app.post(
@@ -355,7 +336,7 @@ def create_app(
         result: QualityResultRequest,
         stores: StoreBundle = Depends(get_stores),
     ) -> Dict[str, Any]:
-        doc_id = stores.active_store.save_quality_result(_as_dict(result))
+        doc_id = stores.store.save_quality_result(_as_dict(result))
         return {"id": doc_id, "status": "created"}
 
     @app.get("/strategy/enterprise-backlog", response_model=EnterpriseBacklogResponse, dependencies=[Depends(require_auth)])

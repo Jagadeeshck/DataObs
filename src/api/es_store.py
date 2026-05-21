@@ -262,6 +262,7 @@ class ElasticsearchStore:
             **node,
             "node_id":    node_id,
             "tenant_id":  self._tenant,
+            "doc_type": "node",
             "@timestamp": _now_iso(),
         }
         self._es.index(
@@ -285,13 +286,73 @@ class ElasticsearchStore:
         try:
             resp = self._es.search(
                 index=self._li,
-                query={"term": {"tenant_id": self._tenant}},
+                query={"bool": {"must": [
+                    {"term": {"tenant_id": self._tenant}},
+                    {"term": {"doc_type": "node"}},
+                ]}},
                 size=1000,
             )
             return [h["_source"] for h in resp["hits"]["hits"]]
         except Exception:
             logger.exception("Failed to fetch lineage nodes")
             return []
+
+    def save_lineage_edge(self, edge: Dict[str, Any]) -> str:
+        edge_id = edge.get("edge_id") or f"{edge.get('source_node_id', '')}->{edge.get('target_node_id', '')}" or str(uuid.uuid4())
+        doc = {
+            **edge,
+            "edge_id": edge_id,
+            "tenant_id": self._tenant,
+            "doc_type": "edge",
+            "@timestamp": _now_iso(),
+        }
+        self._es.index(index=self._li, id=f"edge::{edge_id}", document=doc, refresh="wait_for")
+        return edge_id
+
+    def get_all_edges(self) -> List[Dict[str, Any]]:
+        try:
+            resp = self._es.search(
+                index=self._li,
+                query={"bool": {"must": [
+                    {"term": {"tenant_id": self._tenant}},
+                    {"term": {"doc_type": "edge"}},
+                ]}},
+                size=1000,
+            )
+            return [h["_source"] for h in resp["hits"]["hits"]]
+        except Exception:
+            logger.exception("Failed to fetch lineage edges")
+            return []
+
+    def get_downstream_impact(self, node_id: str, depth: int = 5) -> List[str]:
+        visited = {node_id}
+        queue = [node_id]
+        affected: List[str] = []
+        current_depth = 0
+        while queue and current_depth < depth:
+            next_queue: List[str] = []
+            for current_node in queue:
+                try:
+                    resp = self._es.search(
+                        index=self._li,
+                        query={"bool": {"must": [
+                            {"term": {"tenant_id": self._tenant}},
+                            {"term": {"doc_type": "edge"}},
+                            {"term": {"source_node_id": current_node}},
+                        ]}},
+                        size=1000,
+                    )
+                    for hit in resp["hits"]["hits"]:
+                        target = hit["_source"].get("target_node_id")
+                        if target and target not in visited:
+                            visited.add(target)
+                            affected.append(target)
+                            next_queue.append(target)
+                except Exception:
+                    logger.exception("Failed during downstream impact traversal")
+            queue = next_queue
+            current_depth += 1
+        return affected
 
 
 # ---------------------------------------------------------------------------
@@ -363,7 +424,11 @@ def _lineage_mapping() -> Dict[str, Any]:
     return {
         "properties": {
             "@timestamp":  {"type": "date"},
+            "doc_type":    {"type": "keyword"},
             "node_id":     {"type": "keyword"},
+            "edge_id":     {"type": "keyword"},
+            "source_node_id": {"type": "keyword"},
+            "target_node_id": {"type": "keyword"},
             "tenant_id":   {"type": "keyword"},
             "type":        {"type": "keyword"},
             "upstream":    {"type": "keyword"},

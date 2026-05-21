@@ -53,3 +53,36 @@ Run the full suite before opening a pull request when dependencies and external 
 ```bash
 pytest
 ```
+
+## API store layer (FastAPI)
+
+The API now uses one primary persistence contract (`StoreProtocol` in `src/api/store.py`) for both local memory mode and Elasticsearch mode.
+
+### Backends
+
+- `DATAOBS_STORE_BACKEND=memory` (default): uses `InMemoryStore`.
+- `DATAOBS_STORE_BACKEND=elasticsearch`: uses `ElasticsearchStore`.
+
+### Memory mode behavior
+
+- In-process only; state resets on restart.
+- Supports quality results, rule CRUD, lineage nodes, lineage edges, and downstream impact traversal (BFS).
+
+### Elasticsearch mode behavior
+
+- Stores quality results, rules, lineage nodes, and lineage edges in tenant-scoped indices.
+- Reads and writes always include tenant guards to prevent cross-tenant reads.
+- Lineage graph model stores both nodes (`doc_type=node`) and edges (`doc_type=edge`) in the lineage index for each tenant.
+
+### Tenant isolation
+
+- Tenant is resolved from `DATAOBS_TENANT_ID`.
+- Queries include `tenant_id` filters and use tenant-specific index names:
+  - `dataobs-quality-results-<tenant>`
+  - `dataobs-rules-<tenant>`
+  - `dataobs-lineage-<tenant>`
+
+### Legacy compatibility notes
+
+- `RuleStore` and `LineageStore` remain in `src/api/store.py` as compatibility adapters for legacy call sites and shared legacy indices.
+- FastAPI route dependencies now use the unified store contract as the primary path.

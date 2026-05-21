@@ -6,7 +6,8 @@ from typing import Any, Dict, List
 import pytest
 from fastapi.testclient import TestClient
 
-from src.api.app import APISettings, StoreBundle, create_app
+from src.api.app import StoreBundle, create_app
+from src.config.settings import APISettings, AppSettings, AuthSettings, ElasticsearchSettings, ObservabilitySettings, RuntimeSettings, TenantSettings
 
 
 class _FakeRuleStore:
@@ -52,7 +53,7 @@ class _FakeActiveStore(_FakeRuleStore):
 def client() -> TestClient:
     store = _FakeActiveStore()
     app = create_app(
-        settings=APISettings(api_token=None, store_backend="memory"),
+        settings=AppSettings(runtime=RuntimeSettings(env="test"), api=APISettings(), elasticsearch=ElasticsearchSettings(), auth=AuthSettings(api_token=None), tenant=TenantSettings(), observability=ObservabilitySettings(), store_backend="memory"),
         store_bundle=StoreBundle(store=store),
     )
     return TestClient(app)
@@ -62,7 +63,7 @@ def client() -> TestClient:
 def client_with_auth() -> TestClient:
     store = _FakeActiveStore()
     app = create_app(
-        settings=APISettings(api_token="test-secret-token", store_backend="memory"),
+        settings=AppSettings(runtime=RuntimeSettings(env="test"), api=APISettings(), elasticsearch=ElasticsearchSettings(), auth=AuthSettings(api_token="test-secret-token", allow_unauthenticated_dev=False), tenant=TenantSettings(), observability=ObservabilitySettings(), store_backend="memory"),
         store_bundle=StoreBundle(store=store),
     )
     return TestClient(app)

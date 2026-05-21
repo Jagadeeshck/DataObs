@@ -161,8 +161,13 @@ class ElasticsearchStore:
     def list_quality_results(
         self,
         limit: int = 100,
+        offset: int = 0,
         table: Optional[str] = None,
         status: Optional[str] = None,
+        dataset: Optional[str] = None,
+        check_type: Optional[str] = None,
+        severity: Optional[str] = None,
+        run_id: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """List quality results, optionally filtered by table and/or status."""
         must: List[Dict[str, Any]] = [{"term": {"tenant_id": self._tenant}}]
@@ -170,12 +175,21 @@ class ElasticsearchStore:
             must.append({"term": {"table": table}})
         if status:
             must.append({"term": {"status": status}})
+        if dataset:
+            must.append({"term": {"dataset": dataset}})
+        if check_type:
+            must.append({"term": {"check_type": check_type}})
+        if severity:
+            must.append({"term": {"severity": severity}})
+        if run_id:
+            must.append({"term": {"run_id": run_id}})
         try:
             resp = self._es.search(
                 index=self._qi,
                 query={"bool": {"must": must}},
                 sort=[{"@timestamp": "desc"}],
                 size=limit,
+                from_=offset,
             )
             return [h["_source"] for h in resp["hits"]["hits"]]
         except Exception:
@@ -215,14 +229,24 @@ class ElasticsearchStore:
             logger.exception("Failed to fetch rule '%s'", rule_id)
             return None
 
-    def get_all_rules(self) -> List[Dict[str, Any]]:
+    def get_all_rules(self, limit: int = 100, offset: int = 0, dataset: Optional[str] = None, enabled: Optional[bool] = None, severity: Optional[str] = None, check_type: Optional[str] = None) -> List[Dict[str, Any]]:
         """Return all rules for this tenant, ordered by dataset."""
         try:
+            must: List[Dict[str, Any]] = [{"term": {"tenant_id": self._tenant}}]
+            if dataset is not None:
+                must.append({"term": {"dataset": dataset}})
+            if enabled is not None:
+                must.append({"term": {"enabled": enabled}})
+            if severity is not None:
+                must.append({"term": {"severity": severity}})
+            if check_type is not None:
+                must.append({"term": {"check_type": check_type}})
             resp = self._es.search(
                 index=self._ri,
-                query={"term": {"tenant_id": self._tenant}},
+                query={"bool": {"must": must}},
                 sort=[{"dataset": {"order": "asc", "unmapped_type": "keyword"}}],
-                size=1000,
+                size=limit,
+                from_=offset,
             )
             return [h["_source"] for h in resp["hits"]["hits"]]
         except Exception:
@@ -282,15 +306,21 @@ class ElasticsearchStore:
             logger.exception("Failed to fetch lineage node '%s'", node_id)
             return None
 
-    def get_all_nodes(self) -> List[Dict[str, Any]]:
+    def get_all_nodes(self, limit: int = 100, offset: int = 0, node_type: Optional[str] = None, dataset: Optional[str] = None) -> List[Dict[str, Any]]:
         try:
+            must: List[Dict[str, Any]] = [
+                {"term": {"tenant_id": self._tenant}},
+                {"term": {"doc_type": "node"}},
+            ]
+            if node_type:
+                must.append({"term": {"type": node_type}})
+            if dataset:
+                must.append({"term": {"dataset": dataset}})
             resp = self._es.search(
                 index=self._li,
-                query={"bool": {"must": [
-                    {"term": {"tenant_id": self._tenant}},
-                    {"term": {"doc_type": "node"}},
-                ]}},
-                size=1000,
+                query={"bool": {"must": must}},
+                size=limit,
+                from_=offset,
             )
             return [h["_source"] for h in resp["hits"]["hits"]]
         except Exception:
@@ -309,15 +339,23 @@ class ElasticsearchStore:
         self._es.index(index=self._li, id=f"edge::{edge_id}", document=doc, refresh="wait_for")
         return edge_id
 
-    def get_all_edges(self) -> List[Dict[str, Any]]:
+    def get_all_edges(self, limit: int = 100, offset: int = 0, source: Optional[str] = None, target: Optional[str] = None, relation: Optional[str] = None) -> List[Dict[str, Any]]:
         try:
+            must: List[Dict[str, Any]] = [
+                {"term": {"tenant_id": self._tenant}},
+                {"term": {"doc_type": "edge"}},
+            ]
+            if source:
+                must.append({"term": {"source_node_id": source}})
+            if target:
+                must.append({"term": {"target_node_id": target}})
+            if relation:
+                must.append({"term": {"relation": relation}})
             resp = self._es.search(
                 index=self._li,
-                query={"bool": {"must": [
-                    {"term": {"tenant_id": self._tenant}},
-                    {"term": {"doc_type": "edge"}},
-                ]}},
-                size=1000,
+                query={"bool": {"must": must}},
+                size=limit,
+                from_=offset,
             )
             return [h["_source"] for h in resp["hits"]["hits"]]
         except Exception:

@@ -29,18 +29,18 @@ def _now_iso() -> str:
 class StoreProtocol(Protocol):
     def save_quality_result(self, result: Dict[str, Any]) -> str: ...
     def get_quality_result(self, result_id: str) -> Optional[Dict[str, Any]]: ...
-    def list_quality_results(self, limit: int = 100, table: Optional[str] = None, status: Optional[str] = None) -> List[Dict[str, Any]]: ...
+    def list_quality_results(self, limit: int = 100, offset: int = 0, table: Optional[str] = None, status: Optional[str] = None, dataset: Optional[str] = None, check_type: Optional[str] = None, severity: Optional[str] = None, run_id: Optional[str] = None) -> List[Dict[str, Any]]: ...
     def save_rule(self, rule: Dict[str, Any]) -> str: ...
     def add_rule(self, rule: Dict[str, Any]) -> str: ...
     def get_rule(self, rule_id: str) -> Optional[Dict[str, Any]]: ...
-    def get_all_rules(self) -> List[Dict[str, Any]]: ...
+    def get_all_rules(self, limit: int = 100, offset: int = 0, dataset: Optional[str] = None, enabled: Optional[bool] = None, severity: Optional[str] = None, check_type: Optional[str] = None) -> List[Dict[str, Any]]: ...
     def get_rules_for_dataset(self, dataset: str) -> List[Dict[str, Any]]: ...
     def delete_rule(self, rule_id: str) -> bool: ...
     def save_lineage_node(self, node: Dict[str, Any]) -> str: ...
     def get_lineage_node(self, node_id: str) -> Optional[Dict[str, Any]]: ...
-    def get_all_nodes(self) -> List[Dict[str, Any]]: ...
+    def get_all_nodes(self, limit: int = 100, offset: int = 0, node_type: Optional[str] = None, dataset: Optional[str] = None) -> List[Dict[str, Any]]: ...
     def save_lineage_edge(self, edge: Dict[str, Any]) -> str: ...
-    def get_all_edges(self) -> List[Dict[str, Any]]: ...
+    def get_all_edges(self, limit: int = 100, offset: int = 0, source: Optional[str] = None, target: Optional[str] = None, relation: Optional[str] = None) -> List[Dict[str, Any]]: ...
     def get_downstream_impact(self, node_id: str, depth: int = 5) -> List[str]: ...
 
 
@@ -59,14 +59,16 @@ class InMemoryStore:
     def get_quality_result(self, result_id: str) -> Optional[Dict[str, Any]]:
         return self._quality.get(result_id)
 
-    def list_quality_results(self, limit: int = 100, table: Optional[str] = None, status: Optional[str] = None) -> List[Dict[str, Any]]:
+    def list_quality_results(self, limit: int = 100, offset: int = 0, table: Optional[str] = None, status: Optional[str] = None, dataset: Optional[str] = None, check_type: Optional[str] = None, severity: Optional[str] = None, run_id: Optional[str] = None) -> List[Dict[str, Any]]:
         results = list(self._quality.values())
         if table:
             results = [r for r in results if r.get("table") == table]
         if status:
             results = [r for r in results if r.get("status") == status]
+        if dataset:
+            results = [r for r in results if r.get("dataset") == dataset]
         results.sort(key=lambda r: r.get("@timestamp", ""), reverse=True)
-        return results[:limit]
+        return results[offset:offset+limit]
 
     def add_rule(self, rule: Dict[str, Any]) -> str:
         return self.save_rule(rule)
@@ -79,8 +81,17 @@ class InMemoryStore:
     def get_rule(self, rule_id: str) -> Optional[Dict[str, Any]]:
         return self._rules.get(rule_id)
 
-    def get_all_rules(self) -> List[Dict[str, Any]]:
-        return sorted(self._rules.values(), key=lambda r: r.get("dataset", ""))
+    def get_all_rules(self, limit: int = 100, offset: int = 0, dataset: Optional[str] = None, enabled: Optional[bool] = None, severity: Optional[str] = None, check_type: Optional[str] = None) -> List[Dict[str, Any]]:
+        rules = sorted(self._rules.values(), key=lambda r: r.get("dataset", ""))
+        if dataset is not None:
+            rules = [r for r in rules if r.get("dataset") == dataset]
+        if enabled is not None:
+            rules = [r for r in rules if r.get("enabled") == enabled]
+        if severity is not None:
+            rules = [r for r in rules if r.get("severity") == severity]
+        if check_type is not None:
+            rules = [r for r in rules if r.get("check_type", r.get("type")) == check_type]
+        return rules[offset:offset+limit]
 
     def get_rules_for_dataset(self, dataset: str) -> List[Dict[str, Any]]:
         return [r for r in self._rules.values() if r.get("dataset") == dataset]
@@ -96,16 +107,28 @@ class InMemoryStore:
     def get_lineage_node(self, node_id: str) -> Optional[Dict[str, Any]]:
         return self._lineage_nodes.get(node_id)
 
-    def get_all_nodes(self) -> List[Dict[str, Any]]:
-        return list(self._lineage_nodes.values())
+    def get_all_nodes(self, limit: int = 100, offset: int = 0, node_type: Optional[str] = None, dataset: Optional[str] = None) -> List[Dict[str, Any]]:
+        nodes = list(self._lineage_nodes.values())
+        if node_type is not None:
+            nodes = [n for n in nodes if n.get("node_type", n.get("type")) == node_type]
+        if dataset is not None:
+            nodes = [n for n in nodes if n.get("dataset") == dataset]
+        return nodes[offset:offset+limit]
 
     def save_lineage_edge(self, edge: Dict[str, Any]) -> str:
         edge_id = edge.get("edge_id") or f"{edge.get('source_node_id','')}->{edge.get('target_node_id','')}" or str(uuid.uuid4())
         self._lineage_edges[edge_id] = {**edge, "edge_id": edge_id, "@timestamp": _now_iso()}
         return edge_id
 
-    def get_all_edges(self) -> List[Dict[str, Any]]:
-        return list(self._lineage_edges.values())
+    def get_all_edges(self, limit: int = 100, offset: int = 0, source: Optional[str] = None, target: Optional[str] = None, relation: Optional[str] = None) -> List[Dict[str, Any]]:
+        edges = list(self._lineage_edges.values())
+        if source is not None:
+            edges = [e for e in edges if e.get("source", e.get("source_node_id")) == source]
+        if target is not None:
+            edges = [e for e in edges if e.get("target", e.get("target_node_id")) == target]
+        if relation is not None:
+            edges = [e for e in edges if e.get("relation", e.get("relation_type")) == relation]
+        return edges[offset:offset+limit]
 
     def get_downstream_impact(self, node_id: str, depth: int = 5) -> List[str]:
         if depth <= 0:

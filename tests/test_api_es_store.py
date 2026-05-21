@@ -169,7 +169,7 @@ class TestRules:
         store._es.search.return_value = {"hits": {"hits": []}}
         store.get_all_rules()
         query = store._es.search.call_args.kwargs["query"]
-        assert query["term"]["tenant_id"] == "t42"
+        assert {"term": {"tenant_id": "t42"}} in query["bool"]["must"]
 
     def test_multi_tenant_isolation(self):
         """Two stores with different tenant_ids must never share index names."""

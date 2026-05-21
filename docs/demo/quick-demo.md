@@ -6,9 +6,16 @@
 ```
 
 ## 2) Run the pipeline (say: "Fixture mode keeps this demo offline-stable")
+Rebuild the pipeline image after code changes so scenario logic is not stale:
+```bash
+docker compose -f docker-compose.poc.yml --env-file .env.poc build pipeline
+```
+
 ```bash
 ./scripts/demo_run.sh good small
 ```
+
+> Dashboards will look empty until the scenario-backed indices are populated by at least one run (for example `dataobs-rs-*`, `dataobs-spark-metrics`, and quality/alert indices).
 
 ## 3) Verify output and Kibana dashboard import
 ```bash

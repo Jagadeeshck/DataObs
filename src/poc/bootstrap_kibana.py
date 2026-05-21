@@ -76,11 +76,14 @@ def import_saved_objects(base_url: str, saved_objects_path: Path, auth: HTTPBasi
         resp = requests.post(url, headers=headers, files=files, auth=auth, timeout=60)
         resp.raise_for_status()
     result = resp.json()
-    success = result.get("successCount", 0)
-    errors  = result.get("errors", [])
-    logger.info("[kibana] Imported %d saved object(s) from %s.", success, saved_objects_path)
+    success = result.get("success", False)
+    success_count = result.get("successCount", 0)
+    errors = result.get("errors", [])
+    logger.info("[kibana] Import response success=%s count=%d file=%s", success, success_count, saved_objects_path)
     if errors:
-        logger.warning("[kibana] %d import error(s): %s", len(errors), errors)
+        for err in errors:
+            logger.error("[kibana] import error: %s", err)
+        raise RuntimeError(f"Kibana saved object import had {len(errors)} error(s).")
 
 
 def create_data_views(base_url: str, patterns: list, auth: HTTPBasicAuth) -> None:
@@ -122,9 +125,10 @@ def main() -> None:
     )
     so_file = dash_cfg.get("load_saved_objects_file", "kibana/dataobs-poc-saved-objects.ndjson")
     dv_patterns = dash_cfg.get("create_data_views", [
-        "dataobs-poc-curated*",
-        "dataobs-poc-quality*",
-        "dataobs-poc-telemetry-*",
+        "dataobs-quality", "dataobs-alerts", "dataobs-freshness", "dataobs-volume",
+        "dataobs-schema", "dataobs-lineage", "dataobs-assets", "dataobs-spark-metrics",
+        "dataobs-rs-*", "dataobs-test-data", "dataobs-spark-results",
+        "traces-apm*", "metrics-apm*", "logs-apm*",
     ])
 
     auth = _kibana_auth(poc_cfg)

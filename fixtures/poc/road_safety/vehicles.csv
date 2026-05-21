@@ -1,0 +1,7 @@
+vehicle_id,accident_id,vehicle_type,speed_limit
+V1,A1,Car,30
+V2,A1,Motorcycle,30
+V3,A2,Car,40
+V4,A3,HGV,30
+V5,A4,Van,20
+V6,A5,Car,30

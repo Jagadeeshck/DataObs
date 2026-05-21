@@ -1,0 +1,5 @@
+{"type":"dashboard","id":"dataobs-rs-exec","attributes":{"title":"DataObs Road Safety Executive Overview"}}
+{"type":"dashboard","id":"dataobs-rs-quality","attributes":{"title":"Data Quality & Bad Data Detection"}}
+{"type":"dashboard","id":"dataobs-rs-freshness","attributes":{"title":"Freshness / Volume / Schema Drift"}}
+{"type":"dashboard","id":"dataobs-rs-lineage","attributes":{"title":"Lineage & Impact"}}
+{"type":"dashboard","id":"dataobs-rs-spark","attributes":{"title":"Spark Pipeline Performance"}}

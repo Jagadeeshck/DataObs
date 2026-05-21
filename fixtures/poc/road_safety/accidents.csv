@@ -1,0 +1,6 @@
+accident_id,accident_date,severity_code,local_authority_code,road_type,weather_code,location_easting,location_northing,ingested_at
+A1,2025-01-15,2,LA001,Single carriageway,W1,532100,182300,2026-05-20T10:00:00Z
+A2,2025-01-18,3,LA002,Dual carriageway,W2,533000,182900,2026-05-20T10:00:00Z
+A3,2025-02-02,1,LA001,Roundabout,W3,531880,183210,2026-05-20T10:00:00Z
+A4,2025-02-11,2,LA003,Single carriageway,W1,530400,181900,2026-05-20T10:00:00Z
+A5,2025-03-01,3,LA004,One way street,W4,535100,184100,2026-05-20T10:00:00Z

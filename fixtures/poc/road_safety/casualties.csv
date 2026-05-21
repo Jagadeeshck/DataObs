@@ -1,0 +1,7 @@
+casualty_id,accident_id,vehicle_id,casualty_severity_code,casualty_age
+C1,A1,V1,2,28
+C2,A1,V2,3,35
+C3,A2,V3,3,41
+C4,A3,V4,1,19
+C5,A4,V5,2,67
+C6,A5,V6,3,12

@@ -30,3 +30,7 @@
 - "This POC defaults to Elastic Agent-managed APM, not a standalone collector."
 - "The otel-collector remains available only with `--profile otel`."
 - "For demo reliability, fixture mode uses local sample datasets under `fixtures/poc/`."
+
+
+## Road Safety enterprise POC
+See `docs/demo/road-safety-enterprise-demo.md` and run `./scripts/demo_run.sh good|bad [small|medium|large]`.

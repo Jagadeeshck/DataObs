@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+import asyncio
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -121,12 +122,12 @@ def test_metric_names_match_contract(monkeypatch):
     }
 
 
-async def test_poll_once_deduplicates_and_uses_maxresults_10(monkeypatch):
+def test_poll_once_deduplicates_and_uses_maxresults_10(monkeypatch):
     run = {"Id": "jr_abc123", "JobRunState": "RUNNING"}
     monitor, fake_glue, fake_tracer, _ = _monitor(monkeypatch, glue_response=run)
 
-    first = await monitor.poll_once()
-    second = await monitor.poll_once()
+    first = asyncio.run(monitor.poll_once())
+    second = asyncio.run(monitor.poll_once())
 
     assert first == ["jr_abc123"]
     assert second == []

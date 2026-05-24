@@ -231,7 +231,7 @@ class GlueJobMonitor:
         processed_run_ids: list[str] = []
         for job_name in self._job_names:
             response = self._glue.get_job_runs(JobName=job_name, MaxResults=10)
-            for run in response.get("JobRuns", []) or []:
+            for run in response.get("JobRuns", []):
                 run_id = str(run.get("Id", "")).strip()
                 if not run_id or run_id in self._seen_run_ids:
                     continue
@@ -252,8 +252,7 @@ class GlueJobMonitor:
 
         records_read = _as_int(_extract_number(run, "RecordsRead", "records.read", default=0.0))
         records_written = _as_int(_extract_number(run, "RecordsWritten", "records.written", default=0.0))
-        errors_default = 0 if run_state == "SUCCEEDED" else 0
-        records_errors = _as_int(_extract_number(run, "RecordsErrors", "records.errors", default=float(errors_default)))
+        records_errors = _as_int(_extract_number(run, "RecordsErrors", "records.errors", default=0.0))
 
         error_category = _resolve_error_category(run) if run_state == "FAILED" else None
         attrs: dict[str, Any] = {

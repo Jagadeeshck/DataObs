@@ -135,6 +135,49 @@ services:
       - dataobs-net
 
   # ════════════════════════════════════════════════════════════════════════════
+  # LOCAL ELASTIC APM SERVER — demo intake for Elastic APM agents
+  # ════════════════════════════════════════════════════════════════════════════
+  # This service is intended for local/DataObs POC usage so external demo apps
+  # such as SkillRadar can send Elastic APM traces directly to DataObs.
+  # Anonymous intake is enabled only for local demos. Use API keys/secret tokens
+  # and TLS for production-like deployments.
+  apm-server:
+    image: docker.elastic.co/apm/apm-server:${ELK_VERSION:-9.4.2}
+    container_name: dataobs-apm-server
+    command:
+      - apm-server
+      - -e
+      - -E
+      - apm-server.host=0.0.0.0:8200
+      - -E
+      - output.elasticsearch.hosts=["http://elasticsearch:9200"]
+      - -E
+      - output.elasticsearch.username=elastic
+      - -E
+      - output.elasticsearch.password=${ELASTIC_PASSWORD}
+      - -E
+      - apm-server.auth.anonymous.enabled=true
+      - -E
+      - apm-server.rum.enabled=true
+    ports:
+      - "8200:8200"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      kibana:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - "curl -s http://localhost:8200/ | grep -q 'publish_ready'"
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+    networks:
+      - dataobs-net
+
+  # ════════════════════════════════════════════════════════════════════════════
   # BACKEND B — OpenSearch self-managed (profile: opensearch)
   # ════════════════════════════════════════════════════════════════════════════
   opensearch:

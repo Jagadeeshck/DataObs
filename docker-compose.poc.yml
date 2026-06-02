@@ -1,9 +1,9 @@
 # ============================================================
-#  DataObs — POC Docker Compose  (Elastic Stack 9.4.0)
+#  DataObs — POC Docker Compose  (Elastic Stack 9.4.2)
 #  macOS-safe runtime profile for Docker Desktop
 #
 #  FIX-SUMMARY (fix/poc-elastic-otel-data-ingest):
-#  1. Elastic stack bumped to 9.4.0 (latest); single ELK_VERSION variable
+#  1. Elastic stack bumped to 9.4.2 (latest); single ELK_VERSION variable
 #     drives every Elastic image so future bumps are one-line changes.
 #  2. Single-node Elasticsearch (service `es01`, discovery.type=single-node)
 #     for local POC simplicity. ES 9.x requires transport TLS once the
@@ -27,7 +27,7 @@
 services:
   # ── Elasticsearch — single-node POC ──────────────────────────
   es01:
-    image: docker.elastic.co/elasticsearch/elasticsearch:${ELK_VERSION:-9.4.0}
+    image: docker.elastic.co/elasticsearch/elasticsearch:${ELK_VERSION:-9.4.2}
     container_name: dataobs-poc-es01
     mem_limit: ${ES_MEM_LIMIT:-2g}
     environment:
@@ -59,7 +59,7 @@ services:
     networks: [dataobs-poc]
 
   es-setup:
-    image: docker.elastic.co/elasticsearch/elasticsearch:${ELK_VERSION:-9.4.0}
+    image: docker.elastic.co/elasticsearch/elasticsearch:${ELK_VERSION:-9.4.2}
     container_name: dataobs-poc-es-setup
     mem_limit: 512m
     user: root
@@ -102,7 +102,7 @@ services:
     restart: "no"
 
   kibana:
-    image: docker.elastic.co/kibana/kibana:${ELK_VERSION:-9.4.0}
+    image: docker.elastic.co/kibana/kibana:${ELK_VERSION:-9.4.2}
     container_name: dataobs-poc-kibana
     mem_limit: 2g
     depends_on:
@@ -137,7 +137,7 @@ services:
   # Root cause of the original Fleet error
   #   "Package key parsing failed: package version was not a valid semver"
   # was that package_policies POST bodies contained `"version":"latest"`.
-  # Fleet's splitPkgKey() requires a real semver such as "9.4.0". The
+  # Fleet's splitPkgKey() requires a real semver such as "9.4.2". The
   # epm/packages/<pkg>/latest install-from-registry endpoint accepts
   # "latest" as a path segment, but the package_policies API does not.
   # We now resolve the installed version once and reuse it everywhere.
@@ -153,7 +153,7 @@ services:
         condition: service_healthy
     environment:
       ELASTIC_PASSWORD: ${ELASTIC_PASSWORD}
-      ELK_VERSION: ${ELK_VERSION:-9.4.0}
+      ELK_VERSION: ${ELK_VERSION:-9.4.2}
       APM_SECRET_TOKEN: ${APM_SECRET_TOKEN:-dataobs_poc_apm_token}
     volumes:
       - fleet_token:/fleet_token
@@ -281,7 +281,7 @@ services:
         echo "[kibana-setup] Done — Fleet, APM, System, Docker integrations configured (versions pinned)."
 
   fleet-server:
-    image: docker.elastic.co/elastic-agent/elastic-agent:${ELK_VERSION:-9.4.0}
+    image: docker.elastic.co/elastic-agent/elastic-agent:${ELK_VERSION:-9.4.2}
     container_name: dataobs-poc-fleet-server
     mem_limit: 1g
     depends_on:
@@ -317,7 +317,7 @@ services:
     networks: [dataobs-poc]
 
   elastic-agent:
-    image: docker.elastic.co/elastic-agent/elastic-agent:${ELK_VERSION:-9.4.0}
+    image: docker.elastic.co/elastic-agent/elastic-agent:${ELK_VERSION:-9.4.2}
     container_name: dataobs-poc-elastic-agent
     mem_limit: 2g
     privileged: true

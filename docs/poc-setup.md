@@ -1,6 +1,6 @@
 # DataObs POC — Setup & Run Guide
 
-> **Elastic Stack:** 9.4.0 (latest stable, April 2026)
+> **Elastic Stack:** 9.4.2
 > **APM Server:** Built into Elasticsearch 9.x via Elastic Agent — **no separate `apm-server` container**.
 
 This guide gets DataObs running end-to-end locally in **under 10 minutes** using three dedicated files that don't touch the main stack config at all:
@@ -66,6 +66,24 @@ No Python, Java, or Spark installation needed — everything runs inside Docker.
 
 ---
 
+### Validate Elastic image availability
+
+Before changing `ELK_VERSION` or troubleshooting a failed pull, verify that
+the matching Elasticsearch, Kibana, Fleet Server, and Elastic Agent images
+exist in Elastic's registry:
+
+```bash
+docker manifest inspect docker.elastic.co/elasticsearch/elasticsearch:9.4.2
+docker manifest inspect docker.elastic.co/kibana/kibana:9.4.2
+docker manifest inspect docker.elastic.co/elastic-agent/elastic-agent:9.4.2
+```
+
+If any manifest check fails, stop and resolve the image/tag availability issue
+before editing compose files or starting the POC. Do not mix Elastic Stack
+versions across Elasticsearch, Kibana, Fleet Server, and Elastic Agent.
+
+---
+
 ## Step 1 — Use the committed env file
 
 The repo ships `.env.poc` with safe POC defaults — every command in this
@@ -96,7 +114,7 @@ docker compose -f docker-compose.poc.yml --env-file .env.poc.local up -d
 ## Step 2 — Start the infrastructure
 
 The POC boots a **single-node Elasticsearch** instance (`es01`) running ES
-9.4.0 with `discovery.type=single-node`. Single-node mode skips the cluster
+9.4.2 with `discovery.type=single-node`. Single-node mode skips the cluster
 bootstrap check that — on ES 9.x with security enabled — would otherwise
 require transport TLS / certificate setup, which is overkill for a local
 POC. Pipeline, Kibana and Fleet all write to this one node.
@@ -123,15 +141,29 @@ es01                         (single-node ES, discovery.type=single-node)
                             └─► otel-collector
 ```
 
-> **Upgrade gotcha:** if you previously ran the POC on Elastic 8.x, 9.3
-> or the multi-node 9.4 variant, the old `es*_data` Docker volumes are
-> incompatible. Wipe them with
+> **Upgrade gotcha:** if you previously ran the POC on Elastic 8.x, an earlier 9.x
+> image, or the multi-node local variant, the old `es*_data` Docker
+> volumes can be incompatible. Wipe them with
 > `docker compose -f docker-compose.poc.yml down -v` before starting.
 
 Wait until all services show **healthy** (~60–90 s on first pull):
 
 ```bash
 docker compose -f docker-compose.poc.yml --env-file .env.poc ps
+```
+
+---
+
+### Upgrading local POC volumes from 9.4.0 to 9.4.2
+
+Users moving an existing local POC from Elastic Stack 9.4.0 to 9.4.2 should
+reset the local demo volumes, pull the refreshed images, and then start the
+stack again:
+
+```bash
+./scripts/demo_reset.sh
+docker compose -f docker-compose.poc.yml --env-file .env.poc pull
+./scripts/demo_up.sh
 ```
 
 ---
@@ -295,8 +327,8 @@ docker compose -f docker-compose.poc.yml --env-file .env.poc.local \
 
 | Service | RAM (approx) |
 |---|---|
-| Elasticsearch 9.4.0 | 1.5 GB |
-| Kibana 9.4.0 | 1 GB |
+| Elasticsearch 9.4.2 | 1.5 GB |
+| Kibana 9.4.2 | 1 GB |
 | Fleet Server | 256 MB |
 | Elastic Agent (APM) | 512 MB |
 | OTel Collector | 256 MB |

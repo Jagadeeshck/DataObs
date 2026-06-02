@@ -3,7 +3,7 @@
 #  macOS-safe runtime profile for Docker Desktop
 #
 #  FIX-SUMMARY (fix/poc-elastic-otel-data-ingest):
-#  1. Elastic stack bumped to 9.4.2 (latest); single ELK_VERSION variable
+#  1. Elastic stack bumped to 9.4.2; single ELK_VERSION variable
 #     drives every Elastic image so future bumps are one-line changes.
 #  2. Single-node Elasticsearch (service `es01`, discovery.type=single-node)
 #     for local POC simplicity. ES 9.x requires transport TLS once the

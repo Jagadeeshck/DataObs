@@ -2,12 +2,6 @@
 
 This playbook turns market expectations into concrete DataObs implementation priorities so you can win project-based contracts with large enterprises.
 
-## Competitive references reviewed
-
-- Monte Carlo Data: https://www.montecarlodata.com
-- Bigeye: https://www.bigeye.com
-- Acceldata ADM Platform: https://www.acceldata.io/platform
-
 ## What buyers expect during enterprise evaluations
 
 1. **Fast, clear reliability outcomes**

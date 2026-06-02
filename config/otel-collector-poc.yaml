@@ -1,6 +1,6 @@
 # ============================================================
 #  OpenTelemetry Collector — POC Configuration (macOS-safe)
-#  otel-collector-contrib:0.99.0  /  Elastic Stack 9.4.0
+#  otel-collector-contrib:0.99.0  /  Elastic Stack 9.4.2
 #
 #  Notes on Elastic 9.4 + EDOT (Elastic Distribution of OpenTelemetry):
 #  - From Elastic 9.2 the Elastic Agent ships an embedded EDOT collector

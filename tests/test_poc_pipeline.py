@@ -66,3 +66,55 @@ def test_runner_road_safety_fails_when_outputs_missing(monkeypatch, tmp_path: Pa
     runner = DataObsPipelineRunner()
     with pytest.raises(RuntimeError, match='missing required output indices'):
         runner.run()
+
+
+def test_poc_elastic_stack_version_pins_are_consistent():
+    repo = Path(__file__).resolve().parents[1]
+    env_text = (repo / '.env.poc').read_text()
+    compose_text = (repo / 'docker-compose.poc.yml').read_text()
+    root_compose_text = (repo / 'docker-compose.yml').read_text()
+    example_env_text = (repo / '.env.example').read_text()
+
+    assert 'ELK_VERSION=9.4.2' in env_text
+    assert 'ELK_VERSION=9.4.2' in example_env_text
+    assert 'docker.elastic.co/elasticsearch/elasticsearch:${ELK_VERSION:-9.4.2}' in compose_text
+    assert 'docker.elastic.co/kibana/kibana:${ELK_VERSION:-9.4.2}' in compose_text
+    assert 'docker.elastic.co/elastic-agent/elastic-agent:${ELK_VERSION:-9.4.2}' in compose_text
+    assert 'ELK_VERSION: ${ELK_VERSION:-9.4.2}' in compose_text
+    assert 'docker.elastic.co/elasticsearch/elasticsearch:${ELK_VERSION:-9.4.2}' in root_compose_text
+    assert 'docker.elastic.co/kibana/kibana:${ELK_VERSION:-9.4.2}' in root_compose_text
+
+
+def test_poc_elastic_stack_has_no_stale_active_version_references():
+    repo = Path(__file__).resolve().parents[1]
+    allowed_history = {
+        'docs/poc-setup.md',
+    }
+    stale_tokens = ('9.' + '4.0', '9.' + '3.0', '9.' + '3.3')
+    offenders = []
+
+    for path in repo.rglob('*'):
+        if path.is_dir() or '.git' in path.parts or path.suffix in {'.pyc', '.pyo'}:
+            continue
+        try:
+            text = path.read_text(errors='ignore')
+        except OSError:
+            continue
+        rel = path.relative_to(repo).as_posix()
+        if rel in allowed_history:
+            continue
+        if any(token in text for token in stale_tokens):
+            offenders.append(rel)
+
+    assert offenders == []
+
+
+def test_fleet_package_policies_resolve_semver_versions_not_latest_literals():
+    repo = Path(__file__).resolve().parents[1]
+    compose_text = (repo / 'docker-compose.poc.yml').read_text()
+
+    assert 'APM_VER=$$(' in compose_text
+    assert 'DOCKER_VER=$$(' in compose_text
+    assert r'\"version\":\"$${APM_VER}\"' in compose_text
+    assert r'\"version\":\"$${DOCKER_VER}\"' in compose_text
+    assert r'\"version\":\"latest\"' not in compose_text

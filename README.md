@@ -281,13 +281,13 @@ See [`integrations/grafana-alloy/docs/GUIDE.md`](integrations/grafana-alloy/docs
 
 ```
 fatal exception while booting Elasticsearch
-error.message: cannot upgrade a node from version [8.13.0] directly to version [9.3.0],
+error.message: cannot upgrade a node from version [8.13.0] directly to version [9.x],
                upgrade to version [8.19.0] first.
 ```
 
 **Root cause**
 
-Elasticsearch stores its originating version in node metadata inside the `esdata` Docker volume. When you previously ran the stack with an older image (e.g. `8.13.0`) and later pulled `9.3.0`, the new process reads the stale metadata and hard-blocks the start because Elastic enforces a **mandatory stepping-stone upgrade path**: you cannot skip directly from 8.x to 9.x — you must first pass through the last minor release of 8.x (`8.19.0`). Since this is a local POC with no production data, the simplest fix is to delete the stale volume.
+Elasticsearch stores its originating version in node metadata inside the `esdata` Docker volume. When you previously ran the stack with an older image (e.g. `8.13.0`) and later pulled the current 9.x POC image, the new process reads the stale metadata and hard-blocks the start because Elastic enforces a **mandatory stepping-stone upgrade path**: you cannot skip directly from 8.x to 9.x — you must first pass through the last minor release of 8.x (`8.19.0`). Since this is a local POC with no production data, the simplest fix is to delete the stale volume.
 
 **Fix — delete the stale `esdata` volume**
 
@@ -317,7 +317,7 @@ docker logs dataobs-es01 -f
 
 # Confirm the running version
 curl -s -u elastic:<your-password> http://localhost:9200 | jq .version.number
-# Expected output: "9.3.0"
+# Expected output: "9.4.2"
 ```
 
 Kibana will be available at `http://localhost:5601` once the `es-setup` init container completes its one-shot password bootstrap and the `service_completed_successfully` health gate opens for the Kibana service.

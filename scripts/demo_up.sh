@@ -32,3 +32,14 @@ done
 echo
 echo "Kibana: http://localhost:5601"
 echo "Login: elastic / ${ELASTIC_PASSWORD:-dataobs_poc_elastic}"
+echo
+echo "DataObs Docker DNS endpoints (from containers on the dataobs-poc network):"
+echo "  APM intake:     http://dataobs-poc-elastic-agent:8200"
+echo "  Elasticsearch:  http://dataobs-poc-es01:9200"
+echo "  Kibana:         http://dataobs-poc-kibana:5601"
+echo "  Fleet Server:   http://dataobs-poc-fleet-server:8220"
+echo
+echo "Connect an external app container to DataObs DNS with:"
+echo "  ./scripts/connect_external_stack.sh <container-name>"
+echo
+echo "Reminder: APM agents use port 8200; Fleet enrolment/check-in uses port 8220."

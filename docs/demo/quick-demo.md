@@ -5,6 +5,16 @@
 ./scripts/demo_up.sh
 ```
 
+
+## External Docker app telemetry
+If a separate Docker Compose application should send telemetry to this POC, attach its already-running containers to the DataObs network:
+
+```bash
+./scripts/connect_external_stack.sh <container-name>
+```
+
+After connection, APM agents in that external container should use `http://dataobs-poc-elastic-agent:8200`, while Fleet enrolment/check-in should use `http://dataobs-poc-fleet-server:8220`. See `docs/integrations/external-docker-apps.md` for the full guide.
+
 ## 2) Run the pipeline (say: "Fixture mode keeps this demo offline-stable")
 Rebuild the pipeline image after code changes so scenario logic is not stale:
 ```bash

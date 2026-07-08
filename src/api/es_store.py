@@ -474,3 +474,42 @@ def _lineage_mapping() -> Dict[str, Any]:
             "attributes":  {"type": "object", "enabled": False},
         }
     }
+
+# Data Observability MVP Elasticsearch helpers.
+from src.data_observability.mappings import DATAOBS_INDEX_TEMPLATES
+
+def _do_index(self, short: str) -> str:
+    return f"dataobs-{short}-v1-{self._tenant}"
+def _install_dataobs_templates(self) -> None:
+    for name, body in DATAOBS_INDEX_TEMPLATES.items():
+        try: self._es.indices.put_index_template(name=name, **body)
+        except TypeError: self._es.indices.put_index_template(name=name, body=body)
+        except Exception: logger.exception("Failed to install data observability template %s", name)
+def _es_upsert(self, short: str, doc_id: str, doc: Dict[str, Any]) -> Dict[str, Any]:
+    full={**doc, "tenant_id": self._tenant}; self._es.index(index=_do_index(self, short), id=doc_id, document=full, refresh="wait_for"); return full
+def _es_search(self, short: str, limit: int=100, offset: int=0, **filters: Any) -> List[Dict[str, Any]]:
+    must=[{"term":{"tenant_id": self._tenant}}]
+    for k,v in filters.items():
+        if v is None or k in {"q", "limit", "offset", "date_from", "date_to"}: continue
+        if k == "asset_id" and short == "job-runs": must.append({"bool":{"should":[{"term":{"input_assets":v}}, {"term":{"output_assets":v}}], "minimum_should_match":1}})
+        else: must.append({"term": {k: v}})
+    if filters.get("q"): must.append({"multi_match": {"query": filters["q"], "fields": ["name", "description", "job_name", "message"]}})
+    resp=self._es.search(index=_do_index(self, short), query={"bool":{"must":must}}, size=limit, from_=offset)
+    return [h["_source"] for h in resp["hits"]["hits"]]
+def upsert_dataobs_asset(self, asset): return _es_upsert(self, "assets", asset["asset_id"], asset)
+def get_dataobs_asset(self, asset_id):
+    try: return self._es.get(index=_do_index(self, "assets"), id=asset_id)["_source"]
+    except NotFoundError: return None
+def search_dataobs_assets(self, limit=100, offset=0, **filters): return _es_search(self, "assets", limit, offset, **filters)
+def upsert_dataobs_column(self, column): return _es_upsert(self, "columns", f"{column.get('asset_id')}::{column.get('column_name')}", column)
+def upsert_dataobs_quality_check(self, check): return _es_upsert(self, "quality-checks", check["check_id"], check)
+def upsert_dataobs_quality_run(self, run): return _es_upsert(self, "quality-runs", run["run_id"], run)
+def search_dataobs_quality_runs(self, limit=100, offset=0, **filters): return _es_search(self, "quality-runs", limit, offset, **filters)
+def upsert_dataobs_job_run(self, job): return _es_upsert(self, "job-runs", job["job_run_id"], job)
+def search_dataobs_job_runs(self, limit=100, offset=0, **filters): return _es_search(self, "job-runs", limit, offset, **filters)
+def upsert_dataobs_lineage_edge(self, edge): return _es_upsert(self, "lineage-edges", edge["edge_id"], edge)
+def get_dataobs_lineage(self, asset_id): return {"asset_id": asset_id, "upstream": _es_search(self, "lineage-edges", target_asset_id=asset_id), "downstream": _es_search(self, "lineage-edges", source_asset_id=asset_id)}
+for _n, _f in {"_install_dataobs_templates":_install_dataobs_templates,"upsert_dataobs_asset":upsert_dataobs_asset,"get_dataobs_asset":get_dataobs_asset,"search_dataobs_assets":search_dataobs_assets,"upsert_dataobs_column":upsert_dataobs_column,"upsert_dataobs_quality_check":upsert_dataobs_quality_check,"upsert_dataobs_quality_run":upsert_dataobs_quality_run,"search_dataobs_quality_runs":search_dataobs_quality_runs,"upsert_dataobs_job_run":upsert_dataobs_job_run,"search_dataobs_job_runs":search_dataobs_job_runs,"upsert_dataobs_lineage_edge":upsert_dataobs_lineage_edge,"get_dataobs_lineage":get_dataobs_lineage}.items(): setattr(ElasticsearchStore, _n, _f)
+_old_bootstrap = ElasticsearchStore._bootstrap
+def _bootstrap_with_dataobs(self): _old_bootstrap(self); self._install_dataobs_templates()
+ElasticsearchStore._bootstrap = _bootstrap_with_dataobs

@@ -1,0 +1,48 @@
+{
+  "assets": [
+    {"asset_id":"warehouse:analytics.orders","name":"orders","asset_type":"table","source_system":"warehouse","database":"analytics","schema":"public","owner":"data-platform","domain":"commerce","criticality":"critical","tags":["orders"],"description":"Order facts"},
+    {"asset_id":"warehouse:analytics.customers","name":"customers","asset_type":"table","source_system":"warehouse","database":"analytics","schema":"public","owner":"crm","domain":"customer","criticality":"high","tags":["pii"],"description":"Customer dimension"},
+    {"asset_id":"dashboard:revenue","name":"Revenue Dashboard","asset_type":"dashboard","source_system":"looker","database":"","schema":"","owner":"finance","domain":"finance","criticality":"high","tags":["revenue"],"description":"Executive revenue report"}
+  ],
+  "columns": [
+    {"asset_id":"warehouse:analytics.orders","column_name":"order_id","data_type":"string","nullable":false,"pii_flag":false,"description":"Order id"},
+    {"asset_id":"warehouse:analytics.orders","column_name":"customer_id","data_type":"string","nullable":false,"pii_flag":true,"description":"Customer id"},
+    {"asset_id":"warehouse:analytics.orders","column_name":"amount","data_type":"decimal","nullable":false,"pii_flag":false,"description":"Order amount"},
+    {"asset_id":"warehouse:analytics.orders","column_name":"created_at","data_type":"timestamp","nullable":false,"pii_flag":false,"description":"Creation time"},
+    {"asset_id":"warehouse:analytics.customers","column_name":"customer_id","data_type":"string","nullable":false,"pii_flag":true,"description":"Customer id"},
+    {"asset_id":"warehouse:analytics.customers","column_name":"email","data_type":"string","nullable":true,"pii_flag":true,"description":"Email"},
+    {"asset_id":"warehouse:analytics.customers","column_name":"country","data_type":"string","nullable":true,"pii_flag":false,"description":"Country"},
+    {"asset_id":"dashboard:revenue","column_name":"revenue","data_type":"decimal","nullable":false,"pii_flag":false,"description":"Revenue metric"}
+  ],
+  "quality_checks": [
+    {"check_id":"qc_orders_freshness","asset_id":"warehouse:analytics.orders","check_type":"freshness","metric_name":"age_hours","threshold_type":"lte","threshold_value":3,"severity":"critical","enabled":true,"owner":"data-platform"},
+    {"check_id":"qc_orders_rows","asset_id":"warehouse:analytics.orders","check_type":"row_count","metric_name":"rows","threshold_type":"gte","threshold_value":1000,"severity":"warning","enabled":true,"owner":"data-platform"},
+    {"check_id":"qc_customers_null_email","asset_id":"warehouse:analytics.customers","check_type":"null_count","metric_name":"email_nulls","threshold_type":"lte","threshold_value":100,"severity":"warning","enabled":true,"owner":"crm"},
+    {"check_id":"qc_customers_dupes","asset_id":"warehouse:analytics.customers","check_type":"duplicate_count","metric_name":"duplicate_customer_id","threshold_type":"eq","threshold_value":0,"severity":"critical","enabled":true,"owner":"crm"}
+  ],
+  "quality_runs": [
+    {"run_id":"qr1","check_id":"qc_orders_freshness","asset_id":"warehouse:analytics.orders","status":"pass","observed_value":1,"expected_value":3,"severity":"critical","message":"fresh","started_at":"2026-07-08T00:00:00Z","finished_at":"2026-07-08T00:00:01Z","duration_ms":1000},
+    {"run_id":"qr2","check_id":"qc_orders_rows","asset_id":"warehouse:analytics.orders","status":"pass","observed_value":1200,"expected_value":1000,"severity":"warning","message":"ok","started_at":"2026-07-08T00:00:00Z","finished_at":"2026-07-08T00:00:01Z","duration_ms":1000},
+    {"run_id":"qr3","check_id":"qc_customers_null_email","asset_id":"warehouse:analytics.customers","status":"warning","observed_value":120,"expected_value":100,"severity":"warning","message":"too many nulls","started_at":"2026-07-08T00:00:00Z","finished_at":"2026-07-08T00:00:01Z","duration_ms":1000},
+    {"run_id":"qr4","check_id":"qc_customers_dupes","asset_id":"warehouse:analytics.customers","status":"pass","observed_value":0,"expected_value":0,"severity":"critical","message":"ok","started_at":"2026-07-08T00:00:00Z","finished_at":"2026-07-08T00:00:01Z","duration_ms":1000},
+    {"run_id":"qr5","check_id":"qc_orders_freshness","asset_id":"warehouse:analytics.orders","status":"pass","observed_value":2,"expected_value":3,"severity":"critical","message":"ok","started_at":"2026-07-07T00:00:00Z","finished_at":"2026-07-07T00:00:01Z","duration_ms":1000},
+    {"run_id":"qr6","check_id":"qc_orders_rows","asset_id":"warehouse:analytics.orders","status":"pass","observed_value":1300,"expected_value":1000,"severity":"warning","message":"ok","started_at":"2026-07-07T00:00:00Z","finished_at":"2026-07-07T00:00:01Z","duration_ms":1000},
+    {"run_id":"qr7","check_id":"qc_customers_null_email","asset_id":"warehouse:analytics.customers","status":"pass","observed_value":80,"expected_value":100,"severity":"warning","message":"ok","started_at":"2026-07-07T00:00:00Z","finished_at":"2026-07-07T00:00:01Z","duration_ms":1000},
+    {"run_id":"qr8","check_id":"qc_customers_dupes","asset_id":"warehouse:analytics.customers","status":"pass","observed_value":0,"expected_value":0,"severity":"critical","message":"ok","started_at":"2026-07-07T00:00:00Z","finished_at":"2026-07-07T00:00:01Z","duration_ms":1000},
+    {"run_id":"qr9","check_id":"qc_orders_freshness","asset_id":"warehouse:analytics.orders","status":"pass","observed_value":1,"expected_value":3,"severity":"critical","message":"ok","started_at":"2026-07-06T00:00:00Z","finished_at":"2026-07-06T00:00:01Z","duration_ms":1000},
+    {"run_id":"qr10","check_id":"qc_orders_rows","asset_id":"warehouse:analytics.orders","status":"pass","observed_value":1250,"expected_value":1000,"severity":"warning","message":"ok","started_at":"2026-07-06T00:00:00Z","finished_at":"2026-07-06T00:00:01Z","duration_ms":1000}
+  ],
+  "job_runs": [
+    {"job_run_id":"job1","job_name":"build_orders","job_type":"dbt","source_system":"dbt","status":"success","started_at":"2026-07-08T00:00:00Z","finished_at":"2026-07-08T00:05:00Z","duration_ms":300000,"input_assets":["warehouse:raw.orders"],"output_assets":["warehouse:analytics.orders"],"error_message":""},
+    {"job_run_id":"job2","job_name":"build_customers","job_type":"airflow","source_system":"airflow","status":"success","started_at":"2026-07-08T00:00:00Z","finished_at":"2026-07-08T00:03:00Z","duration_ms":180000,"input_assets":["warehouse:raw.customers"],"output_assets":["warehouse:analytics.customers"],"error_message":""},
+    {"job_run_id":"job3","job_name":"refresh_revenue_dashboard","job_type":"custom","source_system":"looker","status":"success","started_at":"2026-07-08T01:00:00Z","finished_at":"2026-07-08T01:01:00Z","duration_ms":60000,"input_assets":["warehouse:analytics.orders"],"output_assets":["dashboard:revenue"],"error_message":""},
+    {"job_run_id":"job4","job_name":"legacy_export","job_type":"spark","source_system":"spark","status":"failed","started_at":"2026-07-08T02:00:00Z","finished_at":"2026-07-08T02:02:00Z","duration_ms":120000,"input_assets":["warehouse:analytics.customers"],"output_assets":["warehouse:export.customers"],"error_message":"executor failure"}
+  ],
+  "lineage_edges": [
+    {"edge_id":"e1","source_asset_id":"warehouse:raw.orders","target_asset_id":"warehouse:analytics.orders","relationship_type":"produces","job_name":"build_orders","job_run_id":"job1","observed_at":"2026-07-08T00:05:00Z"},
+    {"edge_id":"e2","source_asset_id":"warehouse:raw.customers","target_asset_id":"warehouse:analytics.customers","relationship_type":"produces","job_name":"build_customers","job_run_id":"job2","observed_at":"2026-07-08T00:03:00Z"},
+    {"edge_id":"e3","source_asset_id":"warehouse:analytics.orders","target_asset_id":"dashboard:revenue","relationship_type":"feeds","job_name":"refresh_revenue_dashboard","job_run_id":"job3","observed_at":"2026-07-08T01:01:00Z"},
+    {"edge_id":"e4","source_asset_id":"warehouse:analytics.customers","target_asset_id":"dashboard:revenue","relationship_type":"feeds","job_name":"refresh_revenue_dashboard","job_run_id":"job3","observed_at":"2026-07-08T01:01:00Z"},
+    {"edge_id":"e5","source_asset_id":"warehouse:analytics.customers","target_asset_id":"warehouse:export.customers","relationship_type":"exports","job_name":"legacy_export","job_run_id":"job4","observed_at":"2026-07-08T02:02:00Z"}
+  ]
+}

@@ -16,6 +16,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from src.api.store import StoreProtocol, get_store
 from src.config.settings import AppSettings, load_settings
 from src.core.enterprise_blueprint import enterprise_backlog
+from src.data_observability.service import DataObservabilityService
 
 logger = logging.getLogger(__name__)
 _bearer = HTTPBearer(auto_error=False)
@@ -118,6 +119,10 @@ class LineageImpactResponse(BaseModel):
     root_node: str
     affected: List[str]
     count: int
+
+
+class DataObservabilityRequest(DataObsModel):
+    pass
 
 
 @dataclass(frozen=True)
@@ -258,6 +263,65 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
     @app.post("/quality/results", status_code=201, response_model=QualityResultCreateResponse, dependencies=[Depends(require_auth)])
     async def create_quality_result(result: QualityResultRequest, stores: StoreBundle = Depends(get_stores)) -> Dict[str, Any]:
         return {"id": stores.store.save_quality_result(_as_dict(result)), "status": "created"}
+
+
+    def dataobs_service(stores: StoreBundle = Depends(get_stores)) -> DataObservabilityService:
+        return DataObservabilityService(stores.store)
+
+    @app.post("/api/data-observability/assets", status_code=201, dependencies=[Depends(require_auth)])
+    async def dataobs_create_asset(asset: DataObservabilityRequest, service: DataObservabilityService = Depends(dataobs_service)) -> Dict[str, Any]:
+        return service.create_or_update_asset(_as_dict(asset))
+
+    @app.get("/api/data-observability/assets", dependencies=[Depends(require_auth)])
+    async def dataobs_search_assets(service: DataObservabilityService = Depends(dataobs_service), q: str | None = None, asset_type: str | None = None, source_system: str | None = None, owner: str | None = None, domain: str | None = None, health_status: str | None = None, limit: int = Query(default=100, ge=1, le=1000), offset: int = Query(default=0, ge=0)) -> Dict[str, Any]:
+        assets = service.search_assets(q=q, asset_type=asset_type, source_system=source_system, owner=owner, domain=domain, health_status=health_status, limit=limit, offset=offset)
+        return {"assets": assets, "count": len(assets)}
+
+
+    @app.get("/api/data-observability/assets/{asset_id:path}/lineage", dependencies=[Depends(require_auth)])
+    async def dataobs_get_lineage(asset_id: str, service: DataObservabilityService = Depends(dataobs_service)) -> Dict[str, Any]:
+        return service.get_lineage(asset_id)
+
+    @app.get("/api/data-observability/assets/{asset_id:path}/health", dependencies=[Depends(require_auth)])
+    async def dataobs_get_health(asset_id: str, service: DataObservabilityService = Depends(dataobs_service)) -> Dict[str, Any]:
+        return {"asset_id": asset_id, "health_status": service.update_asset_health(asset_id)}
+
+    @app.get("/api/data-observability/assets/{asset_id:path}", dependencies=[Depends(require_auth)])
+    async def dataobs_get_asset(asset_id: str, service: DataObservabilityService = Depends(dataobs_service)) -> Dict[str, Any]:
+        asset = service.get_asset(asset_id)
+        if not asset: raise HTTPException(status_code=404, detail=f"Asset '{asset_id}' not found")
+        return asset
+
+    @app.post("/api/data-observability/assets/{asset_id:path}/columns", status_code=201, dependencies=[Depends(require_auth)])
+    async def dataobs_create_column(asset_id: str, column: DataObservabilityRequest, service: DataObservabilityService = Depends(dataobs_service)) -> Dict[str, Any]:
+        return service.create_or_update_column({**_as_dict(column), "asset_id": asset_id})
+
+    @app.post("/api/data-observability/quality-checks", status_code=201, dependencies=[Depends(require_auth)])
+    async def dataobs_create_quality_check(check: DataObservabilityRequest, service: DataObservabilityService = Depends(dataobs_service)) -> Dict[str, Any]:
+        try: return service.create_quality_check(_as_dict(check))
+        except ValueError as exc: raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.post("/api/data-observability/quality-runs", status_code=201, dependencies=[Depends(require_auth)])
+    async def dataobs_record_quality_run(run: DataObservabilityRequest, service: DataObservabilityService = Depends(dataobs_service)) -> Dict[str, Any]:
+        return service.record_quality_run(_as_dict(run))
+
+    @app.get("/api/data-observability/quality-runs", dependencies=[Depends(require_auth)])
+    async def dataobs_search_quality_runs(service: DataObservabilityService = Depends(dataobs_service), asset_id: str | None = None, status: str | None = None, severity: str | None = None, limit: int = Query(default=100, ge=1, le=1000), offset: int = Query(default=0, ge=0)) -> Dict[str, Any]:
+        runs = service.search_quality_runs(asset_id=asset_id, status=status, severity=severity, limit=limit, offset=offset)
+        return {"quality_runs": runs, "count": len(runs)}
+
+    @app.post("/api/data-observability/job-runs", status_code=201, dependencies=[Depends(require_auth)])
+    async def dataobs_create_job_run(job: DataObservabilityRequest, service: DataObservabilityService = Depends(dataobs_service)) -> Dict[str, Any]:
+        return service.create_job_run(_as_dict(job))
+
+    @app.get("/api/data-observability/job-runs", dependencies=[Depends(require_auth)])
+    async def dataobs_search_job_runs(service: DataObservabilityService = Depends(dataobs_service), asset_id: str | None = None, status: str | None = None, source_system: str | None = None, limit: int = Query(default=100, ge=1, le=1000), offset: int = Query(default=0, ge=0)) -> Dict[str, Any]:
+        runs = service.search_job_runs(asset_id=asset_id, status=status, source_system=source_system, limit=limit, offset=offset)
+        return {"job_runs": runs, "count": len(runs)}
+
+    @app.post("/api/data-observability/lineage/events", status_code=201, dependencies=[Depends(require_auth)])
+    async def dataobs_ingest_lineage_event(event: DataObservabilityRequest, service: DataObservabilityService = Depends(dataobs_service)) -> Dict[str, Any]:
+        return service.ingest_openlineage_event(_as_dict(event))
 
     @app.get("/strategy/enterprise-backlog", response_model=EnterpriseBacklogResponse, dependencies=[Depends(require_auth)])
     async def get_enterprise_backlog() -> Dict[str, Any]:

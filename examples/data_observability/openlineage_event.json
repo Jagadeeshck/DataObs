@@ -1,0 +1,1 @@
+{"eventType":"COMPLETE","eventTime":"2026-07-08T00:05:00Z","run":{"runId":"ol-run-1"},"job":{"namespace":"dbt","name":"build_orders"},"inputs":[{"namespace":"warehouse","name":"raw.orders"}],"outputs":[{"namespace":"warehouse","name":"analytics.orders"}]}

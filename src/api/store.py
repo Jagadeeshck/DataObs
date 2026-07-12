@@ -229,3 +229,52 @@ class LineageStore:
 
 
 from src.api.es_store import get_store  # noqa: E402
+
+# Data Observability MVP methods are attached dynamically to preserve the legacy store surface.
+def _matches(doc: Dict[str, Any], filters: Dict[str, Any]) -> bool:
+    q = filters.get("q")
+    if q and q.lower() not in str(doc.get("name", "")).lower() and q.lower() not in str(doc.get("description", "")).lower():
+        return False
+    for key, value in filters.items():
+        if value is None or key in {"limit", "offset", "q", "date_from", "date_to", "asset_id"}:
+            continue
+        if key == "severity" and doc.get("severity") != value:
+            return False
+        if key == "status" and doc.get("status") != value:
+            return False
+        if doc.get(key) != value:
+            return False
+    if filters.get("asset_id") and doc.get("asset_id") != filters["asset_id"]:
+        if filters.get("asset_id") not in doc.get("input_assets", []) and filters.get("asset_id") not in doc.get("output_assets", []):
+            return False
+    return True
+
+def _ensure_dataobs(self: InMemoryStore) -> None:
+    if not hasattr(self, "_dataobs_assets"):
+        self._dataobs_assets = {}; self._dataobs_columns = {}; self._dataobs_checks = {}; self._dataobs_quality_runs = {}; self._dataobs_job_runs = {}; self._dataobs_edges = {}
+
+def upsert_dataobs_asset(self: InMemoryStore, asset: Dict[str, Any]) -> Dict[str, Any]:
+    _ensure_dataobs(self); self._dataobs_assets[asset["asset_id"]] = {**self._dataobs_assets.get(asset["asset_id"], {}), **asset}; return self._dataobs_assets[asset["asset_id"]]
+def get_dataobs_asset(self: InMemoryStore, asset_id: str) -> Optional[Dict[str, Any]]:
+    _ensure_dataobs(self); return self._dataobs_assets.get(asset_id)
+def search_dataobs_assets(self: InMemoryStore, limit: int = 100, offset: int = 0, **filters: Any) -> List[Dict[str, Any]]:
+    _ensure_dataobs(self); items=[d for d in self._dataobs_assets.values() if _matches(d, filters)]; return items[offset:offset+limit]
+def upsert_dataobs_column(self: InMemoryStore, column: Dict[str, Any]) -> Dict[str, Any]:
+    _ensure_dataobs(self); key=f"{column.get('asset_id')}::{column.get('column_name')}"; self._dataobs_columns[key]=column; return column
+def upsert_dataobs_quality_check(self: InMemoryStore, check: Dict[str, Any]) -> Dict[str, Any]:
+    _ensure_dataobs(self); self._dataobs_checks[check["check_id"]]=check; return check
+def upsert_dataobs_quality_run(self: InMemoryStore, run: Dict[str, Any]) -> Dict[str, Any]:
+    _ensure_dataobs(self); self._dataobs_quality_runs[run["run_id"]]=run; return run
+def search_dataobs_quality_runs(self: InMemoryStore, limit: int = 100, offset: int = 0, **filters: Any) -> List[Dict[str, Any]]:
+    _ensure_dataobs(self); items=[d for d in self._dataobs_quality_runs.values() if _matches(d, filters)]; return items[offset:offset+limit]
+def upsert_dataobs_job_run(self: InMemoryStore, job: Dict[str, Any]) -> Dict[str, Any]:
+    _ensure_dataobs(self); self._dataobs_job_runs[job["job_run_id"]]=job; return job
+def search_dataobs_job_runs(self: InMemoryStore, limit: int = 100, offset: int = 0, **filters: Any) -> List[Dict[str, Any]]:
+    _ensure_dataobs(self); items=[d for d in self._dataobs_job_runs.values() if _matches(d, filters)]; return items[offset:offset+limit]
+def upsert_dataobs_lineage_edge(self: InMemoryStore, edge: Dict[str, Any]) -> Dict[str, Any]:
+    _ensure_dataobs(self); self._dataobs_edges[edge["edge_id"]]=edge; return edge
+def get_dataobs_lineage(self: InMemoryStore, asset_id: str) -> Dict[str, Any]:
+    _ensure_dataobs(self); edges=list(self._dataobs_edges.values()); return {"asset_id": asset_id, "upstream": [e for e in edges if e.get("target_asset_id")==asset_id], "downstream": [e for e in edges if e.get("source_asset_id")==asset_id]}
+for _n, _f in list(locals().items()):
+    if _n.startswith(("upsert_dataobs_", "get_dataobs_", "search_dataobs_")):
+        setattr(InMemoryStore, _n, _f)

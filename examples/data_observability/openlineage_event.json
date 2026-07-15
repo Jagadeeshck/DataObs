@@ -1,1 +1,77 @@
-{"eventType":"COMPLETE","eventTime":"2026-07-08T00:05:00Z","run":{"runId":"ol-run-1"},"job":{"namespace":"dbt","name":"build_orders"},"inputs":[{"namespace":"warehouse","name":"raw.orders"}],"outputs":[{"namespace":"warehouse","name":"analytics.orders"}]}
+{
+  "eventType": "COMPLETE",
+  "eventTime": "2026-07-15T10:05:00Z",
+  "producer": "https://dataobs.example/openlineage/dbt",
+  "schemaURL": "https://openlineage.io/spec/2-0-2/OpenLineage.json",
+  "run": {
+    "runId": "01980f58-6d73-7f4d-9c7b-83b8a39f3e22",
+    "facets": {
+      "nominalTime": {
+        "nominalStartTime": "2026-07-15T10:00:00Z"
+      }
+    }
+  },
+  "job": {
+    "namespace": "dbt-prod",
+    "name": "analytics.build_orders"
+  },
+  "inputs": [
+    {
+      "namespace": "postgres://warehouse",
+      "name": "raw.orders",
+      "facets": {
+        "schema": {
+          "fields": [
+            {"name": "order_id", "type": "string"},
+            {"name": "amount", "type": "double"}
+          ]
+        }
+      }
+    }
+  ],
+  "outputs": [
+    {
+      "namespace": "elasticsearch://data-platform",
+      "name": "analytics.orders",
+      "facets": {
+        "schema": {
+          "fields": [
+            {"name": "order_id", "type": "keyword"},
+            {"name": "amount", "type": "double"}
+          ]
+        },
+        "dataQualityMetrics": {
+          "rowCount": 1200,
+          "bytes": 24000
+        },
+        "dataQualityAssertions": {
+          "assertions": [
+            {
+              "assertion": "not_null",
+              "name": "orders_amount_not_null",
+              "column": "amount",
+              "success": true,
+              "severity": "error"
+            }
+          ]
+        },
+        "columnLineage": {
+          "fields": {
+            "amount": {
+              "inputFields": [
+                {
+                  "namespace": "postgres://warehouse",
+                  "name": "raw.orders",
+                  "field": "amount",
+                  "transformations": [
+                    {"type": "DIRECT", "subtype": "IDENTITY", "description": "", "masking": false}
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  ]
+}

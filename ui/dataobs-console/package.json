@@ -1,0 +1,46 @@
+{
+  "name": "@dataobs/console",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.28.1",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "api:generate": "openapi-typescript ../../openapi.json -o src/api/generated/schema.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --max-warnings=0",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "build": "tsc -b && vite build",
+    "bundle:check": "node scripts/bundle-check.mjs",
+    "playwright": "playwright"
+  },
+  "dependencies": {
+    "@elastic/charts": "71.5.1",
+    "@elastic/eui": "117.0.0",
+    "@tanstack/react-query": "5.90.20",
+    "cytoscape": "3.33.1",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "react-router-dom": "7.13.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.2",
+    "@playwright/test": "1.58.2",
+    "@testing-library/jest-dom": "6.9.1",
+    "@testing-library/react": "16.3.2",
+    "@types/cytoscape": "3.21.9",
+    "@types/react": "18.3.28",
+    "@types/react-dom": "18.3.7",
+    "@vitejs/plugin-react": "5.1.4",
+    "eslint": "9.39.2",
+    "eslint-config-prettier": "10.1.8",
+    "eslint-plugin-react-hooks": "7.0.1",
+    "openapi-typescript": "7.13.0",
+    "prettier": "3.8.2",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.56.1",
+    "vite": "7.3.1",
+    "vitest": "4.0.18"
+  }
+}

@@ -3,12 +3,13 @@ from __future__ import annotations
 import logging
 import uuid
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from elasticsearch import Elasticsearch
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, Response
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, ConfigDict
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -21,6 +22,7 @@ from services.collection_manager.elasticsearch_repository import ElasticsearchCo
 from services.collection_manager.leases import claim_task, renew_task
 from services.collection_manager.memory_repository import InMemoryCollectionRepository
 from services.incident_manager import IncidentManagerService
+from services.product_query import ElasticsearchConsoleRepository
 from src.api.store import StoreProtocol, get_store
 from src.config.settings import AppSettings, load_settings
 from src.core.enterprise_blueprint import enterprise_backlog
@@ -198,6 +200,11 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
         repo = InMemoryCollectionRepository()
     app.state.collection_manager = CollectionManagerService(repo)
     app.state.incident_manager = IncidentManagerService()
+    app.state.console_repository = (
+        ElasticsearchConsoleRepository(make_es_client(resolved_settings))
+        if resolved_settings.store_backend.lower() == "elasticsearch"
+        else None
+    )
 
     @app.middleware("http")
     async def request_context_middleware(request: Request, call_next):
@@ -217,6 +224,12 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
 
     def get_incident_manager(request: Request) -> IncidentManagerService:
         return request.app.state.incident_manager
+
+    def get_console_repository(request: Request) -> ElasticsearchConsoleRepository:
+        repository = request.app.state.console_repository
+        if repository is None:
+            raise HTTPException(status_code=503, detail="Console projections require the Elasticsearch store backend")
+        return repository
 
     async def require_auth(
         settings: AppSettings = Depends(get_settings),
@@ -1190,6 +1203,52 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
         service: CollectionManagerService = Depends(cm), tid: str = Depends(tenant_id)
     ) -> Dict[str, Any]:
         return {"items": service.repo.list("incidents", tid)}
+
+    @app.get("/api/v1/command-center", tags=["console"], dependencies=[Depends(require_auth)])
+    async def command_center(
+        request: Request,
+        environment: str = Query(..., min_length=1),
+        start: datetime | None = Query(None),
+        end: datetime | None = Query(None),
+        repository: ElasticsearchConsoleRepository = Depends(get_console_repository),
+    ) -> Dict[str, Any]:
+        return repository.command_center(request.state.tenant_id, environment, start, end)
+
+    @app.get("/api/v1/topology", tags=["console"], dependencies=[Depends(require_auth)])
+    async def console_topology(
+        request: Request,
+        environment: str = Query(..., min_length=1),
+        source_integration: str | None = None,
+        max_nodes: int = Query(500, ge=1, le=1000),
+        max_edges: int = Query(1250, ge=1, le=2500),
+        repository: ElasticsearchConsoleRepository = Depends(get_console_repository),
+    ) -> Dict[str, Any]:
+        return repository.topology(
+            request.state.tenant_id, environment, max_nodes=max_nodes, max_edges=max_edges, source=source_integration
+        )
+
+    @app.get("/api/v1/topology/nodes/{node_id}", tags=["console"], dependencies=[Depends(require_auth)])
+    @app.get("/api/v1/entities/{node_id}/summary", tags=["console"], dependencies=[Depends(require_auth)])
+    async def console_entity(
+        node_id: str,
+        request: Request,
+        environment: str = Query(..., min_length=1),
+        repository: ElasticsearchConsoleRepository = Depends(get_console_repository),
+    ) -> Dict[str, Any]:
+        entity = repository.entity(request.state.tenant_id, environment, node_id)
+        if entity is None:
+            raise HTTPException(status_code=404, detail="Entity not found")
+        return entity
+
+    @app.get("/api/v1/events/stream", tags=["console"], dependencies=[Depends(require_auth)])
+    async def console_events(request: Request, environment: str = Query(..., min_length=1)) -> StreamingResponse:
+        async def stream():
+            event_id = request.headers.get("Last-Event-ID", "0")
+            yield f'retry: 5000\nid: {event_id}\nevent: keepalive\ndata: {{"schema_version":"1","tenant":"{request.state.tenant_id}","environment":"{environment}"}}\n\n'
+
+        return StreamingResponse(
+            stream(), media_type="text/event-stream", headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
+        )
 
     @app.get(
         "/strategy/enterprise-backlog", response_model=EnterpriseBacklogResponse, dependencies=[Depends(require_auth)]

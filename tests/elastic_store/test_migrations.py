@@ -9,3 +9,15 @@ def test_migration_plan_contains_foundation_storage_patterns():
     assert "dataobs-assets-v1" in p["operations"]["mutable_indices"]
     assert "logs-dataobs.schema_snapshot-*" in p["operations"]["data_streams"]
     assert MUTABLE_INDICES and DATA_STREAMS
+
+
+def test_console_foundation_is_forward_only_after_original_kafka_migration():
+    from packages.elastic_store.manifest import migrations
+
+    plan = migrations()
+    assert [item.migration_id for item in plan][-2:] == [
+        "0004_kafka_data_streams_monitoring",
+        "0005_console_foundation",
+    ]
+    assert plan[-1].dependencies == ["0004_kafka_data_streams_monitoring"]
+    assert "dataobs-saved-views-v1" in plan[-1].operations["mutable_indices"]

@@ -384,6 +384,30 @@ KAFKA_DSM_MIGRATION = Migration(
     },
 )
 
+CONSOLE_FOUNDATION_MIGRATION = Migration(
+    "0005_console_foundation",
+    "Add durable Console saved views, preferences, topology and command-center projections",
+    "v1",
+    dependencies=["0004_kafka_data_streams_monitoring"],
+    rollback_strategy="disable Console writers, snapshot user state, then remove only the v1 Console aliases and templates",
+    operations={
+        "mutable_indices": [
+            "dataobs-saved-views-v1",
+            "dataobs-ui-preferences-v1",
+            "dataobs-topology-summary-v1",
+            "dataobs-command-center-summary-v1",
+        ],
+        "data_streams": ["logs-dataobs.console_event-*"],
+        "transforms": ["dataobs-current-topology-summary", "dataobs-current-command-center-summary"],
+    },
+)
+
 
 def migrations() -> List[Migration]:
-    return [FOUNDATION_MIGRATION, POSTGRES_OBSERVABILITY_MIGRATION, INCIDENT_AUTOMATION_MIGRATION, KAFKA_DSM_MIGRATION]
+    return [
+        FOUNDATION_MIGRATION,
+        POSTGRES_OBSERVABILITY_MIGRATION,
+        INCIDENT_AUTOMATION_MIGRATION,
+        KAFKA_DSM_MIGRATION,
+        CONSOLE_FOUNDATION_MIGRATION,
+    ]

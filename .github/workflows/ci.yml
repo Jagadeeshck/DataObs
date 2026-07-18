@@ -2,665 +2,158 @@ name: CI
 
 on:
   push:
-    branches: ["**"]
+    branches: [main]
   pull_request:
     branches: [main]
 
-# Cancel in-progress runs on the same branch to save minutes
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-
-  # ---------------------------------------------------------------------------
-  # Job 1: Lint & validate configuration files
-  # ---------------------------------------------------------------------------
-  validate-configs:
-    name: Validate configs
+  python-quality:
+    name: Python quality and unit tests
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install Grafana Alloy
-        run: |
-          ALLOY_VERSION="v1.8.1"
-          curl -fsSL \
-            "https://github.com/grafana/alloy/releases/download/${ALLOY_VERSION}/alloy-linux-amd64.zip" \
-            -o alloy.zip
-          unzip -q alloy.zip
-          chmod +x alloy-linux-amd64
-          sudo mv alloy-linux-amd64 /usr/local/bin/alloy
-          alloy --version
-
-      - name: Validate Alloy config -- fmt check
-        run: |
-          echo "--- alloy fmt --test (syntax + formatting) ---"
-          alloy fmt --test integrations/grafana-alloy/alloy/config.alloy
-          echo "Alloy fmt OK"
-
-      - name: Install yamllint
-        run: pip install --quiet yamllint
-
-      - name: YAML lint -- OTel collector configs
-        run: |
-          yamllint -d relaxed config/otel-collector-config.yaml
-          yamllint -d relaxed config/otel-ec2-agent-config.yaml
-          yamllint -d relaxed integrations/grafana-alloy/grafana/provisioning/datasources/datasources.yaml
-          echo "All YAML configs OK"
-
-      - name: Validate root docker-compose.yml
-        run: |
-          docker compose -f docker-compose.yml config 2>&1 \
-            | grep -v "variable is not set\|is not set\|has no default" \
-            | head -30 || true
-          echo "Root docker-compose.yml structure OK"
-
-      - name: Validate Alloy integration docker-compose.yml
-        run: |
-          docker compose -f integrations/grafana-alloy/docker-compose.yml config 2>&1 \
-            | grep -v "variable is not set\|is not set\|has no default" \
-            | head -30 || true
-          echo "Alloy docker-compose.yml structure OK"
-
-      - name: Validate Grafana dashboard JSON
-        run: |
-          python3 -c "
-          import json, glob
-          dashboards = glob.glob('integrations/grafana-alloy/grafana/provisioning/dashboards/*.json')
-          for path in dashboards:
-              with open(path) as f:
-                  json.load(f)
-              print(f'OK: {path}')
-          if not dashboards:
-              print('No dashboard JSON files found')
-          "
-
-      - name: Python syntax check
-        run: |
-          python3 -m py_compile integrations/grafana-alloy/app/app.py
-          python3 -m py_compile src/api/main.py
-          echo "Python syntax OK"
-
-  # ---------------------------------------------------------------------------
-  # Job 2: Python tests
-  # ---------------------------------------------------------------------------
-  test-python:
-    name: Python tests
-    runs-on: ubuntu-latest
-    needs: validate-configs
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: pip
-
-      - name: Install root dependencies
+      - name: Install dependencies
         run: |
+          python -m pip install --upgrade pip
           pip install -r requirements.txt
-          # pytest not in requirements.txt -- install explicitly
-          # requests needed by tests/integration/conftest.py at import time
+          pip install pytest requests ruff black mypy pip-audit types-requests
+      - name: Ruff lint
+        run: ruff check services/scanner_worker/worker.py tests/integration tests/test_agent_sdk_scanner.py
+      - name: Black check
+        run: black --check services/scanner_worker/worker.py tests/integration tests/test_agent_sdk_scanner.py
+      - name: Compile Python
+        run: python -m compileall -q src packages services integrations tests
+      - name: Type check production packages
+        run: mypy packages/agent_sdk services/scanner_worker
+      - name: Dependency audit
+        run: pip-audit -r requirements.txt
+      - name: Unit tests
+        run: python -m pytest -q --ignore=tests/integration
+
+  docker-validation:
+    name: Docker Compose validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate compose files
+        run: |
+          docker compose -f docker-compose.yml config
+          docker compose -f docker-compose.poc.yml config
+          docker compose -f tests/integration/docker-compose.test.yml config
+          docker compose -f integrations/grafana-alloy/docker-compose.yml config
+
+  integration-tests:
+    name: Integration tests
+    runs-on: ubuntu-latest
+    needs: [python-quality, docker-validation]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
           pip install pytest requests
-
-      - name: Install OTel app dependencies
-        run: pip install -r integrations/grafana-alloy/app/requirements.txt
-
-      - name: Run DataObs test suite
-        # Exclude integration tests (need Docker) and dbt tests (separate job)
-        run: python -m pytest tests/ -v --tb=short --ignore=tests/integration --ignore=tests/test_dbt_integration.py
-
-  # ---------------------------------------------------------------------------
-  # Job 3: Build Docker images
-  # ---------------------------------------------------------------------------
-  build-docker:
-    name: Build Docker images
-    runs-on: ubuntu-latest
-    needs: validate-configs
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build dataobs-api image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: Dockerfile.api
-          push: false
-          tags: dataobs/api:${{ github.sha }}
-          cache-from: type=gha,scope=api
-          cache-to: type=gha,mode=max,scope=api
-
-      - name: Build dataobs-quality image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: Dockerfile.quality
-          push: false
-          tags: dataobs/quality:${{ github.sha }}
-          cache-from: type=gha,scope=quality
-          cache-to: type=gha,mode=max,scope=quality
-
-      - name: Build sample-python-app image
-        uses: docker/build-push-action@v6
-        with:
-          context: integrations/grafana-alloy/app
-          file: integrations/grafana-alloy/app/Dockerfile
-          push: false
-          tags: dataobs/sample-python-app:${{ github.sha }}
-          cache-from: type=gha,scope=sample-app
-          cache-to: type=gha,mode=max,scope=sample-app
-
-      - name: Report build completion
+      - name: Start integration stack
+        run: docker compose -f tests/integration/docker-compose.test.yml up -d --build
+      - name: Wait for health
         run: |
-          echo "All three images built and cached successfully:"
-          echo "  dataobs/api:${{ github.sha }}"
-          echo "  dataobs/quality:${{ github.sha }}"
-          echo "  dataobs/sample-python-app:${{ github.sha }}"
-
-  # ---------------------------------------------------------------------------
-  # Job 4: Security scan (Trivy) -- main branch only
-  # ---------------------------------------------------------------------------
-  security-scan:
-    name: Security scan
-    runs-on: ubuntu-latest
-    needs: build-docker
-    if: github.ref == 'refs/heads/main'
-
-    permissions:
-      contents: read
-      issues: write
-      security-events: write
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build sample-python-app for scanning
-        uses: docker/build-push-action@v6
-        with:
-          context: integrations/grafana-alloy/app
-          file: integrations/grafana-alloy/app/Dockerfile
-          push: false
-          load: true
-          tags: dataobs/sample-python-app:scan
-          cache-from: type=gha,scope=sample-app
-
-      - name: Run Trivy scan -- JSON output
-        uses: aquasecurity/trivy-action@0.35.0
-        with:
-          image-ref: dataobs/sample-python-app:scan
-          format: json
-          output: trivy-results.json
-          exit-code: "0"
-          ignore-unfixed: true
-          vuln-type: os,library
-          severity: CRITICAL,HIGH
-
-      - name: Run Trivy scan -- table summary
-        uses: aquasecurity/trivy-action@0.35.0
-        with:
-          image-ref: dataobs/sample-python-app:scan
-          format: table
-          exit-code: "0"
-          ignore-unfixed: true
-          vuln-type: os,library
-          severity: CRITICAL,HIGH
-
-      - name: Run Trivy scan -- SARIF output
-        uses: aquasecurity/trivy-action@0.35.0
-        with:
-          image-ref: dataobs/sample-python-app:scan
-          format: sarif
-          output: trivy-results.sarif
-          exit-code: "0"
-          ignore-unfixed: true
-          vuln-type: os,library
-          severity: CRITICAL,HIGH
-          limit-severities-for-sarif: true
-
-      - name: Upload SARIF to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
-        continue-on-error: true
-        with:
-          sarif_file: trivy-results.sarif
-          category: trivy-image-scan
-
-      - name: Parse Trivy JSON and generate issue body
-        id: parse
-        run: |
-          python3 << 'PYEOF'
-          import json, os, sys, textwrap
-
-          with open("trivy-results.json") as f:
-              data = json.load(f)
-
-          criticals = []
-          for result in data.get("Results", []):
-              for vuln in result.get("Vulnerabilities", []) or []:
-                  if vuln.get("Severity") == "CRITICAL":
-                      criticals.append({
-                          "pkg":       vuln.get("PkgName", "unknown"),
-                          "cve":       vuln.get("VulnerabilityID", "unknown"),
-                          "installed": vuln.get("InstalledVersion", "-"),
-                          "fixed":     vuln.get("FixedVersion", "no fix"),
-                          "title":     vuln.get("Title", "").replace("|", "\\|")[:90],
-                          "url":       vuln.get("PrimaryURL", ""),
-                      })
-
-          count = len(criticals)
-          print(f"CRITICAL CVE count: {count}")
-
-          with open(os.environ["GITHUB_OUTPUT"], "a") as gh_out:
-              gh_out.write(f"critical_count={count}\n")
-
-          if count == 0:
-              print("No CRITICAL CVEs found.")
-              sys.exit(0)
-
-          sha        = os.environ.get("GITHUB_SHA", "unknown")[:10]
-          run_id     = os.environ.get("GITHUB_RUN_ID", "")
-          repo       = os.environ.get("GITHUB_REPOSITORY", "")
-          run_url    = f"https://github.com/{repo}/actions/runs/{run_id}"
-          commit_url = f"https://github.com/{repo}/commit/{sha}"
-
-          rows = "\n".join(
-              f"| `{v['pkg']}` | [{v['cve']}]({v['url']}) | `{v['installed']}` | `{v['fixed']}` | {v['title']} |"
-              if v["url"] else
-              f"| `{v['pkg']}` | {v['cve']} | `{v['installed']}` | `{v['fixed']}` | {v['title']} |"
-              for v in criticals
-          )
-
-          body = textwrap.dedent(f"""\
-          ## :rotating_light: CRITICAL CVEs detected by Trivy
-
-          **Image:** `dataobs/sample-python-app`
-          **Commit:** [{sha}]({commit_url})
-          **CI run:** [View full scan log]({run_url})
-          **Unfixed vulnerabilities excluded:** yes
-
-          ### CRITICAL vulnerabilities ({count} found)
-
-          | Package | CVE | Installed | Fixed In | Description |
-          |---------|-----|-----------|----------|-------------|
-          {rows}
-
-          ### Recommended actions
-          1. Update the base image in `integrations/grafana-alloy/app/Dockerfile`.
-          2. Pin affected packages to their fixed version in `requirements.txt`.
-          3. Re-run CI -- this issue will be **automatically closed** when no CRITICALs remain.
-
-          ---
-          *Opened automatically by the [CI security-scan job]({run_url}).
-          Tool: Trivy (aquasecurity/trivy-action@0.35.0).*
-          """)
-
-          with open("issue-body.md", "w") as f:
-              f.write(body)
-
-          print("Issue body written to issue-body.md")
-          PYEOF
-
-      - name: Create or update GitHub Issue for CRITICAL CVEs
-        if: steps.parse.outputs.critical_count != '0'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPO:     ${{ github.repository }}
-        run: |
-          LABEL="security:critical-cve"
-          TITLE="CRITICAL CVEs detected in sample-python-app image"
-
-          gh label create "$LABEL" \
-            --color "B60205" \
-            --description "Automatically opened by Trivy security scan" \
-            --repo "$REPO" 2>/dev/null || true
-
-          EXISTING=$(gh issue list \
-            --repo "$REPO" \
-            --label "$LABEL" \
-            --state open \
-            --json number \
-            --jq '.[0].number // empty')
-
-          if [ -n "$EXISTING" ]; then
-            echo "Existing open issue #$EXISTING -- adding comment"
-            gh issue comment "$EXISTING" \
-              --repo "$REPO" \
-              --body-file issue-body.md
-          else
-            echo "Creating new CVE issue"
-            gh issue create \
-              --repo "$REPO" \
-              --title "$TITLE" \
-              --body-file issue-body.md \
-              --label "$LABEL" \
-              --assignee "@me"
-          fi
-
-      - name: Auto-close CVE issue if no CRITICALs remain
-        if: steps.parse.outputs.critical_count == '0'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPO:     ${{ github.repository }}
-          SHA:      ${{ github.sha }}
-        run: |
-          LABEL="security:critical-cve"
-          SHA_SHORT="${SHA:0:10}"
-
-          EXISTING=$(gh issue list \
-            --repo "$REPO" \
-            --label "$LABEL" \
-            --state open \
-            --json number \
-            --jq '.[0].number // empty')
-
-          if [ -n "$EXISTING" ]; then
-            gh issue close "$EXISTING" \
-              --repo "$REPO" \
-              --comment "No CRITICAL CVEs detected in scan for commit \`${SHA_SHORT}\`. Auto-closing."
-            echo "Issue #$EXISTING closed"
-          else
-            echo "No open CVE issue -- all clear"
-          fi
-
-  # ---------------------------------------------------------------------------
-  # Job 5: Terraform Plan -- infra/terraform/aws-backend/
-  #
-  # Runs on every push/PR. Uses dorny/paths-filter to skip steps when no
-  # Terraform files changed. Never runs terraform apply.
-  #
-  # Required GitHub Actions variables (Settings > Variables):
-  #   AWS_ROLE_TO_ASSUME        ARN of IAM role for OIDC auth (preferred)
-  #   TF_VAR_aws_region         e.g. us-east-1
-  #   TF_VAR_amp_workspace_name e.g. dataobs-amp
-  #   TF_VAR_amg_workspace_name e.g. dataobs-amg
-  #   TF_VAR_grafana_url        e.g. https://<id>.grafana-workspace.<region>.amazonaws.com
-  #   TF_VAR_environment        e.g. production
-  #
-  # Optional secrets for static-key fallback (if OIDC not configured):
-  #   AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
-  # ---------------------------------------------------------------------------
-  terraform-plan:
-    name: Terraform plan
-    runs-on: ubuntu-latest
-    needs: validate-configs
-
-    permissions:
-      contents: read
-      pull-requests: write
-      id-token: write
-
-    env:
-      TF_VERSION: "1.7.5"
-      AWS_REGION: ${{ vars.TF_VAR_aws_region || 'us-east-1' }}
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      # Detect whether any Terraform files changed
-      - name: Detect Terraform changes
-        id: tf_changed
-        uses: dorny/paths-filter@v3
-        with:
-          filters: |
-            terraform:
-              - 'infra/terraform/**'
-
-      # ---- AWS credentials: OIDC (preferred) ----------------------------------
-      - name: Configure AWS credentials (OIDC)
-        if: steps.tf_changed.outputs.terraform == 'true' && vars.AWS_ROLE_TO_ASSUME != ''
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ vars.AWS_ROLE_TO_ASSUME }}
-          aws-region: ${{ env.AWS_REGION }}
-          role-session-name: dataobs-tf-plan-${{ github.run_id }}
-
-      # ---- AWS credentials: static keys (fallback) ----------------------------
-      - name: Configure AWS credentials (static keys)
-        if: steps.tf_changed.outputs.terraform == 'true' && vars.AWS_ROLE_TO_ASSUME == ''
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      # ---- Install Terraform --------------------------------------------------
-      - name: Setup Terraform
-        if: steps.tf_changed.outputs.terraform == 'true'
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: ${{ env.TF_VERSION }}
-
-      # ---- fmt check ----------------------------------------------------------
-      - name: Terraform fmt check
-        if: steps.tf_changed.outputs.terraform == 'true'
-        working-directory: infra/terraform
-        run: terraform fmt -check -recursive
-
-      # ---- init (local backend -- plan only, no state write) ------------------
-      - name: Terraform init
-        if: steps.tf_changed.outputs.terraform == 'true'
-        working-directory: infra/terraform/aws-backend
-        run: terraform init -input=false -backend=false
-
-      # ---- validate -----------------------------------------------------------
-      - name: Terraform validate
-        if: steps.tf_changed.outputs.terraform == 'true'
-        id: validate
-        working-directory: infra/terraform/aws-backend
-        run: terraform validate -no-color
-
-      # ---- plan (no apply) ----------------------------------------------------
-      - name: Terraform plan
-        if: steps.tf_changed.outputs.terraform == 'true'
-        id: plan
-        working-directory: infra/terraform/aws-backend
-        continue-on-error: true
-        run: |
-          AMP_NAME="${{ vars.TF_VAR_amp_workspace_name || 'dataobs-amp-ci' }}"
-          AMG_NAME="${{ vars.TF_VAR_amg_workspace_name || 'dataobs-amg-ci' }}"
-          GF_URL="${{ vars.TF_VAR_grafana_url || 'https://placeholder.grafana-workspace.us-east-1.amazonaws.com' }}"
-          ENV="${{ vars.TF_VAR_environment || 'ci' }}"
-
-          terraform plan \
-            -input=false \
-            -no-color \
-            -out=tfplan \
-            -var="aws_region=${AWS_REGION}" \
-            -var="amp_workspace_name=${AMP_NAME}" \
-            -var="amg_workspace_name=${AMG_NAME}" \
-            -var="grafana_url=${GF_URL}" \
-            -var="environment=${ENV}" \
-            2>&1 | tee /tmp/tfplan-output.txt
-
-          echo "plan_exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
-
-      # ---- post plan as PR comment --------------------------------------------
-      - name: Post plan comment to PR
-        if: steps.tf_changed.outputs.terraform == 'true' && github.event_name == 'pull_request'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          REPO: ${{ github.repository }}
-          VALIDATE_OUTCOME: ${{ steps.validate.outcome }}
-          PLAN_OUTCOME: ${{ steps.plan.outcome }}
-        run: |
-          PLAN_TEXT=""
-          if [ -f /tmp/tfplan-output.txt ]; then
-            PLAN_TEXT=$(cat /tmp/tfplan-output.txt)
-          fi
-
-          # Truncate at 60k chars to stay within GitHub comment limits
-          if [ ${#PLAN_TEXT} -gt 60000 ]; then
-            PLAN_TEXT="${PLAN_TEXT:0:60000}
-          ... (truncated — see full log in Actions)"
-          fi
-
-          V_ICON="passed"
-          [ "$VALIDATE_OUTCOME" = "failure" ] && V_ICON="FAILED"
-          [ "$VALIDATE_OUTCOME" = "skipped" ] && V_ICON="skipped"
-
-          P_ICON="no errors"
-          [ "$PLAN_OUTCOME" = "failure" ] && P_ICON="FAILED"
-          [ "$PLAN_OUTCOME" = "skipped" ] && P_ICON="skipped"
-
-          BODY="## Terraform Plan -- \`infra/terraform/aws-backend/\`
-
-          | Step | Result |
-          |------|--------|
-          | \`terraform fmt\` | ${V_ICON} |
-          | \`terraform validate\` | ${V_ICON} |
-          | \`terraform plan\` | ${P_ICON} |
-
-          <details><summary>Show full plan output</summary>
-
-          \`\`\`
-          ${PLAN_TEXT}
-          \`\`\`
-
-          </details>
-
-          > No resources will be created or modified -- this is a plan-only CI job."
-
-          # Update existing bot comment or create new one
-          EXISTING=$(gh api "repos/${REPO}/issues/${PR_NUMBER}/comments" \
-            --jq '[.[] | select(.user.type == "Bot") | select(.body | contains("Terraform Plan -- "))] | .[0].id // empty')
-
-          if [ -n "$EXISTING" ]; then
-            gh api --method PATCH "repos/${REPO}/issues/comments/${EXISTING}" \
-              -f body="$BODY"
-          else
-            gh api --method POST "repos/${REPO}/issues/${PR_NUMBER}/comments" \
-              -f body="$BODY"
-          fi
-
-      # ---- upload plan binary as artifact ------------------------------------
-      - name: Upload plan artifact
-        if: steps.tf_changed.outputs.terraform == 'true' && steps.plan.outcome != 'skipped'
+          timeout 180 bash -c 'until curl -fsS http://localhost:9200/_cluster/health; do sleep 5; done'
+          timeout 180 bash -c 'until curl -fsS http://localhost:8000/health; do sleep 5; done'
+      - name: Run integration tests
+        run: RUN_INTEGRATION_TESTS=1 python -m pytest tests/integration -q --junitxml=integration-test-results.xml
+      - name: Upload integration artifacts on failure
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: tfplan-${{ github.sha }}
-          path: infra/terraform/aws-backend/tfplan
-          retention-days: 7
-
-      # ---- fail job if plan errored ------------------------------------------
-      - name: Assert plan succeeded
-        if: steps.tf_changed.outputs.terraform == 'true'
-        run: |
-          EXIT="${{ steps.plan.outputs.plan_exit_code }}"
-          if [ -n "$EXIT" ] && [ "$EXIT" != "0" ]; then
-            echo "terraform plan exited with code ${EXIT}"
-            exit 1
-          fi
-
-
-  # ---------------------------------------------------------------------------
-  # Job 6: dbt integration tests
-  #
-  # Validates:
-  #   - parse_run_results.py schema validation (all required fields)
-  #   - OTel span semconv compliance (db.system.name, db.operation.name,
-  #     db.collection.name, db.namespace, db.response.status_code, error.type)
-  #   - SpanKind.CLIENT enforcement
-  #   - Span naming pattern: {db.operation.name} {db.collection.name}
-  #   - dbt Cloud poller semconv attributes
-  #   - Edge cases: empty results, bad JSON, unknown schema version
-  #
-  # Runs on every push/PR. No external dependencies (InMemorySpanExporter only).
-  # ---------------------------------------------------------------------------
-  dbt-integration-test:
-    name: dbt integration tests
-    runs-on: ubuntu-latest
-    needs: validate-configs
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
+          name: integration-test-artifacts
+          path: |
+            integration-test-results.xml
+            tests/integration/*.yaml
+      - name: Dump container logs on failure
+        if: failure()
+        run: docker compose -f tests/integration/docker-compose.test.yml logs --no-color > integration-compose.log
+      - name: Upload integration logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
         with:
-          python-version: "3.11"
-          cache: pip
+          name: integration-compose-logs
+          path: integration-compose.log
+      - name: Tear down integration stack
+        if: always()
+        run: docker compose -f tests/integration/docker-compose.test.yml down -v
 
-      - name: Install dbt integration dependencies
+  terraform-helm:
+    name: Terraform and Helm validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - uses: azure/setup-helm@v4
+      - name: Terraform fmt
+        run: terraform fmt -check -recursive
+      - name: Terraform validate roots/modules
         run: |
-          pip install \
-            opentelemetry-sdk>=1.24.0 \
-            opentelemetry-api>=1.24.0 \
-            opentelemetry-semantic-conventions>=0.45b0 \
-            opentelemetry-exporter-otlp-proto-grpc>=1.24.0 \
-            httpx>=0.27.0 \
-            pytest>=8.0 \
-            pytest-asyncio>=0.23
+          for dir in $(find infra/terraform -name '*.tf' -printf '%h\n' | sort -u); do
+            echo "Validating $dir"
+            terraform -chdir="$dir" init -backend=false
+            terraform -chdir="$dir" validate
+          done
+      - name: Helm lint
+        run: helm lint helm/dataobs
+      - name: Helm template
+        run: helm template dataobs helm/dataobs
 
-      - name: Verify dbt integration module imports
+  image-security:
+    name: Production image security and SBOM
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build production images
         run: |
-          python -c "
-          import sys
-          sys.path.insert(0, '.')
-          from integrations.dbt.parse_run_results import parse_and_emit, _validate_schema
-          from integrations.dbt.dbt_cloud_poller import DbtCloudPoller
-          print('dbt integration imports OK')
-          "
-
-      - name: Run dbt integration tests
+          docker build -f Dockerfile.api -t dataobs/api:${{ github.sha }} .
+          docker build -f Dockerfile.quality -t dataobs/quality:${{ github.sha }} .
+      - name: Scan API image
+        uses: aquasecurity/trivy-action@0.35.0
+        with:
+          image-ref: dataobs/api:${{ github.sha }}
+          format: table
+          ignore-unfixed: true
+          vuln-type: os,library
+          severity: CRITICAL,HIGH
+          exit-code: "1"
+          scanners: vuln
+      - name: Scan quality worker image
+        uses: aquasecurity/trivy-action@0.35.0
+        with:
+          image-ref: dataobs/quality:${{ github.sha }}
+          format: table
+          ignore-unfixed: true
+          vuln-type: os,library
+          severity: CRITICAL,HIGH
+          exit-code: "1"
+          scanners: vuln
+      - name: Generate SBOMs
         run: |
-          python -m pytest tests/test_dbt_integration.py \
-            -v \
-            --tb=short \
-            -x \
-            --no-header \
-            -q
-
-      - name: Run schema validation smoke test
-        run: |
-          python << 'PYEOF'
-          import json, sys, warnings
-          sys.path.insert(0, ".")
-          from integrations.dbt.parse_run_results import _validate_schema, _SUPPORTED_SCHEMA_VERSIONS
-
-          # Test all supported schema versions validate cleanly
-          for version in sorted(_SUPPORTED_SCHEMA_VERSIONS):
-              doc = {
-                  "metadata": {
-                      "dbt_schema_version": version,
-                      "dbt_version": "1.7.0",
-                      "generated_at": "2024-03-01T10:00:00.000000Z",
-                      "invocation_id": "smoke-test-123",
-                      "adapter_type": "postgres",
-                  },
-                  "elapsed_time": 0.1,
-                  "results": [],
-                  "args": {},
-              }
-              _validate_schema(doc)
-              print(f"OK: {version}")
-
-          # Test that missing required fields raise ValueError
-          for field in ["metadata", "results"]:
-              bad_doc = {k: v for k, v in doc.items() if k != field}
-              try:
-                  _validate_schema(bad_doc)
-                  print(f"FAIL: missing {field!r} should raise ValueError", file=sys.stderr)
-                  sys.exit(1)
-              except ValueError:
-                  print(f"OK: missing {field!r} raises ValueError as expected")
-
-          print("Schema validation smoke test PASSED")
-          PYEOF
+          trivy image --format cyclonedx --output sbom-api.cdx.json dataobs/api:${{ github.sha }}
+          trivy image --format cyclonedx --output sbom-quality.cdx.json dataobs/quality:${{ github.sha }}
+      - name: Upload SBOMs
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-image-sboms
+          path: sbom-*.cdx.json

@@ -1,0 +1,20 @@
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+processors:
+  batch:
+    timeout: 1s
+exporters:
+  elasticsearch:
+    endpoints: ["http://elasticsearch:9200"]
+    traces_index: dataobs-traces
+    mapping:
+      mode: none
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [elasticsearch]

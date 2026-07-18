@@ -1,10 +1,6 @@
-# Integration test stack — spun up by pytest fixtures
-# Usage: docker compose -f tests/integration/docker-compose.test.yml up -d
-version: "3.9"
-
 services:
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.0
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.4.2
     environment:
       - discovery.type=single-node
       - xpack.security.enabled=false
@@ -12,19 +8,19 @@ services:
     ports:
       - "9200:9200"
     healthcheck:
-      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -q '\"status\":\"green\"\\|\"status\":\"yellow\"'"]
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9200/_cluster/health | grep -Eq '\"status\":\"(green|yellow)\"'"]
       interval: 10s
       timeout: 5s
-      retries: 12
+      retries: 18
 
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.98.0
     command: ["--config=/etc/otelcol/config.yaml"]
     volumes:
-      - ../../config/otel-collector-config.yaml:/etc/otelcol/config.yaml:ro
+      - ./otel-collector-test.yaml:/etc/otelcol/config.yaml:ro
     ports:
-      - "4317:4317"   # OTLP gRPC
-      - "4318:4318"   # OTLP HTTP
+      - "4318:4318"
+      - "13133:13133"
     depends_on:
       elasticsearch:
         condition: service_healthy
@@ -36,8 +32,40 @@ services:
     environment:
       - DATAOBS_STORE_BACKEND=elasticsearch
       - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - API_PORT=8000
+      - DATAOBS_ALLOW_UNAUTHENTICATED_DEV=true
     ports:
       - "8000:8000"
     depends_on:
       elasticsearch:
         condition: service_healthy
+
+  mock-webhook:
+    image: python:3.11-alpine
+    command:
+      - python
+      - -c
+      - |
+        import json
+        from http.server import BaseHTTPRequestHandler, HTTPServer
+        class Handler(BaseHTTPRequestHandler):
+            def do_POST(self):
+                length = int(self.headers.get('content-length', '0'))
+                self.rfile.read(length)
+                self.send_response(202 if self.path.startswith('/pagerduty') else 201 if self.path.startswith('/servicenow') else 200)
+                self.send_header('content-type', 'application/json' if not self.path.startswith('/slack') else 'text/plain')
+                self.end_headers()
+                if self.path.startswith('/slack'):
+                    self.wfile.write(b'ok')
+                elif self.path.startswith('/servicenow'):
+                    self.wfile.write(json.dumps({'result': {'number': 'INC001'}}).encode())
+                else:
+                    self.wfile.write(json.dumps({'status': 'success', 'dedup_key': 'quality-orders-customer_id'}).encode())
+        HTTPServer(('0.0.0.0', 8080), Handler).serve_forever()
+    ports:
+      - "8089:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "python - <<'PY'\nimport urllib.request\ntry:\n urllib.request.urlopen('http://localhost:8080', timeout=1)\nexcept Exception:\n pass\nPY"]
+      interval: 5s
+      timeout: 3s
+      retries: 12

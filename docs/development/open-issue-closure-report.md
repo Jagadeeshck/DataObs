@@ -2,60 +2,30 @@
 
 ## Baseline
 
-- Baseline commit: `42d413e Add the DataObs productization master plan (#79)`.
-- PR #79 verification: local `main` history contains `Add the DataObs productization master plan (#79)`, so the master plan is present in this checkout.
-- Remote/GitHub mutation blocker: this environment has no configured `origin` remote and no `gh` executable. Issues could not be re-queried, commented, or closed from the terminal. See `docs/development/github-issue-actions.md`.
-- Open issue count before: known Phase 0 list #24, #25, #28, #29, #30, #31, #32, #46, #47, #48, #49, #50, #51 (13 issues), pending GitHub re-query.
-- Open issue count after in GitHub: unknown/not mutated because of authentication/tooling blocker.
-
-## Baseline commands
-
-| Command | Result |
-|---|---|
-| `git log -1 --oneline` | `42d413e Add the DataObs productization master plan (#79)` |
-| `python -m pytest -q` | 273 passed, 5 skipped |
-| `gh issue list` | failed: `gh` not installed |
-| `git fetch origin main --prune` | failed: no `origin` remote configured |
-
-## Inspected repository areas
-
-README, product master plan, production readiness audit, CI workflows, Docker Compose files, Kubernetes manifests, production and POC configuration, OTel collector configuration, Elastic docs/configuration, integrations under `integrations/`, and Terraform under `infra/terraform/` were inspected by repository search and targeted reads.
+- Latest local `main`/HEAD SHA available in this environment: `97e24f0e07673eb00375e8fc4b4bc2db1f74b19a` (`97e24f0 Merge pull request #80 from Jagadeeshck/codex/complete-dataobs-phase-0-issue-closure`).
+- PR #80 verification: local history contains commit `97e24f0e07673eb00375e8fc4b4bc2db1f74b19a`.
+- Authenticated GitHub state blocker: `gh` is not installed and `git fetch origin main` over HTTPS failed without credentials. Full open issue/PR bodies, comments, Actions status, and issue mutation could not be performed here.
+- Initial open issue count used for this local report: 13 known legacy issues (#24, #25, #28, #29, #30, #31, #32, #46, #47, #48, #49, #50, #51), pending authenticated re-query.
+- Final legacy open issue count in GitHub: unknown/not mutated. This PR must stay draft until authenticated comments/closures finish.
 
 ## Acceptance matrix
 
-| Issue | Acceptance criterion | Implementation evidence | Test evidence | Status | Final disposition |
-|---|---|---|---|---|---|
-| #24 | Z-score, KL divergence, IQR/outlier ratio, rolling baseline, dynamic thresholds, null-rate drift, config, OTel, alert routing | Existing quality/drift modules plus Phase 0 architecture preserves drift in database profiling | Existing quality tests pass in `python -m pytest -q`; no issue mutation possible | partial | still-open-blocker until issue text is re-queried and closure comment posted |
-| #25 | quality check → OTel → collector → Elasticsearch → API → Slack/PagerDuty/ServiceNow | Existing `tests/integration/docker-compose.test.yml` and alert/API integration tests | Unit suite passes; integration tests are skipped unless `RUN_INTEGRATION_TESTS=1` | partial | still-open-blocker until container-backed CI run and issue closure |
-| #28 | Lambda decorator, cold start, W3C propagation, SQS/SNS/EventBridge, examples, build/layer, Terraform, tests, dashboard/docs | Existing `integrations/aws-lambda` assets | Existing suite passes; closure requires issue re-query | partial | still-open-blocker |
-| #29 | dbt integration criteria | Existing `integrations/dbt` and tests | Existing dbt tests pass in full suite | partial | still-open-blocker pending exact issue criteria re-query |
-| #30 | Automated anomaly detection criteria | Existing analytics/ML tests and docs | Existing ML tests pass | partial | still-open-blocker pending exact issue criteria re-query |
-| #31 | Multi-tenant Alloy configuration | Existing `integrations/grafana-alloy` and generated config tooling | Existing tests pass where present | partial | still-open-blocker pending exact issue criteria re-query |
-| #32 | Grafana dashboard Terraform provisioning | Existing Terraform dashboard module | Terraform fmt check run later in sprint | partial | still-open-blocker pending exact issue criteria re-query |
-| #46 | AI agents and autonomous remediation | Preserved in `docs/product/roadmap-v1.md` and `docs/product/feature-matrix.md` | Documentation traceability | superseded | superseded-by-product-roadmap; close not planned when GitHub access exists |
-| #47 | Azure observability | Preserved in roadmap/feature matrix/capability matrix | Documentation traceability | superseded | superseded-by-product-roadmap; close not planned when GitHub access exists |
-| #48 | GCP observability | Preserved in roadmap/feature matrix/capability matrix | Documentation traceability | superseded | superseded-by-product-roadmap; close not planned when GitHub access exists |
-| #49 | Snowflake observability | Preserved in roadmap/feature matrix/capability matrix | Documentation traceability | superseded | superseded-by-product-roadmap; close not planned when GitHub access exists |
-| #50 | Multi-cloud OpenLineage | Preserved as v1.1 cross-cloud roadmap because existing code does not prove complete cross-cloud acceptance | Documentation traceability | superseded | superseded-by-product-roadmap; close not planned when GitHub access exists |
-| #51 | DataObs Advisor | Preserved in roadmap/feature matrix | Documentation traceability | superseded | superseded-by-product-roadmap; close not planned when GitHub access exists |
+| Issue | Acceptance criterion | Implementation evidence | Test evidence | Status | Final disposition | GitHub action |
+|---|---|---|---|---|---|---|
+| #24 | Z-score, KL divergence, IQR/outlier ratio, dynamic threshold calibration, rolling Elasticsearch baseline, configurable window, null-rate drift, OTel gauge/counter/span event, database/table/column/method attrs, Slack/PagerDuty/ServiceNow payloads, configuration, unit tests, #25 integration path | Drift remains product scope in roadmap and quality modules exist, but full criterion-by-criterion GitHub issue re-query and execution proof is unavailable | Unit suite plus #25 integration path must pass before completion | partial | superseded-by-product-roadmap unless authenticated audit proves complete | Post honest comment; close completed only if all criteria pass, otherwise close not planned |
+| #25 | quality failure → OTel → collector → Elasticsearch → API → alert adapter for Slack, PagerDuty, ServiceNow, API write/read, span semantic fields, deduplication | `tests/integration/docker-compose.test.yml` starts Elasticsearch 9.4.2, OTel Collector, DataObs API, mock webhook; integration tests cover API, alert adapters, and OTel indexing | `RUN_INTEGRATION_TESTS=1 python -m pytest tests/integration -q` and `integration-tests` CI job | complete | completed after CI passes | Post completed comment and close completed only after container CI passes |
+| #28 | AWS Lambda OTel decorator, Python 3.11, cold start, W3C propagation, SQS/SNS/EventBridge, build script/layer, examples, Terraform, tests, docs, Elasticsearch/Kibana destination | Existing `integrations/aws-lambda` assets; roadmap preserves destination | Full issue re-query and deployable layer validation unavailable | partial | superseded-by-product-roadmap unless authenticated audit proves complete | Comment and close completed only if fully validated; otherwise not planned |
+| #29 | dbt Core results, dbt Cloud polling, model/test/source freshness, OTel spans/metrics, run correlation, retry/API handling, tests, docs, Elasticsearch destination | Existing `integrations/dbt` assets; roadmap preserves destination | Unit tests exist but full e2e proof unavailable | partial | superseded-by-product-roadmap unless authenticated audit proves complete | Comment and close completed only if fully validated; otherwise not planned |
+| #30 | bootstrap ranges, histogram drift, seasonality/time-series, multivariate correlation, baseline persistence, alerting, deterministic tests | Existing analytics modules; roadmap preserves missing/hardening scope | Unit tests exist but full acceptance unavailable | partial | superseded-by-product-roadmap unless authenticated audit proves complete | Comment and close completed only if fully validated; otherwise not planned |
+| #31 | Multi-tenant Alloy configuration | Alloy is optional; primary architecture is Elastic Agent/Fleet, EDOT, DataObs Scanner | Existing Alloy tests/config are not proof of core completion | superseded | superseded-by-product-roadmap | Post supersession comment and close not planned |
+| #32 | Grafana dashboard Terraform provisioning | Grafana is optional; Kibana/future Console are primary | Terraform validation required before any completed claim | superseded | superseded-by-product-roadmap | Post supersession comment and close not planned unless fully validated |
+| #46 | AI agents and autonomous remediation | Preserved in roadmap/feature matrix with pillar, milestone, collection, storage, API/UI, security/licensing, non-goals | Documentation traceability | superseded | superseded-by-product-roadmap | Post issue-specific supersession comment; close not planned |
+| #47 | Azure observability | Preserved in roadmap/feature matrix | Documentation traceability | superseded | superseded-by-product-roadmap | Post issue-specific supersession comment; close not planned |
+| #48 | GCP observability | Preserved in roadmap/feature matrix | Documentation traceability | superseded | superseded-by-product-roadmap | Post issue-specific supersession comment; close not planned |
+| #49 | Snowflake observability | Preserved in roadmap/feature matrix | Documentation traceability | superseded | superseded-by-product-roadmap | Post issue-specific supersession comment; close not planned |
+| #50 | Multi-cloud OpenLineage; existing ingestion is not full cross-cloud implementation/test proof | Preserved in roadmap/feature matrix | Documentation traceability | superseded | superseded-by-product-roadmap | Post issue-specific supersession comment acknowledging partial ingestion foundation; close not planned |
+| #51 | DataObs Advisor | Preserved in roadmap/feature matrix | Documentation traceability | superseded | superseded-by-product-roadmap | Post issue-specific supersession comment; close not planned |
 
-## Phase 0 implementation evidence
+## Command results
 
-- Added collection-plane architecture with Elastic Agent/Fleet reuse, EDOT, DataObs Scanner, Connector SDK, Gateway, tenant-aware storage contracts, and Mermaid diagram.
-- Added database scanning/profiling design covering metadata-only discovery, schema snapshots/diffs, freshness, aggregate profiling, safety controls, scheduling/state, credentials, and least privileges.
-- Added collection capability decision matrix for required sources.
-- Added minimal SDK, scanner worker, PostgreSQL reference connector, and tests for registry, models, redaction, schema canonicalization/fingerprint/diff, discovery, allow/deny filtering, aggregate profiling, checkpointing, heartbeat, timeout/retry foundations, OTel attributes, tenant propagation, and no raw-row persistence.
-
-## Closure status
-
-GitHub issue closure is blocked by missing remote and missing `gh`. This PR must be treated as not fully ready for issue closure until the commands in `docs/development/github-issue-actions.md` are run by an authenticated maintainer.
-
-## Final local validation commands
-
-| Command | Result |
-|---|---|
-| `python -m pytest -q` | Passed: 279 passed, 5 skipped, 1 warning |
-| `docker compose config` | Warning: Docker CLI unavailable (`docker: command not found`) |
-| `docker compose -f tests/integration/docker-compose.test.yml config` | Warning: Docker CLI unavailable (`docker: command not found`) |
-| `terraform fmt -check -recursive` | Warning: Terraform CLI unavailable (`terraform: command not found`) |
-| `git status --short` | Shows Phase 0 documentation, SDK, scanner, PostgreSQL connector, and tests before commit |
+See PR body and final response for exact local command results. Do not hide failures: Docker, Terraform, Helm, and GitHub mutation depend on installed tools/authentication in the execution environment.

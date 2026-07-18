@@ -524,3 +524,9 @@ These should be reviewed for accuracy and drift, but are not runtime code:
 - [ ] Add API readiness checks and request body validation.
 - [ ] Document config precedence and production required settings.
 - [ ] Create the P0 GitHub issues above and assign owners.
+
+## Phase 0 governance correction
+
+DataObs is not production-ready. Phase 0 requires authenticated GitHub issue disposition, container-backed integration tests, Docker Compose validation, Terraform validation, Helm validation, production Python quality gates, dependency audit, production image scanning, and SBOM generation before the PR can be marked ready.
+
+CI now defines blocking jobs for Python quality/unit tests, Docker Compose validation, container-backed integration tests, Terraform/Helm validation, and production image security/SBOM generation. HIGH and CRITICAL fixable vulnerabilities are blocking; unfixed HIGH findings must be documented as risks rather than hidden.

@@ -89,6 +89,75 @@ BASE_PROPERTIES: Dict[str, Any] = {
     "metadata": {"type": "flattened"},
 }
 
+INCIDENT_AUTOMATION_MUTABLE_INDICES = [
+    "dataobs-findings-v1",
+    "dataobs-incidents-v1",
+    "dataobs-incident-correlations-v1",
+    "dataobs-notification-policies-v1",
+    "dataobs-workflow-definitions-v1",
+    "dataobs-workflow-bindings-v1",
+    "dataobs-workflow-executions-v1",
+    "dataobs-action-approvals-v1",
+    "dataobs-action-idempotency-v1",
+    "dataobs-case-links-v1",
+]
+
+INCIDENT_AUTOMATION_STREAMS = [
+    "logs-dataobs.finding-*",
+    "logs-dataobs.incident_event-*",
+    "logs-dataobs.correlation_event-*",
+    "logs-dataobs.workflow_execution-*",
+    "logs-dataobs.workflow_step-*",
+    "logs-dataobs.approval_event-*",
+    "logs-dataobs.notification_delivery-*",
+    "logs-dataobs.remediation_action-*",
+    "logs-dataobs.verification_event-*",
+    "metrics-dataobs.incident-*",
+    "metrics-dataobs.workflow-*",
+]
+
+INCIDENT_AUTOMATION_PROPERTIES: Dict[str, Any] = {
+    "finding_id": {"type": "keyword"},
+    "incident_id": {"type": "keyword"},
+    "workflow_id": {"type": "keyword"},
+    "workflow_execution_id": {"type": "keyword"},
+    "step_id": {"type": "keyword"},
+    "policy_id": {"type": "keyword"},
+    "monitor_id": {"type": "keyword"},
+    "rule_id": {"type": "keyword"},
+    "kibana_space": {"type": "keyword"},
+    "elastic_case_id": {"type": "keyword"},
+    "external_incident_id": {"type": "keyword"},
+    "finding_type": {"type": "keyword"},
+    "signal_type": {"type": "keyword"},
+    "incident_state": {"type": "keyword"},
+    "severity": {"type": "keyword"},
+    "deduplication_key": {"type": "keyword"},
+    "correlation_key": {"type": "keyword"},
+    "request_id": {"type": "keyword"},
+    "span_id": {"type": "keyword"},
+    "action_type": {"type": "keyword"},
+    "risk_level": {"type": "keyword"},
+    "approval_state": {"type": "keyword"},
+    "retry_count": {"type": "integer"},
+    "timeout_seconds": {"type": "integer"},
+    "terminal_state": {"type": "boolean"},
+    "technical_score": {"type": "double"},
+    "business_impact_score": {"type": "double"},
+    "affected_asset_count": {"type": "integer"},
+    "downstream_asset_count": {"type": "integer"},
+    "duration_ms": {"type": "long"},
+    "event_version": {"type": "keyword"},
+    "source_event_version": {"type": "keyword"},
+    "first_observed_at": {"type": "date"},
+    "last_observed_at": {"type": "date"},
+    "opened_at": {"type": "date"},
+    "acknowledged_at": {"type": "date"},
+    "resolved_at": {"type": "date"},
+    "closed_at": {"type": "date"},
+    "expires_at": {"type": "date"},
+}
+
 
 @dataclass(frozen=True)
 class Migration:
@@ -153,5 +222,23 @@ POSTGRES_OBSERVABILITY_MIGRATION = Migration(
 )
 
 
+INCIDENT_AUTOMATION_MIGRATION = Migration(
+    "0003_incident_automation",
+    "Add incident automation findings, correlation, workflow, approval, notification and case-link indices and streams",
+    "v1",
+    dependencies=["0002_postgres_observability"],
+    rollback_strategy="retain mutable incident state until explicit lifecycle/archive policy; remove templates only after snapshot validation",
+    operations={
+        "mutable_indices": INCIDENT_AUTOMATION_MUTABLE_INDICES,
+        "data_streams": INCIDENT_AUTOMATION_STREAMS,
+        "retention_defaults": {
+            "findings_and_workflow_steps": "30d operational retention",
+            "incident_and_audit_events": "365d compliance retention",
+            "mutable_incident_state": "retained until explicit operator lifecycle/archive policy",
+        },
+    },
+)
+
+
 def migrations() -> List[Migration]:
-    return [FOUNDATION_MIGRATION, POSTGRES_OBSERVABILITY_MIGRATION]
+    return [FOUNDATION_MIGRATION, POSTGRES_OBSERVABILITY_MIGRATION, INCIDENT_AUTOMATION_MIGRATION]

@@ -22,3 +22,7 @@
 ## Product foundation update
 
 The product foundation now tracks six canonical pillars: Platform Observability, Data Pipeline and Job Observability, Data Observability, FinOps and Cost Observability, Business Observability, and AI and Agent Observability. Elasticsearch/Kibana is the mandatory primary product platform; OpenSearch, Grafana Cloud, AMP, AMG, Alloy, and other exporters are optional integrations only.
+
+## Incident automation
+
+Draft support includes finding normalization, deterministic incident deduplication/correlation, Elastic Workflows YAML packs, alert-rule binding definitions, Elastic Cases linkage patterns, safe action approvals, notification fallback records and optional technical-preview Streams enrichment.

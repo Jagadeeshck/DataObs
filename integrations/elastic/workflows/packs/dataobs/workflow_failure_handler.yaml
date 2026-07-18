@@ -1,0 +1,31 @@
+id: dataobs-workflow-failure-handler
+name: DataObs Workflow Failure Handler
+runWorkflowActionRequired: true
+triggers:
+  - type: manual
+  - type: alert
+    ruleHint: workflow failure sync fallback
+steps:
+  - id: validate_context
+    action: dataobs.validateTenantContext
+  - id: query_incident
+    action: elasticsearch.esql
+  - id: find_cases
+    action: cases.find
+  - id: create_or_update_case
+    action: cases.createOrUpdate
+  - id: attach_evidence
+    action: cases.addComment
+  - id: notify_owner
+    action: dataobs.notify
+  - id: approval_gate
+    action: waitForInput
+  - id: safe_action
+    action: dataobs.safeAction
+  - id: verify
+    action: dataobs.verify
+  - id: update_incident
+    action: dataobs.updateIncident
+technicalPreview:
+  streamsSignificantEvents: optional
+  eventTriggers: optional

@@ -18,6 +18,9 @@ from services.collection_manager import CollectionManagerService
 from services.collection_manager.elasticsearch_repository import ElasticsearchCollectionRepository
 from services.collection_manager.leases import claim_task, renew_task
 from services.collection_manager.memory_repository import InMemoryCollectionRepository
+from services.incident_manager import IncidentManagerService
+from packages.domain_model.incident import IncidentState
+from packages.domain_model.workflow import ApprovalState
 from src.api.store import StoreProtocol, get_store
 from src.config.settings import AppSettings, load_settings
 from src.core.enterprise_blueprint import enterprise_backlog
@@ -194,6 +197,7 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
     else:
         repo = InMemoryCollectionRepository()
     app.state.collection_manager = CollectionManagerService(repo)
+    app.state.incident_manager = IncidentManagerService()
 
     @app.middleware("http")
     async def request_context_middleware(request: Request, call_next):
@@ -210,6 +214,9 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
 
     def get_stores(request: Request) -> StoreBundle:
         return request.app.state.store_bundle
+
+    def get_incident_manager(request: Request) -> IncidentManagerService:
+        return request.app.state.incident_manager
 
     async def require_auth(
         settings: AppSettings = Depends(get_settings),
@@ -303,6 +310,250 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
                 "auth_mode": settings.auth_mode,
             },
             headers={"Deprecation": "true", "Link": "</livez>; rel=successor-version"},
+        )
+
+    @app.post("/api/v1/findings", status_code=201, dependencies=[Depends(require_auth)])
+    async def create_finding(
+        request: Request,
+        body: DataObservabilityRequest,
+        manager: IncidentManagerService = Depends(get_incident_manager),
+    ) -> Dict[str, Any]:
+        try:
+            return manager.ingest(_as_dict(body), tenant_id=request.state.tenant_id)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.get("/api/v1/findings", dependencies=[Depends(require_auth)])
+    async def list_findings(
+        request: Request,
+        manager: IncidentManagerService = Depends(get_incident_manager),
+        limit: int = Query(100, ge=1, le=1000),
+        offset: int = Query(0, ge=0),
+        severity: str | None = None,
+        asset_id: str | None = None,
+    ) -> Dict[str, Any]:
+        items = [f.model_dump(mode="json") for f in manager.repo.list_findings(request.state.tenant_id)]
+        items = [
+            f
+            for f in items
+            if (severity is None or f.get("severity") == severity)
+            and (asset_id is None or f.get("asset_id") == asset_id)
+        ]
+        page = _paginate(items, limit, offset)
+        return {"findings": page["items"], "count": len(page["items"]), "pagination": page["pagination"]}
+
+    @app.get("/api/v1/findings/{finding_id}", dependencies=[Depends(require_auth)])
+    async def get_finding(
+        finding_id: str, request: Request, manager: IncidentManagerService = Depends(get_incident_manager)
+    ) -> Dict[str, Any]:
+        finding = manager.repo.get_finding(request.state.tenant_id, finding_id)
+        if not finding:
+            raise HTTPException(status_code=404, detail=f"Finding '{finding_id}' not found")
+        return finding.model_dump(mode="json")
+
+    @app.get("/api/v1/incidents", dependencies=[Depends(require_auth)])
+    async def list_incidents_v1(
+        request: Request,
+        manager: IncidentManagerService = Depends(get_incident_manager),
+        limit: int = Query(100, ge=1, le=1000),
+        offset: int = Query(0, ge=0),
+        state: str | None = None,
+        severity: str | None = None,
+        owner: str | None = None,
+        asset_id: str | None = None,
+    ) -> Dict[str, Any]:
+        items = [i.model_dump(mode="json") for i in manager.repo.list_incidents(request.state.tenant_id)]
+        items = [
+            i
+            for i in items
+            if (state is None or i.get("incident_state") == state)
+            and (severity is None or i.get("severity") == severity)
+            and (owner is None or i.get("owner_team") == owner)
+            and (asset_id is None or asset_id in i.get("affected_assets", []))
+        ]
+        page = _paginate(items, limit, offset)
+        return {"incidents": page["items"], "count": len(page["items"]), "pagination": page["pagination"]}
+
+    @app.get("/api/v1/incidents/{incident_id}", dependencies=[Depends(require_auth)])
+    async def get_incident(
+        incident_id: str, request: Request, manager: IncidentManagerService = Depends(get_incident_manager)
+    ) -> Dict[str, Any]:
+        incident = manager.repo.get_incident(request.state.tenant_id, incident_id)
+        if not incident:
+            raise HTTPException(status_code=404, detail=f"Incident '{incident_id}' not found")
+        return incident.model_dump(mode="json")
+
+    @app.get("/api/v1/incidents/{incident_id}/events", dependencies=[Depends(require_auth)])
+    async def incident_events(
+        incident_id: str, request: Request, manager: IncidentManagerService = Depends(get_incident_manager)
+    ) -> Dict[str, Any]:
+        if not manager.repo.get_incident(request.state.tenant_id, incident_id):
+            raise HTTPException(status_code=404, detail=f"Incident '{incident_id}' not found")
+        return {"events": [], "count": 0}
+
+    @app.get("/api/v1/incidents/{incident_id}/evidence", dependencies=[Depends(require_auth)])
+    async def incident_evidence(
+        incident_id: str, request: Request, manager: IncidentManagerService = Depends(get_incident_manager)
+    ) -> Dict[str, Any]:
+        incident = manager.repo.get_incident(request.state.tenant_id, incident_id)
+        if not incident:
+            raise HTTPException(status_code=404, detail=f"Incident '{incident_id}' not found")
+        return {"evidence": incident.most_recent_evidence}
+
+    @app.get("/api/v1/incidents/{incident_id}/impact", dependencies=[Depends(require_auth)])
+    async def incident_impact(
+        incident_id: str, request: Request, manager: IncidentManagerService = Depends(get_incident_manager)
+    ) -> Dict[str, Any]:
+        incident = manager.repo.get_incident(request.state.tenant_id, incident_id)
+        if not incident:
+            raise HTTPException(status_code=404, detail=f"Incident '{incident_id}' not found")
+        return {"affected_assets": incident.affected_assets, "impact_summary": incident.impact_summary}
+
+    async def _incident_transition(
+        incident_id: str,
+        state: IncidentState,
+        request: Request,
+        manager: IncidentManagerService,
+        body: DataObservabilityRequest | None = None,
+    ) -> Dict[str, Any]:
+        try:
+            return manager.transition(
+                request.state.tenant_id, incident_id, state, (_as_dict(body).get("reason") if body else None)
+            )
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail=f"Incident '{incident_id}' not found") from exc
+
+    @app.post("/api/v1/incidents/{incident_id}/acknowledge", dependencies=[Depends(require_auth)])
+    async def acknowledge_incident(
+        incident_id: str,
+        request: Request,
+        manager: IncidentManagerService = Depends(get_incident_manager),
+        body: DataObservabilityRequest | None = None,
+    ) -> Dict[str, Any]:
+        return await _incident_transition(incident_id, IncidentState.ACKNOWLEDGED, request, manager, body)
+
+    @app.post("/api/v1/incidents/{incident_id}/assign", dependencies=[Depends(require_auth)])
+    async def assign_incident(
+        incident_id: str,
+        request: Request,
+        body: DataObservabilityRequest,
+        manager: IncidentManagerService = Depends(get_incident_manager),
+    ) -> Dict[str, Any]:
+        incident = manager.repo.get_incident(request.state.tenant_id, incident_id)
+        if not incident:
+            raise HTTPException(status_code=404, detail=f"Incident '{incident_id}' not found")
+        data = _as_dict(body)
+        incident.owner_team = data.get("owner_team", incident.owner_team)
+        manager.repo.save_incident(incident)
+        return incident.model_dump(mode="json")
+
+    @app.post("/api/v1/incidents/{incident_id}/suppress", dependencies=[Depends(require_auth)])
+    async def suppress_incident(
+        incident_id: str,
+        request: Request,
+        manager: IncidentManagerService = Depends(get_incident_manager),
+        body: DataObservabilityRequest | None = None,
+    ) -> Dict[str, Any]:
+        return await _incident_transition(incident_id, IncidentState.SUPPRESSED, request, manager, body)
+
+    @app.post("/api/v1/incidents/{incident_id}/resolve", dependencies=[Depends(require_auth)])
+    async def resolve_incident(
+        incident_id: str,
+        request: Request,
+        manager: IncidentManagerService = Depends(get_incident_manager),
+        body: DataObservabilityRequest | None = None,
+    ) -> Dict[str, Any]:
+        return await _incident_transition(incident_id, IncidentState.RESOLVED, request, manager, body)
+
+    @app.post("/api/v1/incidents/{incident_id}/reopen", dependencies=[Depends(require_auth)])
+    async def reopen_incident(
+        incident_id: str,
+        request: Request,
+        manager: IncidentManagerService = Depends(get_incident_manager),
+        body: DataObservabilityRequest | None = None,
+    ) -> Dict[str, Any]:
+        return await _incident_transition(incident_id, IncidentState.OPEN, request, manager, body)
+
+    @app.post("/api/v1/incidents/{incident_id}/run-workflow", dependencies=[Depends(require_auth)])
+    async def run_incident_workflow(
+        incident_id: str,
+        request: Request,
+        body: DataObservabilityRequest,
+        manager: IncidentManagerService = Depends(get_incident_manager),
+    ) -> Dict[str, Any]:
+        if not manager.repo.get_incident(request.state.tenant_id, incident_id):
+            raise HTTPException(status_code=404, detail=f"Incident '{incident_id}' not found")
+        return {"incident_id": incident_id, "workflow_id": _as_dict(body).get("workflow_id"), "status": "requested"}
+
+    @app.post("/api/v1/incidents/{incident_id}/actions/preview", dependencies=[Depends(require_auth)])
+    async def preview_action(
+        incident_id: str,
+        request: Request,
+        body: DataObservabilityRequest,
+        manager: IncidentManagerService = Depends(get_incident_manager),
+    ) -> Dict[str, Any]:
+        data = _as_dict(body)
+        try:
+            return manager.preview_action(request.state.tenant_id, incident_id, data.get("action_type", ""), data)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail=f"Incident '{incident_id}' not found") from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.post("/api/v1/incidents/{incident_id}/actions/execute", dependencies=[Depends(require_auth)])
+    async def execute_action(
+        incident_id: str,
+        request: Request,
+        body: DataObservabilityRequest,
+        manager: IncidentManagerService = Depends(get_incident_manager),
+        idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+    ) -> Dict[str, Any]:
+        data = _as_dict(body)
+        try:
+            return manager.execute_action(
+                request.state.tenant_id,
+                incident_id,
+                data.get("action_type", ""),
+                idempotency_key or data.get("idempotency_key", request.headers.get("X-Request-ID", "none")),
+                data,
+            )
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail=f"Incident '{incident_id}' not found") from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.get("/api/v1/incidents/{incident_id}/actions", dependencies=[Depends(require_auth)])
+    async def list_actions(
+        incident_id: str, request: Request, manager: IncidentManagerService = Depends(get_incident_manager)
+    ) -> Dict[str, Any]:
+        return {"actions": [a for k, a in manager.repo.actions.items() if f":{incident_id}:" in k]}
+
+    @app.post("/api/v1/approvals/{approval_id}/approve", dependencies=[Depends(require_auth)])
+    async def approve(
+        approval_id: str,
+        request: Request,
+        body: DataObservabilityRequest | None = None,
+        manager: IncidentManagerService = Depends(get_incident_manager),
+    ) -> Dict[str, Any]:
+        return manager.decide_approval(
+            request.state.tenant_id,
+            approval_id,
+            ApprovalState.APPROVED,
+            _as_dict(body).get("comments") if body else None,
+        )
+
+    @app.post("/api/v1/approvals/{approval_id}/reject", dependencies=[Depends(require_auth)])
+    async def reject(
+        approval_id: str,
+        request: Request,
+        body: DataObservabilityRequest | None = None,
+        manager: IncidentManagerService = Depends(get_incident_manager),
+    ) -> Dict[str, Any]:
+        return manager.decide_approval(
+            request.state.tenant_id,
+            approval_id,
+            ApprovalState.REJECTED,
+            _as_dict(body).get("comments") if body else None,
         )
 
     @app.get("/rules", response_model=RulesResponse, dependencies=[Depends(require_auth)])

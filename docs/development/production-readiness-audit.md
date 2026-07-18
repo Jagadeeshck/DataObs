@@ -23,3 +23,7 @@ This PR establishes product foundations and does not make DataObs production-rea
 | UI | Kibana primary, future console | DataObs Console | README | React console non-goal | later |
 | Streams | data stream templates only | Kafka/Elastic Streams packs | manifest | implementation non-goal | later |
 | Workflows | execution contracts only | remediation packs | domain/workflow | production packs non-goal | later |
+
+## Incident automation audit note
+
+Incident automation remains a draft vertical slice until container-backed CI proves Elasticsearch/Kibana 9.4.2 migrations, workflow deployment, alert-rule bindings, Cases integration, safe approvals, notification fallback, E2E recovery and sentinel-secret scans.

@@ -277,3 +277,24 @@ jobs:
         with:
           name: production-image-sboms
           path: sbom-*.cdx.json
+
+
+  incident-automation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Validate workflow YAML
+        run: ./bin/dataobs workflows validate
+      - name: Compile incident automation packages
+        run: python -m compileall -q src packages services integrations tests
+      - name: Run unit tests
+        run: python -m pytest -q --ignore=tests/integration
+      - name: Validate compose
+        run: docker compose -f docker-compose.incident-automation-demo.yml config
+      - name: Sentinel secret scan
+        run: '! rg "DATAOBS_SENTINEL_SECRET_DO_NOT_LEAK" --glob "!scripts/demo_incident_automation.sh"'

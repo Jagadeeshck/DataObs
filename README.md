@@ -24,7 +24,14 @@ DataObs product state is Elasticsearch-native. In production, `DATAOBS_STORE_BAC
 
 OpenSearch, Grafana Cloud, AMP, AMG, Grafana Alloy, and other exporters are optional integrations for telemetry copies or legacy demonstrations. They must not store authoritative DataObs product state, and `DATAOBS_BACKEND=all` is not a normal product operating mode. POC and demo assets remain isolated from product runtime.
 
-# DataObs — Cloud-Agnostic Data Observability Platform
+# DataObs
+
+## Elasticsearch-native six-pillar architecture
+
+DataObs uses Elasticsearch and Kibana as the authoritative investigation plane for six pillars: data quality, freshness, schema drift, profiling, lineage impact and operational health. Elastic Agent/Fleet/EDOT remain responsible for generic telemetry, while the DataObs Scanner performs PostgreSQL metadata discovery, schema snapshots, freshness checks and opt-in aggregate profiling. Mutable tenant-aware current state is stored in versioned Elasticsearch aliases; immutable inventory, snapshot, change, profile, freshness, audit and scanner-health facts are written to data streams. Production deployments must configure Elasticsearch storage and fail readiness instead of silently falling back to memory.
+
+Optional Exporters and Legacy Integrations: Grafana, OpenSearch and Alloy examples remain available for migration and interoperability scenarios, but they are not the authoritative DataObs product plane.
+ — Cloud-Agnostic Data Observability Platform
 
 [![CI](https://github.com/Jagadeeshck/DataObs/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Jagadeeshck/DataObs/actions/workflows/ci.yml)
 [![Release](https://github.com/Jagadeeshck/DataObs/actions/workflows/release.yml/badge.svg)](https://github.com/Jagadeeshck/DataObs/actions/workflows/release.yml)

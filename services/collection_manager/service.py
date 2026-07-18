@@ -7,7 +7,8 @@ from typing import Any, Dict, List
 from packages.domain_model import Asset, Source, Tenant, deterministic_id
 from src.core.pillars import Pillar
 
-from .repository import InMemoryCollectionRepository, now
+from .memory_repository import InMemoryCollectionRepository
+from .repository import now
 from .scanner_tasks import task_id_for
 
 SECRET_KEYS = {"password", "secret", "token", "api_key", "private_key"}
@@ -23,7 +24,7 @@ def redact(doc: Dict[str, Any]) -> Dict[str, Any]:
 
 
 class CollectionManagerService:
-    def __init__(self, repo: InMemoryCollectionRepository | None = None):
+    def __init__(self, repo=None):
         self.repo = repo or InMemoryCollectionRepository()
 
     def create_tenant(self, payload, correlation_id=None):

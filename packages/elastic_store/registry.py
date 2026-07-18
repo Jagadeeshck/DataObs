@@ -27,7 +27,15 @@ def _mapping() -> Dict[str, Any]:
     return {
         "dynamic": "strict",
         "properties": BASE_PROPERTIES
-        | {"id": {"type": "keyword"}, "name": {"type": "keyword"}, "document": {"type": "flattened"}},
+        | {
+            "id": {"type": "keyword"},
+            "name": {"type": "keyword"},
+            "document": {"type": "flattened"},
+            "lease_owner": {"type": "keyword"},
+            "lease_expires_at": {"type": "date"},
+            "idempotency_key": {"type": "keyword"},
+            "fingerprint": {"type": "keyword"},
+        },
     }
 
 
@@ -62,8 +70,18 @@ def apply(es: Elasticsearch) -> List[Dict[str, Any]]:
             data_stream={},
             template={"mappings": {"dynamic": "strict", "properties": BASE_PROPERTIES}},
         )
-    out = []
+    out: list[dict[str, Any]] = []
+    applied = status(es).get("applied", {}) if es.indices.exists(index=MIGRATION_STATE_INDEX) else {}
     for m in migrations():
+        for dep in m.dependencies:
+            if dep not in applied and dep not in [x.get("migration_id") for x in out]:
+                raise RuntimeError(f"Migration {m.migration_id} depends on unapplied {dep}")
+        existing = applied.get(m.migration_id)
+        if existing and existing.get("checksum") != m.checksum:
+            raise RuntimeError(f"Checksum mismatch for {m.migration_id}")
+        if existing:
+            out.append(existing)
+            continue
         doc = {
             "migration_id": m.migration_id,
             "schema_version": m.schema_version,

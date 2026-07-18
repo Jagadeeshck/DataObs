@@ -1,0 +1,1 @@
+{"type":"dashboard","id":"dataobs-postgres-overview-v1","attributes":{"title":"DataObs PostgreSQL Source Overview","description":"Investigation dashboard for tenant/source filtered PostgreSQL inventory, scanner health, schema changes, freshness breaches and aggregate profile trends."},"references":[]}

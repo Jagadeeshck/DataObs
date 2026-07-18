@@ -1,0 +1,18 @@
+scanner_id: local-postgres-scanner
+heartbeat_interval_seconds: 10
+allow_schemas: [public]
+postgres:
+  host: postgres
+  port: 5432
+  database: dataobs_demo
+  username: dataobs_metadata
+  password_ref: env://POSTGRES_PASSWORD
+  sslmode: disable
+  statement_timeout_ms: 5000
+collection_manager:
+  base_url: http://api:8000
+  tenant_id: demo-tenant
+  api_token_ref: env://DATAOBS_API_TOKEN
+profiling:
+  enabled: true
+  top_values: false

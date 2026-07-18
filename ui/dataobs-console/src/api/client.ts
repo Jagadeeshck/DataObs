@@ -29,6 +29,31 @@ async function read<T>(
   }
   return response.json() as Promise<T>;
 }
+async function write<T>(
+  path: string,
+  tenant: string,
+  body: unknown,
+  signal?: AbortSignal,
+): Promise<T> {
+  const response = await fetch(path, {
+    method: "POST",
+    signal,
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+      "X-DataObs-Tenant": tenant,
+      "X-Request-ID": requestId(),
+    },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok)
+    throw new ApiError(
+      "DataObs API request failed",
+      response.status,
+      response.headers.get("X-Request-ID") ?? undefined,
+    );
+  return response.json() as Promise<T>;
+}
 export const api = {
   commandCenter: (tenant: string, env: string, signal?: AbortSignal) =>
     read<CommandCenter>(
@@ -42,9 +67,21 @@ export const api = {
       tenant,
       signal,
     ),
-  assets: (tenant: string, env: string, search = "", signal?: AbortSignal) =>
-    read<{ items: Asset[]; data_status: string; warnings: string[] }>(
-      `/api/v1/assets?environment=${encodeURIComponent(env)}&search=${encodeURIComponent(search)}&limit=50`,
+  assets: (
+    tenant: string,
+    env: string,
+    search = "",
+    signal?: AbortSignal,
+    cursor = "",
+    assetType = "",
+  ) =>
+    read<{
+      items: Asset[];
+      next_cursor: string | null;
+      data_status: string;
+      warnings: string[];
+    }>(
+      `/api/v1/assets?environment=${encodeURIComponent(env)}&search=${encodeURIComponent(search)}&limit=50&cursor=${encodeURIComponent(cursor)}&asset_type=${encodeURIComponent(assetType)}`,
       tenant,
       signal,
     ),
@@ -60,6 +97,18 @@ export const api = {
       tenant,
       signal,
     ),
+  pathwaySearch: (
+    tenant: string,
+    env: string,
+    request: PathwaySearchRequest,
+    signal?: AbortSignal,
+  ) =>
+    write<PathwaySearchResponse>(
+      `/api/v1/pathway-explorer/search?environment=${encodeURIComponent(env)}`,
+      tenant,
+      request,
+      signal,
+    ),
 };
 export interface Asset {
   id: string;
@@ -72,4 +121,44 @@ export interface Asset {
   source?: string;
   environment?: string;
   last_observed?: string;
+}
+export interface PathwayNode {
+  id: string;
+  name: string;
+  node_type: string;
+}
+export interface PathwayEdge {
+  id: string;
+  source_node_id: string;
+  destination_node_id: string;
+  health: string;
+  evidence: { evidence_type: string; confidence: number };
+}
+export interface PathwayRoute {
+  id: string;
+  nodes: PathwayNode[];
+  edges: PathwayEdge[];
+  complete: boolean;
+  confidence: number;
+  rank_score: number;
+  ranking_explanation: Record<string, number>;
+}
+export interface PathwaySearchRequest {
+  start_node_id: string;
+  end_node_id?: string;
+  direction: "upstream" | "downstream";
+  max_hops: number;
+  max_paths: number;
+  minimum_confidence: number;
+  include_partial: boolean;
+  active_only: boolean;
+}
+export interface PathwaySearchResponse {
+  best_path: PathwayRoute | null;
+  alternative_paths: PathwayRoute[];
+  partial_paths: PathwayRoute[];
+  excluded_path_count: number;
+  truncated: boolean;
+  data_status: string;
+  warnings: string[];
 }

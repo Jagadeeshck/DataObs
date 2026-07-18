@@ -1,34 +1,47 @@
 import { FormEvent, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { api, Asset } from "../../api/client";
 import { useProductContext } from "../../state/context";
 
 export function AssetCatalog() {
   const { tenant, environment } = useProductContext();
+  const [params, setParams] = useSearchParams();
   const [assets, setAssets] = useState<Asset[]>([]);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(params.get("search") ?? "");
+  const [assetType, setAssetType] = useState(params.get("type") ?? "");
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [cursor, setCursor] = useState("");
+  const [history, setHistory] = useState<string[]>([]);
   const [status, setStatus] = useState("Loading assets…");
   const load = (value = search) =>
     api
-      .assets(tenant, environment, value)
+      .assets(tenant, environment, value, undefined, cursor, assetType)
       .then((result) => {
         setAssets(result.items);
+        setNextCursor(result.next_cursor);
         setStatus(result.items.length ? "" : result.warnings[0]);
       })
       .catch(() => setStatus("Asset catalog is unavailable"));
   useEffect(() => {
     const controller = new AbortController();
     void api
-      .assets(tenant, environment, "", controller.signal)
+      .assets(tenant, environment, search, controller.signal, cursor, assetType)
       .then((result) => {
         setAssets(result.items);
+        setNextCursor(result.next_cursor);
         setStatus(result.items.length ? "" : result.warnings[0]);
       })
       .catch(() => setStatus("Asset catalog is unavailable"));
     return () => controller.abort();
-  }, [tenant, environment]);
+  }, [tenant, environment, cursor, search, assetType]);
   const submit = (event: FormEvent) => {
     event.preventDefault();
+    setCursor("");
+    setHistory([]);
+    setParams({
+      ...(search ? { search } : {}),
+      ...(assetType ? { type: assetType } : {}),
+    });
     void load();
   };
   return (
@@ -60,6 +73,19 @@ export function AssetCatalog() {
             onChange={(event) => setSearch(event.target.value)}
             placeholder="warehouse.public.orders"
           />
+        </label>
+        <label>
+          Asset type
+          <select
+            value={assetType}
+            onChange={(event) => setAssetType(event.target.value)}
+          >
+            <option value="">All types</option>
+            <option value="table">Table</option>
+            <option value="view">View</option>
+            <option value="dataset">Dataset</option>
+            <option value="service">Service</option>
+          </select>
         </label>
         <button className="primary">Search</button>
       </form>
@@ -107,6 +133,27 @@ export function AssetCatalog() {
           </tbody>
         </table>
       </div>
+      <nav className="pagination" aria-label="Asset catalog pages">
+        <button
+          disabled={!history.length}
+          onClick={() => {
+            const copy = [...history];
+            setCursor(copy.pop() ?? "");
+            setHistory(copy);
+          }}
+        >
+          Previous
+        </button>
+        <button
+          disabled={!nextCursor}
+          onClick={() => {
+            setHistory((values) => [...values, cursor]);
+            setCursor(nextCursor ?? "");
+          }}
+        >
+          Next
+        </button>
+      </nav>
     </section>
   );
 }

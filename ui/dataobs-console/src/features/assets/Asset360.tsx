@@ -13,7 +13,82 @@ const tabs = [
   "changes",
   "slos",
   "cost",
+  "related",
+  "impact",
+  "annotations",
 ];
+const labels: Record<string, string[]> = {
+  overview: [
+    "name",
+    "fqn",
+    "asset_type",
+    "health",
+    "owner_team",
+    "business_service",
+    "source",
+    "environment",
+    "freshness",
+    "quality",
+    "active_incidents",
+    "slo_state",
+    "upstream_count",
+    "downstream_count",
+  ],
+  schema: [
+    "schema_fingerprint",
+    "version",
+    "columns",
+    "constraints",
+    "indexes",
+    "partitions",
+    "changes",
+  ],
+  quality: [
+    "checks",
+    "state",
+    "recent_failures",
+    "trend",
+    "monitor_references",
+  ],
+  freshness: [
+    "latest_source_timestamp",
+    "observed_at",
+    "age_seconds",
+    "sla_seconds",
+    "calculation_strategy",
+    "breach_windows",
+  ],
+  lineage: [
+    "nodes",
+    "edges",
+    "upstream",
+    "downstream",
+    "column_lineage",
+    "truncated",
+  ],
+  usage: [
+    "access_count",
+    "unique_consumers",
+    "top_consumers",
+    "last_used",
+    "trend",
+    "coverage",
+  ],
+  incidents: ["incidents", "active_incidents"],
+  changes: ["changes"],
+  slos: ["slos", "items", "state"],
+  cost: ["compute_cost", "storage_cost", "network_cost", "allocation_method"],
+  related: ["related", "upstream", "downstream"],
+  impact: ["affected", "affected_asset_ids", "active_incident_ids"],
+  annotations: ["annotations", "items"],
+};
+function display(value: unknown): string {
+  if (value === null || value === undefined || value === "") return "unknown";
+  if (typeof value === "boolean") return value ? "yes" : "no";
+  if (typeof value === "object")
+    return Array.isArray(value) ? `${value.length} observed` : "available";
+  return String(value);
+}
 export function Asset360() {
   const { assetId = "" } = useParams();
   const { tenant, environment } = useProductContext();
@@ -84,7 +159,56 @@ export function Asset360() {
               Data status: {String(data?.data_status ?? "unknown")} ·
               Confidence: {String(data?.confidence ?? "unknown")}
             </p>
-            <pre className="evidence-view">{JSON.stringify(data, null, 2)}</pre>
+            {data?.data_status === "not_configured" && (
+              <p className="notice">
+                This source is not configured. DataObs does not substitute a
+                zero value.
+              </p>
+            )}
+            <dl className="asset-facts">
+              {labels[tab]
+                .filter((key) => key in (data ?? {}))
+                .map((key) => (
+                  <div key={key}>
+                    <dt>{key.replaceAll("_", " ")}</dt>
+                    <dd>{display(data?.[key])}</dd>
+                  </div>
+                ))}
+            </dl>
+            {labels[tab].every((key) => !(key in (data ?? {}))) && (
+              <p className="notice">
+                No typed {tab} observations are available for this asset.
+              </p>
+            )}
+            {labels[tab].flatMap((key) =>
+              Array.isArray(data?.[key])
+                ? (data?.[key] as Record<string, unknown>[]).map(
+                    (item, index) => (
+                      <article
+                        className="evidence-card"
+                        key={`${key}-${index}`}
+                      >
+                        <h3>
+                          {display(
+                            item.name ?? item.id ?? `${key} ${index + 1}`,
+                          )}
+                        </h3>
+                        <dl>
+                          {Object.entries(item)
+                            .filter(([, value]) => typeof value !== "object")
+                            .slice(0, 8)
+                            .map(([name, value]) => (
+                              <div key={name}>
+                                <dt>{name.replaceAll("_", " ")}</dt>
+                                <dd>{display(value)}</dd>
+                              </div>
+                            ))}
+                        </dl>
+                      </article>
+                    ),
+                  )
+                : [],
+            )}
           </>
         )}
       </section>

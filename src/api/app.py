@@ -1148,13 +1148,33 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
         search: str | None = Query(None, max_length=256),
         limit: int = Query(100, ge=1, le=100),
         cursor: str | None = None,
+        asset_type: str | None = Query(None, max_length=64),
+        owner_team: str | None = Query(None, max_length=128),
+        source: str | None = Query(None, max_length=128),
     ) -> Dict[str, Any]:
         repository = request.app.state.console_repository
         if repository is not None and environment is not None:
-            found = repository.assets(tid, environment, size=limit + 1, search=search)
+            from services.product_query.pagination import decode_cursor, encode_cursor
+
+            try:
+                search_after = decode_cursor(cursor)
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
+            found = repository.assets(
+                tid,
+                environment,
+                size=limit + 1,
+                search=search,
+                search_after=search_after,
+                asset_type=asset_type,
+                owner_team=owner_team,
+                source=source,
+            )
+            next_cursor = encode_cursor(found[limit - 1].get("_sort", [])) if len(found) > limit else None
+            items = [{key: value for key, value in item.items() if key != "_sort"} for item in found[:limit]]
             return {
-                "items": found[:limit],
-                "next_cursor": found[limit].get("id") if len(found) > limit else None,
+                "items": items,
+                "next_cursor": next_cursor,
                 "data_status": "complete" if found else "unknown",
                 "observed_at": datetime.now().astimezone().isoformat(),
                 "source_coverage": ["elasticsearch"],
@@ -1246,21 +1266,98 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
         )
 
     @app.get("/api/v1/assets/{asset_id}/{section}", tags=["assets"], dependencies=[Depends(require_auth)])
-    async def asset_section(asset_id: str, section: str, request: Request, environment: str = Query(..., min_length=1), repository: ElasticsearchConsoleRepository = Depends(get_console_repository)) -> Dict[str, Any]:
+    async def asset_section(
+        asset_id: str,
+        section: str,
+        request: Request,
+        environment: str = Query(..., min_length=1),
+        repository: ElasticsearchConsoleRepository = Depends(get_console_repository),
+    ) -> Dict[str, Any]:
+        allowed_sections = {
+            "summary",
+            "schema",
+            "quality",
+            "freshness",
+            "lineage",
+            "usage",
+            "incidents",
+            "changes",
+            "slos",
+            "cost",
+            "related",
+            "impact",
+            "annotations",
+        }
+        if section not in allowed_sections:
+            raise HTTPException(status_code=404, detail="Unknown asset section")
         if section == "cost":
-            return {"asset_id": asset_id, "data_status": "not_configured", "observed_at": None, "source_coverage": [], "confidence": None, "warnings": ["Cost collection is not configured"], "evidence": []}
+            return {
+                "asset_id": asset_id,
+                "data_status": "not_configured",
+                "observed_at": None,
+                "source_coverage": [],
+                "confidence": None,
+                "warnings": ["Cost collection is not configured"],
+                "evidence": [],
+                "request_id": getattr(request.state, "request_id", None),
+                "trace_id": None,
+            }
         document = repository.asset_section(request.state.tenant_id, environment, asset_id, section)
         if document is None:
-            raise HTTPException(status_code=404, detail="Asset section not found")
+            return {
+                "asset_id": asset_id,
+                "data_status": "not_configured",
+                "observed_at": None,
+                "source_coverage": [],
+                "confidence": None,
+                "warnings": [f"{section.capitalize()} collection is not configured or has no observations"],
+                "evidence": [],
+                "request_id": getattr(request.state, "request_id", None),
+                "trace_id": None,
+            }
         return document
 
     @app.post("/api/v1/pathway-explorer/search", tags=["pathways"], dependencies=[Depends(require_auth)])
-    async def pathway_search(body: PathwaySearchRequest, request: Request, environment: str = Query(..., min_length=1), repository: ElasticsearchConsoleRepository = Depends(get_console_repository)) -> Dict[str, Any]:
+    async def pathway_search(
+        body: PathwaySearchRequest,
+        request: Request,
+        environment: str = Query(..., min_length=1),
+        repository: ElasticsearchConsoleRepository = Depends(get_console_repository),
+    ) -> Dict[str, Any]:
         topology = repository.topology(request.state.tenant_id, environment, max_nodes=1000, max_edges=2500)
-        nodes = [PathwayRouteNode(id=str(item.get("id", item.get("node_id", item.get("_id")))), name=str(item.get("name", item.get("id", "unknown"))), node_type=str(item.get("node_type", item.get("type", "unknown")))) for item in topology["nodes"]]
+        nodes = [
+            PathwayRouteNode(
+                id=str(item.get("id", item.get("node_id", item.get("_id")))),
+                name=str(item.get("name", item.get("id", "unknown"))),
+                node_type=str(item.get("node_type", item.get("type", "unknown"))),
+            )
+            for item in topology["nodes"]
+        ]
         edges = [PathwayRouteEdge.model_validate(item) for item in topology["edges"]]
-        complete, partial, excluded, truncated = search_paths(nodes, edges, body.start_node_id, body.end_node_id, max_hops=body.max_hops, max_paths=body.max_paths, minimum_confidence=body.minimum_confidence, direction=body.direction, include_partial=body.include_partial)
-        return {"best_path": complete[0] if complete else None, "alternative_paths": complete[1:], "partial_paths": partial, "excluded_path_count": excluded, "truncated": truncated or topology["truncated"], "data_status": "complete" if complete else "partial" if partial else "unknown", "observed_at": datetime.now().astimezone().isoformat(), "source_coverage": ["elasticsearch"], "confidence": complete[0].confidence if complete else None, "warnings": ["Traversal was bounded"] if truncated else [], "evidence": []}
+        complete, partial, excluded, truncated = search_paths(
+            nodes,
+            edges,
+            body.start_node_id,
+            body.end_node_id,
+            max_hops=body.max_hops,
+            max_paths=body.max_paths,
+            minimum_confidence=body.minimum_confidence,
+            direction=body.direction,
+            include_partial=body.include_partial,
+        )
+        return {
+            "best_path": complete[0] if complete else None,
+            "alternative_paths": complete[1:],
+            "partial_paths": partial,
+            "excluded_path_count": excluded,
+            "truncated": truncated or topology["truncated"],
+            "data_status": "complete" if complete else "partial" if partial else "unknown",
+            "observed_at": datetime.now().astimezone().isoformat(),
+            "source_coverage": ["elasticsearch"],
+            "confidence": complete[0].confidence if complete else None,
+            "warnings": ["Traversal was bounded"] if truncated else [],
+            "evidence": [],
+        }
 
     @app.get("/api/v1/topology/nodes/{node_id}", tags=["console"], dependencies=[Depends(require_auth)])
     @app.get("/api/v1/entities/{node_id}/summary", tags=["console"], dependencies=[Depends(require_auth)])

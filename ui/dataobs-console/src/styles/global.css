@@ -24,6 +24,10 @@ body {
   background:
     radial-gradient(circle at 55% -30%, #122d4a 0, transparent 40%), var(--bg);
 }
+:focus-visible {
+  outline: 3px solid var(--cyan);
+  outline-offset: 2px;
+}
 button,
 select,
 input {
@@ -32,6 +36,83 @@ input {
 }
 button {
   cursor: pointer;
+}
+.route-graph {
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+  overflow-x: auto;
+  padding: 24px 4px;
+}
+.graph-stage {
+  min-width: 130px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface2);
+  position: relative;
+}
+.graph-stage small {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted);
+}
+.graph-stage span {
+  position: absolute;
+  right: -20px;
+  top: 30%;
+  color: var(--cyan);
+}
+.route-button {
+  border: 0;
+  background: transparent;
+  color: var(--cyan);
+  text-align: left;
+}
+.evidence-list {
+  color: var(--muted);
+  line-height: 1.8;
+}
+.asset-facts,
+.evidence-card dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+.asset-facts > div,
+.evidence-card {
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface2);
+}
+dt {
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: capitalize;
+}
+dd {
+  margin: 6px 0 0;
+  overflow-wrap: anywhere;
+}
+.evidence-card {
+  margin-top: 12px;
+}
+.pagination {
+  display: flex;
+  justify-content: flex-end;
+  flex-direction: row !important;
+  gap: 8px;
+  padding-top: 12px;
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition: none !important;
+    animation: none !important;
+  }
 }
 header {
   position: fixed;

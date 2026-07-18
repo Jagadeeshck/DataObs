@@ -86,3 +86,7 @@ The API now uses one primary persistence contract (`StoreProtocol` in `src/api/s
 
 - `RuleStore` and `LineageStore` remain in `src/api/store.py` as compatibility adapters for legacy call sites and shared legacy indices.
 - FastAPI route dependencies now use the unified store contract as the primary path.
+
+## Phase 0 scanner foundation
+
+Phase 0 introduces incremental future-compatible paths: `packages/agent_sdk` for connector contracts and shared models, `services/scanner_worker` for a testable worker foundation, `integrations/databases/postgres` for the PostgreSQL reference connector, and `integrations/elastic` for Elastic package reuse guidance. This is not the broad Phase 1 repository rewrite.

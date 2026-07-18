@@ -1016,3 +1016,7 @@ The foundation is complete only when:
 - the standalone DataObs console provides Command Center, live flow map, Pathway Explorer, Asset 360, Job Explorer, Stream 360, Incident Workbench, FinOps, and AI/Agent views;
 - all production gates are green;
 - deployment, operations, security, licensing, and upgrade documentation is complete.
+
+## Phase 0 collection-plane foundation addendum
+
+Phase 0 adds the DataObs collection-plane architecture without changing the product direction above. The default collection hierarchy is: reuse Elastic Agent and existing Elastic integrations first; use Elastic Agent as EDOT Collector or standalone EDOT for OpenTelemetry-native telemetry second; build DataObs Scanner connectors only for metadata, schema, freshness, profiling, quality, query-history, and lineage capabilities not provided by reusable integrations or receivers. See `docs/architecture/dataobs-agent-and-collection-plane.md`, `docs/architecture/database-scanning-and-profiling.md`, and `docs/product/collection-capability-matrix.md`.

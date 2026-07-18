@@ -601,3 +601,7 @@ This project is licensed under the [MIT License](LICENSE).
 
 ## Configuration
 See `docs/production/configuration.md` for mode-aware and production-safe settings.
+
+## Phase 0 collection-plane architecture
+
+The DataObs Agent experience is defined as a collection plane that reuses Elastic Agent/Fleet integrations and EDOT by default, adding the DataObs Scanner only for data-observability scanning capabilities such as schema snapshots, freshness, profiling, quality, and lineage. See `docs/architecture/dataobs-agent-and-collection-plane.md`.

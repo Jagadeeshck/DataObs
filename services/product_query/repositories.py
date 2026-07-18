@@ -114,3 +114,25 @@ class ElasticsearchConsoleRepository:
 
     def list_views(self, tenant: str, principal: str) -> list[dict[str, Any]]:
         return self._search("dataobs-saved-views-v1-read", tenant, "*", size=100, sort=[{"updated_at": "desc"}])
+
+    def assets(self, tenant: str, environment: str, *, size: int, search: str | None = None) -> list[dict[str, Any]]:
+        predicates = isolation_filters(tenant, environment)
+        query: dict[str, Any] = {"bool": {"filter": predicates}}
+        if search:
+            query["bool"]["must"] = [{"multi_match": {"query": search, "fields": ["id^6", "fqn^6", "name^4", "name.keyword^5", "description", "tags", "owner_team"]}}]
+        response = self.es.search(index="dataobs-assets-v1-read", query=query, size=size, sort=[{"name.keyword": "asc"}, {"asset_id": "asc"}])
+        return [hit["_source"] | {"id": hit["_source"].get("asset_id", hit["_id"])} for hit in response["hits"]["hits"]]
+
+    def asset_section(self, tenant: str, environment: str, asset_id: str, section: str) -> dict[str, Any] | None:
+        indices = {
+            "summary": "dataobs-assets-v1-read", "schema": "dataobs-schema-current-v1-read",
+            "freshness": "dataobs-freshness-current-v1-read", "quality": "dataobs-quality-current-v1-read",
+            "usage": "dataobs-asset-usage-current-v1-read", "lineage": "dataobs-lineage-current-v1-read",
+        }
+        index = indices.get(section)
+        if index is None:
+            return None
+        predicates = isolation_filters(tenant, environment) + [{"term": {"asset_id": asset_id}}]
+        response = self.es.search(index=index, query={"bool": {"filter": predicates}}, size=1, sort=[{"@timestamp": "desc"}])
+        hits = response["hits"]["hits"]
+        return hits[0]["_source"] | {"_id": hits[0]["_id"]} if hits else None

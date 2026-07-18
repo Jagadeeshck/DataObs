@@ -15,6 +15,7 @@ from pydantic import BaseModel, ConfigDict
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from packages.domain_model.incident import IncidentState
+from packages.domain_model.investigation import PathwayRouteEdge, PathwayRouteNode, PathwaySearchRequest
 from packages.domain_model.workflow import ApprovalState
 from packages.elastic_store.registry import status as elastic_migration_status
 from services.collection_manager import CollectionManagerService
@@ -23,6 +24,7 @@ from services.collection_manager.leases import claim_task, renew_task
 from services.collection_manager.memory_repository import InMemoryCollectionRepository
 from services.incident_manager import IncidentManagerService
 from services.product_query import ElasticsearchConsoleRepository
+from services.product_query.path_search import search_paths
 from src.api.store import StoreProtocol, get_store
 from src.config.settings import AppSettings, load_settings
 from src.core.enterprise_blueprint import enterprise_backlog
@@ -1139,11 +1141,27 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
 
     @app.get("/api/v1/assets", tags=["assets"], dependencies=[Depends(require_auth)])
     async def list_assets(
+        request: Request,
         service: CollectionManagerService = Depends(cm),
         tid: str = Depends(tenant_id),
-        limit: int = Query(100, ge=1, le=1000),
+        environment: str | None = Query(None, min_length=1),
+        search: str | None = Query(None, max_length=256),
+        limit: int = Query(100, ge=1, le=100),
         cursor: str | None = None,
     ) -> Dict[str, Any]:
+        repository = request.app.state.console_repository
+        if repository is not None and environment is not None:
+            found = repository.assets(tid, environment, size=limit + 1, search=search)
+            return {
+                "items": found[:limit],
+                "next_cursor": found[limit].get("id") if len(found) > limit else None,
+                "data_status": "complete" if found else "unknown",
+                "observed_at": datetime.now().astimezone().isoformat(),
+                "source_coverage": ["elasticsearch"],
+                "confidence": 1.0 if found else None,
+                "warnings": [] if found else ["No matching assets were observed"],
+                "evidence": [],
+            }
         items = service.repo.list("assets", tid)[:limit]
         return {"items": items, "next_cursor": None}
 
@@ -1226,6 +1244,23 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
         return repository.topology(
             request.state.tenant_id, environment, max_nodes=max_nodes, max_edges=max_edges, source=source_integration
         )
+
+    @app.get("/api/v1/assets/{asset_id}/{section}", tags=["assets"], dependencies=[Depends(require_auth)])
+    async def asset_section(asset_id: str, section: str, request: Request, environment: str = Query(..., min_length=1), repository: ElasticsearchConsoleRepository = Depends(get_console_repository)) -> Dict[str, Any]:
+        if section == "cost":
+            return {"asset_id": asset_id, "data_status": "not_configured", "observed_at": None, "source_coverage": [], "confidence": None, "warnings": ["Cost collection is not configured"], "evidence": []}
+        document = repository.asset_section(request.state.tenant_id, environment, asset_id, section)
+        if document is None:
+            raise HTTPException(status_code=404, detail="Asset section not found")
+        return document
+
+    @app.post("/api/v1/pathway-explorer/search", tags=["pathways"], dependencies=[Depends(require_auth)])
+    async def pathway_search(body: PathwaySearchRequest, request: Request, environment: str = Query(..., min_length=1), repository: ElasticsearchConsoleRepository = Depends(get_console_repository)) -> Dict[str, Any]:
+        topology = repository.topology(request.state.tenant_id, environment, max_nodes=1000, max_edges=2500)
+        nodes = [PathwayRouteNode(id=str(item.get("id", item.get("node_id", item.get("_id")))), name=str(item.get("name", item.get("id", "unknown"))), node_type=str(item.get("node_type", item.get("type", "unknown")))) for item in topology["nodes"]]
+        edges = [PathwayRouteEdge.model_validate(item) for item in topology["edges"]]
+        complete, partial, excluded, truncated = search_paths(nodes, edges, body.start_node_id, body.end_node_id, max_hops=body.max_hops, max_paths=body.max_paths, minimum_confidence=body.minimum_confidence, direction=body.direction, include_partial=body.include_partial)
+        return {"best_path": complete[0] if complete else None, "alternative_paths": complete[1:], "partial_paths": partial, "excluded_path_count": excluded, "truncated": truncated or topology["truncated"], "data_status": "complete" if complete else "partial" if partial else "unknown", "observed_at": datetime.now().astimezone().isoformat(), "source_coverage": ["elasticsearch"], "confidence": complete[0].confidence if complete else None, "warnings": ["Traversal was bounded"] if truncated else [], "evidence": []}
 
     @app.get("/api/v1/topology/nodes/{node_id}", tags=["console"], dependencies=[Depends(require_auth)])
     @app.get("/api/v1/entities/{node_id}/summary", tags=["console"], dependencies=[Depends(require_auth)])

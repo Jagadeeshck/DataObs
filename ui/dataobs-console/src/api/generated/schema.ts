@@ -347,6 +347,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/assets/{asset_id}/{section}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Asset Section */
+        get: operations["asset_section_api_v1_assets__asset_id___section__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/collectors": {
         parameters: {
             query?: never;
@@ -905,6 +922,23 @@ export interface paths {
         get: operations["list_monitors_api_v1_monitors_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pathway-explorer/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Pathway Search */
+        post: operations["pathway_search_api_v1_pathway_explorer_search_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1524,6 +1558,44 @@ export interface components {
             returned: number;
             /** Total */
             total: number;
+        };
+        /** PathwaySearchRequest */
+        PathwaySearchRequest: {
+            /**
+             * Active Only
+             * @default true
+             */
+            active_only: boolean;
+            /**
+             * Direction
+             * @default downstream
+             * @enum {string}
+             */
+            direction: "upstream" | "downstream";
+            /** End Node Id */
+            end_node_id?: string | null;
+            /**
+             * Include Partial
+             * @default true
+             */
+            include_partial: boolean;
+            /**
+             * Max Hops
+             * @default 6
+             */
+            max_hops: number;
+            /**
+             * Max Paths
+             * @default 10
+             */
+            max_paths: number;
+            /**
+             * Minimum Confidence
+             * @default 0
+             */
+            minimum_confidence: number;
+            /** Start Node Id */
+            start_node_id: string;
         };
         /** QualityResultCreateResponse */
         QualityResultCreateResponse: {
@@ -2175,6 +2247,8 @@ export interface operations {
     list_assets_api_v1_assets_get: {
         parameters: {
             query?: {
+                environment?: string | null;
+                search?: string | null;
                 limit?: number;
                 cursor?: string | null;
             };
@@ -2461,6 +2535,44 @@ export interface operations {
             };
             path: {
                 asset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    asset_section_api_v1_assets__asset_id___section__get: {
+        parameters: {
+            query: {
+                environment: string;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                asset_id: string;
+                section: string;
             };
             cookie?: never;
         };
@@ -3771,6 +3883,45 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    pathway_search_api_v1_pathway_explorer_search_post: {
+        parameters: {
+            query: {
+                environment: string;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PathwaySearchRequest"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {

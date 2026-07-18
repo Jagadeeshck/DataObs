@@ -402,6 +402,36 @@ CONSOLE_FOUNDATION_MIGRATION = Migration(
     },
 )
 
+PATHWAY_ASSET_360_MIGRATION = Migration(
+    "0006_pathway_asset_360",
+    "Add pathway monitors, asset investigation projections, lineage and comparison state",
+    "v1",
+    dependencies=["0005_console_foundation"],
+    rollback_strategy="disable product-query mutations, snapshot v1 state, and remove only 0006 aliases and templates",
+    operations={
+        "mutable_indices": [
+            "dataobs-pathway-monitors-v1",
+            "dataobs-asset-slos-v1",
+            "dataobs-asset-annotations-v1",
+            "dataobs-asset-usage-current-v1",
+            "dataobs-lineage-current-v1",
+            "dataobs-pathway-comparisons-v1",
+        ],
+        "data_streams": [
+            "metrics-dataobs.asset_usage-*",
+            "metrics-dataobs.asset_health-*",
+            "metrics-dataobs.pathway_bottleneck-*",
+            "logs-dataobs.asset_change-*",
+            "logs-dataobs.pathway_monitor_result-*",
+        ],
+        "retention_defaults": {
+            "usage_and_health_metrics": "90d operational retention",
+            "asset_changes_and_monitor_results": "365d audit retention",
+            "mutable_definitions": "retained until operator-managed archival",
+        },
+    },
+)
+
 
 def migrations() -> List[Migration]:
     return [
@@ -410,4 +440,5 @@ def migrations() -> List[Migration]:
         INCIDENT_AUTOMATION_MIGRATION,
         KAFKA_DSM_MIGRATION,
         CONSOLE_FOUNDATION_MIGRATION,
+        PATHWAY_ASSET_360_MIGRATION,
     ]

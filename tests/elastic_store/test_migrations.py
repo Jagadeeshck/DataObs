@@ -15,9 +15,18 @@ def test_console_foundation_is_forward_only_after_original_kafka_migration():
     from packages.elastic_store.manifest import migrations
 
     plan = migrations()
-    assert [item.migration_id for item in plan][-2:] == [
+    assert [item.migration_id for item in plan][-3:-1] == [
         "0004_kafka_data_streams_monitoring",
         "0005_console_foundation",
     ]
-    assert plan[-1].dependencies == ["0004_kafka_data_streams_monitoring"]
-    assert "dataobs-saved-views-v1" in plan[-1].operations["mutable_indices"]
+    assert plan[-2].dependencies == ["0004_kafka_data_streams_monitoring"]
+    assert "dataobs-saved-views-v1" in plan[-2].operations["mutable_indices"]
+
+
+def test_pathway_asset_360_is_forward_only_after_console_foundation():
+    from packages.elastic_store.manifest import migrations
+
+    migration = migrations()[-1]
+    assert migration.migration_id == "0006_pathway_asset_360"
+    assert migration.dependencies == ["0005_console_foundation"]
+    assert "dataobs-pathway-monitors-v1" in migration.operations["mutable_indices"]

@@ -42,4 +42,34 @@ export const api = {
       tenant,
       signal,
     ),
+  assets: (tenant: string, env: string, search = "", signal?: AbortSignal) =>
+    read<{ items: Asset[]; data_status: string; warnings: string[] }>(
+      `/api/v1/assets?environment=${encodeURIComponent(env)}&search=${encodeURIComponent(search)}&limit=50`,
+      tenant,
+      signal,
+    ),
+  assetSection: (
+    tenant: string,
+    env: string,
+    id: string,
+    section: string,
+    signal?: AbortSignal,
+  ) =>
+    read<Record<string, unknown>>(
+      `/api/v1/assets/${encodeURIComponent(id)}/${encodeURIComponent(section)}?environment=${encodeURIComponent(env)}`,
+      tenant,
+      signal,
+    ),
 };
+export interface Asset {
+  id: string;
+  name: string;
+  fqn?: string;
+  asset_type?: string;
+  health?: string;
+  owner_team?: string;
+  business_service?: string;
+  source?: string;
+  environment?: string;
+  last_observed?: string;
+}

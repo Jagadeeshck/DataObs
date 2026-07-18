@@ -1,3 +1,29 @@
+
+## Elasticsearch-native product architecture
+
+```text
+Sources
+  ├── Elastic Agent/Fleet and existing Elastic integrations
+  ├── Elastic Agent as EDOT / standalone EDOT
+  └── DataObs Scanner and Connector SDK
+              ↓
+DataObs Gateway and Product APIs
+              ↓
+Elasticsearch
+  ├── append-only data streams
+  ├── versioned mutable state indices
+  ├── transforms/latest-state projections
+  └── analytical queries and alerting
+              ↓
+Kibana + Elastic Workflows + future DataObs Console
+```
+
+DataObs product state is Elasticsearch-native. In production, `DATAOBS_STORE_BACKEND=elasticsearch` is mandatory; local and test mode may continue to use in-memory state. The canonical architecture is the [six-pillar product model](docs/architecture/six-pillar-product-model.md), not the deprecated four-tower model.
+
+### Optional Exporters and Legacy Integrations
+
+OpenSearch, Grafana Cloud, AMP, AMG, Grafana Alloy, and other exporters are optional integrations for telemetry copies or legacy demonstrations. They must not store authoritative DataObs product state, and `DATAOBS_BACKEND=all` is not a normal product operating mode. POC and demo assets remain isolated from product runtime.
+
 # DataObs — Cloud-Agnostic Data Observability Platform
 
 [![CI](https://github.com/Jagadeeshck/DataObs/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Jagadeeshck/DataObs/actions/workflows/ci.yml)
@@ -133,7 +159,7 @@ DataObs follows a **4-pillar model** inspired by Datadog, Dynatrace, Monte Carlo
 | **Data Observability** | Freshness, quality, schema, lineage | SLA breach, null rate, row count drift |
 | **Business Observability** | KPIs, SLAs, revenue impact | Order value, conversion, anomaly alerts |
 
-See the detailed model: [`docs/architecture/four-tower-model.md`](docs/architecture/four-tower-model.md)
+See the detailed model: [`docs/architecture/six-pillar-product-model.md`](docs/architecture/six-pillar-product-model.md)
 
 ---
 

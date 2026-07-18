@@ -18,3 +18,7 @@
 | Snowflake (#49) | superseded by roadmap | Data Observability | v1.1 | future Snowflake connector | warehouse streams/state | warehouse UI | not completed in Phase 0 |
 | Multi-cloud OpenLineage (#50) | superseded by roadmap; ingestion foundation exists but cross-cloud scope unproven | Lineage/Impact | v1.1 | OpenLineage across orchestrators/clouds | lineage graph/event streams | topology/impact UI | not completed in Phase 0 |
 | DataObs Advisor (#51) | superseded by roadmap | Incident Response/Remediation | v1.2 | ML/rules/optional AI | recommendations/cases | Advisor UI | not completed in Phase 0 |
+
+## Product foundation update
+
+The product foundation now tracks six canonical pillars: Platform Observability, Data Pipeline and Job Observability, Data Observability, FinOps and Cost Observability, Business Observability, and AI and Agent Observability. Elasticsearch/Kibana is the mandatory primary product platform; OpenSearch, Grafana Cloud, AMP, AMG, Alloy, and other exporters are optional integrations only.

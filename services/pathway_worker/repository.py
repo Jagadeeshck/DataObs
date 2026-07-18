@@ -26,19 +26,33 @@ class ElasticsearchPathwayRepository:
     ) -> tuple[list[dict[str, Any]], list[Any] | None]:
         pit = self.es.open_point_in_time(index=",".join(self.source_streams), keep_alive="1m")["id"]
         try:
+            all_hits: list[dict[str, Any]] = []
             request: dict[str, Any] = {
                 "pit": {"id": pit, "keep_alive": "1m"},
-                "query": {"bool": {"filter": [{"range": {"@timestamp": {"gte": since}}}]}},
+                "query": {
+                    "bool": {
+                        "filter": [
+                            {"range": {"@timestamp": {"gte": since}}},
+                            {"term": {"tenant_id": self.tenant_id}},
+                            {"term": {"environment": self.environment}},
+                        ]
+                    }
+                },
                 "sort": [{"@timestamp": "asc"}, {"_shard_doc": "asc"}],
                 "size": size,
             }
             if after:
                 request["search_after"] = after
-            response = self.es.search(**request)
-            hits = response["hits"]["hits"]
-            return [h["_source"] | {"_source_document_id": h["_id"]} for h in hits], (
-                hits[-1]["sort"] if hits else after
-            )
+            while True:
+                response = self.es.search(**request)
+                hits = response["hits"]["hits"]
+                all_hits.extend(hits)
+                if len(hits) < size:
+                    break
+                request["search_after"] = hits[-1]["sort"]
+            # The PIT is retained for the complete page sequence. A cursor from this
+            # PIT is intentionally never persisted or reused with another PIT.
+            return [h["_source"] | {"_source_document_id": h["_id"]} for h in all_hits], None
         finally:
             self.es.close_point_in_time(id=pit)
 
@@ -71,7 +85,7 @@ class ElasticsearchPathwayRepository:
                     "source_document_ref": edge.get("source_document_ref"),
                 },
             )
-        checkpoint = {"cursor": cursor, "worker_id": worker_id, "last_successful_collection": now}
+        checkpoint = {"cursor": None, "since": now, "worker_id": worker_id, "last_successful_collection": now}
         self.es.index(
             index="dataobs-pathway-checkpoints-v1-write",
             id=self.checkpoint_id,

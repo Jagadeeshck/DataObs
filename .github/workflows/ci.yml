@@ -298,3 +298,45 @@ jobs:
         run: docker compose -f docker-compose.incident-automation-demo.yml config
       - name: Sentinel secret scan
         run: '! rg "DATAOBS_SENTINEL_SECRET_DO_NOT_LEAK" --glob "!scripts/demo_incident_automation.sh"'
+
+  console-quality:
+    name: Console type, test, build and contract drift
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: {version: 10.28.1}
+      - uses: actions/setup-node@v4
+        with: {node-version: '24.15.0', cache: pnpm, cache-dependency-path: ui/dataobs-console/pnpm-lock.yaml}
+      - name: Install from lockfile
+        working-directory: ui/dataobs-console
+        run: pnpm install --frozen-lockfile
+      - name: Generated client drift
+        working-directory: ui/dataobs-console
+        run: pnpm api:generate && git diff --exit-code src/api/generated/schema.ts
+      - name: Console quality gate
+        working-directory: ui/dataobs-console
+        run: pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm build && pnpm bundle:check
+      - name: Dependency audit
+        working-directory: ui/dataobs-console
+        run: pnpm audit --audit-level high
+      - name: Build production image
+        run: docker build -t dataobs/console:${{ github.sha }} ui/dataobs-console
+      - name: Bundle secret and source-map policy
+        run: |
+          ! rg -n 'DATAOBS_SENTINEL_PASSWORD_DO_NOT_PERSIST' ui/dataobs-console/dist
+          ! find ui/dataobs-console/dist -name '*.map' | grep .
+
+  console-backend-contract:
+    name: Console backend contract gate
+    runs-on: ubuntu-latest
+    needs: [python-quality]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: pip install -r requirements.txt && pip install pytest
+      - name: Migration, isolation and paging contracts
+        run: python -m pytest -q tests/elastic_store/test_migrations.py tests/unit/product_query tests/unit/test_pathway_worker_paging.py
+      - name: Demo compose contract
+        run: docker compose -f docker-compose.console-demo.yml config

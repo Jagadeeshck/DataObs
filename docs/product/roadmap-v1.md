@@ -21,3 +21,7 @@ Phase 0 preserves legacy product-scale issues in versioned roadmap scope rather 
 ## Product foundation milestone
 
 The v1 foundation path establishes `/api/v1` domain APIs, tenant-aware contracts, explicit Elasticsearch migrations, and a minimal Collection Manager. Follow-up PRs should add real connector vertical slices, Fleet/EDOT orchestration, hardened IAM, backup/restore automation, and production workflow packs without claiming production readiness in this milestone.
+
+## Elastic incident automation milestone
+
+This milestone adds a production-oriented vertical slice for correlated DataObs incidents and controlled workflow-assisted response. It explicitly excludes the standalone console, Kafka monitoring, autonomous AI remediation and destructive database remediation.

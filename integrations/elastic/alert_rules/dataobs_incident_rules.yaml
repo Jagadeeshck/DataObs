@@ -1,0 +1,31 @@
+rules:
+  - id: dataobs-breaking-schema-change
+    name: DataObs breaking schema change
+    query: FROM logs-dataobs.finding-* | WHERE finding_type == "schema_change"
+    workflow_id: dataobs-schema-change-triage
+    run_workflow_action: true
+  - id: dataobs-freshness-sla-breach
+    name: DataObs freshness SLA breach
+    query: FROM logs-dataobs.finding-* | WHERE finding_type == "freshness_breach"
+    workflow_id: dataobs-freshness-breach-response
+    run_workflow_action: true
+  - id: dataobs-critical-quality-failure
+    name: DataObs critical quality failure
+    query: FROM logs-dataobs.finding-* | WHERE finding_type == "data_quality_failure" AND severity in ("high", "critical")
+    workflow_id: dataobs-quality-failure-response
+    run_workflow_action: true
+  - id: dataobs-scanner-failure
+    name: DataObs scanner failure
+    query: FROM logs-dataobs.finding-* | WHERE finding_type == "scanner_failure"
+    workflow_id: dataobs-scanner-source-failure-response
+    run_workflow_action: true
+  - id: dataobs-source-unavailable
+    name: DataObs source unavailable
+    query: FROM logs-dataobs.finding-* | WHERE finding_type == "source_unavailable"
+    workflow_id: dataobs-scanner-source-failure-response
+    run_workflow_action: true
+  - id: dataobs-repeated-workflow-failure
+    name: DataObs repeated workflow failure
+    query: FROM logs-dataobs.workflow_execution-* | WHERE workflow_status == "failed"
+    workflow_id: dataobs-workflow-failure-handler
+    run_workflow_action: true

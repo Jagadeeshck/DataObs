@@ -1,0 +1,1 @@
+{"type":"dashboard","id":"dataobs-incident-overview","attributes":{"title":"DataObs Incident Overview","description":"Tracks open incidents by severity, finding volume/deduplication, MTTA, MTTR, workflow status, approvals, notification failures, cases, remediation actions, recovery rate and Streams enrichment availability."}}

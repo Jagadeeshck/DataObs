@@ -5,7 +5,7 @@ from typing import Any, Dict, List
 
 from elasticsearch import Elasticsearch
 
-from .manifest import BASE_PROPERTIES, MIGRATION_STATE_INDEX, migrations
+from .manifest import BASE_PROPERTIES, INCIDENT_AUTOMATION_PROPERTIES, MIGRATION_STATE_INDEX, migrations
 
 
 def plan() -> List[Dict[str, Any]]:
@@ -35,7 +35,8 @@ def _mapping() -> Dict[str, Any]:
             "lease_expires_at": {"type": "date"},
             "idempotency_key": {"type": "keyword"},
             "fingerprint": {"type": "keyword"},
-        },
+        }
+        | INCIDENT_AUTOMATION_PROPERTIES,
     }
 
 
@@ -48,18 +49,22 @@ def _ensure_mutable_index(es: Elasticsearch, index: str) -> None:
 
 def _ensure_data_stream_template(es: Elasticsearch, pattern: str) -> None:
     name = f"dataobs-{pattern.replace('*','template').replace('.','-')}"
-    properties = BASE_PROPERTIES | {
-        "event_type": {"type": "keyword"},
-        "message": {"type": "match_only_text"},
-        "metricset": {"type": "keyword"},
-        "value": {"type": "double"},
-    }
+    properties = (
+        BASE_PROPERTIES
+        | INCIDENT_AUTOMATION_PROPERTIES
+        | {
+            "event_type": {"type": "keyword"},
+            "message": {"type": "match_only_text"},
+            "metricset": {"type": "keyword"},
+            "value": {"type": "double"},
+        }
+    )
     es.indices.put_index_template(
         name=name,
         index_patterns=[pattern],
         data_stream={},
         template={
-            "mappings": {"dynamic": "true", "properties": properties},
+            "mappings": {"dynamic": "strict", "properties": properties},
             "settings": {"index.default_pipeline": "none"},
         },
         priority=500,

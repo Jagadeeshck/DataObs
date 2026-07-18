@@ -674,3 +674,7 @@ Least-privilege SQL remains intentionally narrow: grant database connect, schema
 Task lifecycle: Collection Manager generates available tasks from enabled scan policies. Scanners claim tasks using an Elasticsearch compare-and-set update, renew leases while running, submit idempotent results, and transition failures through retryable or dead-letter states. Expired leases can be reclaimed; active leases cannot be stolen.
 
 Limitations: this PR does not make DataObs production-ready. Full OIDC enforcement, broad lineage extraction from PostgreSQL logs, automated remediation, Elastic Streams/Workflows incident response, and non-PostgreSQL database slices remain future milestones.
+
+## Incident automation vertical slice
+
+DataObs now includes a draft Elastic Workflows incident-automation slice: `0003_incident_automation` mappings, versioned Finding/Incident/Workflow contracts, deterministic incident manager services, public-Kibana workflow tooling, alert-rule binding assets, optional Streams enrichment, safe-action/approval APIs, and a Docker demo. This does not make DataObs production-ready and does not enable autonomous or destructive remediation.

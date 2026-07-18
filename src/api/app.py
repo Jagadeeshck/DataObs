@@ -6,21 +6,21 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 from elasticsearch import Elasticsearch
-from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, ConfigDict
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from packages.domain_model.incident import IncidentState
+from packages.domain_model.workflow import ApprovalState
 from packages.elastic_store.registry import status as elastic_migration_status
 from services.collection_manager import CollectionManagerService
 from services.collection_manager.elasticsearch_repository import ElasticsearchCollectionRepository
 from services.collection_manager.leases import claim_task, renew_task
 from services.collection_manager.memory_repository import InMemoryCollectionRepository
 from services.incident_manager import IncidentManagerService
-from packages.domain_model.incident import IncidentState
-from packages.domain_model.workflow import ApprovalState
 from src.api.store import StoreProtocol, get_store
 from src.config.settings import AppSettings, load_settings
 from src.core.enterprise_blueprint import enterprise_backlog
@@ -698,6 +698,93 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
         asset_id: str, service: DataObservabilityService = Depends(dataobs_service)
     ) -> Dict[str, Any]:
         return service.get_lineage(asset_id)
+
+    # Kafka DSM projections deliberately expose product state, never message payloads.
+    app.state.kafka_dsm = {
+        "clusters": [],
+        "topics": [],
+        "consumer_groups": [],
+        "nodes": [],
+        "edges": [],
+        "pathways": [],
+        "slos": {},
+    }
+
+    def tenant_items(request: Request, resource: str) -> List[Dict[str, Any]]:
+        return [
+            item for item in request.app.state.kafka_dsm[resource] if item.get("tenant_id") == request.state.tenant_id
+        ]
+
+    @app.get("/api/v1/kafka/clusters", dependencies=[Depends(require_auth)])
+    async def kafka_clusters(request: Request, limit: int = Query(100, ge=1, le=1000), cursor: int = Query(0, ge=0)):
+        items = sorted(tenant_items(request, "clusters"), key=lambda item: item["id"])
+        return {
+            "items": items[cursor : cursor + limit],
+            "next_cursor": cursor + limit if cursor + limit < len(items) else None,
+        }
+
+    @app.get("/api/v1/kafka/clusters/{cluster_id}", dependencies=[Depends(require_auth)])
+    async def kafka_cluster(cluster_id: str, request: Request):
+        item = next((item for item in tenant_items(request, "clusters") if item["id"] == cluster_id), None)
+        if not item:
+            raise HTTPException(status_code=404, detail="Kafka cluster not found")
+        return item
+
+    @app.get("/api/v1/stream-topology", dependencies=[Depends(require_auth)])
+    async def stream_topology(request: Request):
+        return {"nodes": tenant_items(request, "nodes"), "edges": tenant_items(request, "edges")}
+
+    @app.get("/api/v1/stream-topology/nodes", dependencies=[Depends(require_auth)])
+    async def stream_nodes(request: Request):
+        return {"items": tenant_items(request, "nodes")}
+
+    @app.get("/api/v1/stream-topology/edges", dependencies=[Depends(require_auth)])
+    async def stream_edges(request: Request):
+        return {"items": tenant_items(request, "edges")}
+
+    @app.get("/api/v1/pathways", dependencies=[Depends(require_auth)])
+    async def pathways(request: Request):
+        return {"items": tenant_items(request, "pathways")}
+
+    @app.post("/api/v1/pathway-slos", status_code=201, dependencies=[Depends(require_auth)])
+    async def create_pathway_slo(request: Request, response: Response, body: Dict[str, Any]):
+        slo_id = body.get("id") or str(uuid.uuid4())
+        document = body | {"id": slo_id, "tenant_id": request.state.tenant_id, "revision": 1}
+        request.app.state.kafka_dsm["slos"][(request.state.tenant_id, slo_id)] = document
+        response.headers["ETag"] = '"1"'
+        return document
+
+    @app.get("/api/v1/pathway-slos", dependencies=[Depends(require_auth)])
+    async def pathway_slos(request: Request):
+        return {
+            "items": [
+                value
+                for (tenant, _), value in request.app.state.kafka_dsm["slos"].items()
+                if tenant == request.state.tenant_id
+            ]
+        }
+
+    @app.patch("/api/v1/pathway-slos/{slo_id}", dependencies=[Depends(require_auth)])
+    async def update_pathway_slo(
+        slo_id: str, request: Request, response: Response, body: Dict[str, Any], if_match: str | None = Header(None)
+    ):
+        key = (request.state.tenant_id, slo_id)
+        current = request.app.state.kafka_dsm["slos"].get(key)
+        if not current:
+            raise HTTPException(status_code=404, detail="Pathway SLO not found")
+        if if_match != f'"{current["revision"]}"':
+            raise HTTPException(status_code=412, detail="ETag mismatch")
+        updated = (
+            current | body | {"id": slo_id, "tenant_id": request.state.tenant_id, "revision": current["revision"] + 1}
+        )
+        request.app.state.kafka_dsm["slos"][key] = updated
+        response.headers["ETag"] = f'"{updated["revision"]}"'
+        return updated
+
+    @app.delete("/api/v1/pathway-slos/{slo_id}", status_code=204, dependencies=[Depends(require_auth)])
+    async def delete_pathway_slo(slo_id: str, request: Request):
+        if request.app.state.kafka_dsm["slos"].pop((request.state.tenant_id, slo_id), None) is None:
+            raise HTTPException(status_code=404, detail="Pathway SLO not found")
 
     @app.get("/api/data-observability/assets/{asset_id:path}/health", dependencies=[Depends(require_auth)])
     async def dataobs_get_health(

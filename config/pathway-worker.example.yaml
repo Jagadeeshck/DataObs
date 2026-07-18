@@ -1,0 +1,7 @@
+tenant_id: demo
+environment: development
+source_streams: [traces-apm-*, metrics-dataobs.kafka_*]
+bucket_seconds: 60
+late_arrival_window_seconds: 300
+checkpoint_alias: dataobs-pathway-checkpoints-v1-write
+payload_capture: false

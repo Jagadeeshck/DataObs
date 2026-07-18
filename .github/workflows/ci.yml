@@ -26,13 +26,47 @@ jobs:
           pip install -r requirements.txt
           pip install pytest requests ruff black mypy pip-audit types-requests
       - name: Ruff lint
-        run: ruff check services/scanner_worker/worker.py tests/integration tests/test_agent_sdk_scanner.py
+        run: ruff check .
       - name: Black check
-        run: black --check services/scanner_worker/worker.py tests/integration tests/test_agent_sdk_scanner.py
+        run: black --check .
       - name: Compile Python
         run: python -m compileall -q src packages services integrations tests
-      - name: Type check production packages
-        run: mypy packages/agent_sdk services/scanner_worker
+      - name: Type check product foundations
+        run: mypy packages/domain_model packages/elastic_store services/collection_manager packages/agent_sdk services/scanner_worker
+      - name: Migration plan artifact
+        run: python -m packages.elastic_store.cli plan > migration-plan.json
+      - name: OpenAPI generation consistency check
+        run: python - <<'PYOPENAPI'
+from src.api.app import create_app
+import json
+open('openapi.json','w').write(json.dumps(create_app().openapi(), sort_keys=True, indent=2))
+PYOPENAPI
+      - name: JSON schema snapshot check
+        run: python - <<'PYSCHEMA'
+from packages.domain_model import Asset, Source, Tenant
+import json, pathlib
+out={'Tenant': Tenant.model_json_schema(), 'Source': Source.model_json_schema(), 'Asset': Asset.model_json_schema()}
+pathlib.Path('domain-schemas.json').write_text(json.dumps(out, sort_keys=True, indent=2))
+PYSCHEMA
+      - name: Docs link validation
+        run: python - <<'PYDOCS'
+import pathlib, re, sys
+missing=[]
+for md in pathlib.Path('.').rglob('*.md'):
+    if '.git' in md.parts: continue
+    for link in re.findall(r'\[[^\]]+\]\(([^):#]+)(?:#[^)]+)?\)', md.read_text(errors='ignore')):
+        target=(md.parent/link).resolve()
+        if not target.exists(): missing.append(f'{md}: {link}')
+if missing:
+    print('\n'.join(missing)); sys.exit(1)
+PYDOCS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: migration-plan-and-schemas
+          path: |
+            migration-plan.json
+            openapi.json
+            domain-schemas.json
       - name: Dependency audit
         run: pip-audit -r requirements.txt
       - name: Unit tests
@@ -128,6 +162,7 @@ jobs:
         run: |
           docker build -f Dockerfile.api -t dataobs/api:${{ github.sha }} .
           docker build -f Dockerfile.quality -t dataobs/quality:${{ github.sha }} .
+          docker build -f Dockerfile.api -t dataobs/collection-manager:${{ github.sha }} .
       - name: Scan API image
         uses: aquasecurity/trivy-action@0.35.0
         with:
@@ -152,6 +187,7 @@ jobs:
         run: |
           trivy image --format cyclonedx --output sbom-api.cdx.json dataobs/api:${{ github.sha }}
           trivy image --format cyclonedx --output sbom-quality.cdx.json dataobs/quality:${{ github.sha }}
+          trivy image --format cyclonedx --output sbom-collection-manager.cdx.json dataobs/collection-manager:${{ github.sha }}
       - name: Upload SBOMs
         uses: actions/upload-artifact@v4
         with:

@@ -16,6 +16,9 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from src.api.store import StoreProtocol, get_store
 from src.config.settings import AppSettings, load_settings
 from src.core.enterprise_blueprint import enterprise_backlog
+from src.core.pillars import PILLAR_REGISTRY, canonical_pillar_value
+from packages.elastic_store.registry import status as elastic_migration_status
+from services.collection_manager import CollectionManagerService
 from src.data_observability.openlineage import OpenLineageValidationError
 from src.data_observability.service import DataObservabilityService
 
@@ -182,11 +185,14 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
     app = FastAPI(title="DataObs API", version="1.1.0")
     app.state.settings = resolved_settings
     app.state.store_bundle = resolved_bundle
+    app.state.collection_manager = CollectionManagerService()
 
     @app.middleware("http")
-    async def request_id_middleware(request: Request, call_next):
+    async def request_context_middleware(request: Request, call_next):
         request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
         request.state.request_id = request_id
+        request.state.tenant_id = request.headers.get("X-DataObs-Tenant") or resolved_settings.tenant_id
+        request.state.principal = {"subject": "local-dev", "scopes": ["dataobs:admin"]}
         response = await call_next(request)
         response.headers["X-Request-ID"] = request_id
         return response
@@ -243,9 +249,25 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
         logger.exception("Unhandled exception request_id=%s", _request_id(request))
         return JSONResponse(status_code=500, content=_error_payload("internal_server_error", "Internal server error", _request_id(request)))
 
+    @app.get("/livez", tags=["health"])
+    async def livez() -> Dict[str, Any]:
+        return {"status": "ok", "service": "dataobs-api"}
+
+    @app.get("/readyz", tags=["health"])
+    async def readyz(settings: AppSettings = Depends(get_settings)) -> Dict[str, Any]:
+        if settings.store_backend != "elasticsearch":
+            return {"status": "ok", "store_backend": settings.store_backend, "readiness": "local-memory-mode"}
+        try:
+            st = elastic_migration_status(make_es_client(settings))
+        except Exception as exc:
+            raise HTTPException(status_code=503, detail=f"Elasticsearch readiness check failed: {exc}") from exc
+        if not st.get("ready"):
+            raise HTTPException(status_code=503, detail={"message": "Required Elasticsearch migrations are not applied", "migration_status": st})
+        return {"status": "ok", "store_backend": settings.store_backend, "migration_status": st}
+
     @app.get("/health", response_model=HealthResponse)
-    async def health(settings: AppSettings = Depends(get_settings)) -> Dict[str, Any]:
-        return {"status": "ok", "service": "dataobs-api", "store_backend": settings.store_backend, "auth_mode": settings.auth_mode}
+    async def health(settings: AppSettings = Depends(get_settings)) -> JSONResponse:
+        return JSONResponse({"status": "ok", "service": "dataobs-api", "store_backend": settings.store_backend, "auth_mode": settings.auth_mode}, headers={"Deprecation": "true", "Link": "</livez>; rel=successor-version"})
 
     @app.get("/rules", response_model=RulesResponse, dependencies=[Depends(require_auth)])
     async def get_rules(stores: StoreBundle = Depends(get_stores), limit: int = Query(100, ge=1, le=1000), offset: int = Query(0, ge=0), dataset: str | None = None, enabled: bool | None = None, severity: str | None = None, check_type: str | None = None) -> Dict[str, Any]:
@@ -398,6 +420,82 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
     @app.get("/api/v1/lineage/{asset_id}/columns/{column}/upstream", dependencies=[Depends(require_auth)])
     async def openlineage_column_upstream(asset_id: str, column: str, service: DataObservabilityService = Depends(dataobs_service)) -> Dict[str, Any]:
         return service.get_column_lineage(asset_id, column, "upstream")
+
+
+    def cm(request: Request) -> CollectionManagerService:
+        return request.app.state.collection_manager
+
+    def tenant_id(request: Request) -> str:
+        return request.state.tenant_id
+
+    @app.get("/api/v1/pillars", tags=["pillars"], dependencies=[Depends(require_auth)])
+    async def api_v1_pillars() -> Dict[str, Any]:
+        return {"pillars": [{"pillar": p.value, "name": d.name, "question": d.question, "capabilities": [c.__dict__ for c in d.capabilities]} for p, d in PILLAR_REGISTRY.items()]}
+
+    @app.get("/api/v1/migrations", tags=["migrations"], dependencies=[Depends(require_auth)])
+    async def api_v1_migrations(settings: AppSettings = Depends(get_settings)) -> Dict[str, Any]:
+        if settings.store_backend != "elasticsearch":
+            return {"status": "local-memory-mode", "required": ["0001_product_foundation"]}
+        return elastic_migration_status(make_es_client(settings))
+
+    @app.post("/api/v1/tenants", status_code=201, tags=["tenants"], dependencies=[Depends(require_auth)])
+    async def create_tenant(payload: DataObservabilityRequest, request: Request, service: CollectionManagerService = Depends(cm)) -> Dict[str, Any]:
+        return service.create_tenant(_as_dict(payload), _request_id(request))
+
+    @app.get("/api/v1/tenants", tags=["tenants"], dependencies=[Depends(require_auth)])
+    async def list_tenants(service: CollectionManagerService = Depends(cm), tid: str = Depends(tenant_id)) -> Dict[str, Any]:
+        return {"items": service.repo.list("tenants", tid)}
+
+    @app.post("/api/v1/sources", status_code=201, tags=["sources"], dependencies=[Depends(require_auth)])
+    async def create_source(payload: DataObservabilityRequest, request: Request, service: CollectionManagerService = Depends(cm), tid: str = Depends(tenant_id)) -> Dict[str, Any]:
+        return service.create_source(tid, _as_dict(payload), _request_id(request))
+
+    @app.get("/api/v1/sources", tags=["sources"], dependencies=[Depends(require_auth)])
+    async def list_sources(service: CollectionManagerService = Depends(cm), tid: str = Depends(tenant_id)) -> Dict[str, Any]: return {"items": service.repo.list("sources", tid)}
+
+    @app.post("/api/v1/integrations", status_code=201, tags=["integrations"], dependencies=[Depends(require_auth)])
+    async def create_integration(payload: DataObservabilityRequest, service: CollectionManagerService = Depends(cm), tid: str = Depends(tenant_id)) -> Dict[str, Any]: return service.register("integrations", tid, _as_dict(payload), "integration")
+    @app.get("/api/v1/integrations", tags=["integrations"], dependencies=[Depends(require_auth)])
+    async def list_integrations(service: CollectionManagerService = Depends(cm), tid: str = Depends(tenant_id)) -> Dict[str, Any]: return {"items": service.repo.list("integrations", tid)}
+
+    @app.post("/api/v1/collectors", status_code=201, tags=["collectors"], dependencies=[Depends(require_auth)])
+    async def create_collector(payload: DataObservabilityRequest, service: CollectionManagerService = Depends(cm), tid: str = Depends(tenant_id)) -> Dict[str, Any]: return service.register("collectors", tid, _as_dict(payload), "collector")
+    @app.get("/api/v1/collectors", tags=["collectors"], dependencies=[Depends(require_auth)])
+    async def list_collectors(service: CollectionManagerService = Depends(cm), tid: str = Depends(tenant_id)) -> Dict[str, Any]: return {"items": service.repo.list("collectors", tid)}
+    @app.post("/api/v1/collectors/{collector_id}/heartbeat", tags=["collectors"], dependencies=[Depends(require_auth)])
+    async def collector_heartbeat(collector_id: str, payload: DataObservabilityRequest, service: CollectionManagerService = Depends(cm), tid: str = Depends(tenant_id)) -> Dict[str, Any]: return service.heartbeat("collectors", tid, collector_id, _as_dict(payload))
+
+    @app.post("/api/v1/scanners", status_code=201, tags=["scanners"], dependencies=[Depends(require_auth)])
+    async def create_scanner(payload: DataObservabilityRequest, service: CollectionManagerService = Depends(cm), tid: str = Depends(tenant_id)) -> Dict[str, Any]: return service.register("scanners", tid, _as_dict(payload), "scanner")
+    @app.get("/api/v1/scanners", tags=["scanners"], dependencies=[Depends(require_auth)])
+    async def list_scanners(service: CollectionManagerService = Depends(cm), tid: str = Depends(tenant_id)) -> Dict[str, Any]: return {"items": service.repo.list("scanners", tid)}
+    @app.post("/api/v1/scanners/{scanner_id}/heartbeat", tags=["scanners"], dependencies=[Depends(require_auth)])
+    async def scanner_heartbeat(scanner_id: str, payload: DataObservabilityRequest, service: CollectionManagerService = Depends(cm), tid: str = Depends(tenant_id)) -> Dict[str, Any]: return service.heartbeat("scanners", tid, scanner_id, _as_dict(payload))
+    @app.get("/api/v1/scanners/{scanner_id}/tasks", tags=["scanner tasks"], dependencies=[Depends(require_auth)])
+    async def scanner_tasks(scanner_id: str, service: CollectionManagerService = Depends(cm), tid: str = Depends(tenant_id)) -> Dict[str, Any]: return {"items": service.tasks_for_scanner(tid, scanner_id)}
+    @app.post("/api/v1/scanners/{scanner_id}/tasks/{task_id}/ack", tags=["scanner tasks"], dependencies=[Depends(require_auth)])
+    async def scanner_task_ack(scanner_id: str, task_id: str, service: CollectionManagerService = Depends(cm), tid: str = Depends(tenant_id)) -> Dict[str, Any]: return service.ack_task(tid, scanner_id, task_id)
+    @app.post("/api/v1/scanners/{scanner_id}/tasks/{task_id}/results", tags=["scanner tasks"], dependencies=[Depends(require_auth)])
+    async def scanner_task_result(scanner_id: str, task_id: str, payload: DataObservabilityRequest, request: Request, service: CollectionManagerService = Depends(cm), tid: str = Depends(tenant_id), idempotency_key: str | None = Header(default=None, alias="Idempotency-Key")) -> Dict[str, Any]: return service.submit_result(tid, scanner_id, task_id, _as_dict(payload), idempotency_key)
+
+    @app.post("/api/v1/scan-policies", status_code=201, tags=["scan policies"], dependencies=[Depends(require_auth)])
+    async def create_scan_policy(payload: DataObservabilityRequest, service: CollectionManagerService = Depends(cm), tid: str = Depends(tenant_id)) -> Dict[str, Any]: return service.create_policy(tid, _as_dict(payload))
+    @app.get("/api/v1/scan-policies", tags=["scan policies"], dependencies=[Depends(require_auth)])
+    async def list_scan_policies(service: CollectionManagerService = Depends(cm), tid: str = Depends(tenant_id)) -> Dict[str, Any]: return {"items": service.repo.list("policies", tid)}
+
+    @app.get("/api/v1/assets", tags=["assets"], dependencies=[Depends(require_auth)])
+    async def list_assets(service: CollectionManagerService = Depends(cm), tid: str = Depends(tenant_id), limit: int = Query(100, ge=1, le=1000), cursor: str | None = None) -> Dict[str, Any]:
+        items=service.repo.list("assets", tid)[:limit]; return {"items": items, "next_cursor": None}
+    @app.get("/api/v1/assets/{asset_id}", tags=["assets"], dependencies=[Depends(require_auth)])
+    async def get_asset(asset_id: str, service: CollectionManagerService = Depends(cm), tid: str = Depends(tenant_id)) -> Dict[str, Any]:
+        asset=service.repo.get("assets", asset_id)
+        if not asset or asset.get("tenant_id") != tid: raise HTTPException(status_code=404, detail=f"Asset '{asset_id}' not found")
+        return asset
+
+    @app.get("/api/v1/monitors", tags=["monitors"], dependencies=[Depends(require_auth)])
+    async def list_monitors(service: CollectionManagerService = Depends(cm), tid: str = Depends(tenant_id)) -> Dict[str, Any]: return {"items": service.repo.list("monitors", tid)}
+    @app.get("/api/v1/incidents", tags=["incidents"], dependencies=[Depends(require_auth)])
+    async def list_incidents(service: CollectionManagerService = Depends(cm), tid: str = Depends(tenant_id)) -> Dict[str, Any]: return {"items": service.repo.list("incidents", tid)}
 
     @app.get("/strategy/enterprise-backlog", response_model=EnterpriseBacklogResponse, dependencies=[Depends(require_auth)])
     async def get_enterprise_backlog() -> Dict[str, Any]:

@@ -176,8 +176,8 @@ def _validate(settings: AppSettings) -> None:
             raise ConfigurationError("Production requires API_TOKEN or stronger auth provider.")
         if settings.auth.allow_unauthenticated_dev:
             raise ConfigurationError("Production forbids unauthenticated dev mode.")
-        if settings.store_backend == "memory" and not settings.runtime.allow_memory_store_in_production:
-            raise ConfigurationError("Production forbids DATAOBS_STORE_BACKEND=memory.")
+        if settings.store_backend != "elasticsearch":
+            raise ConfigurationError("Production requires DATAOBS_STORE_BACKEND=elasticsearch and forbids memory as authoritative product state; optional exporters cannot hold authoritative product state.")
         if not settings.elasticsearch.url:
             raise ConfigurationError("Production requires ELASTICSEARCH_URL.")
         if not (settings.elasticsearch.api_key or (settings.elasticsearch.user and settings.elasticsearch.password)):

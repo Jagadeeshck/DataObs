@@ -1,9 +1,4 @@
-"""DataObs pillar model and scoring utilities.
-
-This module defines a product-level abstraction for the four DataObs observability
-pillars and provides a lightweight scorecard engine that can be used by APIs,
-CLI commands, and dashboards.
-"""
+"""Six-pillar DataObs product model and scoring utilities."""
 
 from __future__ import annotations
 
@@ -13,18 +8,55 @@ from typing import Dict, Iterable, List
 
 
 class Pillar(str, Enum):
-    """Top-level DataObs observability pillars."""
+    """Canonical DataObs observability pillars emitted by product APIs."""
 
-    FULL_STACK = "full_stack"
-    PIPELINE = "pipeline"
+    PLATFORM = "platform"
+    DATA_PIPELINE = "data_pipeline"
     DATA = "data"
+    FINOPS_COST = "finops_cost"
     BUSINESS = "business"
+    AI_AGENT = "ai_agent"
+
+
+LEGACY_PILLAR_ALIASES: Dict[str, Pillar] = {
+    "full_stack": Pillar.PLATFORM,
+    "pipeline": Pillar.DATA_PIPELINE,
+    "data": Pillar.DATA,
+    "business": Pillar.BUSINESS,
+}
+
+
+def parse_pillar(value: str | Pillar) -> Pillar:
+    """Parse canonical and deprecated pillar values, returning canonical values."""
+
+    if isinstance(value, Pillar):
+        return value
+    normalized = value.strip().lower().replace("-", "_")
+    if normalized in LEGACY_PILLAR_ALIASES:
+        return LEGACY_PILLAR_ALIASES[normalized]
+    return Pillar(normalized)
+
+
+def canonical_pillar_value(value: str | Pillar) -> str:
+    """Return the canonical wire value for API/config responses."""
+
+    return parse_pillar(value).value
+
+
+def pillar_deprecation(value: str | Pillar) -> dict[str, str] | None:
+    """Return deprecation metadata for legacy pillar inputs."""
+
+    if isinstance(value, Pillar):
+        return None
+    normalized = value.strip().lower().replace("-", "_")
+    replacement = LEGACY_PILLAR_ALIASES.get(normalized)
+    if replacement is None or normalized == replacement.value:
+        return None
+    return {"deprecated": normalized, "replacement": replacement.value}
 
 
 @dataclass(frozen=True)
 class Capability:
-    """A capability implemented inside a pillar."""
-
     key: str
     name: str
     description: str
@@ -33,9 +65,8 @@ class Capability:
 
 @dataclass
 class PillarDefinition:
-    """Definition of a pillar and its required capabilities."""
-
     pillar: Pillar
+    name: str
     question: str
     capabilities: List[Capability] = field(default_factory=list)
 
@@ -45,17 +76,13 @@ class PillarDefinition:
 
 @dataclass
 class CapabilityStatus:
-    """Runtime state for a capability."""
-
     key: str
     implemented: bool
-    maturity: float  # 0.0 -> 1.0
+    maturity: float
 
 
 @dataclass
 class PillarScore:
-    """Computed score for one pillar."""
-
     pillar: Pillar
     score: float
     max_score: float
@@ -64,84 +91,109 @@ class PillarScore:
 
     @property
     def percentage(self) -> float:
-        if self.max_score == 0:
-            return 0.0
-        return (self.score / self.max_score) * 100
+        return 0.0 if self.max_score == 0 else (self.score / self.max_score) * 100
 
 
 PILLAR_REGISTRY: Dict[Pillar, PillarDefinition] = {
-    Pillar.FULL_STACK: PillarDefinition(
-        pillar=Pillar.FULL_STACK,
-        question="What is happening in the runtime stack right now?",
-        capabilities=[
-            Capability("infra_metrics", "Infrastructure Metrics", "Host/container/Kubernetes health and saturation."),
-            Capability("apm_traces", "APM Tracing", "Distributed tracing with OpenTelemetry span context."),
-            Capability("log_analytics", "Log Analytics", "Centralized logs with anomaly detection on error patterns."),
+    Pillar.PLATFORM: PillarDefinition(
+        Pillar.PLATFORM,
+        "Platform Observability",
+        "What is deployed, where, and is it healthy?",
+        [
+            Capability(
+                "infrastructure_inventory",
+                "Infrastructure Inventory",
+                "Infrastructure, host, container, and Kubernetes inventory.",
+            ),
+            Capability(
+                "runtime_telemetry",
+                "Runtime Telemetry",
+                "Metrics, logs, traces, dependency topology, saturation, and capacity.",
+            ),
+            Capability(
+                "lifecycle_visibility", "Lifecycle Visibility", "Version, cloud service health, and lifecycle status."
+            ),
         ],
     ),
-    Pillar.PIPELINE: PillarDefinition(
-        pillar=Pillar.PIPELINE,
-        question="Are pipelines meeting expected SLAs and contracts?",
-        capabilities=[
-            Capability("job_sla", "Job SLA", "Schedule adherence, delays, retries, and cost visibility."),
-            Capability("stream_health", "Stream Health", "Lag/throughput/consumer-group health for streaming systems."),
-            Capability("deployment_obs", "Deployment Observability", "CI/CD and release quality for data workloads."),
+    Pillar.DATA_PIPELINE: PillarDefinition(
+        Pillar.DATA_PIPELINE,
+        "Data Pipeline and Job Observability",
+        "Are pipelines and jobs running correctly and on time?",
+        [
+            Capability("job_health", "Job Health", "Job health, failures, retries, and run comparison."),
+            Capability(
+                "sla_adherence", "SLA Adherence", "Schedules, SLA adherence, and deployment/change correlation."
+            ),
+            Capability("pipeline_latency", "Pipeline Latency", "Throughput, stream lag, and pipeline latency."),
         ],
     ),
     Pillar.DATA: PillarDefinition(
-        pillar=Pillar.DATA,
-        question="Can consumers trust this data for decisions?",
-        capabilities=[
-            Capability("freshness", "Freshness", "How stale is each critical dataset?", default_weight=1.2),
-            Capability("validation", "Validation", "Schema, null, uniqueness, range, and referential integrity checks."),
-            Capability("lineage", "Lineage", "End-to-end source to consumer lineage with impact analysis.", default_weight=1.2),
+        Pillar.DATA,
+        "Data Observability",
+        "Can consumers trust the data?",
+        [
+            Capability("freshness", "Freshness", "Dataset freshness and volume state.", 1.2),
+            Capability(
+                "validation", "Validation", "Schema, quality, nullness, uniqueness, cardinality, and drift checks."
+            ),
+            Capability("lineage", "Lineage", "Dataset and column lineage, data contracts, and blast radius.", 1.2),
+        ],
+    ),
+    Pillar.FINOPS_COST: PillarDefinition(
+        Pillar.FINOPS_COST,
+        "FinOps and Cost Observability",
+        "What is the platform costing, and why?",
+        [
+            Capability("cost_allocation", "Cost Allocation", "Cost by tenant, team, job, dataset, and service."),
+            Capability("unit_economics", "Unit Economics", "Storage, retention, unit economics, and forecasts."),
+            Capability(
+                "cost_optimization", "Cost Optimization", "Idle-resource detection, anomalies, and recommendations."
+            ),
         ],
     ),
     Pillar.BUSINESS: PillarDefinition(
-        pillar=Pillar.BUSINESS,
-        question="What is the business impact of incidents and data drift?",
-        capabilities=[
-            Capability("kpi_correlation", "KPI Correlation", "Link data incidents to KPI movement and revenue impact."),
-            Capability("executive_views", "Executive Views", "Role-based dashboards and service-level scorecards."),
-            Capability("incident_cost", "Incident Cost", "Estimated dollar/time impact for prioritization."),
+        Pillar.BUSINESS,
+        "Business Observability",
+        "Is the platform delivering business value?",
+        [
+            Capability("adoption", "Adoption", "Adoption, tenant health, and business KPIs."),
+            Capability("slo_attainment", "SLO Attainment", "SLA/SLO attainment, time-to-data, and reliability."),
+            Capability(
+                "executive_scorecards", "Executive Scorecards", "Incident business impact and executive scorecards."
+            ),
+        ],
+    ),
+    Pillar.AI_AGENT: PillarDefinition(
+        Pillar.AI_AGENT,
+        "AI and Agent Observability",
+        "Can AI models and autonomous agents be trusted, controlled, and audited?",
+        [
+            Capability(
+                "agent_inventory",
+                "Model and Agent Inventory",
+                "Inventory, prompts, tool calls, token cost, and latency.",
+            ),
+            Capability("evaluation", "Quality and Evaluation", "Quality, grounding evidence, and policy violations."),
+            Capability("action_audit", "Action Audit", "Action audit trail, approvals, rollback, and verification."),
         ],
     ),
 }
 
 
-def score_pillar(pillar: Pillar, statuses: Iterable[CapabilityStatus]) -> PillarScore:
-    """Compute weighted implementation score for a single pillar."""
-
-    definition = PILLAR_REGISTRY[pillar]
+def score_pillar(pillar: Pillar | str, statuses: Iterable[CapabilityStatus]) -> PillarScore:
+    definition = PILLAR_REGISTRY[parse_pillar(pillar)]
     status_map = {status.key: status for status in statuses}
-
-    score = 0.0
-    max_score = 0.0
+    score = max_score = 0.0
     implemented = 0
-
     for capability in definition.capabilities:
         max_score += capability.default_weight
         status = status_map.get(capability.key)
-        if not status:
-            continue
-        if status.implemented:
-            implemented += 1
-        bounded_maturity = max(0.0, min(status.maturity, 1.0))
-        score += bounded_maturity * capability.default_weight
-
-    return PillarScore(
-        pillar=pillar,
-        score=score,
-        max_score=max_score,
-        implemented_capabilities=implemented,
-        total_capabilities=len(definition.capabilities),
-    )
+        if status:
+            implemented += int(status.implemented)
+            score += max(0.0, min(status.maturity, 1.0)) * capability.default_weight
+    return PillarScore(definition.pillar, score, max_score, implemented, len(definition.capabilities))
 
 
-def score_all_pillars(statuses_by_pillar: Dict[Pillar, Iterable[CapabilityStatus]]) -> List[PillarScore]:
-    """Compute scorecards across the full product strategy."""
-
-    return [
-        score_pillar(pillar, statuses_by_pillar.get(pillar, []))
-        for pillar in Pillar
-    ]
+def score_all_pillars(statuses_by_pillar: Dict[Pillar | str, Iterable[CapabilityStatus]]) -> List[PillarScore]:
+    normalized = {parse_pillar(pillar): statuses for pillar, statuses in statuses_by_pillar.items()}
+    return [score_pillar(pillar, normalized.get(pillar, [])) for pillar in Pillar]

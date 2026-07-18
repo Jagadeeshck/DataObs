@@ -6,6 +6,7 @@ Requires Docker and an already-running integration stack. Run with:
 
 Resolves: https://github.com/Jagadeeshck/DataObs/issues/25
 """
+
 from __future__ import annotations
 
 import os

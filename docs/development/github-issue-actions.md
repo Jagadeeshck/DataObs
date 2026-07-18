@@ -1,17 +1,27 @@
-# GitHub Issue Actions Required
+# GitHub Issue Actions Evidence
 
-This environment could not mutate GitHub issues because no `origin` remote is configured and `gh` is not installed. Do not claim these issues are closed until an authenticated maintainer runs equivalent commands.
+## Current blocker
 
-For #46-#51, post a comment: `This Phase 0 PR preserves the product-scale requirements in docs/product/roadmap-v1.md and docs/product/feature-matrix.md, with target pillar, milestone, collection mechanism, storage model, API/UI destination, and security/licensing notes. The issue is superseded by the versioned product roadmap rather than completed in Phase 0.` Then close with reason `not planned`.
+Authenticated GitHub issue mutation is unavailable in this execution environment:
 
-For #24-#32, re-query the full issue text, compare against docs/development/open-issue-closure-report.md, run the full required CI including integration containers, then close only genuinely complete issues with reason `completed`; otherwise keep open and update the report.
+- `gh auth status` failed because `gh` is not installed.
+- Adding `origin` as `https://github.com/Jagadeeshck/DataObs.git` and running `git fetch origin main` failed because no interactive credentials/token were available.
 
-Suggested commands after installing/authenticating `gh`:
+Because issue mutation is unavailable, this PR must remain a draft and must not claim Phase 0 completion until an authenticated maintainer comments on and closes the legacy issues in GitHub.
 
-```bash
-gh issue list --state open --limit 100
-for n in 46 47 48 49 50 51; do
-  gh issue comment "$n" --body-file /tmp/dataobs-superseded-comment.md
-  gh issue close "$n" --reason "not planned"
-done
-```
+## Required authenticated actions before marking the PR ready
+
+1. Re-query all open issues and PRs.
+2. Record the latest `main` SHA and Actions status.
+3. Post an issue-specific comment to each legacy issue #24, #25, #28, #29, #30, #31, #32, #46, #47, #48, #49, #50, and #51.
+4. Close completed issues with reason `completed` only when executable evidence passes.
+5. Close superseded roadmap issues with reason `not planned`.
+6. Re-query the legacy issue list and record final legacy open issue count as zero.
+
+## Issue disposition comments to post
+
+- #25: completed only after the `integration-tests` job passes the container-backed API, OTel, Elasticsearch, Slack, PagerDuty, ServiceNow, and deduplication scenarios.
+- #24, #28, #29, #30, #31, #32: use the acceptance matrix in `docs/development/open-issue-closure-report.md`; close as completed only for fully validated criteria, otherwise close as `not planned` after confirming missing requirements are preserved in roadmap docs.
+- #46-#51: post issue-specific supersession comments referencing `docs/product/roadmap-v1.md` and `docs/product/feature-matrix.md`, then close with reason `not planned`.
+
+This file intentionally records the real blocker rather than saying mutation is pending without evidence.

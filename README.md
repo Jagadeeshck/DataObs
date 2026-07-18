@@ -10,8 +10,11 @@
 [![OpenTelemetry](https://img.shields.io/badge/OpenTelemetry-native-blueviolet?logo=opentelemetry)](https://opentelemetry.io/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-> **DataObs** is a production-ready blueprint and implementation starter for end-to-end observability across infrastructure, data pipelines, data quality/freshness/lineage, and business impact — built on OpenTelemetry with dual back-end support for Elasticsearch/Kibana and Grafana Cloud.
+> DataObs is being productised as an Elasticsearch-native Data Observability and Data Streams Monitoring platform. Elasticsearch and Kibana are the primary analytical and investigation platform; OpenTelemetry and OpenLineage are the ingestion standards. Optional exporters and legacy POC paths remain isolated integrations.
 
+> The repository is under active productisation and is not yet a production release.
+
+> Governance: [Productization Master Plan](docs/product/dataobs-productization-master-plan.md), [Agent and Collection Plane Architecture](docs/architecture/dataobs-agent-and-collection-plane.md), and [Phase 0 Closure Report](docs/development/open-issue-closure-report.md).
 ---
 
 ## Table of Contents
@@ -39,11 +42,11 @@ DataObs solves the "dark pipeline" problem: large-scale data platforms emit enor
 
 This repository provides:
 
-- A **4-pillar observability model** (Full-Stack, Pipeline, Data, Business) as both architectural guidance and runnable code
+- An Elasticsearch-native product direction for data observability, pipeline/job observability, streams monitoring, lineage, incident response, and product-quality visualisation
 - **OpenTelemetry-native** instrumentation for Python services, Apache Spark jobs, AWS Lambda, and EC2-hosted runtimes
-- A **dual back-end** strategy: Elasticsearch/Kibana for on-prem/hybrid, and Grafana Cloud (Tempo/Loki/Mimir) for SaaS
+- Elasticsearch/Kibana as the primary analytical and investigation platform, with optional exporters and legacy POC paths isolated as integrations
 - **Alerting integrations** for ServiceNow, PagerDuty, and Slack out of the box
-- A **Helm chart** and raw Kubernetes manifests for production deployment
+- A **Helm chart** and raw Kubernetes manifests for deployment experimentation and validation
 - **Terraform modules** for AWS infrastructure provisioning
 
 ---

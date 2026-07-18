@@ -3,6 +3,7 @@ End-to-end API tests: POST quality result → GET by ID → assert stored.
 
 Resolves: https://github.com/Jagadeeshck/DataObs/issues/25
 """
+
 from __future__ import annotations
 
 import pytest

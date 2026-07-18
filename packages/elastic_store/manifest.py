@@ -158,6 +158,113 @@ INCIDENT_AUTOMATION_PROPERTIES: Dict[str, Any] = {
     "expires_at": {"type": "date"},
 }
 
+KAFKA_MUTABLE_INDICES = [
+    "dataobs-kafka-clusters-v1",
+    "dataobs-kafka-brokers-v1",
+    "dataobs-kafka-topics-v1",
+    "dataobs-kafka-partitions-v1",
+    "dataobs-kafka-consumer-groups-v1",
+    "dataobs-kafka-connectors-v1",
+    "dataobs-kafka-schemas-v1",
+    "dataobs-pathway-nodes-v1",
+    "dataobs-pathway-definitions-v1",
+    "dataobs-pathway-slos-v1",
+    "dataobs-stream-monitors-v1",
+    "dataobs-collection-capabilities-v1",
+    "dataobs-pathway-checkpoints-v1",
+]
+KAFKA_DATA_STREAMS = [
+    "metrics-dataobs.kafka_broker-*",
+    "metrics-dataobs.kafka_topic-*",
+    "metrics-dataobs.kafka_partition-*",
+    "metrics-dataobs.kafka_consumer_group-*",
+    "metrics-dataobs.kafka_client-*",
+    "metrics-dataobs.pathway_edge-*",
+    "metrics-dataobs.pathway_full-*",
+    "metrics-dataobs.pathway_internal-*",
+    "metrics-dataobs.retention_risk-*",
+    "logs-dataobs.kafka_inventory-*",
+    "logs-dataobs.kafka_config_change-*",
+    "logs-dataobs.kafka_schema_change-*",
+    "logs-dataobs.kafka_connect-*",
+    "logs-dataobs.stream_finding-*",
+    "logs-dataobs.pathway_event-*",
+    "logs-dataobs.pathway_slo-*",
+]
+KAFKA_PROPERTIES: Dict[str, Any] = (
+    {
+        key: {"type": "keyword"}
+        for key in [
+            "cluster_id",
+            "broker_id",
+            "topic_id",
+            "partition_id",
+            "consumer_group_id",
+            "producer_service_id",
+            "consumer_service_id",
+            "source_node_id",
+            "destination_node_id",
+            "edge_id",
+            "pathway_id",
+            "pathway_type",
+            "messaging_system",
+            "lag_estimation_method",
+            "connector_state",
+            "task_state",
+            "schema_subject",
+            "schema_compatibility",
+            "health_state",
+            "source_document_ref",
+            "collection_provider",
+        ]
+    }
+    | {
+        key: {"type": "double"}
+        for key in [
+            "p50_latency_ms",
+            "p95_latency_ms",
+            "p99_latency_ms",
+            "throughput_messages_per_second",
+            "throughput_bytes_per_second",
+            "payload_size_p50_bytes",
+            "payload_size_p95_bytes",
+            "lag_seconds",
+            "lag_confidence",
+            "consumer_rate",
+            "producer_rate",
+            "drain_time_seconds",
+            "retention_risk_ratio",
+            "estimated_data_loss_seconds",
+            "error_rate",
+            "retry_rate",
+            "dlq_rate",
+        ]
+    }
+    | {
+        key: {"type": "long"}
+        for key in [
+            "partition",
+            "current_offset",
+            "high_offset",
+            "earliest_offset",
+            "lag_messages",
+            "retention_ms",
+            "retention_bytes",
+            "offline_partition_count",
+            "under_replicated_partition_count",
+            "consumer_group_members",
+            "rebalance_count",
+            "schema_version_number",
+        ]
+    }
+    | {
+        "health_reasons": {"type": "keyword"},
+        "replicas": {"type": "integer"},
+        "isr": {"type": "integer"},
+        "leader_id": {"type": "integer"},
+    }
+)
+
 
 @dataclass(frozen=True)
 class Migration:
@@ -239,6 +346,28 @@ INCIDENT_AUTOMATION_MIGRATION = Migration(
     },
 )
 
+KAFKA_DSM_MIGRATION = Migration(
+    "0004_kafka_data_streams_monitoring",
+    "Add Kafka inventory, pathway projections, retention risk, SLO and collection capability state",
+    "v1",
+    dependencies=["0003_incident_automation"],
+    rollback_strategy="stop Observer and Pathway Worker, snapshot state, then remove v1 aliases/templates; raw Elastic telemetry remains untouched",
+    operations={
+        "mutable_indices": KAFKA_MUTABLE_INDICES,
+        "data_streams": KAFKA_DATA_STREAMS,
+        "transforms": [
+            "dataobs-latest-kafka-cluster-health",
+            "dataobs-latest-topic-health",
+            "dataobs-latest-consumer-group-health",
+            "dataobs-latest-connector-health",
+            "dataobs-latest-pathway-edge",
+            "dataobs-current-pathway-health",
+            "dataobs-current-retention-risk",
+            "dataobs-current-pathway-slo",
+        ],
+    },
+)
+
 
 def migrations() -> List[Migration]:
-    return [FOUNDATION_MIGRATION, POSTGRES_OBSERVABILITY_MIGRATION, INCIDENT_AUTOMATION_MIGRATION]
+    return [FOUNDATION_MIGRATION, POSTGRES_OBSERVABILITY_MIGRATION, INCIDENT_AUTOMATION_MIGRATION, KAFKA_DSM_MIGRATION]

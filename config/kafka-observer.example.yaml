@@ -1,0 +1,8 @@
+tenant_id: demo
+environment: development
+integration_id: kafka-demo
+bootstrap_servers: [kafka-1:9092, kafka-2:9092, kafka-3:9092]
+client_id: dataobs-kafka-observer
+optional_read_enabled: false
+security:
+  protocol: PLAINTEXT

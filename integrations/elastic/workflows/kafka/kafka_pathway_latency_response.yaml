@@ -1,0 +1,20 @@
+id: kafka_pathway_latency_response
+version: 1
+enabled: false
+trigger:
+  type: stream_finding
+steps:
+  - id: context
+    type: esql
+    query: "FROM logs-dataobs.stream_finding-* | WHERE tenant_id == ?tenant_id | LIMIT 100"
+  - id: case
+    type: elastic_case
+    action: create_or_update
+  - id: notify
+    type: http
+    approval_required: true
+    dry_run: true
+    allowlist_required: true
+  - id: verify
+    type: esql
+    query: "FROM logs-dataobs.stream_finding-* | WHERE correlation_id == ?correlation_id | SORT @timestamp DESC | LIMIT 1"

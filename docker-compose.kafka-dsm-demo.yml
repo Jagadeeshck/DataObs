@@ -1,0 +1,37 @@
+services:
+  kafka-1: &kafka
+    image: bitnami/kafka:3.9
+    environment: &kafka-env
+      KAFKA_ENABLE_KRAFT: "yes"
+      KAFKA_CFG_PROCESS_ROLES: broker,controller
+      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: 1@kafka-1:9093,2@kafka-2:9093,3@kafka-3:9093
+      KAFKA_KRAFT_CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+      ALLOW_PLAINTEXT_LISTENER: "yes"
+      KAFKA_CFG_NODE_ID: 1
+      KAFKA_CFG_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://kafka-1:9092
+  kafka-2:
+    <<: *kafka
+    environment:
+      <<: *kafka-env
+      KAFKA_CFG_NODE_ID: 2
+      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://kafka-2:9092
+  kafka-3:
+    <<: *kafka
+    profiles: [ci]
+    environment:
+      <<: *kafka-env
+      KAFKA_CFG_NODE_ID: 3
+      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://kafka-3:9092
+  kafka-observer:
+    build:
+      context: .
+      dockerfile: Dockerfile.kafka-observer
+    command: [print-capabilities]
+    depends_on: [kafka-1, kafka-2]
+  pathway-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.pathway-worker

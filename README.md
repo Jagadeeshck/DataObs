@@ -678,3 +678,7 @@ Limitations: this PR does not make DataObs production-ready. Full OIDC enforceme
 ## Incident automation vertical slice
 
 DataObs now includes a draft Elastic Workflows incident-automation slice: `0003_incident_automation` mappings, versioned Finding/Incident/Workflow contracts, deterministic incident manager services, public-Kibana workflow tooling, alert-rule binding assets, optional Streams enrichment, safe-action/approval APIs, and a Docker demo. This does not make DataObs production-ready and does not enable autonomous or destructive remediation.
+
+## Kafka Data Streams Monitoring (first vertical slice)
+
+DataObs now includes a read-only Kafka Observer foundation, deterministic OTel messaging pathway semantics, lag/retention-risk calculations, migration `0004`, tenant-scoped projection APIs, and controlled workflow templates. See [the architecture](docs/architecture/kafka-data-streams-monitoring.md) and [least-privilege guide](docs/operations/kafka-least-privilege.md). This does not make DataObs production-ready; real Kafka/Elasticsearch/Kibana integration validation remains required.

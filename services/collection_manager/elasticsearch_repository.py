@@ -54,13 +54,28 @@ class ElasticsearchCollectionRepository:
             raise RuntimeError(f"Elasticsearch migrations are not ready: {st}")
         return {"ready": True, "backend": "elasticsearch", "migration_status": st}
 
-    def upsert(self, bucket: str, doc: Dict[str, Any], *, expected_version: int | None = None):
-        body = {**doc, "updated_at": now()}
+    def upsert(
+        self,
+        bucket: str,
+        doc: Dict[str, Any],
+        *,
+        expected_version: int | None = None,
+        if_seq_no: int | None = None,
+        if_primary_term: int | None = None,
+    ):
+        body = {k: v for k, v in {**doc, "updated_at": now()}.items() if not k.startswith("_")}
         kwargs: Dict[str, Any] = {}
-        if expected_version is not None:
+        if expected_version is not None and (if_seq_no is None or if_primary_term is None):
             current = self.get(bucket, doc["id"], doc.get("tenant_id"))
-            if not current or current.get("_version") != expected_version:
-                raise ConflictError(f"version conflict for {bucket}/{doc['id']}")
+            if not current or current.get("_seq_no") is None or current.get("_primary_term") is None:
+                raise ConflictError(f"missing concurrency token for {bucket}/{doc['id']}")
+            if_seq_no = current.get("_seq_no")
+            if_primary_term = current.get("_primary_term")
+        if if_seq_no is not None or if_primary_term is not None:
+            if if_seq_no is None or if_primary_term is None:
+                raise ConflictError("both if_seq_no and if_primary_term are required")
+            kwargs["if_seq_no"] = if_seq_no
+            kwargs["if_primary_term"] = if_primary_term
         try:
             resp = self.es.index(index=self._index(bucket), id=doc["id"], document=body, refresh="wait_for", **kwargs)
         except ESConflictError as exc:

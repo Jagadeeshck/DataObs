@@ -6,34 +6,79 @@ services:
       xpack.security.enabled: "false"
       ES_JAVA_OPTS: -Xms512m -Xmx512m
     ports: ["9200:9200"]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=5s >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+    volumes: ["esdata:/usr/share/elasticsearch/data"]
   kibana:
     image: docker.elastic.co/kibana/kibana:9.4.2
     environment:
       ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+      XPACK_SECURITY_ENABLED: "false"
     ports: ["5601:5601"]
-    depends_on: [elasticsearch]
+    depends_on:
+      elasticsearch: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:5601/api/status >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
   postgres:
     image: postgres:16
     environment:
       POSTGRES_DB: dataobs_demo
       POSTGRES_USER: dataobs_metadata
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-DATAOBS_SENTINEL_PASSWORD_DO_NOT_PERSIST}
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets: [postgres_password]
     ports: ["5432:5432"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dataobs_metadata -d dataobs_demo"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.139.0
+    command: ["--config=/etc/otelcol/config.yaml"]
+    volumes:
+      - ./tests/integration/otel-collector-test.yaml:/etc/otelcol/config.yaml:ro
+    ports: ["4317:4317", "4318:4318", "13133:13133"]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:13133/ >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
   api:
-    build:
-      context: .
-      dockerfile: Dockerfile.api
+    build: {context: ., dockerfile: Dockerfile.api}
     environment:
       DATAOBS_STORE_BACKEND: elasticsearch
       DATAOBS_ELASTICSEARCH_URL: http://elasticsearch:9200
       DATAOBS_AUTH_ALLOW_UNAUTHENTICATED_DEV: "true"
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
     ports: ["8000:8000"]
-    depends_on: [elasticsearch]
+    depends_on:
+      elasticsearch: {condition: service_healthy}
+      otel-collector: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/health >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
   scanner:
-    build:
-      context: .
-      dockerfile: Dockerfile.scanner
+    build: {context: ., dockerfile: Dockerfile.scanner}
     environment:
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-DATAOBS_SENTINEL_PASSWORD_DO_NOT_PERSIST}
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
       DATAOBS_API_TOKEN: dev-token
-    depends_on: [api, postgres]
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+    secrets: [postgres_password]
+    depends_on:
+      api: {condition: service_healthy}
+      postgres: {condition: service_healthy}
+secrets:
+  postgres_password:
+    file: ./config/postgres-demo-password.txt
+volumes:
+  esdata: {}
+  pgdata: {}

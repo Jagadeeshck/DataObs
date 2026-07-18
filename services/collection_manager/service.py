@@ -101,8 +101,8 @@ class CollectionManagerService:
             if not p.get("enabled", True):
                 continue
             tid = task_id_for(p["id"], scanner_id)
-            task = self.repo.tasks.setdefault(
-                tid,
+            task = self.repo.get("tasks", tid, tenant_id) or self.repo.upsert(
+                "tasks",
                 {
                     "id": tid,
                     "task_id": tid,
@@ -119,22 +119,25 @@ class CollectionManagerService:
         return tasks
 
     def ack_task(self, tenant_id, scanner_id, task_id):
-        task = self.repo.tasks.get(task_id)
-        if not task or task["tenant_id"] != tenant_id or task["scanner_id"] != scanner_id:
+        task = self.repo.get("tasks", task_id, tenant_id)
+        if not task or task["scanner_id"] != scanner_id:
             raise KeyError(task_id)
-        task["status"] = "acknowledged"
-        task["acked_at"] = task.get("acked_at") or now()
-        return task
+        return self.repo.upsert(
+            "tasks",
+            {**task, "status": "acknowledged", "acked_at": task.get("acked_at") or now()},
+            expected_version=task.get("_version"),
+        )
 
     def submit_result(self, tenant_id, scanner_id, task_id, payload, idem_key=None):
-        task = self.repo.tasks.get(task_id)
-        if not task or task["tenant_id"] != tenant_id or task["scanner_id"] != scanner_id:
+        task = self.repo.get("tasks", task_id, tenant_id)
+        if not task or task["scanner_id"] != scanner_id:
             raise KeyError(task_id)
         result_key = idem_key or deterministic_id(
             "result", [tenant_id, scanner_id, task_id, json.dumps(payload, sort_keys=True)]
         )
-        if result_key in self.repo.results:
-            return self.repo.results[result_key]
+        existing = self.repo.get("idempotency", result_key, tenant_id)
+        if existing:
+            return existing.get("response")
         source_id = task.get("source_id") or payload.get("source_id")
         fqn = (
             payload.get("fully_qualified_name")
@@ -170,5 +173,5 @@ class CollectionManagerService:
         self.repo.upsert("assets", asset)
         self.repo.audit_event("scanner.result", tenant_id, payload.get("correlation_id"), asset["id"])
         response = {"status": "accepted", "idempotency_key": result_key, "asset_id": asset["id"], "asset": asset}
-        self.repo.results[result_key] = response
+        self.repo.upsert("idempotency", {"id": result_key, "tenant_id": tenant_id, "response": response})
         return response

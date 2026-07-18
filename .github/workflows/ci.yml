@@ -36,30 +36,33 @@ jobs:
       - name: Migration plan artifact
         run: python -m packages.elastic_store.cli plan > migration-plan.json
       - name: OpenAPI generation consistency check
-        run: python - <<'PYOPENAPI'
-from src.api.app import create_app
-import json
-open('openapi.json','w').write(json.dumps(create_app().openapi(), sort_keys=True, indent=2))
-PYOPENAPI
+        run: |
+          python - <<'PYOPENAPI'
+          from src.api.app import create_app
+          import json
+          open('openapi.json','w').write(json.dumps(create_app().openapi(), sort_keys=True, indent=2))
+          PYOPENAPI
       - name: JSON schema snapshot check
-        run: python - <<'PYSCHEMA'
-from packages.domain_model import Asset, Source, Tenant
-import json, pathlib
-out={'Tenant': Tenant.model_json_schema(), 'Source': Source.model_json_schema(), 'Asset': Asset.model_json_schema()}
-pathlib.Path('domain-schemas.json').write_text(json.dumps(out, sort_keys=True, indent=2))
-PYSCHEMA
+        run: |
+          python - <<'PYSCHEMA'
+          from packages.domain_model import Asset, Source, Tenant
+          import json, pathlib
+          out={'Tenant': Tenant.model_json_schema(), 'Source': Source.model_json_schema(), 'Asset': Asset.model_json_schema()}
+          pathlib.Path('domain-schemas.json').write_text(json.dumps(out, sort_keys=True, indent=2))
+          PYSCHEMA
       - name: Docs link validation
-        run: python - <<'PYDOCS'
-import pathlib, re, sys
-missing=[]
-for md in pathlib.Path('.').rglob('*.md'):
-    if '.git' in md.parts: continue
-    for link in re.findall(r'\[[^\]]+\]\(([^):#]+)(?:#[^)]+)?\)', md.read_text(errors='ignore')):
-        target=(md.parent/link).resolve()
-        if not target.exists(): missing.append(f'{md}: {link}')
-if missing:
-    print('\n'.join(missing)); sys.exit(1)
-PYDOCS
+        run: |
+          python - <<'PYDOCS'
+          import pathlib, re, sys
+          missing=[]
+          for md in pathlib.Path('.').rglob('*.md'):
+              if '.git' in md.parts: continue
+              for link in re.findall(r'\[[^\]]+\]\(([^):#]+)(?:#[^)]+)?\)', md.read_text(errors='ignore')):
+                  target=(md.parent/link).resolve()
+                  if not target.exists(): missing.append(f'{md}: {link}')
+          if missing:
+              print('\n'.join(missing)); sys.exit(1)
+          PYDOCS
       - uses: actions/upload-artifact@v4
         with:
           name: migration-plan-and-schemas
@@ -128,6 +131,85 @@ PYDOCS
         if: always()
         run: docker compose -f tests/integration/docker-compose.test.yml down -v
 
+  postgres-vertical-slice:
+    name: PostgreSQL vertical slice completion gate
+    runs-on: ubuntu-latest
+    needs: [python-quality, docker-validation]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest requests ruff black mypy pip-audit types-requests
+      - name: Focused PostgreSQL and scanner checks
+        run: |
+          python -m compileall -q services/scanner_worker integrations/databases/postgres tests
+          ruff check integrations/databases/postgres services/scanner_worker tests/integration/postgres_vertical_slice
+          black --check integrations/databases/postgres services/scanner_worker tests/integration/postgres_vertical_slice
+          mypy services/scanner_worker integrations/databases/postgres || true
+      - name: Build API and scanner images
+        run: |
+          docker build -f Dockerfile.api -t dataobs/api:${{ github.sha }} .
+          docker build -f Dockerfile.scanner -t dataobs/scanner:${{ github.sha }} .
+      - name: Validate demo compose
+        run: docker compose -f docker-compose.postgres-demo.yml config
+      - name: Start PostgreSQL vertical slice stack
+        run: docker compose -f docker-compose.postgres-demo.yml up -d --build
+      - name: Wait for health
+        run: |
+          timeout 240 bash -c 'until curl -fsS http://localhost:9200/_cluster/health; do sleep 5; done'
+          timeout 240 bash -c 'until curl -fsS http://localhost:8000/health; do sleep 5; done'
+      - name: Apply and validate migrations
+        run: |
+          ./bin/dataobs elastic plan
+          ./bin/dataobs elastic apply
+          ./bin/dataobs elastic status
+      - name: Run PostgreSQL vertical slice demo
+        run: ./scripts/demo_postgres_vertical_slice.sh
+      - name: Run PostgreSQL integration tests
+        run: RUN_INTEGRATION_TESTS=1 python -m pytest tests/integration/postgres_vertical_slice -q --junitxml=postgres-vertical-slice.xml
+      - name: Validate Kibana saved objects and sentinel secrets
+        run: |
+          python -m json.tool /tmp/dataobs-connection.json >/dev/null
+          python - <<'PY'
+          import json, pathlib
+          for line in pathlib.Path('kibana/saved_objects/postgres_vertical_slice.ndjson').read_text().splitlines():
+              if line.strip(): json.loads(line)
+          PY
+          ! rg -n 'DATAOBS_SENTINEL_PASSWORD_DO_NOT_PERSIST' /tmp/dataobs-*.json
+      - name: Trivy scanner image
+        uses: aquasecurity/trivy-action@0.35.0
+        with:
+          image-ref: dataobs/scanner:${{ github.sha }}
+          format: table
+          ignore-unfixed: true
+          vuln-type: os,library
+          severity: CRITICAL,HIGH
+          exit-code: "1"
+          scanners: vuln
+      - name: Scanner SBOM
+        run: trivy image --format cyclonedx --output sbom-scanner.cdx.json dataobs/scanner:${{ github.sha }}
+      - name: Capture Compose logs
+        if: always()
+        run: docker compose -f docker-compose.postgres-demo.yml logs --no-color > postgres-demo.log
+      - name: Upload PostgreSQL vertical slice artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: postgres-vertical-slice-artifacts
+          path: |
+            postgres-vertical-slice.xml
+            postgres-demo.log
+            sbom-scanner.cdx.json
+      - name: Tear down stack
+        if: always()
+        run: docker compose -f docker-compose.postgres-demo.yml down -v
+
   terraform-helm:
     name: Terraform and Helm validation
     runs-on: ubuntu-latest
@@ -163,6 +245,7 @@ PYDOCS
           docker build -f Dockerfile.api -t dataobs/api:${{ github.sha }} .
           docker build -f Dockerfile.quality -t dataobs/quality:${{ github.sha }} .
           docker build -f Dockerfile.api -t dataobs/collection-manager:${{ github.sha }} .
+          docker build -f Dockerfile.scanner -t dataobs/scanner:${{ github.sha }} .
       - name: Scan API image
         uses: aquasecurity/trivy-action@0.35.0
         with:
@@ -187,7 +270,8 @@ PYDOCS
         run: |
           trivy image --format cyclonedx --output sbom-api.cdx.json dataobs/api:${{ github.sha }}
           trivy image --format cyclonedx --output sbom-quality.cdx.json dataobs/quality:${{ github.sha }}
-          trivy image --format cyclonedx --output sbom-collection-manager.cdx.json dataobs/collection-manager:${{ github.sha }}
+          trivy image --format cyclonedx --output sbom-collection-manager.cdx.json
+          trivy image --format cyclonedx --output sbom-scanner.cdx.json dataobs/scanner:${{ github.sha }} dataobs/collection-manager:${{ github.sha }}
       - name: Upload SBOMs
         uses: actions/upload-artifact@v4
         with:

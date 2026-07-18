@@ -641,3 +641,36 @@ See `docs/production/configuration.md` for mode-aware and production-safe settin
 ## Phase 0 collection-plane architecture
 
 The DataObs Agent experience is defined as a collection plane that reuses Elastic Agent/Fleet integrations and EDOT by default, adding the DataObs Scanner only for data-observability scanning capabilities such as schema snapshots, freshness, profiling, quality, and lineage. See `docs/architecture/dataobs-agent-and-collection-plane.md`.
+
+## PostgreSQL Data Observability vertical slice
+
+This repository now treats Elasticsearch and Kibana as the authoritative runtime for the PostgreSQL data-observability slice while keeping local in-memory state for unit tests only. The implemented slice is metadata-first: the scanner reads PostgreSQL catalog metadata and opt-in aggregate measurements, emits immutable inventory/schema/freshness/profile events, and updates current-state documents without persisting raw rows.
+
+Supported PostgreSQL capabilities in this gate:
+
+- real `psycopg` connection testing with secret-reference-only passwords (`env://`, `file://`, and `k8s-file://`);
+- catalog discovery through explicit `pg_catalog` and `information_schema` projections for schemas, table-like relations, columns, owners, comments, sizes, constraints, indexes, partitions, and analyze metadata where privileges allow it;
+- deterministic schema canonicalization and fingerprinting;
+- configurable freshness measurement through approved timestamp columns, external watermarks, and low-confidence catalog fallback;
+- opt-in aggregate profiling with read-only transactions, statement timeouts, identifier validation, sensitive-column denial, and no raw-row persistence;
+- scanner CLI commands for capabilities, connection tests, discovery, one-shot task execution, and heartbeat loop;
+- Elasticsearch task updates using `_seq_no` and `_primary_term` compare-and-set tokens instead of `_version` locks;
+- migration `0002_postgres_observability` resources applied from migration-specific operations with checksum verification and dependency ordering;
+- a Docker Compose demo stack containing PostgreSQL, Elasticsearch 9.4.2, Kibana 9.4.2, an OTel collector, the API, and the scanner.
+
+Demo quick start:
+
+```bash
+docker compose -f docker-compose.postgres-demo.yml up -d --build
+./bin/dataobs elastic apply
+./scripts/demo_postgres_vertical_slice.sh
+docker compose -f docker-compose.postgres-demo.yml down -v
+```
+
+The demo seeds tables, constraints, indexes, a partitioned table, a view, a materialized view, runs scanner operations, alters schema, checks discovery/schema/profile evidence, and scans outputs for the sentinel secret. The demo password is mounted as a Docker secret from `config/postgres-demo-password.txt`; production deployments should replace this with a managed secret file or platform secret reference and should not enable unauthenticated development mode.
+
+Least-privilege SQL remains intentionally narrow: grant database connect, schema usage, catalog visibility, and table `SELECT` only for assets whose freshness/profile policies are enabled. If catalog/statistics privileges are unavailable, scanners preserve nullable fields and emit capability warnings rather than failing the entire scan.
+
+Task lifecycle: Collection Manager generates available tasks from enabled scan policies. Scanners claim tasks using an Elasticsearch compare-and-set update, renew leases while running, submit idempotent results, and transition failures through retryable or dead-letter states. Expired leases can be reclaimed; active leases cannot be stolen.
+
+Limitations: this PR does not make DataObs production-ready. Full OIDC enforcement, broad lineage extraction from PostgreSQL logs, automated remediation, Elastic Streams/Workflows incident response, and non-PostgreSQL database slices remain future milestones.

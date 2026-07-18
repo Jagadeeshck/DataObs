@@ -216,6 +216,12 @@ KAFKA_PROPERTIES: Dict[str, Any] = (
             "health_state",
             "source_document_ref",
             "collection_provider",
+            "lag_method",
+            "retention_risk_state",
+            "finding_state",
+            "finding_reason",
+            "connector_id",
+            "schema_id",
         ]
     }
     | {
@@ -238,6 +244,8 @@ KAFKA_PROPERTIES: Dict[str, Any] = (
             "error_rate",
             "retry_rate",
             "dlq_rate",
+            "confidence",
+            "backlog_age_seconds",
         ]
     }
     | {
@@ -255,6 +263,9 @@ KAFKA_PROPERTIES: Dict[str, Any] = (
             "consumer_group_members",
             "rebalance_count",
             "schema_version_number",
+            "sample_count",
+            "partition_count",
+            "replication_factor",
         ]
     }
     | {
@@ -262,6 +273,9 @@ KAFKA_PROPERTIES: Dict[str, Any] = (
         "replicas": {"type": "integer"},
         "isr": {"type": "integer"},
         "leader_id": {"type": "integer"},
+        "leader_available": {"type": "boolean"},
+        "offline_replicas": {"type": "integer"},
+        "source_trace_ids": {"type": "keyword"},
     }
 )
 
@@ -358,8 +372,10 @@ KAFKA_DSM_MIGRATION = Migration(
         "transforms": [
             "dataobs-latest-kafka-cluster-health",
             "dataobs-latest-topic-health",
+            "dataobs-latest-partition-health",
             "dataobs-latest-consumer-group-health",
             "dataobs-latest-connector-health",
+            "dataobs-latest-schema-state",
             "dataobs-latest-pathway-edge",
             "dataobs-current-pathway-health",
             "dataobs-current-retention-risk",

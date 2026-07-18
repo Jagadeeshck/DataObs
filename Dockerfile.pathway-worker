@@ -4,4 +4,6 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY packages packages
 COPY services services
-CMD ["python", "-c", "from services.pathway_worker import aggregate; print('pathway worker configured')"]
+COPY config config
+ENTRYPOINT ["python", "-m", "services.pathway_worker.cli"]
+CMD ["run"]

@@ -27,3 +27,18 @@ This PR establishes product foundations and does not make DataObs production-rea
 ## Incident automation audit note
 
 Incident automation remains a draft vertical slice until container-backed CI proves Elasticsearch/Kibana 9.4.2 migrations, workflow deployment, alert-rule bindings, Cases integration, safe approvals, notification fallback, E2E recovery and sentinel-secret scans.
+# Kafka DSM completion-gate status
+
+The Kafka Observer and Pathway Worker now have executable long-running and
+single-cycle command paths. Their production repositories write inventory,
+current projections, topology edges, immutable observations, and checkpoints to
+Elasticsearch. Plaintext Kafka is rejected outside development/test, secrets are
+resolved only from environment or file references, and span normalization never
+captures message bodies.
+
+This is a completion gate, **not a production-readiness claim**. In particular,
+the container-backed three-broker/Kibana workflow demonstration, Kafka Connect
+and Schema Registry profiles, Cases execution, lease-based multi-worker
+coordination, and end-to-end failure/recovery evidence remain blocking work. The
+standalone console and any destructive or autonomous remediation remain out of
+scope.

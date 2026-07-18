@@ -7,23 +7,25 @@ from typing import Any
 
 from integrations.kafka.admin_client import ReadOnlyAdmin
 
-from .checkpoint_store import CheckpointStore
 from .collector_registry import CapabilityBinding, validate_bindings
+from .repository import ObserverRepository
 
 
 class KafkaObserverService:
     def __init__(
         self,
         admin: ReadOnlyAdmin,
-        checkpoints: CheckpointStore,
+        checkpoints: Any,
         bindings: list[CapabilityBinding],
         *,
         comparison_mode: bool = False,
+        repository: ObserverRepository | None = None,
     ):
         validate_bindings(bindings, comparison_mode=comparison_mode)
         self.admin = admin
         self.checkpoints = checkpoints
         self.bindings = bindings
+        self.repository = repository
 
     def collect_once(self) -> dict[str, Any]:
         inventory = self.admin.inventory()
@@ -36,4 +38,6 @@ class KafkaObserverService:
             "backoff_seconds": 0,
         }
         self.checkpoints.save("dataobs_kafka_observer", checkpoint)
+        if self.repository is not None:
+            self.repository.save_collection("dataobs_kafka_observer", inventory, checkpoint)
         return {"inventory": inventory, "checkpoint": checkpoint}

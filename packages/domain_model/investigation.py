@@ -1,4 +1,5 @@
 """Public product-query contracts for pathway and asset investigation."""
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -24,10 +25,20 @@ class ProductResponse(BaseModel):
     confidence: float | None = Field(default=None, ge=0, le=1)
     warnings: list[str] = Field(default_factory=list)
     evidence: list[dict[str, Any]] = Field(default_factory=list)
+    request_id: str | None = None
+    trace_id: str | None = None
 
 
 class PathwayEvidence(BaseModel):
-    evidence_type: Literal["trace_observed", "openlineage_observed", "kafka_metric_observed", "catalog_declared", "structural", "inferred", "unknown"]
+    evidence_type: Literal[
+        "trace_observed",
+        "openlineage_observed",
+        "kafka_metric_observed",
+        "catalog_declared",
+        "structural",
+        "inferred",
+        "unknown",
+    ]
     confidence: float = Field(ge=0, le=1)
     observed_at: datetime | None = None
     source_document_reference: str | None = None
@@ -71,12 +82,29 @@ class PathwaySearchRequest(BaseModel):
     active_only: bool = True
 
 
-class PathwaySearchResult(ProductResponse):
+class PathwaySearchResponse(ProductResponse):
     best_path: PathwayRoute | None = None
     alternative_paths: list[PathwayRoute] = Field(default_factory=list)
     partial_paths: list[PathwayRoute] = Field(default_factory=list)
     excluded_path_count: int = 0
     truncated: bool = False
+
+
+# Backwards-compatible name retained for clients generated from PR #91.
+PathwaySearchResult = PathwaySearchResponse
+
+
+class PathwayMetricSummary(ProductResponse):
+    throughput_messages_per_second: float | None = None
+    throughput_bytes_per_second: float | None = None
+    lag_messages: int | None = None
+    lag_seconds: float | None = None
+    error_rate: float | None = None
+    retry_rate: float | None = None
+    dlq_rate: float | None = None
+    retention_risk: str | None = None
+    sample_count: int | None = None
+    last_seen: datetime | None = None
 
 
 class PathwayLatencySummary(ProductResponse):
@@ -90,10 +118,12 @@ class PathwayLatencySummary(ProductResponse):
 
 class PathwayBottleneck(ProductResponse):
     edge_id: str
-    view: Literal["latency", "reliability", "backlog"]
+    view: Literal["latency", "reliability", "backlog", "retention_risk"]
     contribution_percentage: float | None = None
     absolute_contribution: float | None = None
     calculation_method: str
+    missing_inputs: list[str] = Field(default_factory=list)
+    health_explanation: str | None = None
 
 
 class PathwayWindowComparison(ProductResponse):
@@ -104,10 +134,16 @@ class PathwayWindowComparison(ProductResponse):
     suspected_correlated_changes: list[str] = Field(default_factory=list)
 
 
+PathwayComparison = PathwayWindowComparison
+
+
 class PathwayImpactSummary(ProductResponse):
     affected_asset_ids: list[str] = Field(default_factory=list)
     active_incident_ids: list[str] = Field(default_factory=list)
     truncated: bool = False
+
+
+PathwayImpact = PathwayImpactSummary
 
 
 class PathwayMonitor(BaseModel):

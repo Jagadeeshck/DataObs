@@ -1,0 +1,83 @@
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.4.2
+    environment: [discovery.type=single-node, xpack.security.enabled=false, ES_JAVA_OPTS=-Xms512m -Xmx512m]
+    ports: ["19200:9200"]
+  kibana:
+    image: docker.elastic.co/kibana/kibana:9.4.2
+    environment: [ELASTICSEARCH_HOSTS=http://elasticsearch:9200]
+    depends_on: [elasticsearch]
+  kafka-1: &kafka
+    image: bitnami/kafka:3.9
+    environment: &kafka-env
+      KAFKA_ENABLE_KRAFT: "yes"
+      KAFKA_CFG_PROCESS_ROLES: broker,controller
+      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: 1@kafka-1:9093,2@kafka-2:9093,3@kafka-3:9093
+      KAFKA_KRAFT_CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+      ALLOW_PLAINTEXT_LISTENER: "yes"
+      KAFKA_CFG_NODE_ID: 1
+      KAFKA_CFG_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://kafka-1:9092
+  kafka-2:
+    <<: *kafka
+    environment:
+      <<: *kafka-env
+      KAFKA_CFG_NODE_ID: 2
+      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://kafka-2:9092
+  kafka-3:
+    <<: *kafka
+    environment:
+      <<: *kafka-env
+      KAFKA_CFG_NODE_ID: 3
+      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://kafka-3:9092
+  schema-registry:
+    image: confluentinc/cp-schema-registry:7.9.0
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: kafka-1:9092,kafka-2:9092,kafka-3:9092
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+    depends_on: [kafka-1, kafka-2, kafka-3]
+  kafka-connect:
+    image: confluentinc/cp-kafka-connect:7.9.0
+    environment:
+      CONNECT_BOOTSTRAP_SERVERS: kafka-1:9092,kafka-2:9092,kafka-3:9092
+      CONNECT_GROUP_ID: dataobs-connect
+      CONNECT_CONFIG_STORAGE_TOPIC: _connect-configs
+      CONNECT_OFFSET_STORAGE_TOPIC: _connect-offsets
+      CONNECT_STATUS_STORAGE_TOPIC: _connect-status
+      CONNECT_KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      CONNECT_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      CONNECT_REST_ADVERTISED_HOST_NAME: kafka-connect
+      CONNECT_PLUGIN_PATH: /usr/share/java
+      CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: 3
+      CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: 3
+      CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: 3
+    depends_on: [kafka-1, kafka-2, kafka-3]
+  postgres-source:
+    image: postgres:17-alpine
+    environment: [POSTGRES_PASSWORD=dataobs-local-only, POSTGRES_DB=source]
+  postgres-sink:
+    image: postgres:17-alpine
+    environment: [POSTGRES_PASSWORD=dataobs-local-only, POSTGRES_DB=sink]
+  otel-collector:
+    image: otel/opentelemetry-collector:0.120.0
+    command: [--config=/etc/otelcol/config.yaml]
+    volumes: [./config/otel-collector.kafka-observer.yaml:/etc/otelcol/config.yaml:ro]
+  kafka-observer:
+    build: {context: ., dockerfile: Dockerfile.kafka-observer}
+    command: [run, --config, /app/config/kafka-observer.example.yaml]
+    environment: [ELASTICSEARCH_URL=http://elasticsearch:9200]
+    depends_on: [elasticsearch, kafka-1, kafka-2, kafka-3]
+  pathway-worker:
+    build: {context: ., dockerfile: Dockerfile.pathway-worker}
+  monitor:
+    build: {context: ., dockerfile: Dockerfile.api}
+    command: [python, -m, services.monitoring]
+  incident-manager:
+    build: {context: ., dockerfile: Dockerfile.api}
+    command: [python, -m, services.incident_manager]
+  rca:
+    build: {context: ., dockerfile: Dockerfile.api}
+    command: [python, -m, services.rca]

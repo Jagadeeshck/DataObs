@@ -10,6 +10,7 @@ class ObserverRepository(Protocol):
     def load_checkpoint(self, provider: str) -> dict[str, Any] | None: ...
     def save_checkpoint(self, provider: str, checkpoint: dict[str, Any]) -> None: ...
     def save_collection(self, provider: str, inventory: dict[str, Any], checkpoint: dict[str, Any]) -> None: ...
+    def save_error(self, error: dict[str, Any]) -> None: ...
 
 
 class ElasticsearchObserverRepository:
@@ -47,6 +48,13 @@ class ElasticsearchObserverRepository:
             id=self._id(provider),
             document=self._base() | {"id": provider, "document": checkpoint},
             refresh="wait_for",
+        )
+
+    def save_error(self, error: dict[str, Any]) -> None:
+        self.es.index(
+            index="logs-dataobs.kafka-collection-error-default",
+            id=self._id(error["collector"], error["fingerprint"]),
+            document=self._base() | {"@timestamp": error["last_observed"], **error},
         )
 
     def acquire_lease(self, name: str, owner: str, expires_at: str) -> bool:
@@ -134,6 +142,7 @@ class MemoryObserverRepository:
     def __init__(self):
         self.checkpoints: dict[str, dict[str, Any]] = {}
         self.collections: list[dict[str, Any]] = []
+        self.errors: list[dict[str, Any]] = []
 
     def load_checkpoint(self, provider: str) -> dict[str, Any] | None:
         return self.checkpoints.get(provider)
@@ -144,3 +153,6 @@ class MemoryObserverRepository:
     def save_collection(self, provider: str, inventory: dict[str, Any], checkpoint: dict[str, Any]) -> None:
         self.collections.append(inventory)
         self.checkpoints[provider] = checkpoint
+
+    def save_error(self, error: dict[str, Any]) -> None:
+        self.errors.append(dict(error))

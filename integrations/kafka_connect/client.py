@@ -18,6 +18,9 @@ class KafkaConnectClient:
     def status(self, name: str):
         return self.transport.get(f"/connectors/{quote(name, safe='')}/status", timeout=self.config.timeout_seconds)
 
+    def connector_config(self, name: str):
+        return self.transport.get(f"/connectors/{quote(name, safe='')}/config", timeout=self.config.timeout_seconds)
+
     def restart_failed_task(self, name: str, task_id: int, *, approved: bool):
         if not approved:
             raise PermissionError("approval required")

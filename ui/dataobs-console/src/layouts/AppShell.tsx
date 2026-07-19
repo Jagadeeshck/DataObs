@@ -2,7 +2,6 @@ import { NavLink, Outlet } from "react-router-dom";
 import { useProductContext } from "../state/context";
 const future = [
   "Pipelines",
-  "Streams",
   "Incidents",
   "Automation",
   "Integrations",
@@ -72,6 +71,9 @@ export function AppShell() {
           </NavLink>
           <NavLink to="/assets">
             ◇ <span>Assets</span>
+          </NavLink>
+          <NavLink to="/streams">
+            ≋ <span>Streams</span>
           </NavLink>
           {future.map((x) => (
             <span className="future" key={x}>

@@ -21,7 +21,7 @@ def event(kind="START"):
 
 
 def test_migration_is_forward_only_and_complete():
-    m = migrations()[-1]
+    m = next(item for item in migrations() if item.migration_id == "0008_job_run_observability")
     assert m.migration_id == "0008_job_run_observability"
     assert m.dependencies == ["0007_automated_monitoring_data_products_rca"]
     assert len(m.operations["mutable_indices"]) == 15

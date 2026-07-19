@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+from statistics import median
 
 
 @dataclass(frozen=True)
@@ -41,18 +42,30 @@ def calculate_lag(sample: OffsetSample) -> dict:
 
 
 def lag_velocity(samples: list[tuple[datetime, int]]) -> dict:
-    ordered = sorted(samples)
+    ordered = sorted(set(samples))
     if len(ordered) < 2:
         return {"messages_per_second": None, "sample_count": len(ordered), "confidence": 0.0, "trend": "unknown"}
     elapsed = (ordered[-1][0] - ordered[0][0]).total_seconds()
     if elapsed <= 0:
         return {"messages_per_second": None, "sample_count": len(ordered), "confidence": 0.0, "trend": "unknown"}
-    rate = (ordered[-1][1] - ordered[0][1]) / elapsed
+    # The median of all pairwise slopes is bounded and resistant to isolated
+    # collection spikes (Theil-Sen without materialising regression matrices).
+    slopes = [
+        (right[1] - left[1]) / seconds
+        for index, left in enumerate(ordered)
+        for right in ordered[index + 1 :]
+        if (seconds := (right[0] - left[0]).total_seconds()) > 0
+    ]
+    if not slopes:
+        return {"messages_per_second": None, "sample_count": len(ordered), "confidence": 0.0, "trend": "unknown"}
+    rate = median(slopes)
     return {
         "messages_per_second": rate,
         "sample_count": len(ordered),
         "interval_seconds": elapsed,
         "confidence": min(0.95, 0.4 + len(ordered) / 20),
+        "method": "median_pairwise_slope",
+        "outlier_treatment": "median",
         "trend": "growing" if rate > 0 else "reducing" if rate < 0 else "stable",
     }
 

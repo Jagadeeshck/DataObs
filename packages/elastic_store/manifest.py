@@ -605,6 +605,133 @@ JOB_RUN_OBSERVABILITY_MIGRATION = Migration(
     },
 )
 
+STREAM_360_MUTABLE_INDICES = [
+    "dataobs-stream-clusters-v1",
+    "dataobs-stream-resources-v1",
+    "dataobs-stream-partitions-v1",
+    "dataobs-consumer-groups-v1",
+    "dataobs-consumer-members-v1",
+    "dataobs-stream-applications-v1",
+    "dataobs-stream-connectors-v1",
+    "dataobs-stream-connector-tasks-v1",
+    "dataobs-schema-subjects-v1",
+    "dataobs-schema-versions-v1",
+    "dataobs-stream-config-current-v1",
+    "dataobs-stream-offset-current-v1",
+    "dataobs-stream-retention-risk-current-v1",
+    "dataobs-stream-health-current-v1",
+    "dataobs-stream-action-policy-v1",
+    "dataobs-stream-action-request-v1",
+    "dataobs-message-inspection-policy-v1",
+    "dataobs-stream-source-state-v1",
+]
+STREAM_360_DATA_STREAMS = [
+    *(
+        f"metrics-dataobs.{name}-*"
+        for name in (
+            "stream-cluster",
+            "stream-broker",
+            "stream-topic",
+            "stream-partition",
+            "consumer-group",
+            "consumer-member",
+            "stream-application",
+            "stream-connector",
+            "stream-pathway",
+            "stream-retention-risk",
+        )
+    ),
+    *(
+        f"logs-dataobs.{name}-*"
+        for name in (
+            "stream-inventory",
+            "stream-config-change",
+            "stream-schema-change",
+            "stream-rebalance",
+            "stream-connector-event",
+            "stream-action-audit",
+            "message-inspection-audit",
+        )
+    ),
+]
+
+
+def _stream_transform(name: str, source: str, destination: str, keys: list[str]) -> dict[str, Any]:
+    return {
+        "id": f"dataobs-current-{name}",
+        "source": source,
+        "destination": destination,
+        "unique_key": ["tenant_id", "environment", *keys],
+        "sort": "@timestamp",
+    }
+
+
+TOPIC_QUEUE_STREAM_360_MIGRATION = Migration(
+    "0009_topic_queue_stream_360",
+    "Add provider-neutral Stream 360 inventory, intelligence, safe actions, Connect and schema projections",
+    "v1",
+    dependencies=["0008_job_run_observability"],
+    rollback_strategy="stop stream observers/transforms, retain append-only evidence, snapshot projections, then remove only 0009 aliases/templates",
+    operations={
+        "mutable_indices": STREAM_360_MUTABLE_INDICES,
+        "data_streams": STREAM_360_DATA_STREAMS,
+        "transforms": [
+            _stream_transform(
+                "stream-cluster", "metrics-dataobs.stream-cluster-*", "dataobs-stream-clusters-v1", ["cluster_id"]
+            ),
+            _stream_transform(
+                "stream-topic",
+                "metrics-dataobs.stream-topic-*",
+                "dataobs-stream-resources-v1",
+                ["cluster_id", "topic_id"],
+            ),
+            _stream_transform(
+                "stream-partition",
+                "metrics-dataobs.stream-partition-*",
+                "dataobs-stream-partitions-v1",
+                ["cluster_id", "topic_id", "partition_id"],
+            ),
+            _stream_transform(
+                "consumer-group",
+                "metrics-dataobs.consumer-group-*",
+                "dataobs-consumer-groups-v1",
+                ["cluster_id", "consumer_group_id"],
+            ),
+            _stream_transform(
+                "stream-connector",
+                "metrics-dataobs.stream-connector-*",
+                "dataobs-stream-connectors-v1",
+                ["cluster_id", "connector_id"],
+            ),
+            _stream_transform(
+                "stream-offset",
+                "metrics-dataobs.consumer-group-*",
+                "dataobs-stream-offset-current-v1",
+                ["cluster_id", "topic_id", "partition_id", "consumer_group_id"],
+            ),
+            _stream_transform(
+                "retention-risk",
+                "metrics-dataobs.stream-retention-risk-*",
+                "dataobs-stream-retention-risk-current-v1",
+                ["cluster_id", "topic_id", "partition_id", "consumer_group_id"],
+            ),
+            _stream_transform(
+                "stream-application",
+                "metrics-dataobs.stream-application-*",
+                "dataobs-stream-applications-v1",
+                ["cluster_id", "service_id"],
+            ),
+            _stream_transform(
+                "stream-health",
+                "metrics-dataobs.stream-topic-*",
+                "dataobs-stream-health-current-v1",
+                ["cluster_id", "topic_id"],
+            ),
+        ],
+        "retention_defaults": {"inventory_and_audit": "365d", "operational_metrics": "90d"},
+    },
+)
+
 
 def migrations() -> List[Migration]:
     return [
@@ -616,4 +743,5 @@ def migrations() -> List[Migration]:
         PATHWAY_ASSET_360_MIGRATION,
         AUTOMATED_MONITORING_MIGRATION,
         JOB_RUN_OBSERVABILITY_MIGRATION,
+        TOPIC_QUEUE_STREAM_360_MIGRATION,
     ]

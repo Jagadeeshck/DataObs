@@ -523,6 +523,88 @@ AUTOMATED_MONITORING_MIGRATION = Migration(
     },
 )
 
+JOB_RUN_OBSERVABILITY_MIGRATION = Migration(
+    "0008_job_run_observability",
+    "Add OpenLineage-native job, run, task, Spark stage, streaming, comparison and safe action projections",
+    "v1",
+    dependencies=["0007_automated_monitoring_data_products_rca"],
+    rollback_strategy="stop job observers, retain append-only evidence, snapshot current projections, then remove only 0008 aliases/templates",
+    operations={
+        "mutable_indices": [
+            "dataobs-job-definitions-v1",
+            "dataobs-job-current-v1",
+            "dataobs-job-schedules-v1",
+            "dataobs-job-run-current-v1",
+            "dataobs-task-run-current-v1",
+            "dataobs-stage-run-current-v1",
+            "dataobs-streaming-query-current-v1",
+            "dataobs-run-attempt-current-v1",
+            "dataobs-run-comparison-v1",
+            "dataobs-job-slo-v1",
+            "dataobs-job-monitor-link-v1",
+            "dataobs-run-action-policy-v1",
+            "dataobs-run-action-request-v1",
+            "dataobs-job-source-state-v1",
+            "dataobs-job-runtime-checkpoints-v1",
+        ],
+        "data_streams": [
+            "logs-dataobs.openlineage-*",
+            "logs-dataobs.job-run-*",
+            "logs-dataobs.task-run-*",
+            "logs-dataobs.stage-run-*",
+            "logs-dataobs.run-attempt-*",
+            "logs-dataobs.run-change-*",
+            "logs-dataobs.run-action-audit-*",
+            "metrics-dataobs.job-run-*",
+            "metrics-dataobs.task-run-*",
+            "metrics-dataobs.spark-stage-*",
+            "metrics-dataobs.spark-task-*",
+            "metrics-dataobs.spark-executor-*",
+            "metrics-dataobs.streaming-query-*",
+            "metrics-dataobs.job-resource-*",
+            "metrics-dataobs.job-cost-*",
+        ],
+        "transforms": [
+            {
+                "id": "dataobs-latest-job-state",
+                "source": "logs-dataobs.job-run-*",
+                "destination": "dataobs-job-current-v1",
+                "unique_key": ["tenant_id", "environment", "job_id"],
+                "sort": "@timestamp",
+            },
+            {
+                "id": "dataobs-latest-run-per-job",
+                "source": "logs-dataobs.job-run-*",
+                "destination": "dataobs-job-run-current-v1",
+                "unique_key": ["tenant_id", "environment", "job_id", "run_id"],
+                "sort": "@timestamp",
+            },
+            {
+                "id": "dataobs-current-task-state",
+                "source": "logs-dataobs.task-run-*",
+                "destination": "dataobs-task-run-current-v1",
+                "unique_key": ["tenant_id", "environment", "run_id", "task_id"],
+                "sort": "@timestamp",
+            },
+            {
+                "id": "dataobs-current-spark-stage",
+                "source": "logs-dataobs.stage-run-*",
+                "destination": "dataobs-stage-run-current-v1",
+                "unique_key": ["tenant_id", "environment", "run_id", "stage_id"],
+                "sort": "@timestamp",
+            },
+            {
+                "id": "dataobs-current-streaming-query",
+                "source": "metrics-dataobs.streaming-query-*",
+                "destination": "dataobs-streaming-query-current-v1",
+                "unique_key": ["tenant_id", "environment", "run_id", "streaming_query_id"],
+                "sort": "@timestamp",
+            },
+        ],
+        "retention_defaults": {"raw_events": "30d", "runtime_metrics": "90d", "action_audit": "365d"},
+    },
+)
+
 
 def migrations() -> List[Migration]:
     return [
@@ -533,4 +615,5 @@ def migrations() -> List[Migration]:
         CONSOLE_FOUNDATION_MIGRATION,
         PATHWAY_ASSET_360_MIGRATION,
         AUTOMATED_MONITORING_MIGRATION,
+        JOB_RUN_OBSERVABILITY_MIGRATION,
     ]

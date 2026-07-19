@@ -44,7 +44,8 @@ def _mapping() -> Dict[str, Any]:
         }
         | INCIDENT_AUTOMATION_PROPERTIES
         | KAFKA_PROPERTIES
-        | MONITORING_PROPERTIES,
+        | MONITORING_PROPERTIES
+        | JOB_RUN_PROPERTIES,
     }
 
 
@@ -88,6 +89,55 @@ MONITORING_PROPERTIES: Dict[str, Any] = {
     "source_document_references": {"type": "keyword"},
 }
 
+JOB_RUN_PROPERTIES: Dict[str, Any] = {
+    **{
+        key: {"type": "keyword"}
+        for key in [
+            "source_integration",
+            "qualified_name",
+            "parent_run_id",
+            "stage_id",
+            "attempt_id",
+            "source_native_id",
+            "platform",
+            "source_state",
+            "state_reason",
+            "code_version",
+            "deployment_version",
+            "config_version",
+            "log_reference",
+            "infrastructure_entity_reference",
+            "failure_category",
+            "error_fingerprint",
+            "cost_status",
+            "cost_estimation_method",
+            "data_status",
+            "rca_id",
+            "streaming_query_id",
+        ]
+    },
+    **{key: {"type": "date"} for key in ["scheduled_at", "started_at", "ended_at", "ingested_at"]},
+    **{
+        key: {"type": "long"}
+        for key in [
+            "queue_delay_ms",
+            "schedule_delay_ms",
+            "attempt_count",
+            "input_records",
+            "output_records",
+            "input_bytes",
+            "output_bytes",
+            "critical_path_duration_ms",
+        ]
+    },
+    "input_asset_ids": {"type": "keyword"},
+    "output_asset_ids": {"type": "keyword"},
+    "resource_metrics": {"type": "flattened"},
+    "openlineage_facets": {"type": "flattened"},
+    "workflow_references": {"type": "keyword"},
+    "incident_references": {"type": "keyword"},
+}
+
 
 def _ensure_mutable_index(es: Elasticsearch, index: str) -> None:
     if not es.indices.exists(index=index):
@@ -104,6 +154,7 @@ def _ensure_data_stream_template(es: Elasticsearch, pattern: str) -> None:
         | KAFKA_PROPERTIES
         | {
             **MONITORING_PROPERTIES,
+            **JOB_RUN_PROPERTIES,
             "event_type": {"type": "keyword"},
             "message": {"type": "match_only_text"},
             "metricset": {"type": "keyword"},

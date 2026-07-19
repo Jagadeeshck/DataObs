@@ -1,0 +1,7 @@
+services:
+  spark:
+    image: apache/spark:3.5.7
+    command: ["/opt/spark/bin/spark-class", "org.apache.spark.deploy.master.Master"]
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.4.2
+    environment: [discovery.type=single-node, xpack.security.enabled=false]

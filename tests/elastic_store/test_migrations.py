@@ -35,7 +35,7 @@ def test_pathway_asset_360_is_forward_only_after_console_foundation():
 def test_automated_monitoring_migration_is_forward_only_and_executable():
     from packages.elastic_store.manifest import migrations
 
-    migration = migrations()[-1]
+    migration = next(m for m in migrations() if m.migration_id == "0007_automated_monitoring_data_products_rca")
     assert migration.migration_id == "0007_automated_monitoring_data_products_rca"
     assert migration.dependencies == ["0006_pathway_asset_360"]
     assert "dataobs-monitor-definitions-v2" in migration.operations["mutable_indices"]

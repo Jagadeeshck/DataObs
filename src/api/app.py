@@ -26,6 +26,7 @@ from services.incident_manager import IncidentManagerService
 from services.product_query import ElasticsearchConsoleRepository
 from services.product_query.path_search import search_paths
 from src.api.store import StoreProtocol, get_store
+from src.api.stream_routes import create_stream_router
 from src.config.settings import AppSettings, load_settings
 from src.core.enterprise_blueprint import enterprise_backlog
 from src.core.pillars import PILLAR_REGISTRY, canonical_pillar_value
@@ -1387,5 +1388,7 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
     )
     async def get_enterprise_backlog() -> Dict[str, Any]:
         return {"backlog": enterprise_backlog(implemented_keys=[])}
+
+    app.include_router(create_stream_router(get_console_repository, require_auth))
 
     return app

@@ -432,6 +432,97 @@ PATHWAY_ASSET_360_MIGRATION = Migration(
     },
 )
 
+AUTOMATED_MONITORING_MIGRATION = Migration(
+    "0007_automated_monitoring_data_products_rca",
+    "Add versioned monitors, baselines, recommendations, Data Products, reliability scorecards and explainable RCA",
+    "v1",
+    dependencies=["0006_pathway_asset_360"],
+    rollback_strategy="stop v2 writers, retain append-only evidence, snapshot state, then repoint aliases after human review",
+    operations={
+        "mutable_indices": [
+            "dataobs-monitor-definitions-v2",
+            "dataobs-monitor-baselines-v1",
+            "dataobs-monitor-recommendations-v1",
+            "dataobs-monitor-suppressions-v1",
+            "dataobs-monitor-evaluation-state-v1",
+            "dataobs-monitor-coverage-v1",
+            "dataobs-data-products-v1",
+            "dataobs-data-product-membership-v1",
+            "dataobs-data-product-slos-v1",
+            "dataobs-data-product-scorecards-v1",
+            "dataobs-rca-investigations-v1",
+            "dataobs-rca-hypotheses-v1",
+            "dataobs-rca-evidence-links-v1",
+            "dataobs-code-change-events-v1",
+            "dataobs-deployment-events-v1",
+        ],
+        "data_streams": [
+            "metrics-dataobs.monitor-observation-*",
+            "metrics-dataobs.monitor-evaluation-*",
+            "metrics-dataobs.monitor-baseline-*",
+            "metrics-dataobs.monitor-coverage-*",
+            "metrics-dataobs.data-product-reliability-*",
+            "logs-dataobs.monitor-finding-*",
+            "logs-dataobs.monitor-recommendation-event-*",
+            "logs-dataobs.rca-investigation-*",
+            "logs-dataobs.rca-evidence-*",
+            "logs-dataobs.code-change-*",
+            "logs-dataobs.deployment-change-*",
+        ],
+        "transforms": [
+            {
+                "id": "dataobs-latest-monitor-state",
+                "source": "metrics-dataobs.monitor-evaluation-*",
+                "destination": "dataobs-monitor-evaluation-state-v1",
+                "unique_key": ["tenant_id", "environment", "monitor_id"],
+                "sort": "evaluation_timestamp",
+            },
+            {
+                "id": "dataobs-latest-baseline",
+                "source": "metrics-dataobs.monitor-baseline-*",
+                "destination": "dataobs-monitor-baselines-v1",
+                "unique_key": ["tenant_id", "environment", "monitor_id"],
+                "sort": "baseline_timestamp",
+            },
+            {
+                "id": "dataobs-current-asset-coverage",
+                "source": "metrics-dataobs.monitor-coverage-*",
+                "destination": "dataobs-monitor-coverage-v1",
+                "unique_key": ["tenant_id", "environment", "asset_id"],
+                "sort": "evaluation_timestamp",
+            },
+            {
+                "id": "dataobs-current-product-reliability",
+                "source": "metrics-dataobs.data-product-reliability-*",
+                "destination": "dataobs-data-product-scorecards-v1",
+                "unique_key": ["tenant_id", "environment", "product_id"],
+                "sort": "evaluation_timestamp",
+            },
+            {
+                "id": "dataobs-open-monitor-findings",
+                "source": "logs-dataobs.monitor-finding-*",
+                "destination": "dataobs-findings-v1",
+                "unique_key": ["tenant_id", "environment", "finding_id"],
+                "sort": "evaluation_timestamp",
+            },
+            {
+                "id": "dataobs-latest-rca-investigation",
+                "source": "logs-dataobs.rca-investigation-*",
+                "destination": "dataobs-rca-investigations-v1",
+                "unique_key": ["tenant_id", "environment", "investigation_id"],
+                "sort": "updated_at",
+            },
+            {
+                "id": "dataobs-latest-rca-hypothesis",
+                "source": "logs-dataobs.rca-evidence-*",
+                "destination": "dataobs-rca-hypotheses-v1",
+                "unique_key": ["tenant_id", "environment", "hypothesis_id"],
+                "sort": "updated_at",
+            },
+        ],
+    },
+)
+
 
 def migrations() -> List[Migration]:
     return [
@@ -441,4 +532,5 @@ def migrations() -> List[Migration]:
         KAFKA_DSM_MIGRATION,
         CONSOLE_FOUNDATION_MIGRATION,
         PATHWAY_ASSET_360_MIGRATION,
+        AUTOMATED_MONITORING_MIGRATION,
     ]

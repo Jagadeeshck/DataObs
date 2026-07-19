@@ -32,3 +32,7 @@ DbtCloudPoller(account_id='123', api_token='xxx').run_forever()
 | rows affected | `dbt.rows_affected` |
 
 Resolves: [#29](https://github.com/Jagadeeshck/DataObs/issues/29)
+
+## Job Explorer boundary
+
+Version-aware artifact readers under `artifacts/` reconcile with OpenLineage by invocation and node identity. Compiled code is reduced to a SHA-256 fingerprint; dbt Cloud remains disabled by default (`DATAOBS_DBT_CLOUD_ENABLED=false`).

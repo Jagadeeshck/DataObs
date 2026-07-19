@@ -1,0 +1,1 @@
+"""Job observer extension boundary."""

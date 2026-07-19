@@ -200,6 +200,7 @@ KAFKA_PROPERTIES: Dict[str, Any] = (
             "topic_id",
             "partition_id",
             "consumer_group_id",
+            "member_id",
             "producer_service_id",
             "consumer_service_id",
             "source_node_id",
@@ -732,6 +733,136 @@ TOPIC_QUEUE_STREAM_360_MIGRATION = Migration(
     },
 )
 
+STREAM_360_COMPLETION_INDICES = [
+    "dataobs-kafka-observer-checkpoints-v1",
+    "dataobs-kafka-observer-leases-v1",
+    "dataobs-stream-collection-state-v1",
+    "dataobs-stream-capability-state-v1",
+    "dataobs-stream-application-current-v1",
+    "dataobs-stream-rebalance-current-v1",
+    "dataobs-stream-schema-impact-current-v1",
+    "dataobs-stream-connector-health-current-v1",
+    "dataobs-stream-monitor-current-v1",
+    "dataobs-stream-action-current-v1",
+    "dataobs-stream-comparison-v1",
+]
+
+STREAM_360_COMPLETION_STREAMS = [
+    "metrics-dataobs.kafka-observer-runtime-*",
+    "metrics-dataobs.kafka-offset-snapshot-*",
+    "metrics-dataobs.kafka-group-snapshot-*",
+    "metrics-dataobs.kafka-replication-health-*",
+    "metrics-dataobs.kafka-rebalance-*",
+    "metrics-dataobs.kafka-connect-*",
+    "metrics-dataobs.kafka-schema-*",
+    "logs-dataobs.kafka-collection-error-*",
+    "logs-dataobs.stream-action-request-*",
+    "logs-dataobs.stream-action-result-*",
+    "logs-dataobs.stream-inspection-audit-*",
+]
+
+TOPIC_QUEUE_STREAM_360_COMPLETION_MIGRATION = Migration(
+    "0010_topic_queue_stream_360_completion",
+    "Install durable observer coordination, append-only evidence, and executable current-state projections",
+    "v1",
+    dependencies=["0009_topic_queue_stream_360"],
+    rollback_strategy="stop observer and completion transforms; retain append-only evidence; snapshot then remove only 0010 aliases",
+    operations={
+        "mutable_indices": STREAM_360_COMPLETION_INDICES,
+        "data_streams": STREAM_360_COMPLETION_STREAMS,
+        "transforms": [
+            _stream_transform(
+                "kafka-cluster", "metrics-dataobs.stream-cluster-*", "dataobs-stream-clusters-v1", ["cluster_id"]
+            ),
+            _stream_transform(
+                "kafka-broker",
+                "metrics-dataobs.stream-broker-*",
+                "dataobs-kafka-brokers-v1",
+                ["cluster_id", "broker_id"],
+            ),
+            _stream_transform(
+                "kafka-topic",
+                "metrics-dataobs.stream-topic-*",
+                "dataobs-stream-resources-v1",
+                ["cluster_id", "topic_id"],
+            ),
+            _stream_transform(
+                "kafka-partition",
+                "metrics-dataobs.stream-partition-*",
+                "dataobs-stream-partitions-v1",
+                ["cluster_id", "topic_id", "partition_id"],
+            ),
+            _stream_transform(
+                "kafka-group",
+                "metrics-dataobs.kafka-group-snapshot-*",
+                "dataobs-consumer-groups-v1",
+                ["cluster_id", "consumer_group_id"],
+            ),
+            _stream_transform(
+                "kafka-member",
+                "metrics-dataobs.kafka-group-snapshot-*",
+                "dataobs-consumer-members-v1",
+                ["cluster_id", "consumer_group_id", "member_id"],
+            ),
+            _stream_transform(
+                "kafka-offset-lag",
+                "metrics-dataobs.kafka-offset-snapshot-*",
+                "dataobs-stream-offset-current-v1",
+                ["cluster_id", "topic_id", "partition_id", "consumer_group_id"],
+            ),
+            _stream_transform(
+                "kafka-lag-velocity",
+                "metrics-dataobs.kafka-offset-snapshot-*",
+                "dataobs-stream-health-current-v1",
+                ["cluster_id", "topic_id", "consumer_group_id"],
+            ),
+            _stream_transform(
+                "kafka-drain-time",
+                "metrics-dataobs.kafka-offset-snapshot-*",
+                "dataobs-stream-collection-state-v1",
+                ["cluster_id", "topic_id", "consumer_group_id"],
+            ),
+            _stream_transform(
+                "kafka-retention-risk",
+                "metrics-dataobs.stream-retention-risk-*",
+                "dataobs-stream-retention-risk-current-v1",
+                ["cluster_id", "topic_id", "partition_id", "consumer_group_id"],
+            ),
+            _stream_transform(
+                "kafka-connector-task",
+                "metrics-dataobs.kafka-connect-*",
+                "dataobs-stream-connector-health-current-v1",
+                ["cluster_id", "connector_id", "task_id"],
+            ),
+            _stream_transform(
+                "kafka-schema-version",
+                "metrics-dataobs.kafka-schema-*",
+                "dataobs-stream-schema-impact-current-v1",
+                ["cluster_id", "schema_subject", "schema_id"],
+            ),
+            _stream_transform(
+                "kafka-application",
+                "metrics-dataobs.stream-application-*",
+                "dataobs-stream-application-current-v1",
+                ["cluster_id", "service_id"],
+            ),
+            _stream_transform(
+                "kafka-stream-health",
+                "metrics-dataobs.kafka-replication-health-*",
+                "dataobs-stream-health-current-v1",
+                ["cluster_id", "topic_id"],
+            ),
+            _stream_transform(
+                "kafka-monitor-link",
+                "logs-dataobs.stream-finding-*",
+                "dataobs-stream-monitor-current-v1",
+                ["monitor_id", "incident_id"],
+            ),
+        ],
+        "retention_defaults": {"operational_metrics": "90d", "audit": "365d"},
+    },
+)
+
 
 def migrations() -> List[Migration]:
     return [
@@ -744,4 +875,5 @@ def migrations() -> List[Migration]:
         AUTOMATED_MONITORING_MIGRATION,
         JOB_RUN_OBSERVABILITY_MIGRATION,
         TOPIC_QUEUE_STREAM_360_MIGRATION,
+        TOPIC_QUEUE_STREAM_360_COMPLETION_MIGRATION,
     ]

@@ -45,3 +45,28 @@ def test_automated_monitoring_migration_is_forward_only_and_executable():
         {"id", "source", "destination", "unique_key", "sort"} <= transform.keys()
         for transform in migration.operations["transforms"]
     )
+
+
+def test_stream_completion_installs_observer_coordination_and_evidence():
+    from packages.elastic_store.manifest import migrations
+
+    migration = migrations()[-1]
+    assert migration.migration_id == "0010_topic_queue_stream_360_completion"
+    assert migration.dependencies == ["0009_topic_queue_stream_360"]
+    assert {
+        "dataobs-kafka-observer-checkpoints-v1",
+        "dataobs-kafka-observer-leases-v1",
+        "dataobs-stream-collection-state-v1",
+        "dataobs-stream-capability-state-v1",
+    } <= set(migration.operations["mutable_indices"])
+    assert {
+        "metrics-dataobs.kafka-offset-snapshot-*",
+        "metrics-dataobs.kafka-connect-*",
+        "metrics-dataobs.kafka-schema-*",
+        "logs-dataobs.stream-inspection-audit-*",
+    } <= set(migration.operations["data_streams"])
+    assert len(migration.operations["transforms"]) == 15
+    assert all(
+        {"id", "source", "destination", "unique_key", "sort"} <= transform.keys()
+        for transform in migration.operations["transforms"]
+    )

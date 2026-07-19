@@ -13,11 +13,15 @@ from services.kafka_observer.partition_health import replication_health
 from services.kafka_observer.retention import retention_risk
 
 
-def test_forward_only_migration_0009():
-    migration = migrations()[-1]
-    assert migration.migration_id == "0009_topic_queue_stream_360"
-    assert migration.dependencies == ["0008_job_run_observability"]
-    assert all(isinstance(item, dict) for item in migration.operations["transforms"])
+def test_forward_only_completion_migration_preserves_0009():
+    plan = migrations()
+    original = plan[-2]
+    completion = plan[-1]
+    assert original.migration_id == "0009_topic_queue_stream_360"
+    assert original.dependencies == ["0008_job_run_observability"]
+    assert completion.migration_id == "0010_topic_queue_stream_360_completion"
+    assert completion.dependencies == [original.migration_id]
+    assert all(isinstance(item, dict) for item in completion.operations["transforms"])
 
 
 def test_provider_capabilities_are_honest():

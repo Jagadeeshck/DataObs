@@ -31,6 +31,8 @@ jobs:
         run: black --check .
       - name: Compile Python
         run: python -m compileall -q src packages services integrations tests
+      - name: Reject tracked generated dependency and browser artifacts
+        run: python scripts/check_generated_artifacts.py
       - name: Type check product foundations
         run: mypy packages/domain_model packages/elastic_store services/collection_manager packages/agent_sdk services/scanner_worker
       - name: Migration plan artifact

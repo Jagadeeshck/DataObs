@@ -43,8 +43,50 @@ def _mapping() -> Dict[str, Any]:
             "fingerprint": {"type": "keyword"},
         }
         | INCIDENT_AUTOMATION_PROPERTIES
-        | KAFKA_PROPERTIES,
+        | KAFKA_PROPERTIES
+        | MONITORING_PROPERTIES,
     }
+
+
+MONITORING_PROPERTIES: Dict[str, Any] = {
+    **{
+        key: {"type": "keyword"}
+        for key in [
+            "path_id",
+            "service_id",
+            "product_id",
+            "monitor_id",
+            "monitor_type",
+            "monitor_version",
+            "baseline_method",
+            "baseline_version",
+            "sensitivity",
+            "seasonality",
+            "cold_start_state",
+            "missing_data_state",
+            "finding_severity",
+            "recommendation_state",
+            "coverage_state",
+            "product_criticality",
+            "hypothesis_type",
+            "workflow_id",
+            "incident_id",
+            "investigation_id",
+            "hypothesis_id",
+        ]
+    },
+    **{key: {"type": "date"} for key in ["observation_timestamp", "evaluation_timestamp", "baseline_timestamp"]},
+    **{
+        key: {"type": "double"}
+        for key in ["expected_minimum", "expected_maximum", "threshold", "anomaly_score", "confidence"]
+    },
+    "definition_revision": {"type": "integer"},
+    "sample_count": {"type": "long"},
+    "reliability_components": {"type": "flattened"},
+    "supporting_evidence": {"type": "flattened"},
+    "contradicting_evidence": {"type": "flattened"},
+    "source_document_references": {"type": "keyword"},
+}
 
 
 def _ensure_mutable_index(es: Elasticsearch, index: str) -> None:
@@ -61,6 +103,7 @@ def _ensure_data_stream_template(es: Elasticsearch, pattern: str) -> None:
         | INCIDENT_AUTOMATION_PROPERTIES
         | KAFKA_PROPERTIES
         | {
+            **MONITORING_PROPERTIES,
             "event_type": {"type": "keyword"},
             "message": {"type": "match_only_text"},
             "metricset": {"type": "keyword"},
@@ -78,6 +121,29 @@ def _ensure_data_stream_template(es: Elasticsearch, pattern: str) -> None:
         priority=500,
         allow_auto_create=True,
     )
+
+
+def _ensure_transform(es: Elasticsearch, definition: Any) -> None:
+    # Older migrations carried name-only placeholders; 0007 definitions are executable latest transforms.
+    if not isinstance(definition, dict):
+        return
+    transform_id = definition["id"]
+    body = {
+        "source": {"index": [definition["source"]]},
+        "dest": {"index": definition["destination"]},
+        "latest": {"unique_key": definition["unique_key"], "sort": definition["sort"]},
+        "frequency": "1m",
+        "sync": {"time": {"field": definition["sort"], "delay": "60s"}},
+    }
+    try:
+        es.transform.get_transform(transform_id=transform_id)
+    except Exception:
+        es.transform.put_transform(transform_id=transform_id, **body)
+    try:
+        es.transform.start_transform(transform_id=transform_id)
+    except Exception as exc:
+        if "already started" not in str(exc).lower():
+            raise
 
 
 def apply(es: Elasticsearch) -> List[Dict[str, Any]]:
@@ -109,6 +175,8 @@ def apply(es: Elasticsearch) -> List[Dict[str, Any]]:
             _ensure_mutable_index(es, index)
         for pattern in m.operations.get("data_streams", []):
             _ensure_data_stream_template(es, pattern)
+        for definition in m.operations.get("transforms", []):
+            _ensure_transform(es, definition)
         if existing:
             out.append(existing)
         else:

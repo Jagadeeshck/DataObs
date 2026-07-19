@@ -1,14 +1,265 @@
-from .base import ProductEntity
+from __future__ import annotations
+
+from datetime import datetime
+from enum import Enum
+from typing import Any, Dict, List, Literal
+
+from pydantic import Field
+
+from .base import DomainModel, ProductEntity, utc_now
 
 
-class Monitor(ProductEntity):
-    monitor_type: str
-    asset_id: str
-    condition: str
-    severity: str = "medium"
-    threshold_ref: str | None = None
-    baseline_ref: str | None = None
-    schedule: str | None = None
-    owner: str | None = None
-    notification_policy: str | None = None
-    enabled: bool = True
+class MonitorType(str, Enum):
+    FRESHNESS = "freshness"
+    VOLUME = "volume"
+    SCHEMA_CHANGE = "schema_change"
+    FIELD_NULL_RATE = "field_null_rate"
+    FIELD_UNIQUE_RATE = "field_unique_rate"
+    FIELD_ZERO_RATE = "field_zero_rate"
+    FIELD_NEGATIVE_RATE = "field_negative_rate"
+    FIELD_CARDINALITY = "field_cardinality"
+    FIELD_DISTRIBUTION = "field_distribution"
+    FIELD_RANGE = "field_range"
+    METRIC = "metric"
+    METRIC_COMPARISON = "metric_comparison"
+    VALIDATION = "validation"
+    CUSTOM_SQL_AGGREGATE = "custom_sql_aggregate"
+    QUERY_PERFORMANCE = "query_performance"
+    PIPELINE_DURATION = "pipeline_duration"
+    PIPELINE_MISSING_RUN = "pipeline_missing_run"
+    PATHWAY_LATENCY = "pathway_latency"
+    CONSUMER_LAG = "consumer_lag"
+    RETENTION_RISK = "retention_risk"
+    THROUGHPUT = "throughput"
+    ERROR_RATE = "error_rate"
+    DLQ_RATE = "dlq_rate"
+    SOURCE_AVAILABILITY = "source_availability"
+    COLLECTOR_HEALTH = "collector_health"
+
+
+class ThresholdMode(str, Enum):
+    FIXED = "fixed"
+    LEARNED = "learned"
+    HYBRID = "hybrid"
+    RELATIVE_CHANGE = "relative_change"
+    RANGE = "range"
+    RATE_OF_CHANGE = "rate_of_change"
+    MISSING_EVENT = "missing_event"
+
+
+class MonitorState(str, Enum):
+    DRAFT = "draft"
+    RECOMMENDED = "recommended"
+    ENABLED = "enabled"
+    DISABLED = "disabled"
+    LEARNING = "learning"
+    ACTIVE = "active"
+    DEGRADED = "degraded"
+    SUPPRESSED = "suppressed"
+    ARCHIVED = "archived"
+    ERROR = "error"
+
+
+class ColdStartState(str, Enum):
+    COLLECTING = "collecting"
+    PROVISIONAL = "provisional"
+    MATURE = "mature"
+    RESET_REQUIRED = "reset_required"
+    STALE = "stale"
+
+
+class MonitorTarget(DomainModel):
+    asset_id: str | None = None
+    field_id: str | None = None
+    pathway_id: str | None = None
+    pipeline_id: str | None = None
+    service_id: str | None = None
+
+
+class MonitorSelector(DomainModel):
+    asset_ids: List[str] = Field(default_factory=list)
+    field_ids: List[str] = Field(default_factory=list)
+    labels: Dict[str, str] = Field(default_factory=dict)
+
+
+class MonitorSchedule(DomainModel):
+    interval: str = "5m"
+    timezone: str = "UTC"
+    maintenance_windows: List[str] = Field(default_factory=list)
+    business_calendar_exclusions: List[str] = Field(default_factory=list)
+
+
+class MonitorThresholdPolicy(DomainModel):
+    mode: ThresholdMode
+    minimum: float | None = None
+    maximum: float | None = None
+    relative_change: float | None = None
+    fixed_safety_minimum: float | None = None
+    fixed_safety_maximum: float | None = None
+
+
+class MonitorBaselinePolicy(DomainModel):
+    method: Literal["rolling_median", "mad", "robust_quantiles", "iqr", "ewma", "same_period"] = "mad"
+    history_points: int = Field(default=168, ge=3, le=10000)
+    minimum_samples: int = Field(default=12, ge=3)
+    sensitivity: Literal["low", "medium", "high"] = "medium"
+    seasonality: List[Literal["hour_of_day", "day_of_week", "weekly", "custom"]] = Field(default_factory=list)
+
+
+class MonitorAlertPolicy(DomainModel):
+    severity: Literal["low", "medium", "high", "critical"] = "medium"
+    consecutive_breaches: int = Field(default=1, ge=1)
+    rca_auto_trigger: bool = False
+
+
+class MonitorNotificationPolicyRef(DomainModel):
+    policy_id: str
+
+
+class MonitorWorkflowPolicyRef(DomainModel):
+    policy_id: str
+    requires_approval: bool = True
+
+
+class MonitorDefinition(ProductEntity):
+    monitor_type: MonitorType
+    target: MonitorTarget
+    selector: MonitorSelector = Field(default_factory=MonitorSelector)
+    schedule: MonitorSchedule = Field(default_factory=MonitorSchedule)
+    threshold: MonitorThresholdPolicy
+    baseline: MonitorBaselinePolicy | None = None
+    alert: MonitorAlertPolicy = Field(default_factory=MonitorAlertPolicy)
+    notification_policy_ref: MonitorNotificationPolicyRef | None = None
+    workflow_policy_ref: MonitorWorkflowPolicyRef | None = None
+    monitor_version: int = Field(default=1, ge=1)
+    revision: int = Field(default=1, ge=1)
+    creation_source: Literal["UI", "API", "YAML", "recommendation", "import"] = "API"
+    managed_by: str
+    etag: str
+    last_applied_checksum: str | None = None
+    state: MonitorState = MonitorState.DRAFT
+
+
+class MonitorObservation(DomainModel):
+    monitor_id: str
+    tenant_id: str
+    environment: str
+    observed_at: datetime = Field(default_factory=utc_now)
+    value: float | None = None
+    sample_count: int = 0
+    missing_data: bool = False
+    dimensions: Dict[str, str] = Field(default_factory=dict)
+
+
+class MonitorEvaluation(DomainModel):
+    evaluation_id: str
+    monitor_id: str
+    tenant_id: str
+    environment: str
+    definition_revision: int
+    baseline_version: str | None = None
+    evaluated_at: datetime = Field(default_factory=utc_now)
+    observation: MonitorObservation
+    expected_minimum: float | None = None
+    expected_maximum: float | None = None
+    method: str
+    baseline_window: str | None = None
+    seasonal_cohort: str | None = None
+    seasonal_cohort_reason: str | None = None
+    sensitivity: str
+    threshold_calculation: str
+    sample_count: int
+    confidence: float = Field(ge=0, le=1)
+    cold_start_state: ColdStartState
+    missing_inputs: List[str] = Field(default_factory=list)
+    exclusion_reasons: List[str] = Field(default_factory=list)
+    comparison_periods: List[str] = Field(default_factory=list)
+    anomaly_score: float | None = None
+    breached: bool = False
+
+
+class MonitorFinding(DomainModel):
+    finding_id: str
+    monitor_id: str
+    evaluation_id: str
+    tenant_id: str
+    environment: str
+    state: Literal["open", "recovered", "suppressed"]
+    severity: Literal["low", "medium", "high", "critical"]
+    deduplication_key: str
+    definition_revision: int
+    baseline_version: str | None = None
+    incident_id: str | None = None
+    product_ids: List[str] = Field(default_factory=list)
+
+
+class MonitorRecommendation(DomainModel):
+    id: str
+    tenant_id: str
+    monitor_type: MonitorType
+    target: MonitorTarget
+    rationale: str
+    evidence: List[Dict[str, Any]] = Field(default_factory=list)
+    expected_compute_cost: str
+    expected_collection_permissions: List[str] = Field(default_factory=list)
+    proposed_baseline: MonitorBaselinePolicy | None = None
+    proposed_fixed_safety_threshold: MonitorThresholdPolicy | None = None
+    confidence: float = Field(ge=0, le=1)
+    business_priority: str
+    duplication_analysis: str
+    coverage_gap_closed: List[str] = Field(default_factory=list)
+    risk: str
+    state: Literal["proposed", "accepted", "rejected", "deferred", "expired", "applied", "superseded"] = "proposed"
+
+
+class MonitorSuppression(DomainModel):
+    id: str
+    monitor_id: str
+    tenant_id: str
+    starts_at: datetime
+    ends_at: datetime
+    reason: str
+    approved_by: str
+
+
+class MonitorCoverage(DomainModel):
+    scope_type: str
+    scope_id: str
+    state: Literal[
+        "covered",
+        "partially_covered",
+        "recommended",
+        "not_covered",
+        "not_applicable",
+        "not_configured",
+        "degraded",
+        "unknown",
+    ]
+    numerator: int
+    denominator: int
+    exclusions: List[str] = Field(default_factory=list)
+    by_category: Dict[str, str] = Field(default_factory=dict)
+    high_risk_gaps: List[str] = Field(default_factory=list)
+    stale_or_broken_monitors: List[str] = Field(default_factory=list)
+    recommendation_count: int = 0
+
+
+class MonitorTuningAnalysis(DomainModel):
+    monitor_id: str
+    reasons: List[str] = Field(default_factory=list)
+    proposed_patch: Dict[str, Any] = Field(default_factory=dict)
+    requires_human_approval: bool = True
+
+
+class MonitorAuditEvent(DomainModel):
+    monitor_id: str
+    tenant_id: str
+    event_type: str
+    actor: str
+    occurred_at: datetime = Field(default_factory=utc_now)
+    revision: int
+    changes: Dict[str, Any] = Field(default_factory=dict)
+
+
+# Compatibility alias. New code should use MonitorDefinition.
+Monitor = MonitorDefinition

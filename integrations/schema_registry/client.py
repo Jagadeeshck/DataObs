@@ -14,3 +14,12 @@ class SchemaRegistryClient:
 
     def versions(self, subject):
         return self.transport.get(f"/subjects/{quote(subject, safe='')}/versions", timeout=self.config.timeout_seconds)
+
+    def schema(self, subject, version):
+        return self.transport.get(
+            f"/subjects/{quote(subject, safe='')}/versions/{quote(str(version), safe='')}",
+            timeout=self.config.timeout_seconds,
+        )
+
+    def compatibility(self, subject):
+        return self.transport.get(f"/config/{quote(subject, safe='')}", timeout=self.config.timeout_seconds)

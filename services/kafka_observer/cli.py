@@ -14,8 +14,11 @@ from integrations.kafka.admin_client import ConfluentReadOnlyAdmin
 from integrations.kafka.config import KafkaObserverConfig
 from packages.elastic_store.client import make_client
 
+from .broker_metrics import broker_metric_status
 from .checkpoint_store import MemoryCheckpointStore
 from .collector_registry import CAPABILITIES, CapabilityBinding
+from .groups import group_projection
+from .inventory import inventory_projection
 from .repository import ElasticsearchObserverRepository
 from .service import KafkaObserverService
 
@@ -86,7 +89,20 @@ def _service(config: KafkaObserverConfig) -> tuple[KafkaObserverService, Conflue
 def main() -> int:
     parser = argparse.ArgumentParser(prog="dataobs-kafka-observer")
     parser.add_argument(
-        "command", choices=["run", "test-connection", "inventory", "collect-once", "print-capabilities"]
+        "command",
+        choices=[
+            "run",
+            "collect-once",
+            "test-connection",
+            "inventory",
+            "offsets",
+            "groups",
+            "connectors",
+            "schemas",
+            "broker-metrics",
+            "status",
+            "print-capabilities",
+        ],
     )
     parser.add_argument("--config", default=os.getenv("DATAOBS_KAFKA_CONFIG", "config/kafka-observer.example.yaml"))
     parser.add_argument("--interval", type=float, default=30)
@@ -100,7 +116,17 @@ def main() -> int:
         if args.command == "test-connection":
             print(json.dumps(admin.test_connection(), sort_keys=True))
         elif args.command == "inventory":
-            print(json.dumps(admin.inventory(), sort_keys=True))
+            print(json.dumps(inventory_projection(admin.inventory()), sort_keys=True))
+        elif args.command == "groups":
+            print(json.dumps(group_projection(admin.inventory()), sort_keys=True))
+        elif args.command == "offsets":
+            print(json.dumps(admin.offsets(maximum=config.maximum_combinations_per_cycle), sort_keys=True))
+        elif args.command == "broker-metrics":
+            print(json.dumps(broker_metric_status(), sort_keys=True))
+        elif args.command in {"connectors", "schemas"}:
+            print(json.dumps({"data_status": "not_configured", "collector": args.command}, sort_keys=True))
+        elif args.command == "status":
+            print(json.dumps({"ready": True, "live": True, "integration_id": config.integration_id}, sort_keys=True))
         elif args.command == "collect-once":
             print(json.dumps(service.collect_once(), sort_keys=True))
         else:

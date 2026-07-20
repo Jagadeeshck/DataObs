@@ -4,7 +4,11 @@
       "ActionRequest": {
         "properties": {
           "action": {
-            "pattern": "^(restart_failed_connector|restart_failed_task|verify_recovery)$",
+            "enum": [
+              "restart_failed_connector",
+              "restart_failed_task",
+              "verify_recovery"
+            ],
             "title": "Action",
             "type": "string"
           },
@@ -24,36 +28,57 @@
       },
       "CompareRequest": {
         "properties": {
-          "end": {
+          "baseline_end": {
             "anyOf": [
               {
+                "format": "date-time",
                 "type": "string"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "End"
+            "title": "Baseline End"
+          },
+          "baseline_start": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseline Start"
+          },
+          "end": {
+            "format": "date-time",
+            "title": "End",
+            "type": "string"
           },
           "mode": {
-            "pattern": "^(previous_window|selected_window|rolling_baseline|same_period_previous_day|same_period_previous_week|before_after_change)$",
+            "enum": [
+              "previous_window",
+              "selected_window",
+              "rolling_baseline",
+              "same_period_previous_day",
+              "same_period_previous_week",
+              "before_after_change"
+            ],
             "title": "Mode",
             "type": "string"
           },
           "start": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Start"
+            "format": "date-time",
+            "title": "Start",
+            "type": "string"
           }
         },
         "required": [
-          "mode"
+          "mode",
+          "start",
+          "end"
         ],
         "title": "CompareRequest",
         "type": "object"
@@ -2847,13 +2872,15 @@
     },
     "/api/v1/consumer-groups": {
       "get": {
-        "operationId": "groups_api_v1_consumer_groups_get",
+        "operationId": "list_consumer_groups_api_v1_consumer_groups_get",
         "parameters": [
           {
             "in": "query",
             "name": "environment",
             "required": true,
             "schema": {
+              "maxLength": 64,
+              "minLength": 1,
               "title": "Environment",
               "type": "string"
             }
@@ -2887,6 +2914,16 @@
             }
           },
           {
+            "in": "query",
+            "name": "_root",
+            "required": false,
+            "schema": {
+              "default": "consumer-groups",
+              "title": " Root",
+              "type": "string"
+            }
+          },
+          {
             "in": "header",
             "name": "authorization",
             "required": false,
@@ -2909,7 +2946,7 @@
               "application/json": {
                 "schema": {
                   "additionalProperties": true,
-                  "title": "Response Groups Api V1 Consumer Groups Get",
+                  "title": "Response List Consumer Groups Api V1 Consumer Groups Get",
                   "type": "object"
                 }
               }
@@ -2932,7 +2969,7 @@
             "HTTPBearer": []
           }
         ],
-        "summary": "Groups",
+        "summary": "List Consumer-Groups",
         "tags": [
           "stream-360"
         ]
@@ -3022,6 +3059,194 @@
         ]
       }
     },
+    "/api/v1/consumer-groups/{resource_id}/applications": {
+      "get": {
+        "operationId": "get_consumer_groups_applications_api_v1_consumer_groups__resource_id__applications_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "resource_id",
+            "required": true,
+            "schema": {
+              "title": "Resource Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_root",
+            "required": false,
+            "schema": {
+              "default": "consumer-groups",
+              "title": " Root",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_name",
+            "required": false,
+            "schema": {
+              "default": "applications",
+              "title": " Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Consumer Groups Applications Api V1 Consumer Groups  Resource Id  Applications Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Consumer-Groups Applications",
+        "tags": [
+          "stream-360"
+        ]
+      }
+    },
+    "/api/v1/consumer-groups/{resource_id}/assignments": {
+      "get": {
+        "operationId": "get_consumer_groups_assignments_api_v1_consumer_groups__resource_id__assignments_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "resource_id",
+            "required": true,
+            "schema": {
+              "title": "Resource Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_root",
+            "required": false,
+            "schema": {
+              "default": "consumer-groups",
+              "title": " Root",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_name",
+            "required": false,
+            "schema": {
+              "default": "assignments",
+              "title": " Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Consumer Groups Assignments Api V1 Consumer Groups  Resource Id  Assignments Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Consumer-Groups Assignments",
+        "tags": [
+          "stream-360"
+        ]
+      }
+    },
     "/api/v1/consumer-groups/{resource_id}/compare": {
       "post": {
         "operationId": "compare_consumer_groups_api_v1_consumer_groups__resource_id__compare_post",
@@ -3032,6 +3257,15 @@
             "required": true,
             "schema": {
               "title": "Resource Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
               "type": "string"
             }
           },
@@ -3102,6 +3336,852 @@
           }
         ],
         "summary": "Compare Consumer-Groups",
+        "tags": [
+          "stream-360"
+        ]
+      }
+    },
+    "/api/v1/consumer-groups/{resource_id}/incidents": {
+      "get": {
+        "operationId": "get_consumer_groups_incidents_api_v1_consumer_groups__resource_id__incidents_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "resource_id",
+            "required": true,
+            "schema": {
+              "title": "Resource Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_root",
+            "required": false,
+            "schema": {
+              "default": "consumer-groups",
+              "title": " Root",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_name",
+            "required": false,
+            "schema": {
+              "default": "incidents",
+              "title": " Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Consumer Groups Incidents Api V1 Consumer Groups  Resource Id  Incidents Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Consumer-Groups Incidents",
+        "tags": [
+          "stream-360"
+        ]
+      }
+    },
+    "/api/v1/consumer-groups/{resource_id}/lag": {
+      "get": {
+        "operationId": "get_consumer_groups_lag_api_v1_consumer_groups__resource_id__lag_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "resource_id",
+            "required": true,
+            "schema": {
+              "title": "Resource Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_root",
+            "required": false,
+            "schema": {
+              "default": "consumer-groups",
+              "title": " Root",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_name",
+            "required": false,
+            "schema": {
+              "default": "lag",
+              "title": " Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Consumer Groups Lag Api V1 Consumer Groups  Resource Id  Lag Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Consumer-Groups Lag",
+        "tags": [
+          "stream-360"
+        ]
+      }
+    },
+    "/api/v1/consumer-groups/{resource_id}/lag-heatmap": {
+      "get": {
+        "operationId": "get_consumer_groups_lag_heatmap_api_v1_consumer_groups__resource_id__lag_heatmap_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "resource_id",
+            "required": true,
+            "schema": {
+              "title": "Resource Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_root",
+            "required": false,
+            "schema": {
+              "default": "consumer-groups",
+              "title": " Root",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_name",
+            "required": false,
+            "schema": {
+              "default": "lag-heatmap",
+              "title": " Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Consumer Groups Lag Heatmap Api V1 Consumer Groups  Resource Id  Lag Heatmap Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Consumer-Groups Lag-Heatmap",
+        "tags": [
+          "stream-360"
+        ]
+      }
+    },
+    "/api/v1/consumer-groups/{resource_id}/members": {
+      "get": {
+        "operationId": "get_consumer_groups_members_api_v1_consumer_groups__resource_id__members_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "resource_id",
+            "required": true,
+            "schema": {
+              "title": "Resource Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_root",
+            "required": false,
+            "schema": {
+              "default": "consumer-groups",
+              "title": " Root",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_name",
+            "required": false,
+            "schema": {
+              "default": "members",
+              "title": " Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Consumer Groups Members Api V1 Consumer Groups  Resource Id  Members Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Consumer-Groups Members",
+        "tags": [
+          "stream-360"
+        ]
+      }
+    },
+    "/api/v1/consumer-groups/{resource_id}/monitors": {
+      "get": {
+        "operationId": "get_consumer_groups_monitors_api_v1_consumer_groups__resource_id__monitors_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "resource_id",
+            "required": true,
+            "schema": {
+              "title": "Resource Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_root",
+            "required": false,
+            "schema": {
+              "default": "consumer-groups",
+              "title": " Root",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_name",
+            "required": false,
+            "schema": {
+              "default": "monitors",
+              "title": " Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Consumer Groups Monitors Api V1 Consumer Groups  Resource Id  Monitors Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Consumer-Groups Monitors",
+        "tags": [
+          "stream-360"
+        ]
+      }
+    },
+    "/api/v1/consumer-groups/{resource_id}/offsets": {
+      "get": {
+        "operationId": "get_consumer_groups_offsets_api_v1_consumer_groups__resource_id__offsets_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "resource_id",
+            "required": true,
+            "schema": {
+              "title": "Resource Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_root",
+            "required": false,
+            "schema": {
+              "default": "consumer-groups",
+              "title": " Root",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_name",
+            "required": false,
+            "schema": {
+              "default": "offsets",
+              "title": " Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Consumer Groups Offsets Api V1 Consumer Groups  Resource Id  Offsets Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Consumer-Groups Offsets",
+        "tags": [
+          "stream-360"
+        ]
+      }
+    },
+    "/api/v1/consumer-groups/{resource_id}/rca": {
+      "get": {
+        "operationId": "get_consumer_groups_rca_api_v1_consumer_groups__resource_id__rca_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "resource_id",
+            "required": true,
+            "schema": {
+              "title": "Resource Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_root",
+            "required": false,
+            "schema": {
+              "default": "consumer-groups",
+              "title": " Root",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_name",
+            "required": false,
+            "schema": {
+              "default": "rca",
+              "title": " Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Consumer Groups Rca Api V1 Consumer Groups  Resource Id  Rca Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Consumer-Groups Rca",
+        "tags": [
+          "stream-360"
+        ]
+      }
+    },
+    "/api/v1/consumer-groups/{resource_id}/rebalances": {
+      "get": {
+        "operationId": "get_consumer_groups_rebalances_api_v1_consumer_groups__resource_id__rebalances_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "resource_id",
+            "required": true,
+            "schema": {
+              "title": "Resource Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_root",
+            "required": false,
+            "schema": {
+              "default": "consumer-groups",
+              "title": " Root",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_name",
+            "required": false,
+            "schema": {
+              "default": "rebalances",
+              "title": " Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Consumer Groups Rebalances Api V1 Consumer Groups  Resource Id  Rebalances Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Consumer-Groups Rebalances",
+        "tags": [
+          "stream-360"
+        ]
+      }
+    },
+    "/api/v1/consumer-groups/{resource_id}/retention-risk": {
+      "get": {
+        "operationId": "get_consumer_groups_retention_risk_api_v1_consumer_groups__resource_id__retention_risk_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "resource_id",
+            "required": true,
+            "schema": {
+              "title": "Resource Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_root",
+            "required": false,
+            "schema": {
+              "default": "consumer-groups",
+              "title": " Root",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_name",
+            "required": false,
+            "schema": {
+              "default": "retention-risk",
+              "title": " Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Consumer Groups Retention Risk Api V1 Consumer Groups  Resource Id  Retention Risk Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Consumer-Groups Retention-Risk",
         "tags": [
           "stream-360"
         ]
@@ -6597,13 +7677,15 @@
     },
     "/api/v1/schema-subjects": {
       "get": {
-        "operationId": "schemas_api_v1_schema_subjects_get",
+        "operationId": "list_schema_subjects_api_v1_schema_subjects_get",
         "parameters": [
           {
             "in": "query",
             "name": "environment",
             "required": true,
             "schema": {
+              "maxLength": 64,
+              "minLength": 1,
               "title": "Environment",
               "type": "string"
             }
@@ -6637,6 +7719,16 @@
             }
           },
           {
+            "in": "query",
+            "name": "_root",
+            "required": false,
+            "schema": {
+              "default": "schema-subjects",
+              "title": " Root",
+              "type": "string"
+            }
+          },
+          {
             "in": "header",
             "name": "authorization",
             "required": false,
@@ -6659,7 +7751,7 @@
               "application/json": {
                 "schema": {
                   "additionalProperties": true,
-                  "title": "Response Schemas Api V1 Schema Subjects Get",
+                  "title": "Response List Schema Subjects Api V1 Schema Subjects Get",
                   "type": "object"
                 }
               }
@@ -6682,7 +7774,7 @@
             "HTTPBearer": []
           }
         ],
-        "summary": "Schemas",
+        "summary": "List Schema-Subjects",
         "tags": [
           "stream-360"
         ]
@@ -6767,6 +7859,476 @@
           }
         ],
         "summary": "Get Schema-Subjects",
+        "tags": [
+          "stream-360"
+        ]
+      }
+    },
+    "/api/v1/schema-subjects/{resource_id}/changes": {
+      "get": {
+        "operationId": "get_schema_subjects_changes_api_v1_schema_subjects__resource_id__changes_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "resource_id",
+            "required": true,
+            "schema": {
+              "title": "Resource Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_root",
+            "required": false,
+            "schema": {
+              "default": "schema-subjects",
+              "title": " Root",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_name",
+            "required": false,
+            "schema": {
+              "default": "changes",
+              "title": " Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Schema Subjects Changes Api V1 Schema Subjects  Resource Id  Changes Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Schema-Subjects Changes",
+        "tags": [
+          "stream-360"
+        ]
+      }
+    },
+    "/api/v1/schema-subjects/{resource_id}/impact": {
+      "get": {
+        "operationId": "get_schema_subjects_impact_api_v1_schema_subjects__resource_id__impact_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "resource_id",
+            "required": true,
+            "schema": {
+              "title": "Resource Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_root",
+            "required": false,
+            "schema": {
+              "default": "schema-subjects",
+              "title": " Root",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_name",
+            "required": false,
+            "schema": {
+              "default": "impact",
+              "title": " Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Schema Subjects Impact Api V1 Schema Subjects  Resource Id  Impact Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Schema-Subjects Impact",
+        "tags": [
+          "stream-360"
+        ]
+      }
+    },
+    "/api/v1/schema-subjects/{resource_id}/incidents": {
+      "get": {
+        "operationId": "get_schema_subjects_incidents_api_v1_schema_subjects__resource_id__incidents_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "resource_id",
+            "required": true,
+            "schema": {
+              "title": "Resource Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_root",
+            "required": false,
+            "schema": {
+              "default": "schema-subjects",
+              "title": " Root",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_name",
+            "required": false,
+            "schema": {
+              "default": "incidents",
+              "title": " Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Schema Subjects Incidents Api V1 Schema Subjects  Resource Id  Incidents Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Schema-Subjects Incidents",
+        "tags": [
+          "stream-360"
+        ]
+      }
+    },
+    "/api/v1/schema-subjects/{resource_id}/monitors": {
+      "get": {
+        "operationId": "get_schema_subjects_monitors_api_v1_schema_subjects__resource_id__monitors_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "resource_id",
+            "required": true,
+            "schema": {
+              "title": "Resource Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_root",
+            "required": false,
+            "schema": {
+              "default": "schema-subjects",
+              "title": " Root",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_name",
+            "required": false,
+            "schema": {
+              "default": "monitors",
+              "title": " Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Schema Subjects Monitors Api V1 Schema Subjects  Resource Id  Monitors Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Schema-Subjects Monitors",
+        "tags": [
+          "stream-360"
+        ]
+      }
+    },
+    "/api/v1/schema-subjects/{resource_id}/versions": {
+      "get": {
+        "operationId": "get_schema_subjects_versions_api_v1_schema_subjects__resource_id__versions_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "resource_id",
+            "required": true,
+            "schema": {
+              "title": "Resource Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_root",
+            "required": false,
+            "schema": {
+              "default": "schema-subjects",
+              "title": " Root",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_name",
+            "required": false,
+            "schema": {
+              "default": "versions",
+              "title": " Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Schema Subjects Versions Api V1 Schema Subjects  Resource Id  Versions Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Schema-Subjects Versions",
         "tags": [
           "stream-360"
         ]
@@ -6894,13 +8456,15 @@
     },
     "/api/v1/stream-clusters": {
       "get": {
-        "operationId": "clusters_api_v1_stream_clusters_get",
+        "operationId": "list_stream_clusters_api_v1_stream_clusters_get",
         "parameters": [
           {
             "in": "query",
             "name": "environment",
             "required": true,
             "schema": {
+              "maxLength": 64,
+              "minLength": 1,
               "title": "Environment",
               "type": "string"
             }
@@ -6934,6 +8498,16 @@
             }
           },
           {
+            "in": "query",
+            "name": "_root",
+            "required": false,
+            "schema": {
+              "default": "stream-clusters",
+              "title": " Root",
+              "type": "string"
+            }
+          },
+          {
             "in": "header",
             "name": "authorization",
             "required": false,
@@ -6956,7 +8530,7 @@
               "application/json": {
                 "schema": {
                   "additionalProperties": true,
-                  "title": "Response Clusters Api V1 Stream Clusters Get",
+                  "title": "Response List Stream Clusters Api V1 Stream Clusters Get",
                   "type": "object"
                 }
               }
@@ -6979,7 +8553,7 @@
             "HTTPBearer": []
           }
         ],
-        "summary": "Clusters",
+        "summary": "List Stream-Clusters",
         "tags": [
           "stream-360"
         ]
@@ -7069,6 +8643,194 @@
         ]
       }
     },
+    "/api/v1/stream-clusters/{resource_id}/brokers": {
+      "get": {
+        "operationId": "get_stream_clusters_brokers_api_v1_stream_clusters__resource_id__brokers_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "resource_id",
+            "required": true,
+            "schema": {
+              "title": "Resource Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_root",
+            "required": false,
+            "schema": {
+              "default": "stream-clusters",
+              "title": " Root",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_name",
+            "required": false,
+            "schema": {
+              "default": "brokers",
+              "title": " Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Stream Clusters Brokers Api V1 Stream Clusters  Resource Id  Brokers Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Stream-Clusters Brokers",
+        "tags": [
+          "stream-360"
+        ]
+      }
+    },
+    "/api/v1/stream-clusters/{resource_id}/changes": {
+      "get": {
+        "operationId": "get_stream_clusters_changes_api_v1_stream_clusters__resource_id__changes_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "resource_id",
+            "required": true,
+            "schema": {
+              "title": "Resource Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_root",
+            "required": false,
+            "schema": {
+              "default": "stream-clusters",
+              "title": " Root",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_name",
+            "required": false,
+            "schema": {
+              "default": "changes",
+              "title": " Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Stream Clusters Changes Api V1 Stream Clusters  Resource Id  Changes Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Stream-Clusters Changes",
+        "tags": [
+          "stream-360"
+        ]
+      }
+    },
     "/api/v1/stream-clusters/{resource_id}/compare": {
       "post": {
         "operationId": "compare_stream_clusters_api_v1_stream_clusters__resource_id__compare_post",
@@ -7079,6 +8841,15 @@
             "required": true,
             "schema": {
               "title": "Resource Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
               "type": "string"
             }
           },
@@ -7154,15 +8925,487 @@
         ]
       }
     },
+    "/api/v1/stream-clusters/{resource_id}/connectors": {
+      "get": {
+        "operationId": "get_stream_clusters_connectors_api_v1_stream_clusters__resource_id__connectors_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "resource_id",
+            "required": true,
+            "schema": {
+              "title": "Resource Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_root",
+            "required": false,
+            "schema": {
+              "default": "stream-clusters",
+              "title": " Root",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_name",
+            "required": false,
+            "schema": {
+              "default": "connectors",
+              "title": " Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Stream Clusters Connectors Api V1 Stream Clusters  Resource Id  Connectors Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Stream-Clusters Connectors",
+        "tags": [
+          "stream-360"
+        ]
+      }
+    },
+    "/api/v1/stream-clusters/{resource_id}/consumer-groups": {
+      "get": {
+        "operationId": "get_stream_clusters_consumer_groups_api_v1_stream_clusters__resource_id__consumer_groups_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "resource_id",
+            "required": true,
+            "schema": {
+              "title": "Resource Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_root",
+            "required": false,
+            "schema": {
+              "default": "stream-clusters",
+              "title": " Root",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_name",
+            "required": false,
+            "schema": {
+              "default": "consumer-groups",
+              "title": " Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Stream Clusters Consumer Groups Api V1 Stream Clusters  Resource Id  Consumer Groups Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Stream-Clusters Consumer-Groups",
+        "tags": [
+          "stream-360"
+        ]
+      }
+    },
+    "/api/v1/stream-clusters/{resource_id}/health": {
+      "get": {
+        "operationId": "get_stream_clusters_health_api_v1_stream_clusters__resource_id__health_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "resource_id",
+            "required": true,
+            "schema": {
+              "title": "Resource Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_root",
+            "required": false,
+            "schema": {
+              "default": "stream-clusters",
+              "title": " Root",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_name",
+            "required": false,
+            "schema": {
+              "default": "health",
+              "title": " Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Stream Clusters Health Api V1 Stream Clusters  Resource Id  Health Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Stream-Clusters Health",
+        "tags": [
+          "stream-360"
+        ]
+      }
+    },
+    "/api/v1/stream-clusters/{resource_id}/incidents": {
+      "get": {
+        "operationId": "get_stream_clusters_incidents_api_v1_stream_clusters__resource_id__incidents_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "resource_id",
+            "required": true,
+            "schema": {
+              "title": "Resource Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_root",
+            "required": false,
+            "schema": {
+              "default": "stream-clusters",
+              "title": " Root",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_name",
+            "required": false,
+            "schema": {
+              "default": "incidents",
+              "title": " Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Stream Clusters Incidents Api V1 Stream Clusters  Resource Id  Incidents Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Stream-Clusters Incidents",
+        "tags": [
+          "stream-360"
+        ]
+      }
+    },
+    "/api/v1/stream-clusters/{resource_id}/topics": {
+      "get": {
+        "operationId": "get_stream_clusters_topics_api_v1_stream_clusters__resource_id__topics_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "resource_id",
+            "required": true,
+            "schema": {
+              "title": "Resource Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_root",
+            "required": false,
+            "schema": {
+              "default": "stream-clusters",
+              "title": " Root",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_name",
+            "required": false,
+            "schema": {
+              "default": "topics",
+              "title": " Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Stream Clusters Topics Api V1 Stream Clusters  Resource Id  Topics Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Stream-Clusters Topics",
+        "tags": [
+          "stream-360"
+        ]
+      }
+    },
     "/api/v1/stream-connectors": {
       "get": {
-        "operationId": "connectors_api_v1_stream_connectors_get",
+        "operationId": "list_stream_connectors_api_v1_stream_connectors_get",
         "parameters": [
           {
             "in": "query",
             "name": "environment",
             "required": true,
             "schema": {
+              "maxLength": 64,
+              "minLength": 1,
               "title": "Environment",
               "type": "string"
             }
@@ -7196,6 +9439,16 @@
             }
           },
           {
+            "in": "query",
+            "name": "_root",
+            "required": false,
+            "schema": {
+              "default": "stream-connectors",
+              "title": " Root",
+              "type": "string"
+            }
+          },
+          {
             "in": "header",
             "name": "authorization",
             "required": false,
@@ -7218,7 +9471,7 @@
               "application/json": {
                 "schema": {
                   "additionalProperties": true,
-                  "title": "Response Connectors Api V1 Stream Connectors Get",
+                  "title": "Response List Stream Connectors Api V1 Stream Connectors Get",
                   "type": "object"
                 }
               }
@@ -7241,7 +9494,7 @@
             "HTTPBearer": []
           }
         ],
-        "summary": "Connectors",
+        "summary": "List Stream-Connectors",
         "tags": [
           "stream-360"
         ]
@@ -7331,7 +9584,173 @@
         ]
       }
     },
+    "/api/v1/stream-connectors/{resource_id}/action-eligibility": {
+      "get": {
+        "operationId": "get_stream_connectors_action_eligibility_api_v1_stream_connectors__resource_id__action_eligibility_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "resource_id",
+            "required": true,
+            "schema": {
+              "title": "Resource Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_root",
+            "required": false,
+            "schema": {
+              "default": "stream-connectors",
+              "title": " Root",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_name",
+            "required": false,
+            "schema": {
+              "default": "action-eligibility",
+              "title": " Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Stream Connectors Action Eligibility Api V1 Stream Connectors  Resource Id  Action Eligibility Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Stream-Connectors Action-Eligibility",
+        "tags": [
+          "stream-360"
+        ]
+      }
+    },
     "/api/v1/stream-connectors/{resource_id}/actions": {
+      "get": {
+        "operationId": "connector_actions_api_v1_stream_connectors__resource_id__actions_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "resource_id",
+            "required": true,
+            "schema": {
+              "title": "Resource Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Connector Actions Api V1 Stream Connectors  Resource Id  Actions Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Connector Actions",
+        "tags": [
+          "stream-360"
+        ]
+      },
       "post": {
         "operationId": "connector_action_api_v1_stream_connectors__resource_id__actions_post",
         "parameters": [
@@ -7341,6 +9760,15 @@
             "required": true,
             "schema": {
               "title": "Resource Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
               "type": "string"
             }
           },
@@ -7417,6 +9845,453 @@
           }
         ],
         "summary": "Connector Action",
+        "tags": [
+          "stream-360"
+        ]
+      }
+    },
+    "/api/v1/stream-connectors/{resource_id}/changes": {
+      "get": {
+        "operationId": "get_stream_connectors_changes_api_v1_stream_connectors__resource_id__changes_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "resource_id",
+            "required": true,
+            "schema": {
+              "title": "Resource Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_root",
+            "required": false,
+            "schema": {
+              "default": "stream-connectors",
+              "title": " Root",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_name",
+            "required": false,
+            "schema": {
+              "default": "changes",
+              "title": " Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Stream Connectors Changes Api V1 Stream Connectors  Resource Id  Changes Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Stream-Connectors Changes",
+        "tags": [
+          "stream-360"
+        ]
+      }
+    },
+    "/api/v1/stream-connectors/{resource_id}/incidents": {
+      "get": {
+        "operationId": "get_stream_connectors_incidents_api_v1_stream_connectors__resource_id__incidents_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "resource_id",
+            "required": true,
+            "schema": {
+              "title": "Resource Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_root",
+            "required": false,
+            "schema": {
+              "default": "stream-connectors",
+              "title": " Root",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_name",
+            "required": false,
+            "schema": {
+              "default": "incidents",
+              "title": " Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Stream Connectors Incidents Api V1 Stream Connectors  Resource Id  Incidents Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Stream-Connectors Incidents",
+        "tags": [
+          "stream-360"
+        ]
+      }
+    },
+    "/api/v1/stream-connectors/{resource_id}/rca": {
+      "get": {
+        "operationId": "get_stream_connectors_rca_api_v1_stream_connectors__resource_id__rca_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "resource_id",
+            "required": true,
+            "schema": {
+              "title": "Resource Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_root",
+            "required": false,
+            "schema": {
+              "default": "stream-connectors",
+              "title": " Root",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_name",
+            "required": false,
+            "schema": {
+              "default": "rca",
+              "title": " Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Stream Connectors Rca Api V1 Stream Connectors  Resource Id  Rca Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Stream-Connectors Rca",
+        "tags": [
+          "stream-360"
+        ]
+      }
+    },
+    "/api/v1/stream-connectors/{resource_id}/tasks": {
+      "get": {
+        "operationId": "get_stream_connectors_tasks_api_v1_stream_connectors__resource_id__tasks_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "resource_id",
+            "required": true,
+            "schema": {
+              "title": "Resource Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_root",
+            "required": false,
+            "schema": {
+              "default": "stream-connectors",
+              "title": " Root",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_name",
+            "required": false,
+            "schema": {
+              "default": "tasks",
+              "title": " Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Stream Connectors Tasks Api V1 Stream Connectors  Resource Id  Tasks Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Stream-Connectors Tasks",
+        "tags": [
+          "stream-360"
+        ]
+      }
+    },
+    "/api/v1/stream-events": {
+      "get": {
+        "operationId": "stream_events_api_v1_stream_events_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Last-Event-ID",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "title": "Last-Event-Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Stream Events",
         "tags": [
           "stream-360"
         ]
@@ -7571,13 +10446,15 @@
     },
     "/api/v1/streams": {
       "get": {
-        "operationId": "streams_api_v1_streams_get",
+        "operationId": "list_streams_api_v1_streams_get",
         "parameters": [
           {
             "in": "query",
             "name": "environment",
             "required": true,
             "schema": {
+              "maxLength": 64,
+              "minLength": 1,
               "title": "Environment",
               "type": "string"
             }
@@ -7611,6 +10488,16 @@
             }
           },
           {
+            "in": "query",
+            "name": "_root",
+            "required": false,
+            "schema": {
+              "default": "streams",
+              "title": " Root",
+              "type": "string"
+            }
+          },
+          {
             "in": "header",
             "name": "authorization",
             "required": false,
@@ -7633,7 +10520,7 @@
               "application/json": {
                 "schema": {
                   "additionalProperties": true,
-                  "title": "Response Streams Api V1 Streams Get",
+                  "title": "Response List Streams Api V1 Streams Get",
                   "type": "object"
                 }
               }
@@ -7656,7 +10543,7 @@
             "HTTPBearer": []
           }
         ],
-        "summary": "Streams",
+        "summary": "List Streams",
         "tags": [
           "stream-360"
         ]
@@ -7746,6 +10633,194 @@
         ]
       }
     },
+    "/api/v1/streams/{resource_id}/applications": {
+      "get": {
+        "operationId": "get_streams_applications_api_v1_streams__resource_id__applications_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "resource_id",
+            "required": true,
+            "schema": {
+              "title": "Resource Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_root",
+            "required": false,
+            "schema": {
+              "default": "streams",
+              "title": " Root",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_name",
+            "required": false,
+            "schema": {
+              "default": "applications",
+              "title": " Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Streams Applications Api V1 Streams  Resource Id  Applications Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Streams Applications",
+        "tags": [
+          "stream-360"
+        ]
+      }
+    },
+    "/api/v1/streams/{resource_id}/changes": {
+      "get": {
+        "operationId": "get_streams_changes_api_v1_streams__resource_id__changes_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "resource_id",
+            "required": true,
+            "schema": {
+              "title": "Resource Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_root",
+            "required": false,
+            "schema": {
+              "default": "streams",
+              "title": " Root",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_name",
+            "required": false,
+            "schema": {
+              "default": "changes",
+              "title": " Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Streams Changes Api V1 Streams  Resource Id  Changes Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Streams Changes",
+        "tags": [
+          "stream-360"
+        ]
+      }
+    },
     "/api/v1/streams/{resource_id}/compare": {
       "post": {
         "operationId": "compare_streams_api_v1_streams__resource_id__compare_post",
@@ -7756,6 +10831,15 @@
             "required": true,
             "schema": {
               "title": "Resource Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
               "type": "string"
             }
           },
@@ -7826,6 +10910,476 @@
           }
         ],
         "summary": "Compare Streams",
+        "tags": [
+          "stream-360"
+        ]
+      }
+    },
+    "/api/v1/streams/{resource_id}/configuration": {
+      "get": {
+        "operationId": "get_streams_configuration_api_v1_streams__resource_id__configuration_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "resource_id",
+            "required": true,
+            "schema": {
+              "title": "Resource Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_root",
+            "required": false,
+            "schema": {
+              "default": "streams",
+              "title": " Root",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_name",
+            "required": false,
+            "schema": {
+              "default": "configuration",
+              "title": " Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Streams Configuration Api V1 Streams  Resource Id  Configuration Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Streams Configuration",
+        "tags": [
+          "stream-360"
+        ]
+      }
+    },
+    "/api/v1/streams/{resource_id}/connectors": {
+      "get": {
+        "operationId": "get_streams_connectors_api_v1_streams__resource_id__connectors_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "resource_id",
+            "required": true,
+            "schema": {
+              "title": "Resource Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_root",
+            "required": false,
+            "schema": {
+              "default": "streams",
+              "title": " Root",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_name",
+            "required": false,
+            "schema": {
+              "default": "connectors",
+              "title": " Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Streams Connectors Api V1 Streams  Resource Id  Connectors Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Streams Connectors",
+        "tags": [
+          "stream-360"
+        ]
+      }
+    },
+    "/api/v1/streams/{resource_id}/consumer-groups": {
+      "get": {
+        "operationId": "get_streams_consumer_groups_api_v1_streams__resource_id__consumer_groups_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "resource_id",
+            "required": true,
+            "schema": {
+              "title": "Resource Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_root",
+            "required": false,
+            "schema": {
+              "default": "streams",
+              "title": " Root",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_name",
+            "required": false,
+            "schema": {
+              "default": "consumer-groups",
+              "title": " Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Streams Consumer Groups Api V1 Streams  Resource Id  Consumer Groups Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Streams Consumer-Groups",
+        "tags": [
+          "stream-360"
+        ]
+      }
+    },
+    "/api/v1/streams/{resource_id}/cost": {
+      "get": {
+        "operationId": "get_streams_cost_api_v1_streams__resource_id__cost_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "resource_id",
+            "required": true,
+            "schema": {
+              "title": "Resource Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_root",
+            "required": false,
+            "schema": {
+              "default": "streams",
+              "title": " Root",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_name",
+            "required": false,
+            "schema": {
+              "default": "cost",
+              "title": " Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Streams Cost Api V1 Streams  Resource Id  Cost Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Streams Cost",
+        "tags": [
+          "stream-360"
+        ]
+      }
+    },
+    "/api/v1/streams/{resource_id}/incidents": {
+      "get": {
+        "operationId": "get_streams_incidents_api_v1_streams__resource_id__incidents_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "resource_id",
+            "required": true,
+            "schema": {
+              "title": "Resource Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_root",
+            "required": false,
+            "schema": {
+              "default": "streams",
+              "title": " Root",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_name",
+            "required": false,
+            "schema": {
+              "default": "incidents",
+              "title": " Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Streams Incidents Api V1 Streams  Resource Id  Incidents Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Streams Incidents",
         "tags": [
           "stream-360"
         ]
@@ -7952,6 +11506,852 @@
           }
         ],
         "summary": "Inspection Policy",
+        "tags": [
+          "stream-360"
+        ]
+      }
+    },
+    "/api/v1/streams/{resource_id}/latency": {
+      "get": {
+        "operationId": "get_streams_latency_api_v1_streams__resource_id__latency_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "resource_id",
+            "required": true,
+            "schema": {
+              "title": "Resource Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_root",
+            "required": false,
+            "schema": {
+              "default": "streams",
+              "title": " Root",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_name",
+            "required": false,
+            "schema": {
+              "default": "latency",
+              "title": " Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Streams Latency Api V1 Streams  Resource Id  Latency Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Streams Latency",
+        "tags": [
+          "stream-360"
+        ]
+      }
+    },
+    "/api/v1/streams/{resource_id}/lineage": {
+      "get": {
+        "operationId": "get_streams_lineage_api_v1_streams__resource_id__lineage_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "resource_id",
+            "required": true,
+            "schema": {
+              "title": "Resource Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_root",
+            "required": false,
+            "schema": {
+              "default": "streams",
+              "title": " Root",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_name",
+            "required": false,
+            "schema": {
+              "default": "lineage",
+              "title": " Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Streams Lineage Api V1 Streams  Resource Id  Lineage Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Streams Lineage",
+        "tags": [
+          "stream-360"
+        ]
+      }
+    },
+    "/api/v1/streams/{resource_id}/metrics": {
+      "get": {
+        "operationId": "get_streams_metrics_api_v1_streams__resource_id__metrics_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "resource_id",
+            "required": true,
+            "schema": {
+              "title": "Resource Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_root",
+            "required": false,
+            "schema": {
+              "default": "streams",
+              "title": " Root",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_name",
+            "required": false,
+            "schema": {
+              "default": "metrics",
+              "title": " Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Streams Metrics Api V1 Streams  Resource Id  Metrics Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Streams Metrics",
+        "tags": [
+          "stream-360"
+        ]
+      }
+    },
+    "/api/v1/streams/{resource_id}/monitors": {
+      "get": {
+        "operationId": "get_streams_monitors_api_v1_streams__resource_id__monitors_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "resource_id",
+            "required": true,
+            "schema": {
+              "title": "Resource Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_root",
+            "required": false,
+            "schema": {
+              "default": "streams",
+              "title": " Root",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_name",
+            "required": false,
+            "schema": {
+              "default": "monitors",
+              "title": " Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Streams Monitors Api V1 Streams  Resource Id  Monitors Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Streams Monitors",
+        "tags": [
+          "stream-360"
+        ]
+      }
+    },
+    "/api/v1/streams/{resource_id}/partitions": {
+      "get": {
+        "operationId": "get_streams_partitions_api_v1_streams__resource_id__partitions_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "resource_id",
+            "required": true,
+            "schema": {
+              "title": "Resource Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_root",
+            "required": false,
+            "schema": {
+              "default": "streams",
+              "title": " Root",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_name",
+            "required": false,
+            "schema": {
+              "default": "partitions",
+              "title": " Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Streams Partitions Api V1 Streams  Resource Id  Partitions Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Streams Partitions",
+        "tags": [
+          "stream-360"
+        ]
+      }
+    },
+    "/api/v1/streams/{resource_id}/pathways": {
+      "get": {
+        "operationId": "get_streams_pathways_api_v1_streams__resource_id__pathways_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "resource_id",
+            "required": true,
+            "schema": {
+              "title": "Resource Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_root",
+            "required": false,
+            "schema": {
+              "default": "streams",
+              "title": " Root",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_name",
+            "required": false,
+            "schema": {
+              "default": "pathways",
+              "title": " Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Streams Pathways Api V1 Streams  Resource Id  Pathways Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Streams Pathways",
+        "tags": [
+          "stream-360"
+        ]
+      }
+    },
+    "/api/v1/streams/{resource_id}/recommendations": {
+      "get": {
+        "operationId": "get_streams_recommendations_api_v1_streams__resource_id__recommendations_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "resource_id",
+            "required": true,
+            "schema": {
+              "title": "Resource Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_root",
+            "required": false,
+            "schema": {
+              "default": "streams",
+              "title": " Root",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_name",
+            "required": false,
+            "schema": {
+              "default": "recommendations",
+              "title": " Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Streams Recommendations Api V1 Streams  Resource Id  Recommendations Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Streams Recommendations",
+        "tags": [
+          "stream-360"
+        ]
+      }
+    },
+    "/api/v1/streams/{resource_id}/schemas": {
+      "get": {
+        "operationId": "get_streams_schemas_api_v1_streams__resource_id__schemas_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "resource_id",
+            "required": true,
+            "schema": {
+              "title": "Resource Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_root",
+            "required": false,
+            "schema": {
+              "default": "streams",
+              "title": " Root",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_name",
+            "required": false,
+            "schema": {
+              "default": "schemas",
+              "title": " Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Streams Schemas Api V1 Streams  Resource Id  Schemas Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Streams Schemas",
+        "tags": [
+          "stream-360"
+        ]
+      }
+    },
+    "/api/v1/streams/{resource_id}/throughput": {
+      "get": {
+        "operationId": "get_streams_throughput_api_v1_streams__resource_id__throughput_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "resource_id",
+            "required": true,
+            "schema": {
+              "title": "Resource Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_root",
+            "required": false,
+            "schema": {
+              "default": "streams",
+              "title": " Root",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_name",
+            "required": false,
+            "schema": {
+              "default": "throughput",
+              "title": " Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Streams Throughput Api V1 Streams  Resource Id  Throughput Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Streams Throughput",
         "tags": [
           "stream-360"
         ]

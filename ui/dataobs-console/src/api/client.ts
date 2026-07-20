@@ -55,6 +55,30 @@ async function write<T>(
   return response.json() as Promise<T>;
 }
 export const api = {
+  streams: (
+    tenant: string,
+    env: string,
+    query: URLSearchParams,
+    signal?: AbortSignal,
+  ) =>
+    read<StreamList>(
+      `/api/v1/streams?environment=${encodeURIComponent(env)}&${query}`,
+      tenant,
+      signal,
+    ),
+  streamSection: (
+    tenant: string,
+    env: string,
+    root: string,
+    id: string,
+    section?: string,
+    signal?: AbortSignal,
+  ) =>
+    read<StreamResponse>(
+      `/api/v1/${root}/${encodeURIComponent(id)}${section ? `/${section}` : ""}?environment=${encodeURIComponent(env)}`,
+      tenant,
+      signal,
+    ),
   commandCenter: (tenant: string, env: string, signal?: AbortSignal) =>
     read<CommandCenter>(
       `/api/v1/command-center?environment=${encodeURIComponent(env)}`,
@@ -110,6 +134,35 @@ export const api = {
       signal,
     ),
 };
+export interface StreamItem {
+  stream_id?: string;
+  topic?: string;
+  name?: string;
+  cluster_id?: string;
+  health?: string;
+  maximum_lag?: number;
+  retention_risk?: string;
+  records_per_second?: number;
+  observed_at?: string;
+  [key: string]: unknown;
+}
+export interface StreamList {
+  items: StreamItem[];
+  next_cursor: string | null;
+  data_status: string;
+  warnings: string[];
+  source_coverage: string[];
+}
+export interface StreamResponse {
+  item?: StreamItem;
+  data?: unknown;
+  data_status: string;
+  warnings: string[];
+  missing_inputs: string[];
+  observed_at: string;
+  confidence?: number;
+  source_coverage: string[];
+}
 export interface Asset {
   id: string;
   name: string;

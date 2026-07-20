@@ -423,8 +423,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Groups */
-        get: operations["groups_api_v1_consumer_groups_get"];
+        /** List Consumer-Groups */
+        get: operations["list_consumer_groups_api_v1_consumer_groups_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -450,6 +450,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/consumer-groups/{resource_id}/applications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Consumer-Groups Applications */
+        get: operations["get_consumer_groups_applications_api_v1_consumer_groups__resource_id__applications_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/consumer-groups/{resource_id}/assignments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Consumer-Groups Assignments */
+        get: operations["get_consumer_groups_assignments_api_v1_consumer_groups__resource_id__assignments_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/consumer-groups/{resource_id}/compare": {
         parameters: {
             query?: never;
@@ -461,6 +495,159 @@ export interface paths {
         put?: never;
         /** Compare Consumer-Groups */
         post: operations["compare_consumer_groups_api_v1_consumer_groups__resource_id__compare_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/consumer-groups/{resource_id}/incidents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Consumer-Groups Incidents */
+        get: operations["get_consumer_groups_incidents_api_v1_consumer_groups__resource_id__incidents_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/consumer-groups/{resource_id}/lag": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Consumer-Groups Lag */
+        get: operations["get_consumer_groups_lag_api_v1_consumer_groups__resource_id__lag_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/consumer-groups/{resource_id}/lag-heatmap": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Consumer-Groups Lag-Heatmap */
+        get: operations["get_consumer_groups_lag_heatmap_api_v1_consumer_groups__resource_id__lag_heatmap_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/consumer-groups/{resource_id}/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Consumer-Groups Members */
+        get: operations["get_consumer_groups_members_api_v1_consumer_groups__resource_id__members_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/consumer-groups/{resource_id}/monitors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Consumer-Groups Monitors */
+        get: operations["get_consumer_groups_monitors_api_v1_consumer_groups__resource_id__monitors_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/consumer-groups/{resource_id}/offsets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Consumer-Groups Offsets */
+        get: operations["get_consumer_groups_offsets_api_v1_consumer_groups__resource_id__offsets_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/consumer-groups/{resource_id}/rca": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Consumer-Groups Rca */
+        get: operations["get_consumer_groups_rca_api_v1_consumer_groups__resource_id__rca_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/consumer-groups/{resource_id}/rebalances": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Consumer-Groups Rebalances */
+        get: operations["get_consumer_groups_rebalances_api_v1_consumer_groups__resource_id__rebalances_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/consumer-groups/{resource_id}/retention-risk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Consumer-Groups Retention-Risk */
+        get: operations["get_consumer_groups_retention_risk_api_v1_consumer_groups__resource_id__retention_risk_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1245,8 +1432,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Schemas */
-        get: operations["schemas_api_v1_schema_subjects_get"];
+        /** List Schema-Subjects */
+        get: operations["list_schema_subjects_api_v1_schema_subjects_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1264,6 +1451,91 @@ export interface paths {
         };
         /** Get Schema-Subjects */
         get: operations["get_schema_subjects_api_v1_schema_subjects__resource_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/schema-subjects/{resource_id}/changes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Schema-Subjects Changes */
+        get: operations["get_schema_subjects_changes_api_v1_schema_subjects__resource_id__changes_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/schema-subjects/{resource_id}/impact": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Schema-Subjects Impact */
+        get: operations["get_schema_subjects_impact_api_v1_schema_subjects__resource_id__impact_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/schema-subjects/{resource_id}/incidents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Schema-Subjects Incidents */
+        get: operations["get_schema_subjects_incidents_api_v1_schema_subjects__resource_id__incidents_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/schema-subjects/{resource_id}/monitors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Schema-Subjects Monitors */
+        get: operations["get_schema_subjects_monitors_api_v1_schema_subjects__resource_id__monitors_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/schema-subjects/{resource_id}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Schema-Subjects Versions */
+        get: operations["get_schema_subjects_versions_api_v1_schema_subjects__resource_id__versions_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1297,8 +1569,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Clusters */
-        get: operations["clusters_api_v1_stream_clusters_get"];
+        /** List Stream-Clusters */
+        get: operations["list_stream_clusters_api_v1_stream_clusters_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1324,6 +1596,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/stream-clusters/{resource_id}/brokers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Stream-Clusters Brokers */
+        get: operations["get_stream_clusters_brokers_api_v1_stream_clusters__resource_id__brokers_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/stream-clusters/{resource_id}/changes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Stream-Clusters Changes */
+        get: operations["get_stream_clusters_changes_api_v1_stream_clusters__resource_id__changes_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/stream-clusters/{resource_id}/compare": {
         parameters: {
             query?: never;
@@ -1341,6 +1647,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/stream-clusters/{resource_id}/connectors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Stream-Clusters Connectors */
+        get: operations["get_stream_clusters_connectors_api_v1_stream_clusters__resource_id__connectors_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/stream-clusters/{resource_id}/consumer-groups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Stream-Clusters Consumer-Groups */
+        get: operations["get_stream_clusters_consumer_groups_api_v1_stream_clusters__resource_id__consumer_groups_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/stream-clusters/{resource_id}/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Stream-Clusters Health */
+        get: operations["get_stream_clusters_health_api_v1_stream_clusters__resource_id__health_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/stream-clusters/{resource_id}/incidents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Stream-Clusters Incidents */
+        get: operations["get_stream_clusters_incidents_api_v1_stream_clusters__resource_id__incidents_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/stream-clusters/{resource_id}/topics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Stream-Clusters Topics */
+        get: operations["get_stream_clusters_topics_api_v1_stream_clusters__resource_id__topics_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/stream-connectors": {
         parameters: {
             query?: never;
@@ -1348,8 +1739,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Connectors */
-        get: operations["connectors_api_v1_stream_connectors_get"];
+        /** List Stream-Connectors */
+        get: operations["list_stream_connectors_api_v1_stream_connectors_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1375,6 +1766,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/stream-connectors/{resource_id}/action-eligibility": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Stream-Connectors Action-Eligibility */
+        get: operations["get_stream_connectors_action_eligibility_api_v1_stream_connectors__resource_id__action_eligibility_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/stream-connectors/{resource_id}/actions": {
         parameters: {
             query?: never;
@@ -1382,10 +1790,96 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** Connector Actions */
+        get: operations["connector_actions_api_v1_stream_connectors__resource_id__actions_get"];
         put?: never;
         /** Connector Action */
         post: operations["connector_action_api_v1_stream_connectors__resource_id__actions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/stream-connectors/{resource_id}/changes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Stream-Connectors Changes */
+        get: operations["get_stream_connectors_changes_api_v1_stream_connectors__resource_id__changes_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/stream-connectors/{resource_id}/incidents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Stream-Connectors Incidents */
+        get: operations["get_stream_connectors_incidents_api_v1_stream_connectors__resource_id__incidents_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/stream-connectors/{resource_id}/rca": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Stream-Connectors Rca */
+        get: operations["get_stream_connectors_rca_api_v1_stream_connectors__resource_id__rca_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/stream-connectors/{resource_id}/tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Stream-Connectors Tasks */
+        get: operations["get_stream_connectors_tasks_api_v1_stream_connectors__resource_id__tasks_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/stream-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Stream Events */
+        get: operations["stream_events_api_v1_stream_events_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1450,8 +1944,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Streams */
-        get: operations["streams_api_v1_streams_get"];
+        /** List Streams */
+        get: operations["list_streams_api_v1_streams_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1477,6 +1971,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/streams/{resource_id}/applications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Streams Applications */
+        get: operations["get_streams_applications_api_v1_streams__resource_id__applications_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/streams/{resource_id}/changes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Streams Changes */
+        get: operations["get_streams_changes_api_v1_streams__resource_id__changes_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/streams/{resource_id}/compare": {
         parameters: {
             query?: never;
@@ -1488,6 +2016,91 @@ export interface paths {
         put?: never;
         /** Compare Streams */
         post: operations["compare_streams_api_v1_streams__resource_id__compare_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/streams/{resource_id}/configuration": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Streams Configuration */
+        get: operations["get_streams_configuration_api_v1_streams__resource_id__configuration_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/streams/{resource_id}/connectors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Streams Connectors */
+        get: operations["get_streams_connectors_api_v1_streams__resource_id__connectors_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/streams/{resource_id}/consumer-groups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Streams Consumer-Groups */
+        get: operations["get_streams_consumer_groups_api_v1_streams__resource_id__consumer_groups_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/streams/{resource_id}/cost": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Streams Cost */
+        get: operations["get_streams_cost_api_v1_streams__resource_id__cost_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/streams/{resource_id}/incidents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Streams Incidents */
+        get: operations["get_streams_incidents_api_v1_streams__resource_id__incidents_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1520,6 +2133,159 @@ export interface paths {
         };
         /** Inspection Policy */
         get: operations["inspection_policy_api_v1_streams__resource_id__inspection_policy_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/streams/{resource_id}/latency": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Streams Latency */
+        get: operations["get_streams_latency_api_v1_streams__resource_id__latency_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/streams/{resource_id}/lineage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Streams Lineage */
+        get: operations["get_streams_lineage_api_v1_streams__resource_id__lineage_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/streams/{resource_id}/metrics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Streams Metrics */
+        get: operations["get_streams_metrics_api_v1_streams__resource_id__metrics_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/streams/{resource_id}/monitors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Streams Monitors */
+        get: operations["get_streams_monitors_api_v1_streams__resource_id__monitors_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/streams/{resource_id}/partitions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Streams Partitions */
+        get: operations["get_streams_partitions_api_v1_streams__resource_id__partitions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/streams/{resource_id}/pathways": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Streams Pathways */
+        get: operations["get_streams_pathways_api_v1_streams__resource_id__pathways_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/streams/{resource_id}/recommendations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Streams Recommendations */
+        get: operations["get_streams_recommendations_api_v1_streams__resource_id__recommendations_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/streams/{resource_id}/schemas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Streams Schemas */
+        get: operations["get_streams_schemas_api_v1_streams__resource_id__schemas_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/streams/{resource_id}/throughput": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Streams Throughput */
+        get: operations["get_streams_throughput_api_v1_streams__resource_id__throughput_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1758,19 +2524,35 @@ export interface components {
     schemas: {
         /** ActionRequest */
         ActionRequest: {
-            /** Action */
-            action: string;
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "restart_failed_connector" | "restart_failed_task" | "verify_recovery";
             /** Reason */
             reason: string;
         };
         /** CompareRequest */
         CompareRequest: {
-            /** End */
-            end?: string | null;
-            /** Mode */
-            mode: string;
-            /** Start */
-            start?: string | null;
+            /** Baseline End */
+            baseline_end?: string | null;
+            /** Baseline Start */
+            baseline_start?: string | null;
+            /**
+             * End
+             * Format: date-time
+             */
+            end: string;
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "previous_window" | "selected_window" | "rolling_baseline" | "same_period_previous_day" | "same_period_previous_week" | "before_after_change";
+            /**
+             * Start
+             * Format: date-time
+             */
+            start: string;
         };
         /** DataObservabilityRequest */
         DataObservabilityRequest: {
@@ -3037,12 +3819,13 @@ export interface operations {
             };
         };
     };
-    groups_api_v1_consumer_groups_get: {
+    list_consumer_groups_api_v1_consumer_groups_get: {
         parameters: {
             query: {
                 environment: string;
                 limit?: number;
                 cursor?: string | null;
+                _root?: string;
             };
             header?: {
                 authorization?: string | null;
@@ -3112,9 +3895,88 @@ export interface operations {
             };
         };
     };
+    get_consumer_groups_applications_api_v1_consumer_groups__resource_id__applications_get: {
+        parameters: {
+            query: {
+                environment: string;
+                _root?: string;
+                _name?: string;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                resource_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_consumer_groups_assignments_api_v1_consumer_groups__resource_id__assignments_get: {
+        parameters: {
+            query: {
+                environment: string;
+                _root?: string;
+                _name?: string;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                resource_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     compare_consumer_groups_api_v1_consumer_groups__resource_id__compare_post: {
         parameters: {
-            query?: {
+            query: {
+                environment: string;
                 _root?: string;
             };
             header?: {
@@ -3130,6 +3992,357 @@ export interface operations {
                 "application/json": components["schemas"]["CompareRequest"];
             };
         };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_consumer_groups_incidents_api_v1_consumer_groups__resource_id__incidents_get: {
+        parameters: {
+            query: {
+                environment: string;
+                _root?: string;
+                _name?: string;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                resource_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_consumer_groups_lag_api_v1_consumer_groups__resource_id__lag_get: {
+        parameters: {
+            query: {
+                environment: string;
+                _root?: string;
+                _name?: string;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                resource_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_consumer_groups_lag_heatmap_api_v1_consumer_groups__resource_id__lag_heatmap_get: {
+        parameters: {
+            query: {
+                environment: string;
+                _root?: string;
+                _name?: string;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                resource_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_consumer_groups_members_api_v1_consumer_groups__resource_id__members_get: {
+        parameters: {
+            query: {
+                environment: string;
+                _root?: string;
+                _name?: string;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                resource_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_consumer_groups_monitors_api_v1_consumer_groups__resource_id__monitors_get: {
+        parameters: {
+            query: {
+                environment: string;
+                _root?: string;
+                _name?: string;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                resource_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_consumer_groups_offsets_api_v1_consumer_groups__resource_id__offsets_get: {
+        parameters: {
+            query: {
+                environment: string;
+                _root?: string;
+                _name?: string;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                resource_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_consumer_groups_rca_api_v1_consumer_groups__resource_id__rca_get: {
+        parameters: {
+            query: {
+                environment: string;
+                _root?: string;
+                _name?: string;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                resource_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_consumer_groups_rebalances_api_v1_consumer_groups__resource_id__rebalances_get: {
+        parameters: {
+            query: {
+                environment: string;
+                _root?: string;
+                _name?: string;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                resource_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_consumer_groups_retention_risk_api_v1_consumer_groups__resource_id__retention_risk_get: {
+        parameters: {
+            query: {
+                environment: string;
+                _root?: string;
+                _name?: string;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                resource_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {
@@ -4993,12 +6206,13 @@ export interface operations {
             };
         };
     };
-    schemas_api_v1_schema_subjects_get: {
+    list_schema_subjects_api_v1_schema_subjects_get: {
         parameters: {
             query: {
                 environment: string;
                 limit?: number;
                 cursor?: string | null;
+                _root?: string;
             };
             header?: {
                 authorization?: string | null;
@@ -5035,6 +6249,201 @@ export interface operations {
             query: {
                 environment: string;
                 _root?: string;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                resource_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_schema_subjects_changes_api_v1_schema_subjects__resource_id__changes_get: {
+        parameters: {
+            query: {
+                environment: string;
+                _root?: string;
+                _name?: string;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                resource_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_schema_subjects_impact_api_v1_schema_subjects__resource_id__impact_get: {
+        parameters: {
+            query: {
+                environment: string;
+                _root?: string;
+                _name?: string;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                resource_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_schema_subjects_incidents_api_v1_schema_subjects__resource_id__incidents_get: {
+        parameters: {
+            query: {
+                environment: string;
+                _root?: string;
+                _name?: string;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                resource_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_schema_subjects_monitors_api_v1_schema_subjects__resource_id__monitors_get: {
+        parameters: {
+            query: {
+                environment: string;
+                _root?: string;
+                _name?: string;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                resource_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_schema_subjects_versions_api_v1_schema_subjects__resource_id__versions_get: {
+        parameters: {
+            query: {
+                environment: string;
+                _root?: string;
+                _name?: string;
             };
             header?: {
                 authorization?: string | null;
@@ -5138,12 +6547,13 @@ export interface operations {
             };
         };
     };
-    clusters_api_v1_stream_clusters_get: {
+    list_stream_clusters_api_v1_stream_clusters_get: {
         parameters: {
             query: {
                 environment: string;
                 limit?: number;
                 cursor?: string | null;
+                _root?: string;
             };
             header?: {
                 authorization?: string | null;
@@ -5213,9 +6623,88 @@ export interface operations {
             };
         };
     };
+    get_stream_clusters_brokers_api_v1_stream_clusters__resource_id__brokers_get: {
+        parameters: {
+            query: {
+                environment: string;
+                _root?: string;
+                _name?: string;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                resource_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_stream_clusters_changes_api_v1_stream_clusters__resource_id__changes_get: {
+        parameters: {
+            query: {
+                environment: string;
+                _root?: string;
+                _name?: string;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                resource_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     compare_stream_clusters_api_v1_stream_clusters__resource_id__compare_post: {
         parameters: {
-            query?: {
+            query: {
+                environment: string;
                 _root?: string;
             };
             header?: {
@@ -5254,12 +6743,208 @@ export interface operations {
             };
         };
     };
-    connectors_api_v1_stream_connectors_get: {
+    get_stream_clusters_connectors_api_v1_stream_clusters__resource_id__connectors_get: {
+        parameters: {
+            query: {
+                environment: string;
+                _root?: string;
+                _name?: string;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                resource_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_stream_clusters_consumer_groups_api_v1_stream_clusters__resource_id__consumer_groups_get: {
+        parameters: {
+            query: {
+                environment: string;
+                _root?: string;
+                _name?: string;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                resource_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_stream_clusters_health_api_v1_stream_clusters__resource_id__health_get: {
+        parameters: {
+            query: {
+                environment: string;
+                _root?: string;
+                _name?: string;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                resource_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_stream_clusters_incidents_api_v1_stream_clusters__resource_id__incidents_get: {
+        parameters: {
+            query: {
+                environment: string;
+                _root?: string;
+                _name?: string;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                resource_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_stream_clusters_topics_api_v1_stream_clusters__resource_id__topics_get: {
+        parameters: {
+            query: {
+                environment: string;
+                _root?: string;
+                _name?: string;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                resource_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_stream_connectors_api_v1_stream_connectors_get: {
         parameters: {
             query: {
                 environment: string;
                 limit?: number;
                 cursor?: string | null;
+                _root?: string;
             };
             header?: {
                 authorization?: string | null;
@@ -5329,9 +7014,87 @@ export interface operations {
             };
         };
     };
+    get_stream_connectors_action_eligibility_api_v1_stream_connectors__resource_id__action_eligibility_get: {
+        parameters: {
+            query: {
+                environment: string;
+                _root?: string;
+                _name?: string;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                resource_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    connector_actions_api_v1_stream_connectors__resource_id__actions_get: {
+        parameters: {
+            query: {
+                environment: string;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                resource_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     connector_action_api_v1_stream_connectors__resource_id__actions_post: {
         parameters: {
-            query?: never;
+            query: {
+                environment: string;
+            };
             header?: {
                 "Idempotency-Key"?: string | null;
                 authorization?: string | null;
@@ -5356,6 +7119,196 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_stream_connectors_changes_api_v1_stream_connectors__resource_id__changes_get: {
+        parameters: {
+            query: {
+                environment: string;
+                _root?: string;
+                _name?: string;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                resource_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_stream_connectors_incidents_api_v1_stream_connectors__resource_id__incidents_get: {
+        parameters: {
+            query: {
+                environment: string;
+                _root?: string;
+                _name?: string;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                resource_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_stream_connectors_rca_api_v1_stream_connectors__resource_id__rca_get: {
+        parameters: {
+            query: {
+                environment: string;
+                _root?: string;
+                _name?: string;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                resource_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_stream_connectors_tasks_api_v1_stream_connectors__resource_id__tasks_get: {
+        parameters: {
+            query: {
+                environment: string;
+                _root?: string;
+                _name?: string;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                resource_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stream_events_api_v1_stream_events_get: {
+        parameters: {
+            query: {
+                environment: string;
+            };
+            header?: {
+                "Last-Event-ID"?: number;
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */
@@ -5462,12 +7415,13 @@ export interface operations {
             };
         };
     };
-    streams_api_v1_streams_get: {
+    list_streams_api_v1_streams_get: {
         parameters: {
             query: {
                 environment: string;
                 limit?: number;
                 cursor?: string | null;
+                _root?: string;
             };
             header?: {
                 authorization?: string | null;
@@ -5537,9 +7491,88 @@ export interface operations {
             };
         };
     };
+    get_streams_applications_api_v1_streams__resource_id__applications_get: {
+        parameters: {
+            query: {
+                environment: string;
+                _root?: string;
+                _name?: string;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                resource_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_streams_changes_api_v1_streams__resource_id__changes_get: {
+        parameters: {
+            query: {
+                environment: string;
+                _root?: string;
+                _name?: string;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                resource_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     compare_streams_api_v1_streams__resource_id__compare_post: {
         parameters: {
-            query?: {
+            query: {
+                environment: string;
                 _root?: string;
             };
             header?: {
@@ -5555,6 +7588,201 @@ export interface operations {
                 "application/json": components["schemas"]["CompareRequest"];
             };
         };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_streams_configuration_api_v1_streams__resource_id__configuration_get: {
+        parameters: {
+            query: {
+                environment: string;
+                _root?: string;
+                _name?: string;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                resource_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_streams_connectors_api_v1_streams__resource_id__connectors_get: {
+        parameters: {
+            query: {
+                environment: string;
+                _root?: string;
+                _name?: string;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                resource_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_streams_consumer_groups_api_v1_streams__resource_id__consumer_groups_get: {
+        parameters: {
+            query: {
+                environment: string;
+                _root?: string;
+                _name?: string;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                resource_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_streams_cost_api_v1_streams__resource_id__cost_get: {
+        parameters: {
+            query: {
+                environment: string;
+                _root?: string;
+                _name?: string;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                resource_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_streams_incidents_api_v1_streams__resource_id__incidents_get: {
+        parameters: {
+            query: {
+                environment: string;
+                _root?: string;
+                _name?: string;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                resource_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {
@@ -5614,6 +7842,357 @@ export interface operations {
     inspection_policy_api_v1_streams__resource_id__inspection_policy_get: {
         parameters: {
             query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                resource_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_streams_latency_api_v1_streams__resource_id__latency_get: {
+        parameters: {
+            query: {
+                environment: string;
+                _root?: string;
+                _name?: string;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                resource_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_streams_lineage_api_v1_streams__resource_id__lineage_get: {
+        parameters: {
+            query: {
+                environment: string;
+                _root?: string;
+                _name?: string;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                resource_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_streams_metrics_api_v1_streams__resource_id__metrics_get: {
+        parameters: {
+            query: {
+                environment: string;
+                _root?: string;
+                _name?: string;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                resource_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_streams_monitors_api_v1_streams__resource_id__monitors_get: {
+        parameters: {
+            query: {
+                environment: string;
+                _root?: string;
+                _name?: string;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                resource_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_streams_partitions_api_v1_streams__resource_id__partitions_get: {
+        parameters: {
+            query: {
+                environment: string;
+                _root?: string;
+                _name?: string;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                resource_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_streams_pathways_api_v1_streams__resource_id__pathways_get: {
+        parameters: {
+            query: {
+                environment: string;
+                _root?: string;
+                _name?: string;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                resource_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_streams_recommendations_api_v1_streams__resource_id__recommendations_get: {
+        parameters: {
+            query: {
+                environment: string;
+                _root?: string;
+                _name?: string;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                resource_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_streams_schemas_api_v1_streams__resource_id__schemas_get: {
+        parameters: {
+            query: {
+                environment: string;
+                _root?: string;
+                _name?: string;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                resource_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_streams_throughput_api_v1_streams__resource_id__throughput_get: {
+        parameters: {
+            query: {
+                environment: string;
+                _root?: string;
+                _name?: string;
+            };
             header?: {
                 authorization?: string | null;
             };

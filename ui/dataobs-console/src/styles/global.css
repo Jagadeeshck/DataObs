@@ -105,6 +105,57 @@ dd {
   gap: 8px;
   padding-top: 12px;
 }
+.stream-filters,
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 16px 0;
+}
+.stream-filters label {
+  display: grid;
+  gap: 5px;
+  color: var(--muted);
+}
+.stream-filters input,
+.stream-filters select,
+.stream-filters button,
+.tabs button {
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface2);
+}
+.tabs button[aria-selected="true"] {
+  border-color: var(--cyan);
+  color: var(--cyan);
+}
+.stream-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+.stream-facts > div {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface2);
+}
+.table-scroll {
+  overflow: auto;
+  max-height: 65vh;
+}
+.table-scroll table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.table-scroll th,
+.table-scroll td {
+  padding: 10px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

@@ -22,11 +22,16 @@ class CursorState:
 class CursorCodec:
     """Integrity-protected, tenant-bound public cursor codec."""
 
-    def __init__(self, secret: str | bytes, *, ttl_seconds: int = 900):
+    def __init__(
+        self, secret: str | bytes, *, ttl_seconds: int = 900, previous_secrets: list[str | bytes] | None = None
+    ):
         key = secret.encode() if isinstance(secret, str) else secret
         if len(key) < 16:
             raise ValueError("cursor secret must contain at least 16 bytes")
         self._key = key
+        self._verification_keys = [key] + [
+            item.encode() if isinstance(item, str) else item for item in previous_secrets or []
+        ]
         self._ttl = ttl_seconds
 
     @staticmethod
@@ -34,13 +39,26 @@ class CursorCodec:
         canonical = json.dumps(filters, sort_keys=True, separators=(",", ":"), default=str)
         return hashlib.sha256(canonical.encode()).hexdigest()
 
-    def encode(self, state: CursorState, *, tenant: str, environment: str, filters: dict[str, Any]) -> str:
+    def encode(
+        self,
+        state: CursorState,
+        *,
+        tenant: str,
+        environment: str,
+        filters: dict[str, Any],
+        route: str = "",
+        resource: str = "",
+        sort: dict[str, Any] | None = None,
+    ) -> str:
         payload = {
             "v": 1,
             "exp": int(time.time()) + self._ttl,
             "tenant": tenant,
             "environment": environment,
             "filter": self.fingerprint(filters),
+            "sort_fingerprint": self.fingerprint(sort or {}),
+            "route": route,
+            "resource": resource,
             "sort": state.sort,
             "direction": state.direction,
         }
@@ -48,11 +66,26 @@ class CursorCodec:
         signature = hmac.new(self._key, raw, hashlib.sha256).digest()
         return base64.urlsafe_b64encode(raw + signature).rstrip(b"=").decode()
 
-    def decode(self, cursor: str, *, tenant: str, environment: str, filters: dict[str, Any]) -> CursorState:
+    def decode(
+        self,
+        cursor: str,
+        *,
+        tenant: str,
+        environment: str,
+        filters: dict[str, Any],
+        route: str = "",
+        resource: str = "",
+        sort: dict[str, Any] | None = None,
+    ) -> CursorState:
         try:
             decoded = base64.urlsafe_b64decode(cursor + "=" * (-len(cursor) % 4))
+            if base64.urlsafe_b64encode(decoded).rstrip(b"=").decode() != cursor:
+                raise InvalidCursor("cursor signature is invalid")
             raw, signature = decoded[:-32], decoded[-32:]
-            if not hmac.compare_digest(signature, hmac.new(self._key, raw, hashlib.sha256).digest()):
+            if not any(
+                hmac.compare_digest(signature, hmac.new(key, raw, hashlib.sha256).digest())
+                for key in self._verification_keys
+            ):
                 raise InvalidCursor("cursor signature is invalid")
             payload = json.loads(raw)
         except InvalidCursor:
@@ -65,6 +98,10 @@ class CursorCodec:
             raise InvalidCursor("cursor context does not match")
         if payload.get("filter") != self.fingerprint(filters):
             raise InvalidCursor("cursor filters do not match")
+        if payload.get("sort_fingerprint") != self.fingerprint(sort or {}):
+            raise InvalidCursor("cursor sort does not match")
+        if payload.get("route") != route or payload.get("resource") != resource:
+            raise InvalidCursor("cursor route does not match")
         if payload.get("direction") not in {"next", "previous"} or not isinstance(payload.get("sort"), list):
             raise InvalidCursor("cursor state is invalid")
         return CursorState(sort=payload["sort"], direction=payload["direction"])

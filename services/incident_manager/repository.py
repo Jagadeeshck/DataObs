@@ -1,9 +1,21 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Protocol
 
 from packages.domain_model.incident import Finding, Incident
+
+
+class IncidentRepository(Protocol):
+    """Tenant-scoped persistence contract used by the incident service."""
+
+    def save_finding(self, finding: Finding) -> Finding: ...
+    def find_incident_by_dedup(self, tenant_id: str, deduplication_key: str) -> Incident | None: ...
+    def save_incident(self, incident: Incident) -> Incident: ...
+    def list_findings(self, tenant_id: str, environment: str | None = None) -> list[Finding]: ...
+    def get_finding(self, tenant_id: str, finding_id: str, environment: str | None = None) -> Finding | None: ...
+    def list_incidents(self, tenant_id: str, environment: str | None = None) -> list[Incident]: ...
+    def get_incident(self, tenant_id: str, incident_id: str, environment: str | None = None) -> Incident | None: ...
 
 
 class InMemoryIncidentRepository:
@@ -33,16 +45,24 @@ class InMemoryIncidentRepository:
         self.incidents[incident.id] = incident
         return incident
 
-    def list_findings(self, tenant_id: str) -> list[Finding]:
-        return [f for f in self.findings.values() if f.tenant_id == tenant_id]
+    def list_findings(self, tenant_id: str, environment: str | None = None) -> list[Finding]:
+        return [
+            f
+            for f in self.findings.values()
+            if f.tenant_id == tenant_id and (environment is None or f.environment == environment)
+        ]
 
-    def get_finding(self, tenant_id: str, finding_id: str) -> Finding | None:
+    def get_finding(self, tenant_id: str, finding_id: str, environment: str | None = None) -> Finding | None:
         f = self.findings.get(finding_id)
-        return f if f and f.tenant_id == tenant_id else None
+        return f if f and f.tenant_id == tenant_id and (environment is None or f.environment == environment) else None
 
-    def list_incidents(self, tenant_id: str) -> list[Incident]:
-        return [i for i in self.incidents.values() if i.tenant_id == tenant_id]
+    def list_incidents(self, tenant_id: str, environment: str | None = None) -> list[Incident]:
+        return [
+            i
+            for i in self.incidents.values()
+            if i.tenant_id == tenant_id and (environment is None or i.environment == environment)
+        ]
 
-    def get_incident(self, tenant_id: str, incident_id: str) -> Incident | None:
+    def get_incident(self, tenant_id: str, incident_id: str, environment: str | None = None) -> Incident | None:
         i = self.incidents.get(incident_id)
-        return i if i and i.tenant_id == tenant_id else None
+        return i if i and i.tenant_id == tenant_id and (environment is None or i.environment == environment) else None

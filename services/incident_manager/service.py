@@ -27,6 +27,8 @@ SAFE_ACTIONS = {
 
 class IncidentManagerService:
     def __init__(self, repo: InMemoryIncidentRepository | None = None) -> None:
+        # The in-memory implementation is deliberately opt-in outside tests. Production
+        # composition must inject ElasticsearchIncidentRepository.
         self.repo = repo or InMemoryIncidentRepository()
 
     def ingest(self, event: dict[str, Any], *, tenant_id: str) -> dict[str, Any]:
@@ -48,6 +50,7 @@ class IncidentManagerService:
                 tenant_id=tenant_id,
                 environment=finding.environment,
                 deduplication_key=dedup,
+                title=finding.title,
                 correlation_key=correlation_key(finding),
                 finding_ids=[finding.id],
                 affected_assets=sorted(set([finding.asset_id] + finding.downstream_impact)),
@@ -94,15 +97,15 @@ class IncidentManagerService:
         key = f"{tenant_id}:{incident_id}:{idempotency_key}"
         if key in self.repo.actions:
             return self.repo.actions[key]
-        preview = self.preview_action(tenant_id, incident_id, action_type, payload)
-        result = {"action_id": deterministic_id("action", [key, action_type]), "status": "executed", "preview": preview}
-        self.repo.actions[key] = result
-        return result
+        self.preview_action(tenant_id, incident_id, action_type, payload)
+        raise RuntimeError("action execution requires an allowlisted ActionExecutor adapter")
 
     def decide_approval(
         self, tenant_id: str, approval_id: str, decision: ApprovalState, comments: str | None = None
     ) -> dict[str, Any]:
-        approval = self.repo.approvals.get(approval_id, {"tenant_id": tenant_id, "approval_id": approval_id})
+        approval = self.repo.approvals.get(approval_id)
+        if approval is None:
+            raise KeyError(approval_id)
         if approval.get("tenant_id") != tenant_id:
             raise KeyError(approval_id)
         approval.update(

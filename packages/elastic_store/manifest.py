@@ -864,6 +864,47 @@ TOPIC_QUEUE_STREAM_360_COMPLETION_MIGRATION = Migration(
 )
 
 
+INCIDENT_AUTOMATION_WORKBENCH_MIGRATION = Migration(
+    "0011_incident_automation_workbench",
+    "Complete durable collaboration, approval, action, verification and post-incident projections",
+    "v1",
+    dependencies=["0010_topic_queue_stream_360_completion"],
+    rollback_strategy="stop workbench writers and transforms; retain append-only evidence; snapshot mutable projections before removing only 0011 resources",
+    operations={
+        # Existing 0003 v1 resources are reused. These resources represent genuinely
+        # absent collaboration, safety, verification, and learning projections.
+        "mutable_indices": [
+            "dataobs-incident-assignments-v1",
+            "dataobs-incident-watchers-v1",
+            "dataobs-incident-tasks-v1",
+            "dataobs-incident-suppressions-v1",
+            "dataobs-incident-maintenance-windows-v1",
+            "dataobs-incident-timeline-current-v1",
+            "dataobs-incident-impact-current-v1",
+            "dataobs-action-policies-v1",
+            "dataobs-remediation-actions-v1",
+            "dataobs-action-verifications-v1",
+            "dataobs-case-sync-state-v1",
+            "dataobs-post-incident-reviews-v1",
+            "dataobs-post-incident-action-items-v1",
+        ],
+        "data_streams": [
+            "logs-dataobs.incident_assignment-*",
+            "logs-dataobs.incident_comment-*",
+            "logs-dataobs.incident_merge_split-*",
+            "logs-dataobs.incident_suppression-*",
+            "logs-dataobs.case_sync-*",
+            "logs-dataobs.action_policy_decision-*",
+            "logs-dataobs.remediation_action_audit-*",
+            "logs-dataobs.post_incident_review-*",
+            "metrics-dataobs.incident_response-*",
+            "metrics-dataobs.automation_effectiveness-*",
+        ],
+        "retention_defaults": {"audit_and_review": "365d", "operational_metrics": "90d"},
+    },
+)
+
+
 def migrations() -> List[Migration]:
     return [
         FOUNDATION_MIGRATION,
@@ -876,4 +917,5 @@ def migrations() -> List[Migration]:
         JOB_RUN_OBSERVABILITY_MIGRATION,
         TOPIC_QUEUE_STREAM_360_MIGRATION,
         TOPIC_QUEUE_STREAM_360_COMPLETION_MIGRATION,
+        INCIDENT_AUTOMATION_WORKBENCH_MIGRATION,
     ]

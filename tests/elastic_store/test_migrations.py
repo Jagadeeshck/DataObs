@@ -50,7 +50,7 @@ def test_automated_monitoring_migration_is_forward_only_and_executable():
 def test_stream_completion_installs_observer_coordination_and_evidence():
     from packages.elastic_store.manifest import migrations
 
-    migration = migrations()[-1]
+    migration = next(item for item in migrations() if item.migration_id == "0010_topic_queue_stream_360_completion")
     assert migration.migration_id == "0010_topic_queue_stream_360_completion"
     assert migration.dependencies == ["0009_topic_queue_stream_360"]
     assert {
@@ -70,3 +70,13 @@ def test_stream_completion_installs_observer_coordination_and_evidence():
         {"id", "source", "destination", "unique_key", "sort"} <= transform.keys()
         for transform in migration.operations["transforms"]
     )
+
+
+def test_incident_workbench_is_forward_only_after_immutable_0010():
+    from packages.elastic_store.manifest import migrations
+
+    migration = migrations()[-1]
+    assert migration.migration_id == "0011_incident_automation_workbench"
+    assert migration.dependencies == ["0010_topic_queue_stream_360_completion"]
+    assert "dataobs-remediation-actions-v1" in migration.operations["mutable_indices"]
+    assert "logs-dataobs.remediation_action_audit-*" in migration.operations["data_streams"]

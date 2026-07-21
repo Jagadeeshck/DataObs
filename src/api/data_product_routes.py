@@ -89,13 +89,20 @@ def create_data_product_router(
                 request.state.tenant_id,
                 environment,
                 limit=limit + 1,
-                cursor=(str(search_after[0]) if search_after else None),
+                search_after=search_after,
                 filters=filters,
             )
         )
         has_more = len(products) > limit
         products = products[:limit]
-        next_cursor = cursor_codec.encode(context, [products[-1].id]) if has_more and products else None
+        next_cursor = (
+            cursor_codec.encode(
+                context,
+                [products[-1].id, f"{request.state.tenant_id}:{environment}:{products[-1].id}"],
+            )
+            if has_more and products
+            else None
+        )
         return {
             "items": products,
             "data_status": "available",
@@ -141,10 +148,28 @@ def create_data_product_router(
         cursor: str | None = Query(None),
         application: DataProductService = Depends(service),
     ) -> dict[str, Any]:
+        context = CursorContext("revisions", request.state.tenant_id, environment, {"product_id": product_id})
+        try:
+            after = cursor_codec.decode(cursor, context) if cursor else None
+        except InvalidCursor as exc:
+            raise HTTPException(422, str(exc)) from exc
         events = application.repository.list_revisions(
-            request.state.tenant_id, environment, product_id, limit=limit + 1
+            request.state.tenant_id,
+            environment,
+            product_id,
+            limit=limit + 1,
+            search_after=after,
         )
-        return {"items": events[:limit], "has_more": len(events) > limit, "next_cursor": None}
+        has_more = len(events) > limit
+        events = events[:limit]
+        next_cursor = None
+        if has_more and events:
+            last = events[-1]
+            next_cursor = cursor_codec.encode(
+                context,
+                [last.revision, last.occurred_at.isoformat(), last.operation_id, last.operation_id],
+            )
+        return {"items": events, "has_more": has_more, "next_cursor": next_cursor}
 
     @router.get("/{product_id}/members")
     def members(

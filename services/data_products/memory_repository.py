@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from packages.domain_model.data_product import DataProduct, DataProductRevisionEvent
+from packages.domain_model.data_product import DataProduct, DataProductOperationResult, DataProductRevisionEvent
 from services.data_products.events import ProductConsistencyError
 from services.data_products.idempotency import DataProductIdempotencyRecord, IdempotencyConflict
 from services.data_products.repository import ProductVersionConflict
@@ -77,6 +77,17 @@ class MemoryDataProductRepository:
         if found and (found[0].tenant_id, found[0].environment) == (tenant_id, environment):
             return found[0].model_copy(deep=True)
         return None
+
+    def get_operation_result(
+        self, tenant_id: str, environment: str, operation_id: str, expected_revision: int, expected_etag: str
+    ) -> DataProductOperationResult:
+        found = self.operations.get(operation_id)
+        if not found or (found[0].tenant_id, found[0].environment) != (tenant_id, environment):
+            raise ProductConsistencyError("immutable operation result missing")
+        event, product = found
+        if event.outcome != "applied" or event.revision != expected_revision or event.etag != expected_etag:
+            raise ProductConsistencyError("immutable operation result diverged")
+        return DataProductOperationResult(product=product.model_copy(deep=True), **event.model_dump())
 
     def list_pending_operations(
         self, tenant_id: str, environment: str, *, product_id=None, limit=100, include_applied=False

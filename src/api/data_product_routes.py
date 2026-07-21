@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import os
 from typing import Any, Callable, Literal
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response
 from pydantic import BaseModel, Field
 
 from packages.domain_model.data_product import DataProduct, DataProductCriticality, DataProductOutput, DataProductOwner
+from services.data_products.cursors import CursorContext, InvalidCursor, SignedCursorCodec
 from services.data_products.repository import ProductVersionConflict
 from services.data_products.service import DataProductService
 
@@ -46,6 +48,10 @@ def create_data_product_router(
     def service(repository: Any = Depends(repository_provider)) -> DataProductService:
         return DataProductService(repository)
 
+    cursor_codec = SignedCursorCodec(
+        os.environ.get("DATAOBS_CURSOR_SECRET", "development-only-cursor-secret-32-bytes").encode()
+    )
+
     def envelope(product: DataProduct, request: Request, response: Response) -> dict[str, Any]:
         response.headers["ETag"] = product.etag
         request_id = request.state.request_id
@@ -73,11 +79,23 @@ def create_data_product_router(
             "search": search,
             "include_archived": include_archived,
         }
+        context = CursorContext("products", request.state.tenant_id, environment, filters)
+        try:
+            search_after = cursor_codec.decode(cursor, context) if cursor else None
+        except InvalidCursor as exc:
+            raise HTTPException(422, str(exc)) from exc
         products = list(
             application.repository.list_products(
-                request.state.tenant_id, environment, limit=limit, cursor=cursor, filters=filters
+                request.state.tenant_id,
+                environment,
+                limit=limit + 1,
+                cursor=(str(search_after[0]) if search_after else None),
+                filters=filters,
             )
         )
+        has_more = len(products) > limit
+        products = products[:limit]
+        next_cursor = cursor_codec.encode(context, [products[-1].id]) if has_more and products else None
         return {
             "items": products,
             "data_status": "available",
@@ -86,8 +104,113 @@ def create_data_product_router(
             "warnings": [],
             "request_id": request.state.request_id,
             "trace_id": request.headers.get("traceparent", request.state.request_id),
-            "pagination": {"limit": limit, "next_cursor": None},
+            "pagination": {"limit": limit, "next_cursor": next_cursor},
         }
+
+    def paged(
+        repository: Any,
+        method: str,
+        request: Request,
+        environment: str,
+        product_id: str,
+        resource: str,
+        limit: int,
+        cursor: str | None,
+    ) -> dict[str, Any]:
+        context = CursorContext(resource, request.state.tenant_id, environment, {"product_id": product_id})
+        try:
+            after = cursor_codec.decode(cursor, context) if cursor else None
+        except InvalidCursor as exc:
+            raise HTTPException(422, str(exc)) from exc
+        page = getattr(repository, method)(
+            request.state.tenant_id, environment, product_id, limit=limit, search_after=after
+        )
+        payload = page.model_dump(mode="json") if hasattr(page, "model_dump") else {"items": page}
+        sort_values = payload.pop("search_after", None)
+        payload["next_cursor"] = (
+            cursor_codec.encode(context, sort_values) if payload.get("has_more") and sort_values else None
+        )
+        return payload
+
+    @router.get("/{product_id}/revisions")
+    def revisions(
+        product_id: str,
+        request: Request,
+        environment: str = Query(...),
+        limit: int = Query(50, ge=1, le=200),
+        cursor: str | None = Query(None),
+        application: DataProductService = Depends(service),
+    ) -> dict[str, Any]:
+        events = application.repository.list_revisions(
+            request.state.tenant_id, environment, product_id, limit=limit + 1
+        )
+        return {"items": events[:limit], "has_more": len(events) > limit, "next_cursor": None}
+
+    @router.get("/{product_id}/members")
+    def members(
+        product_id: str,
+        request: Request,
+        environment: str = Query(...),
+        limit: int = Query(50, ge=1, le=200),
+        cursor: str | None = Query(None),
+        application: DataProductService = Depends(service),
+    ) -> dict[str, Any]:
+        return paged(
+            application.repository, "list_memberships", request, environment, product_id, "members", limit, cursor
+        )
+
+    @router.get("/{product_id}/membership-proposals")
+    def proposals(
+        product_id: str,
+        request: Request,
+        environment: str = Query(...),
+        limit: int = Query(50, ge=1, le=200),
+        cursor: str | None = Query(None),
+        application: DataProductService = Depends(service),
+    ) -> dict[str, Any]:
+        return paged(
+            application.repository,
+            "list_membership_proposals",
+            request,
+            environment,
+            product_id,
+            "proposals",
+            limit,
+            cursor,
+        )
+
+    @router.get("/{product_id}/membership-decisions")
+    def decisions(
+        product_id: str,
+        request: Request,
+        environment: str = Query(...),
+        limit: int = Query(50, ge=1, le=200),
+        cursor: str | None = Query(None),
+        application: DataProductService = Depends(service),
+    ) -> dict[str, Any]:
+        return paged(
+            application.repository,
+            "list_membership_decisions",
+            request,
+            environment,
+            product_id,
+            "decisions",
+            limit,
+            cursor,
+        )
+
+    @router.get("/{product_id}/dependencies")
+    def dependencies(
+        product_id: str,
+        request: Request,
+        environment: str = Query(...),
+        limit: int = Query(50, ge=1, le=200),
+        cursor: str | None = Query(None),
+        application: DataProductService = Depends(service),
+    ) -> dict[str, Any]:
+        return paged(
+            application.repository, "list_dependencies", request, environment, product_id, "dependencies", limit, cursor
+        )
 
     @router.post("", status_code=201, response_model=ProductEnvelope)
     def create_product(

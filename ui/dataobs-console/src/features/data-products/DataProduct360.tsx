@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { api, type DataProduct } from "../../api/client";
 import { useProductContext } from "../../state/context";
+import { ProductEvidenceTabs } from "./ProductEvidenceTabs";
 const tabs = [
   "Overview",
   "Outputs",
@@ -99,14 +100,28 @@ export function DataProduct360() {
           ) : (
             <p>No outputs configured.</p>
           ))}
-        {active !== "Overview" && active !== "Outputs" && (
-          <div role="status">
-            <p>
-              This section is not configured or its evidence is unavailable.
-            </p>
-            <p>Unknown is never treated as healthy.</p>
-          </div>
+        {["Members", "Lineage", "Dependencies", "Revisions"].includes(
+          active,
+        ) && (
+          <ProductEvidenceTabs
+            tab={active}
+            tenant={tenant}
+            environment={environment}
+            productId={productId}
+          />
         )}
+        {active !== "Overview" &&
+          active !== "Outputs" &&
+          !["Members", "Lineage", "Dependencies", "Revisions"].includes(
+            active,
+          ) && (
+            <div role="status">
+              <p>
+                This section is not configured or its evidence is unavailable.
+              </p>
+              <p>Unknown is never treated as healthy.</p>
+            </div>
+          )}
       </section>
     </article>
   );

@@ -1216,6 +1216,149 @@ DATA_PRODUCT_360_PRODUCTIZATION_MIGRATION = Migration(
     },
 )
 
+# Resource-specific additions intentionally live in a new migration. 0015 is a
+# released migration and its shared auxiliary mapping/checksum must not change.
+DATA_PRODUCT_MEMBERSHIP_PROPERTIES: Dict[str, Any] = {
+    **{
+        key: {"type": "keyword"}
+        for key in [
+            "membership_id",
+            "tenant_id",
+            "environment",
+            "product_id",
+            "entity_id",
+            "entity_type",
+            "source",
+            "state",
+            "proposal_id",
+            "evidence_refs",
+            "created_by",
+            "excluded_by",
+            "etag",
+            "schema_version",
+        ]
+    },
+    "confidence": {"type": "double"},
+    "source_coverage": {"type": "double"},
+    **{key: {"type": "date"} for key in ["observed_at", "created_at", "updated_at", "excluded_at"]},
+    "exclusion_reason": {"type": "match_only_text"},
+    "revision": {"type": "integer"},
+}
+
+DATA_PRODUCT_PROPOSAL_PROPERTIES: Dict[str, Any] = {
+    **{
+        key: {"type": "keyword"}
+        for key in [
+            "proposal_id",
+            "tenant_id",
+            "environment",
+            "product_id",
+            "entity_id",
+            "entity_type",
+            "source",
+            "state",
+            "evidence_refs",
+            "missing_inputs",
+            "schema_version",
+        ]
+    },
+    "proposal_revision": {"type": "integer"},
+    "confidence": {"type": "double"},
+    "source_coverage": {"type": "double"},
+    "truncated": {"type": "boolean"},
+    **{key: {"type": "date"} for key in ["observed_at", "created_at", "updated_at", "expires_at"]},
+}
+
+DATA_PRODUCT_DECISION_PROPERTIES: Dict[str, Any] = {
+    **{
+        key: {"type": "keyword"}
+        for key in [
+            "decision_id",
+            "operation_id",
+            "tenant_id",
+            "environment",
+            "product_id",
+            "proposal_id",
+            "membership_id",
+            "decision",
+            "outcome",
+            "actor",
+            "request_fingerprint",
+            "idempotency_key_hash",
+            "result_etag",
+            "error_code",
+            "schema_version",
+        ]
+    },
+    "reason": {"type": "match_only_text"},
+    "expected_revision": {"type": "integer"},
+    "result_revision": {"type": "integer"},
+    **{key: {"type": "date"} for key in ["decided_at", "occurred_at", "applied_at"]},
+}
+
+DATA_PRODUCT_DEPENDENCY_PROPERTIES: Dict[str, Any] = {
+    **{
+        key: {"type": "keyword"}
+        for key in [
+            "tenant_id",
+            "environment",
+            "product_id",
+            "upstream_product_id",
+            "relationship",
+            "source",
+            "evidence_refs",
+            "graph_version",
+            "schema_version",
+        ]
+    },
+    "confidence": {"type": "double"},
+    "product_revision": {"type": "integer"},
+    "removed_by_revision": {"type": "integer"},
+    "removed": {"type": "boolean"},
+    **{key: {"type": "date"} for key in ["observed_at", "created_at", "updated_at", "removed_at"]},
+}
+
+DATA_PRODUCT_IMPACT_PROPERTIES: Dict[str, Any] = {
+    **{
+        key: {"type": "keyword"}
+        for key in [
+            "tenant_id",
+            "environment",
+            "product_id",
+            "outputs",
+            "active_members",
+            "direct_upstream_products",
+            "direct_downstream_products",
+            "transitive_upstream_products",
+            "transitive_downstream_products",
+            "pathways",
+            "known_consumers",
+            "missing_evidence",
+            "data_status",
+        ]
+    },
+    "truncated": {"type": "boolean"},
+    "source_coverage": {"type": "double"},
+    "observed_at": {"type": "date"},
+}
+
+DATA_PRODUCT_MEMBERSHIP_DEPENDENCY_RUNTIME_MIGRATION = Migration(
+    "0016_data_product_membership_dependency_runtime",
+    "Correct strict mappings for the Data Product membership and dependency runtime",
+    "v1",
+    dependencies=["0015_data_product_360_productization"],
+    rollback_strategy="stop membership and dependency writers; retain additive mappings and immutable evidence",
+    operations={
+        "mapping_updates": {
+            "dataobs-data-product-membership-v1": DATA_PRODUCT_MEMBERSHIP_PROPERTIES,
+            "dataobs-data-product-membership-proposals-v1": DATA_PRODUCT_PROPOSAL_PROPERTIES,
+            "dataobs-data-product-membership-decisions-v1": DATA_PRODUCT_DECISION_PROPERTIES,
+            "dataobs-data-product-dependency-current-v1": DATA_PRODUCT_DEPENDENCY_PROPERTIES,
+            "dataobs-data-product-impact-current-v1": DATA_PRODUCT_IMPACT_PROPERTIES,
+        }
+    },
+)
+
 
 def migrations() -> List[Migration]:
     return [
@@ -1234,4 +1377,5 @@ def migrations() -> List[Migration]:
         MONITOR_RUNTIME_COMPLETION_MIGRATION,
         DATA_PRODUCT_360_COMPLETION_MIGRATION,
         DATA_PRODUCT_360_PRODUCTIZATION_MIGRATION,
+        DATA_PRODUCT_MEMBERSHIP_DEPENDENCY_RUNTIME_MIGRATION,
     ]

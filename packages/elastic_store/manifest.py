@@ -1002,6 +1002,43 @@ MONITOR_RUNTIME_COMPLETION_MIGRATION = Migration(
     },
 )
 
+DATA_PRODUCT_360_COMPLETION_MIGRATION = Migration(
+    "0014_data_product_360_completion",
+    "Add durable Data Product revisions, reviewed membership, dependencies, SLO evaluations, coverage and impact",
+    "v1",
+    dependencies=["0013_monitor_runtime_completion"],
+    rollback_strategy="stop Data Product writers and reliability transform; retain immutable events; snapshot then remove only 0014 resources",
+    operations={
+        # 0007 Data Product definitions, membership, SLOs, scorecards and
+        # reliability stream are deliberately reused rather than recreated.
+        "mutable_indices": [
+            "dataobs-data-product-revisions-v1",
+            "dataobs-data-product-membership-proposals-v1",
+            "dataobs-data-product-membership-decisions-v1",
+            "dataobs-data-product-dependency-current-v1",
+            "dataobs-data-product-slo-evaluations-v1",
+            "dataobs-data-product-coverage-v1",
+            "dataobs-data-product-impact-current-v1",
+            "dataobs-data-product-operation-state-v1",
+            "dataobs-data-product-idempotency-v1",
+        ],
+        "data_streams": [
+            "logs-dataobs.data-product-event-*",
+            "logs-dataobs.data-product-membership-event-*",
+            "logs-dataobs.data-product-slo-event-*",
+            "logs-dataobs.data-product-impact-event-*",
+        ],
+        "transforms": [{
+            "id": "dataobs-current-product-reliability",
+            "source": "metrics-dataobs.data-product-reliability-*",
+            "destination": "dataobs-data-product-scorecards-v1",
+            "unique_key": ["tenant_id", "environment", "product_id"],
+            "sort": "evaluation_timestamp",
+        }],
+        "retention_defaults": {"events": "365d", "evaluations": "365d"},
+    },
+)
+
 
 def migrations() -> List[Migration]:
     return [
@@ -1018,4 +1055,5 @@ def migrations() -> List[Migration]:
         INCIDENT_AUTOMATION_WORKBENCH_MIGRATION,
         INCIDENT_MAPPING_AND_OCC_FIX_MIGRATION,
         MONITOR_RUNTIME_COMPLETION_MIGRATION,
+        DATA_PRODUCT_360_COMPLETION_MIGRATION,
     ]

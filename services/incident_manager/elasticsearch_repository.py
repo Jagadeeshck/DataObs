@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from typing import Any
 
-from elasticsearch import Elasticsearch, NotFoundError
+from elasticsearch import ConflictError, Elasticsearch, NotFoundError
 
 from packages.domain_model.incident import Finding, Incident
+
+from .repository import VersionConflict
 
 FINDINGS_ALIAS = "dataobs-findings-v1-write"
 FINDINGS_READ_ALIAS = "dataobs-findings-v1-read"
@@ -18,6 +20,10 @@ class ElasticsearchIncidentRepository:
 
     def __init__(self, client: Elasticsearch) -> None:
         self.client = client
+        # Action execution is deliberately disabled; these compatibility stores
+        # contain preview/approval state only until a durable adapter exists.
+        self.actions: dict[str, dict[str, Any]] = {}
+        self.approvals: dict[str, dict[str, Any]] = {}
 
     @staticmethod
     def _scope(tenant_id: str, environment: str | None = None) -> list[dict[str, Any]]:
@@ -35,20 +41,28 @@ class ElasticsearchIncidentRepository:
         )
         return finding
 
-    def save_incident(self, incident: Incident) -> Incident:
-        kwargs: dict[str, Any] = {}
-        if incident.seq_no is not None and incident.primary_term is not None:
-            kwargs.update(if_seq_no=incident.seq_no, if_primary_term=incident.primary_term)
-        response = self.client.index(
-            index=INCIDENTS_ALIAS,
-            id=incident.id,
-            document=incident.model_dump(mode="json", exclude={"seq_no", "primary_term"}),
-            refresh="wait_for",
-            **kwargs,
-        )
+    def _write_incident(self, incident: Incident, **kwargs: Any) -> Incident:
+        try:
+            response = self.client.index(
+                index=INCIDENTS_ALIAS,
+                id=incident.id,
+                document=incident.model_dump(mode="json", exclude={"seq_no", "primary_term"}),
+                refresh="wait_for",
+                **kwargs,
+            )
+        except ConflictError as exc:
+            raise VersionConflict("incident version conflict") from exc
         incident.seq_no = response.get("_seq_no")
         incident.primary_term = response.get("_primary_term")
         return incident
+
+    def create_incident(self, incident: Incident) -> Incident:
+        return self._write_incident(incident, op_type="create")
+
+    def update_incident(self, incident: Incident) -> Incident:
+        if incident.seq_no is None or incident.primary_term is None:
+            raise VersionConflict("incident update requires concurrency metadata")
+        return self._write_incident(incident, if_seq_no=incident.seq_no, if_primary_term=incident.primary_term)
 
     def _get(
         self,
@@ -90,6 +104,7 @@ class ElasticsearchIncidentRepository:
             size=MAX_PAGE_SIZE,
             query={"bool": {"filter": self._scope(tenant_id, environment)}},
             sort=[{"updated_at": "desc"}, {"_id": "asc"}],
+            seq_no_primary_term=model is Incident,
         )
         results = []
         for hit in response["hits"]["hits"]:
@@ -105,11 +120,16 @@ class ElasticsearchIncidentRepository:
     def list_incidents(self, tenant_id: str, environment: str | None = None) -> list[Incident]:
         return self._search(INCIDENTS_READ_ALIAS, Incident, tenant_id, environment)
 
-    def find_incident_by_dedup(self, tenant_id: str, deduplication_key: str) -> Incident | None:
+    def find_incident_by_dedup(self, tenant_id: str, environment: str, deduplication_key: str) -> Incident | None:
         response = self.client.search(
             index=INCIDENTS_READ_ALIAS,
             size=1,
-            query={"bool": {"filter": self._scope(tenant_id) + [{"term": {"deduplication_key": deduplication_key}}]}},
+            query={
+                "bool": {
+                    "filter": self._scope(tenant_id, environment) + [{"term": {"deduplication_key": deduplication_key}}]
+                }
+            },
+            seq_no_primary_term=True,
         )
         hits = response["hits"]["hits"]
         if not hits:

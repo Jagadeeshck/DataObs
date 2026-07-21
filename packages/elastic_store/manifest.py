@@ -960,6 +960,23 @@ INCIDENT_AUTOMATION_WORKBENCH_MIGRATION = Migration(
     },
 )
 
+# This is intentionally a forward operation rather than a change to the mapping
+# helper used by released migrations.  Elasticsearch permits these properties to
+# be added to an existing strict mapping without reindexing.
+INCIDENT_MAPPING_AND_OCC_FIX_MIGRATION = Migration(
+    "0012_incident_mapping_and_occ_fix",
+    "Upgrade existing incident and finding mappings and record incident concurrency stabilization",
+    "v1",
+    dependencies=["0011_incident_automation_workbench"],
+    rollback_strategy="retain additive mappings and documents; restore writers from snapshot only after operator review",
+    operations={
+        "mapping_updates": {
+            "dataobs-findings-v1": INCIDENT_AUTOMATION_PROPERTIES,
+            "dataobs-incidents-v1": INCIDENT_AUTOMATION_PROPERTIES,
+        }
+    },
+)
+
 
 def migrations() -> List[Migration]:
     return [
@@ -974,4 +991,5 @@ def migrations() -> List[Migration]:
         TOPIC_QUEUE_STREAM_360_MIGRATION,
         TOPIC_QUEUE_STREAM_360_COMPLETION_MIGRATION,
         INCIDENT_AUTOMATION_WORKBENCH_MIGRATION,
+        INCIDENT_MAPPING_AND_OCC_FIX_MIGRATION,
     ]

@@ -174,6 +174,45 @@ def _ensure_data_stream_template(es: Elasticsearch, pattern: str) -> None:
     )
 
 
+def _mapping_type_matches(expected: Dict[str, Any], installed: Dict[str, Any]) -> bool:
+    """Compare the immutable portions of an explicit property definition."""
+    if expected.get("type") != installed.get("type"):
+        return False
+    expected_fields = expected.get("fields", {})
+    installed_fields = installed.get("fields", {})
+    return all(
+        name in installed_fields and _mapping_type_matches(definition, installed_fields[name])
+        for name, definition in expected_fields.items()
+    )
+
+
+def _apply_mapping_update(es: Elasticsearch, index: str, properties: Dict[str, Any]) -> None:
+    """Add and verify explicit fields on a trusted concrete product index."""
+    if index not in {"dataobs-findings-v1", "dataobs-incidents-v1"}:
+        raise RuntimeError(f"Mapping migration targets an unregistered concrete index: {index}")
+    if not es.indices.exists(index=index):
+        raise RuntimeError(f"Required mapping target does not exist: {index}")
+    current = es.indices.get_mapping(index=index)[index]["mappings"]
+    if current.get("dynamic") != "strict":
+        raise RuntimeError(f"Required strict mapping is not installed on {index}")
+    current_properties = current.get("properties", {})
+    conflicts = [
+        name
+        for name, definition in properties.items()
+        if name in current_properties and not _mapping_type_matches(definition, current_properties[name])
+    ]
+    if conflicts:
+        raise RuntimeError(f"Incompatible existing mapping on {index}: {', '.join(sorted(conflicts))}")
+    es.indices.put_mapping(index=index, dynamic="strict", properties=properties)
+    installed = es.indices.get_mapping(index=index)[index]["mappings"]
+    if installed.get("dynamic") != "strict" or any(
+        name not in installed.get("properties", {})
+        or not _mapping_type_matches(definition, installed["properties"][name])
+        for name, definition in properties.items()
+    ):
+        raise RuntimeError(f"Mapping verification failed for {index}")
+
+
 def _ensure_transform(es: Elasticsearch, definition: Any) -> None:
     # Older migrations carried name-only placeholders; 0007 definitions are executable latest transforms.
     if not isinstance(definition, dict):
@@ -222,24 +261,27 @@ def apply(es: Elasticsearch) -> List[Dict[str, Any]]:
         existing = applied.get(m.migration_id)
         if existing and existing.get("checksum") != m.checksum:
             raise RuntimeError(f"Checksum mismatch for {m.migration_id}")
+        if existing:
+            out.append(existing)
+            applied_ids.add(m.migration_id)
+            continue
         for index in m.operations.get("mutable_indices", []):
             _ensure_mutable_index(es, index)
         for pattern in m.operations.get("data_streams", []):
             _ensure_data_stream_template(es, pattern)
         for definition in m.operations.get("transforms", []):
             _ensure_transform(es, definition)
-        if existing:
-            out.append(existing)
-        else:
-            doc = {
-                "migration_id": m.migration_id,
-                "schema_version": m.schema_version,
-                "checksum": m.checksum,
-                "applied_at": datetime.now(timezone.utc).isoformat(),
-                "status": "applied",
-            }
-            es.index(index=MIGRATION_STATE_INDEX, id=m.migration_id, document=doc, refresh="wait_for")
-            out.append(doc)
+        for index, properties in m.operations.get("mapping_updates", {}).items():
+            _apply_mapping_update(es, index, properties)
+        doc = {
+            "migration_id": m.migration_id,
+            "schema_version": m.schema_version,
+            "checksum": m.checksum,
+            "applied_at": datetime.now(timezone.utc).isoformat(),
+            "status": "applied",
+        }
+        es.index(index=MIGRATION_STATE_INDEX, id=m.migration_id, document=doc, refresh="wait_for")
+        out.append(doc)
         applied_ids.add(m.migration_id)
     es.indices.refresh(index=MIGRATION_STATE_INDEX)
     return out

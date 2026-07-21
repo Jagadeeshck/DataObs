@@ -24,6 +24,7 @@ from services.collection_manager.leases import claim_task, renew_task
 from services.collection_manager.memory_repository import InMemoryCollectionRepository
 from services.incident_manager import IncidentManagerService
 from services.incident_manager.elasticsearch_repository import ElasticsearchIncidentRepository
+from services.incident_manager.repository import VersionConflict
 from services.product_query import ElasticsearchConsoleRepository
 from services.product_query.path_search import search_paths
 from src.api.store import StoreProtocol, get_store
@@ -259,7 +260,13 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
 
     @app.exception_handler(HTTPException)
     async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
-        code_map = {400: "bad_request", 401: "unauthorized", 404: "not_found", 405: "method_not_allowed"}
+        code_map = {
+            400: "bad_request",
+            401: "unauthorized",
+            404: "not_found",
+            405: "method_not_allowed",
+            409: "version_conflict",
+        }
         return JSONResponse(
             status_code=exc.status_code,
             content=_error_payload(code_map.get(exc.status_code, "http_error"), str(exc.detail), _request_id(request)),
@@ -344,6 +351,8 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
             return manager.ingest(_as_dict(body), tenant_id=request.state.tenant_id)
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except VersionConflict as exc:
+            raise HTTPException(status_code=409, detail="Incident changed concurrently") from exc
 
     @app.get("/api/v1/findings", dependencies=[Depends(require_auth)])
     async def list_findings(
@@ -446,6 +455,8 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
             raise HTTPException(status_code=404, detail=f"Incident '{incident_id}' not found") from exc
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except VersionConflict as exc:
+            raise HTTPException(status_code=409, detail="Incident changed concurrently") from exc
 
     @app.post("/api/v1/incidents/{incident_id}/acknowledge", dependencies=[Depends(require_auth)])
     async def acknowledge_incident(
@@ -468,7 +479,10 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
             raise HTTPException(status_code=404, detail=f"Incident '{incident_id}' not found")
         data = _as_dict(body)
         incident.owner_team = data.get("owner_team", incident.owner_team)
-        manager.repo.save_incident(incident)
+        try:
+            manager.repo.update_incident(incident)
+        except VersionConflict as exc:
+            raise HTTPException(status_code=409, detail="Incident changed concurrently") from exc
         return incident.model_dump(mode="json")
 
     @app.post("/api/v1/incidents/{incident_id}/suppress", dependencies=[Depends(require_auth)])

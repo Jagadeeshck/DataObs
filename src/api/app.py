@@ -25,8 +25,10 @@ from services.collection_manager.memory_repository import InMemoryCollectionRepo
 from services.incident_manager import IncidentManagerService
 from services.incident_manager.elasticsearch_repository import ElasticsearchIncidentRepository
 from services.incident_manager.repository import VersionConflict
+from services.monitoring.elasticsearch_repository import ElasticsearchMonitorRepository
 from services.product_query import ElasticsearchConsoleRepository
 from services.product_query.path_search import search_paths
+from src.api.monitor_routes import router as monitor_router
 from src.api.store import StoreProtocol, get_store
 from src.api.stream_routes import create_stream_router
 from src.config.settings import AppSettings, load_settings
@@ -228,6 +230,12 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
         if resolved_settings.store_backend.lower() == "elasticsearch"
         else None
     )
+    app.state.monitor_repository = (
+        ElasticsearchMonitorRepository(make_es_client(resolved_settings))
+        if resolved_settings.store_backend.lower() == "elasticsearch"
+        else None
+    )
+    app.include_router(monitor_router)
 
     @app.middleware("http")
     async def request_context_middleware(request: Request, call_next):
@@ -1273,12 +1281,6 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
         if not asset or asset.get("tenant_id") != tid:
             raise HTTPException(status_code=404, detail=f"Asset '{asset_id}' not found")
         return asset
-
-    @app.get("/api/v1/monitors", tags=["monitors"], dependencies=[Depends(require_auth)])
-    async def list_monitors(
-        service: CollectionManagerService = Depends(cm), tid: str = Depends(tenant_id)
-    ) -> Dict[str, Any]:
-        return {"items": service.repo.list("monitors", tid)}
 
     @app.get("/api/v1/incidents", tags=["incidents"], dependencies=[Depends(require_auth)])
     async def list_incidents(

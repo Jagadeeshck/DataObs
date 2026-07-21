@@ -81,6 +81,7 @@ def evaluate(
         "safety_maximum": threshold.fixed_safety_maximum,
     }
     learned_value = None if learned is None else {"minimum": learned.minimum, "maximum": learned.maximum}
+    missing: tuple[str, ...] = ()
     if not source_available:
         state, decision, reasons, missing = (
             "source_unavailable",
@@ -100,7 +101,7 @@ def evaluate(
         state = "suppressed" if suppressed and breached else ("breached" if breached else "passed")
         decision = "breach_suppressed" if suppressed and breached else ("breach" if breached else "pass")
         reasons = ("FIXED_OR_LEARNED_THRESHOLD_BREACHED",) if breached else ("WITHIN_EXPECTED_RANGE",)
-        missing = () if learned is not None else ("learned_threshold",)
+        missing = tuple() if learned is not None else tuple(["learned_threshold"])
     return EvaluationDecision(
         state,
         decision,

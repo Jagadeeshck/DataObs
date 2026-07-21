@@ -395,6 +395,20 @@ services:
     networks:
       - dataobs-net
 
+  monitor-runtime:
+    profiles: [monitor-runtime]
+    build:
+      context: .
+      dockerfile: Dockerfile.monitor-runtime
+    command: [run]
+    restart: unless-stopped
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: [no-new-privileges:true]
+    environment:
+      DATAOBS_ELASTICSEARCH_URL: ${DATAOBS_ELASTICSEARCH_URL:-http://elasticsearch:9200}
+    depends_on: [elasticsearch]
+
 volumes:
   esdata:
     driver: local

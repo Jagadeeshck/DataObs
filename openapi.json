@@ -290,6 +290,626 @@
         "title": "LineageNodesResponse",
         "type": "object"
       },
+      "MonitorAlertPolicy": {
+        "additionalProperties": false,
+        "properties": {
+          "consecutive_breaches": {
+            "default": 1,
+            "minimum": 1.0,
+            "title": "Consecutive Breaches",
+            "type": "integer"
+          },
+          "rca_auto_trigger": {
+            "default": false,
+            "title": "Rca Auto Trigger",
+            "type": "boolean"
+          },
+          "severity": {
+            "default": "medium",
+            "enum": [
+              "low",
+              "medium",
+              "high",
+              "critical"
+            ],
+            "title": "Severity",
+            "type": "string"
+          }
+        },
+        "title": "MonitorAlertPolicy",
+        "type": "object"
+      },
+      "MonitorBaselinePolicy": {
+        "additionalProperties": false,
+        "properties": {
+          "history_points": {
+            "default": 168,
+            "maximum": 10000.0,
+            "minimum": 3.0,
+            "title": "History Points",
+            "type": "integer"
+          },
+          "method": {
+            "default": "mad",
+            "enum": [
+              "rolling_median",
+              "mad",
+              "robust_quantiles",
+              "iqr",
+              "ewma",
+              "same_period"
+            ],
+            "title": "Method",
+            "type": "string"
+          },
+          "minimum_samples": {
+            "default": 12,
+            "minimum": 3.0,
+            "title": "Minimum Samples",
+            "type": "integer"
+          },
+          "seasonality": {
+            "items": {
+              "enum": [
+                "hour_of_day",
+                "day_of_week",
+                "weekly",
+                "custom"
+              ],
+              "type": "string"
+            },
+            "title": "Seasonality",
+            "type": "array"
+          },
+          "sensitivity": {
+            "default": "medium",
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ],
+            "title": "Sensitivity",
+            "type": "string"
+          }
+        },
+        "title": "MonitorBaselinePolicy",
+        "type": "object"
+      },
+      "MonitorDefinition": {
+        "additionalProperties": false,
+        "properties": {
+          "alert": {
+            "$ref": "#/components/schemas/MonitorAlertPolicy"
+          },
+          "annotations": {
+            "additionalProperties": true,
+            "title": "Annotations",
+            "type": "object"
+          },
+          "baseline": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MonitorBaselinePolicy"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "business_service": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Business Service"
+          },
+          "correlation_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Correlation Id"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "creation_source": {
+            "default": "API",
+            "enum": [
+              "UI",
+              "API",
+              "YAML",
+              "recommendation",
+              "import"
+            ],
+            "title": "Creation Source",
+            "type": "string"
+          },
+          "environment": {
+            "default": "default",
+            "title": "Environment",
+            "type": "string"
+          },
+          "etag": {
+            "title": "Etag",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "integration_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Integration Id"
+          },
+          "labels": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Labels",
+            "type": "object"
+          },
+          "last_applied_checksum": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Applied Checksum"
+          },
+          "managed_by": {
+            "title": "Managed By",
+            "type": "string"
+          },
+          "monitor_type": {
+            "$ref": "#/components/schemas/MonitorType"
+          },
+          "monitor_version": {
+            "default": 1,
+            "minimum": 1.0,
+            "title": "Monitor Version",
+            "type": "integer"
+          },
+          "notification_policy_ref": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MonitorNotificationPolicyRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "owner_team": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner Team"
+          },
+          "pillar": {
+            "$ref": "#/components/schemas/Pillar",
+            "default": "data"
+          },
+          "revision": {
+            "default": 1,
+            "minimum": 1.0,
+            "title": "Revision",
+            "type": "integer"
+          },
+          "schedule": {
+            "$ref": "#/components/schemas/MonitorSchedule"
+          },
+          "schema_version": {
+            "default": "v1",
+            "title": "Schema Version",
+            "type": "string"
+          },
+          "selector": {
+            "$ref": "#/components/schemas/MonitorSelector"
+          },
+          "source_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Id"
+          },
+          "state": {
+            "$ref": "#/components/schemas/MonitorState",
+            "default": "draft"
+          },
+          "status": {
+            "default": "active",
+            "title": "Status",
+            "type": "string"
+          },
+          "target": {
+            "$ref": "#/components/schemas/MonitorTarget"
+          },
+          "tenant_id": {
+            "title": "Tenant Id",
+            "type": "string"
+          },
+          "threshold": {
+            "$ref": "#/components/schemas/MonitorThresholdPolicy"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "workflow_policy_ref": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MonitorWorkflowPolicyRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "tenant_id",
+          "monitor_type",
+          "target",
+          "threshold",
+          "managed_by",
+          "etag"
+        ],
+        "title": "MonitorDefinition",
+        "type": "object"
+      },
+      "MonitorNotificationPolicyRef": {
+        "additionalProperties": false,
+        "properties": {
+          "policy_id": {
+            "title": "Policy Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "policy_id"
+        ],
+        "title": "MonitorNotificationPolicyRef",
+        "type": "object"
+      },
+      "MonitorPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/MonitorDefinition"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "MonitorPage",
+        "type": "object"
+      },
+      "MonitorPatch": {
+        "additionalProperties": false,
+        "properties": {
+          "etag": {
+            "title": "Etag",
+            "type": "string"
+          },
+          "state": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MonitorState"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "etag"
+        ],
+        "title": "MonitorPatch",
+        "type": "object"
+      },
+      "MonitorSchedule": {
+        "additionalProperties": false,
+        "properties": {
+          "business_calendar_exclusions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Business Calendar Exclusions",
+            "type": "array"
+          },
+          "interval": {
+            "default": "5m",
+            "title": "Interval",
+            "type": "string"
+          },
+          "maintenance_windows": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Maintenance Windows",
+            "type": "array"
+          },
+          "timezone": {
+            "default": "UTC",
+            "title": "Timezone",
+            "type": "string"
+          }
+        },
+        "title": "MonitorSchedule",
+        "type": "object"
+      },
+      "MonitorSelector": {
+        "additionalProperties": false,
+        "properties": {
+          "asset_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Asset Ids",
+            "type": "array"
+          },
+          "field_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Field Ids",
+            "type": "array"
+          },
+          "labels": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Labels",
+            "type": "object"
+          }
+        },
+        "title": "MonitorSelector",
+        "type": "object"
+      },
+      "MonitorState": {
+        "enum": [
+          "draft",
+          "recommended",
+          "enabled",
+          "disabled",
+          "learning",
+          "active",
+          "degraded",
+          "suppressed",
+          "archived",
+          "error"
+        ],
+        "title": "MonitorState",
+        "type": "string"
+      },
+      "MonitorTarget": {
+        "additionalProperties": false,
+        "properties": {
+          "asset_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Asset Id"
+          },
+          "field_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Field Id"
+          },
+          "pathway_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pathway Id"
+          },
+          "pipeline_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pipeline Id"
+          },
+          "service_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Service Id"
+          }
+        },
+        "title": "MonitorTarget",
+        "type": "object"
+      },
+      "MonitorThresholdPolicy": {
+        "additionalProperties": false,
+        "properties": {
+          "fixed_safety_maximum": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fixed Safety Maximum"
+          },
+          "fixed_safety_minimum": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fixed Safety Minimum"
+          },
+          "maximum": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Maximum"
+          },
+          "minimum": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minimum"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/ThresholdMode"
+          },
+          "relative_change": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Relative Change"
+          }
+        },
+        "required": [
+          "mode"
+        ],
+        "title": "MonitorThresholdPolicy",
+        "type": "object"
+      },
+      "MonitorType": {
+        "enum": [
+          "freshness",
+          "volume",
+          "schema_change",
+          "field_null_rate",
+          "field_unique_rate",
+          "field_zero_rate",
+          "field_negative_rate",
+          "field_cardinality",
+          "field_distribution",
+          "field_range",
+          "metric",
+          "metric_comparison",
+          "validation",
+          "custom_sql_aggregate",
+          "query_performance",
+          "pipeline_duration",
+          "pipeline_missing_run",
+          "pathway_latency",
+          "consumer_lag",
+          "retention_risk",
+          "throughput",
+          "error_rate",
+          "dlq_rate",
+          "source_availability",
+          "collector_health"
+        ],
+        "title": "MonitorType",
+        "type": "string"
+      },
+      "MonitorWorkflowPolicyRef": {
+        "additionalProperties": false,
+        "properties": {
+          "policy_id": {
+            "title": "Policy Id",
+            "type": "string"
+          },
+          "requires_approval": {
+            "default": true,
+            "title": "Requires Approval",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "policy_id"
+        ],
+        "title": "MonitorWorkflowPolicyRef",
+        "type": "object"
+      },
       "PaginationMeta": {
         "properties": {
           "has_more": {
@@ -389,6 +1009,19 @@
         ],
         "title": "PathwaySearchRequest",
         "type": "object"
+      },
+      "Pillar": {
+        "description": "Canonical DataObs observability pillars emitted by product APIs.",
+        "enum": [
+          "platform",
+          "data_pipeline",
+          "data",
+          "finops_cost",
+          "business",
+          "ai_agent"
+        ],
+        "title": "Pillar",
+        "type": "string"
       },
       "QualityResultCreateResponse": {
         "properties": {
@@ -666,6 +1299,34 @@
           "pagination"
         ],
         "title": "RulesResponse",
+        "type": "object"
+      },
+      "ThresholdMode": {
+        "enum": [
+          "fixed",
+          "learned",
+          "hybrid",
+          "relative_change",
+          "range",
+          "rate_of_change",
+          "missing_event"
+        ],
+        "title": "ThresholdMode",
+        "type": "string"
+      },
+      "TransitionRequest": {
+        "properties": {
+          "actor": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Actor",
+            "type": "string"
+          }
+        },
+        "required": [
+          "actor"
+        ],
+        "title": "TransitionRequest",
         "type": "object"
       },
       "ValidationError": {
@@ -6408,13 +7069,189 @@
         ]
       }
     },
+    "/api/v1/monitor-coverage": {
+      "get": {
+        "operationId": "coverage_api_v1_monitor_coverage_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Coverage",
+        "tags": [
+          "monitoring"
+        ]
+      }
+    },
+    "/api/v1/monitor-recommendations": {
+      "get": {
+        "operationId": "recommendations_api_v1_monitor_recommendations_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Recommendations",
+        "tags": [
+          "monitoring"
+        ]
+      }
+    },
+    "/api/v1/monitor-recommendations/{recommendation_id}/{action}": {
+      "post": {
+        "operationId": "recommendation_transition_api_v1_monitor_recommendations__recommendation_id___action__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "recommendation_id",
+            "required": true,
+            "schema": {
+              "title": "Recommendation Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "action",
+            "required": true,
+            "schema": {
+              "enum": [
+                "accept",
+                "reject",
+                "defer"
+              ],
+              "title": "Action",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransitionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Recommendation Transition",
+        "tags": [
+          "monitoring"
+        ]
+      }
+    },
+    "/api/v1/monitor-runtime/backlog": {
+      "get": {
+        "operationId": "backlog_api_v1_monitor_runtime_backlog_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Backlog",
+        "tags": [
+          "monitoring"
+        ]
+      }
+    },
+    "/api/v1/monitor-runtime/health": {
+      "get": {
+        "operationId": "runtime_health_api_v1_monitor_runtime_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Runtime Health",
+        "tags": [
+          "monitoring"
+        ]
+      }
+    },
     "/api/v1/monitors": {
       "get": {
         "operationId": "list_monitors_api_v1_monitors_get",
         "parameters": [
           {
-            "in": "header",
-            "name": "authorization",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
             "required": false,
             "schema": {
               "anyOf": [
@@ -6425,7 +7262,7 @@
                   "type": "null"
                 }
               ],
-              "title": "Authorization"
+              "title": "Cursor"
             }
           }
         ],
@@ -6434,9 +7271,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response List Monitors Api V1 Monitors Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/MonitorPage"
                 }
               }
             },
@@ -6453,14 +7288,673 @@
             "description": "Validation Error"
           }
         },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "summary": "List Monitors",
         "tags": [
-          "monitors"
+          "monitoring"
+        ]
+      },
+      "post": {
+        "operationId": "create_monitor_api_v1_monitors_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MonitorDefinition"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MonitorDefinition"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Monitor",
+        "tags": [
+          "monitoring"
+        ]
+      }
+    },
+    "/api/v1/monitors/{monitor_id}": {
+      "get": {
+        "operationId": "get_monitor_api_v1_monitors__monitor_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "monitor_id",
+            "required": true,
+            "schema": {
+              "title": "Monitor Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MonitorDefinition"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Monitor",
+        "tags": [
+          "monitoring"
+        ]
+      },
+      "patch": {
+        "operationId": "patch_monitor_api_v1_monitors__monitor_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "monitor_id",
+            "required": true,
+            "schema": {
+              "title": "Monitor Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "if-match",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "If-Match"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MonitorPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MonitorDefinition"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Patch Monitor",
+        "tags": [
+          "monitoring"
+        ]
+      }
+    },
+    "/api/v1/monitors/{monitor_id}/archive": {
+      "post": {
+        "operationId": "archive_api_v1_monitors__monitor_id__archive_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "monitor_id",
+            "required": true,
+            "schema": {
+              "title": "Monitor Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "if-match",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "If-Match"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Archive",
+        "tags": [
+          "monitoring"
+        ]
+      }
+    },
+    "/api/v1/monitors/{monitor_id}/baselines": {
+      "get": {
+        "operationId": "baselines_api_v1_monitors__monitor_id__baselines_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "monitor_id",
+            "required": true,
+            "schema": {
+              "title": "Monitor Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Baselines",
+        "tags": [
+          "monitoring"
+        ]
+      }
+    },
+    "/api/v1/monitors/{monitor_id}/baselines/reset": {
+      "post": {
+        "operationId": "reset_baseline_api_v1_monitors__monitor_id__baselines_reset_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "monitor_id",
+            "required": true,
+            "schema": {
+              "title": "Monitor Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "reason",
+            "required": true,
+            "schema": {
+              "maxLength": 500,
+              "minLength": 1,
+              "title": "Reason",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransitionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reset Baseline",
+        "tags": [
+          "monitoring"
+        ]
+      }
+    },
+    "/api/v1/monitors/{monitor_id}/disable": {
+      "post": {
+        "operationId": "transition_api_v1_monitors__monitor_id__disable_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "monitor_id",
+            "required": true,
+            "schema": {
+              "title": "Monitor Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "if-match",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "If-Match"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Transition",
+        "tags": [
+          "monitoring"
+        ]
+      }
+    },
+    "/api/v1/monitors/{monitor_id}/enable": {
+      "post": {
+        "operationId": "transition_api_v1_monitors__monitor_id__enable_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "monitor_id",
+            "required": true,
+            "schema": {
+              "title": "Monitor Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "if-match",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "If-Match"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Transition",
+        "tags": [
+          "monitoring"
+        ]
+      }
+    },
+    "/api/v1/monitors/{monitor_id}/evaluations": {
+      "get": {
+        "operationId": "evaluations_api_v1_monitors__monitor_id__evaluations_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "monitor_id",
+            "required": true,
+            "schema": {
+              "title": "Monitor Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Evaluations",
+        "tags": [
+          "monitoring"
+        ]
+      }
+    },
+    "/api/v1/monitors/{monitor_id}/findings": {
+      "get": {
+        "operationId": "findings_api_v1_monitors__monitor_id__findings_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "monitor_id",
+            "required": true,
+            "schema": {
+              "title": "Monitor Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Findings",
+        "tags": [
+          "monitoring"
+        ]
+      }
+    },
+    "/api/v1/monitors/{monitor_id}/history": {
+      "get": {
+        "operationId": "history_api_v1_monitors__monitor_id__history_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "monitor_id",
+            "required": true,
+            "schema": {
+              "title": "Monitor Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "History",
+        "tags": [
+          "monitoring"
+        ]
+      }
+    },
+    "/api/v1/monitors/{monitor_id}/observations": {
+      "get": {
+        "operationId": "observations_api_v1_monitors__monitor_id__observations_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "monitor_id",
+            "required": true,
+            "schema": {
+              "title": "Monitor Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Observations",
+        "tags": [
+          "monitoring"
+        ]
+      }
+    },
+    "/api/v1/monitors/{monitor_id}/suppressions": {
+      "get": {
+        "operationId": "suppressions_api_v1_monitors__monitor_id__suppressions_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "monitor_id",
+            "required": true,
+            "schema": {
+              "title": "Monitor Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Suppressions",
+        "tags": [
+          "monitoring"
         ]
       }
     },

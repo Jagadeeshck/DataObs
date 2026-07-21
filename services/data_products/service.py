@@ -3,7 +3,9 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from hashlib import sha256
 
-from packages.domain_model.data_product import DataProduct
+from packages.domain_model.base import utc_now
+from packages.domain_model.data_product import DataProduct, DataProductRevisionEvent
+from services.data_products.events import definition_checksum, operation_id
 from services.data_products.repository import DataProductRepository, ProductVersionConflict
 
 
@@ -15,14 +17,28 @@ class DataProductService:
     def __init__(self, repository: DataProductRepository) -> None:
         self.repository = repository
 
-    def create(self, product: DataProduct, *, actor: str, reason: str = "created") -> DataProduct:
+    def create(
+        self,
+        product: DataProduct,
+        *,
+        actor: str,
+        reason: str = "created",
+        idempotency_key: str | None = None,
+    ) -> DataProduct:
         if not product.owner.team or not product.criticality:
             raise ValueError("owner and criticality are required")
         product.revision = 1
         self.validate_dependencies(product)
         product.etag = product_etag(product)
+        event = self._pending(product, actor, reason, "create", idempotency_key)
+        existing = self.repository.begin_operation(event, product)
+        if existing.outcome == "applied":
+            replay = self.repository.get(product.tenant_id, product.environment, product.id)
+            if replay is None:
+                raise RuntimeError("applied operation is missing current state")
+            return replay
         created = self.repository.create(product)
-        self.repository.append_revision(created, actor=actor, reason=reason)
+        self.repository.finish_operation(event.model_copy(update={"outcome": "applied", "applied_at": utc_now()}))
         return created
 
     def get(self, tenant_id: str, environment: str, product_id: str) -> DataProduct:
@@ -34,7 +50,15 @@ class DataProductService:
     def list(self, tenant_id: str, environment: str, *, limit: int = 50, cursor: str | None = None):
         return self.repository.list(tenant_id, environment, limit=limit, cursor=cursor)
 
-    def update(self, product: DataProduct, *, if_match: str | None, actor: str, reason: str = "updated") -> DataProduct:
+    def update(
+        self,
+        product: DataProduct,
+        *,
+        if_match: str | None,
+        actor: str,
+        reason: str = "updated",
+        idempotency_key: str | None = None,
+    ) -> DataProduct:
         if not if_match:
             raise ProductVersionConflict("If-Match is required")
         current = self.repository.get(product.tenant_id, product.environment, product.id)
@@ -46,9 +70,38 @@ class DataProductService:
         self.validate_dependencies(product)
         product.updated_at = datetime.now(timezone.utc)
         product.etag = product_etag(product)
+        event = self._pending(product, actor, reason, "update", idempotency_key)
+        existing = self.repository.begin_operation(event, product)
+        if existing.outcome == "applied":
+            replay = self.repository.get(product.tenant_id, product.environment, product.id)
+            if replay and replay.revision >= product.revision:
+                return replay
         saved = self.repository.update(product, expected_etag=if_match)
-        self.repository.append_revision(saved, actor=actor, reason=reason)
+        self.repository.finish_operation(event.model_copy(update={"outcome": "applied", "applied_at": utc_now()}))
         return saved
+
+    def _pending(
+        self,
+        product: DataProduct,
+        actor: str,
+        reason: str,
+        action: str,
+        idempotency_key: str | None,
+    ) -> DataProductRevisionEvent:
+        checksum = definition_checksum(product)
+        key = idempotency_key or checksum
+        return DataProductRevisionEvent(
+            operation_id=operation_id(product.tenant_id, product.environment, product.id, product.revision, key),
+            product_id=product.id,
+            tenant_id=product.tenant_id,
+            environment=product.environment,
+            revision=product.revision,
+            etag=product.etag,
+            definition_checksum=checksum,
+            actor=actor,
+            reason=reason,
+            action=action,
+        )
 
     def _transition(
         self,

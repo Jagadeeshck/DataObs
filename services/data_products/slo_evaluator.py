@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from datetime import datetime, timezone
 from hashlib import sha256
 
@@ -29,9 +30,26 @@ def evaluate_slo(
         state = "insufficient_data"
     else:
         state = "passed" if actual_value >= definition.objective else "failed"
-    material = f"{definition.id}:{definition.revision}:{window_start.isoformat()}:{window_end.isoformat()}"
+    evidence_fingerprint = sha256(json.dumps(sorted(set(evidence_refs)), separators=(",", ":")).encode()).hexdigest()
+    material = "\0".join(
+        (
+            "v2",
+            definition.tenant_id,
+            definition.environment,
+            definition.product_id,
+            definition.id,
+            str(definition.revision),
+            window_start.isoformat(),
+            window_end.isoformat(),
+            definition.evaluation_method,
+            evidence_fingerprint,
+        )
+    )
     return DataProductSLOEvaluation(
         id=sha256(material.encode()).hexdigest(),
+        tenant_id=definition.tenant_id,
+        environment=definition.environment,
+        product_id=definition.product_id,
         slo_id=definition.id,
         definition_revision=definition.revision,
         window_start=window_start,

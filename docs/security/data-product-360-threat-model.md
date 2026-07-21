@@ -9,14 +9,17 @@ Tenant/environment context is supplied only by trusted authentication middleware
 | Threat | Control and test |
 |---|---|
 | Cross-tenant product, member, or dependency probing | scope every ID and filter; return not found |
+| Cross-tenant proposal, decision, SLO or evaluation probing | bind storage identity and every read filter to tenant, environment and product |
 | Forged ETag or concurrent overwrite | compare If-Match and Elasticsearch sequence/primary term |
 | Cursor tampering, expiry, cross-route replay | versioned route-bound HMAC cursor with expiry |
 | Graph exhaustion | bounded depth/node count and visible truncation |
 | Proposal poisoning/source substitution | validate scope, monitor compatibility, evidence references and confidence |
+| SLO identity collision or corrected-evidence overwrite | include full scope, definition revision, window, method and canonical evidence fingerprint in immutable IDs |
 | Reliability manipulation or stale-as-healthy | bounded finite values; stale/missing excluded and reported; no evidence is unknown |
 | Stored XSS or unsafe support/on-call URL | escape rendering and allow only safe URL schemes |
 | Oversized payload or replay | request caps and deterministic idempotency IDs |
 | Audit divergence | reject divergent same-revision immutable events |
+| Partial migration reported healthy | verify every required resource (including decisions), aliases, strict mappings and write blocks with reason codes |
 | Sensitive evidence leakage | sentinel scan for secrets, raw rows, Kafka bodies, and SQL |
 
 The security gate must test all controls against two tenants with overlapping product IDs. Until those tests and hosted evidence pass, release readiness is **blocked**.

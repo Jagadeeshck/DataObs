@@ -75,7 +75,7 @@ def test_stream_completion_installs_observer_coordination_and_evidence():
 def test_incident_workbench_is_forward_only_after_immutable_0010():
     from packages.elastic_store.manifest import migrations
 
-    migration = migrations()[-2]
+    migration = next(m for m in migrations() if m.migration_id == "0011_incident_automation_workbench")
     assert migration.migration_id == "0011_incident_automation_workbench"
     assert migration.dependencies == ["0010_topic_queue_stream_360_completion"]
     assert "dataobs-remediation-actions-v1" in migration.operations["mutable_indices"]
@@ -85,7 +85,7 @@ def test_incident_workbench_is_forward_only_after_immutable_0010():
 def test_incident_mapping_fix_is_forward_only_and_explicit():
     from packages.elastic_store.manifest import migrations
 
-    migration = migrations()[-1]
+    migration = next(m for m in migrations() if m.migration_id == "0012_incident_mapping_and_occ_fix")
     assert migration.migration_id == "0012_incident_mapping_and_occ_fix"
     assert migration.dependencies == ["0011_incident_automation_workbench"]
     assert set(migration.operations["mapping_updates"]) == {

@@ -5,8 +5,10 @@ from datetime import datetime, timezone
 from packages.domain_model.incident import Incident, IncidentState
 
 LEGAL_TRANSITIONS: dict[IncidentState, frozenset[IncidentState]] = {
-    IncidentState.OPEN: frozenset({IncidentState.ACKNOWLEDGED, IncidentState.SUPPRESSED}),
-    IncidentState.ACKNOWLEDGED: frozenset({IncidentState.INVESTIGATING, IncidentState.SUPPRESSED}),
+    IncidentState.OPEN: frozenset({IncidentState.ACKNOWLEDGED, IncidentState.RESOLVED, IncidentState.SUPPRESSED}),
+    IncidentState.ACKNOWLEDGED: frozenset(
+        {IncidentState.INVESTIGATING, IncidentState.RESOLVED, IncidentState.SUPPRESSED}
+    ),
     IncidentState.INVESTIGATING: frozenset(
         {
             IncidentState.MITIGATING,

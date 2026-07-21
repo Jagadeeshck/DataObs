@@ -2,7 +2,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from integrations.elastic.workflows.validator import validate_workflow
+from integrations.elastic.workflows.validator import validate_pack, validate_workflow
 from packages.domain_model.incident import Incident, IncidentState
 from services.action_executor.catalogue import ActionCatalogue
 from services.approvals.repository import InMemoryApprovalRepository
@@ -16,9 +16,8 @@ def incident(state: IncidentState = IncidentState.OPEN) -> Incident:
     )
 
 
-def test_lifecycle_rejects_skips_and_requires_resolution_reason():
-    with pytest.raises(ValueError, match="illegal"):
-        transition(incident(), IncidentState.RESOLVED, reason="fixed")
+def test_public_lifecycle_can_resolve_and_requires_resolution_reason():
+    assert transition(incident(), IncidentState.RESOLVED, reason="fixed").resolved_at is not None
     item = incident(IncidentState.MONITORING_RECOVERY)
     with pytest.raises(ValueError, match="reason"):
         transition(item, IncidentState.RESOLVED)
@@ -68,3 +67,17 @@ def test_workflow_rejects_unsafe_steps(tmp_path):
     workflow.write_text("id: bad\nsteps:\n  - type: kibana.request\n")
     with pytest.raises(ValueError, match="deprecated"):
         validate_workflow(workflow)
+
+
+def test_bundled_workflows_are_allowlisted():
+    assert len(validate_pack()) == 6
+
+
+def test_workflow_rejects_sql_but_permits_esql(tmp_path):
+    unsafe = tmp_path / "sql.yaml"
+    unsafe.write_text("id: bad\nsteps:\n  - type: sql.query\n")
+    with pytest.raises(ValueError, match="forbidden"):
+        validate_workflow(unsafe)
+    safe = tmp_path / "esql.yaml"
+    safe.write_text("id: good\nsteps:\n  - type: elasticsearch.esql\n  - type: waitForInput\n")
+    assert validate_workflow(safe)["id"] == "good"

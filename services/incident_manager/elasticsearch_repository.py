@@ -6,8 +6,10 @@ from elasticsearch import Elasticsearch, NotFoundError
 
 from packages.domain_model.incident import Finding, Incident
 
-FINDINGS_ALIAS = "dataobs-findings"
-INCIDENTS_ALIAS = "dataobs-incidents"
+FINDINGS_ALIAS = "dataobs-findings-v1-write"
+FINDINGS_READ_ALIAS = "dataobs-findings-v1-read"
+INCIDENTS_ALIAS = "dataobs-incidents-v1-write"
+INCIDENTS_READ_ALIAS = "dataobs-incidents-v1-read"
 MAX_PAGE_SIZE = 200
 
 
@@ -29,7 +31,6 @@ class ElasticsearchIncidentRepository:
             index=FINDINGS_ALIAS,
             id=finding.id,
             document=finding.model_dump(mode="json"),
-            op_type="create",
             refresh="wait_for",
         )
         return finding
@@ -74,11 +75,11 @@ class ElasticsearchIncidentRepository:
         return model.model_validate(source)
 
     def get_finding(self, tenant_id: str, finding_id: str, environment: str | None = None) -> Finding | None:
-        result = self._get(FINDINGS_ALIAS, Finding, tenant_id, finding_id, environment)
+        result = self._get(FINDINGS_READ_ALIAS, Finding, tenant_id, finding_id, environment)
         return result if isinstance(result, Finding) else None
 
     def get_incident(self, tenant_id: str, incident_id: str, environment: str | None = None) -> Incident | None:
-        result = self._get(INCIDENTS_ALIAS, Incident, tenant_id, incident_id, environment)
+        result = self._get(INCIDENTS_READ_ALIAS, Incident, tenant_id, incident_id, environment)
         return result if isinstance(result, Incident) else None
 
     def _search(
@@ -90,19 +91,29 @@ class ElasticsearchIncidentRepository:
             query={"bool": {"filter": self._scope(tenant_id, environment)}},
             sort=[{"updated_at": "desc"}, {"_id": "asc"}],
         )
-        return [model.model_validate(hit["_source"]) for hit in response["hits"]["hits"]]
+        results = []
+        for hit in response["hits"]["hits"]:
+            source = dict(hit["_source"])
+            if model is Incident:
+                source.update(seq_no=hit.get("_seq_no"), primary_term=hit.get("_primary_term"))
+            results.append(model.model_validate(source))
+        return results
 
     def list_findings(self, tenant_id: str, environment: str | None = None) -> list[Finding]:
-        return self._search(FINDINGS_ALIAS, Finding, tenant_id, environment)
+        return self._search(FINDINGS_READ_ALIAS, Finding, tenant_id, environment)
 
     def list_incidents(self, tenant_id: str, environment: str | None = None) -> list[Incident]:
-        return self._search(INCIDENTS_ALIAS, Incident, tenant_id, environment)
+        return self._search(INCIDENTS_READ_ALIAS, Incident, tenant_id, environment)
 
     def find_incident_by_dedup(self, tenant_id: str, deduplication_key: str) -> Incident | None:
         response = self.client.search(
-            index=INCIDENTS_ALIAS,
+            index=INCIDENTS_READ_ALIAS,
             size=1,
             query={"bool": {"filter": self._scope(tenant_id) + [{"term": {"deduplication_key": deduplication_key}}]}},
         )
         hits = response["hits"]["hits"]
-        return Incident.model_validate(hits[0]["_source"]) if hits else None
+        if not hits:
+            return None
+        source = dict(hits[0]["_source"])
+        source.update(seq_no=hits[0].get("_seq_no"), primary_term=hits[0].get("_primary_term"))
+        return Incident.model_validate(source)

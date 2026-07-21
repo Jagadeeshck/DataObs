@@ -278,7 +278,7 @@ def create_data_product_router(
         idempotency_key: str = Header(..., alias="Idempotency-Key"),
         application: DataProductMembershipService = Depends(membership_service),
     ) -> dict[str, Any]:
-        member = application.add_manual_member(
+        result = application.add_manual_member(
             request.state.tenant_id,
             environment,
             product_id,
@@ -288,8 +288,9 @@ def create_data_product_router(
             reason=body.reason,
             idempotency_key=idempotency_key,
         )
-        response.headers["ETag"] = member.etag
-        return {"membership": member, "replayed": False, "request_id": request.state.request_id}
+        response.headers["ETag"] = result.membership.etag
+        response.headers["Idempotency-Replayed"] = str(result.replayed).lower()
+        return {**result.__dict__, "request_id": request.state.request_id}
 
     @router.post("/{product_id}/members/{membership_id}/exclude")
     def exclude_member(

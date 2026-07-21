@@ -146,15 +146,18 @@ class DataProductService:
         )
         reserved = self.repository.reserve_idempotency(record_id, record)
         # Critically, replay is resolved before current lifecycle and ETag validation.
-        if reserved.state == "completed":
-            if reserved.result_revision is None:
+        reserved_record = reserved.record
+        if reserved_record.state == "completed":
+            if reserved_record.result_revision is None:
                 raise IdempotencyPending("completed result has no revision")
-            replay = self.repository.get_product_revision(tenant_id, environment, product_id, reserved.result_revision)
-            if replay is None or replay.etag != reserved.result_etag:
+            replay = self.repository.get_product_revision(
+                tenant_id, environment, product_id, reserved_record.result_revision
+            )
+            if replay is None or replay.etag != reserved_record.result_etag:
                 raise IdempotencyPending("completed result is not yet visible")
             return replay
-        if reserved.state == "pending" and reserved.operation_id:
-            operation = self.repository.get_operation(tenant_id, environment, reserved.operation_id)
+        if reserved_record.state == "pending" and reserved_record.operation_id:
+            operation = self.repository.get_operation(tenant_id, environment, reserved_record.operation_id)
             if operation and operation.outcome == "applied":
                 replay = self.repository.get_product_revision(tenant_id, environment, product_id, operation.revision)
                 if replay is None or replay.etag != operation.etag:

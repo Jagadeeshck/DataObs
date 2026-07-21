@@ -21,7 +21,7 @@ from packages.domain_model.data_product import (
     DataProductSLODefinition,
     DataProductSLOEvaluation,
 )
-from services.data_products.idempotency import DataProductIdempotencyRecord
+from services.data_products.idempotency import DataProductIdempotencyRecord, IdempotencyReservationResult
 
 
 class ProductVersionConflict(RuntimeError):
@@ -62,6 +62,7 @@ class DataProductMembershipMutationResult:
     membership: DataProductMembership
     operation_id: str
     replayed: bool = False
+    decision_refs: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -89,7 +90,7 @@ class DataProductReconciliationResult:
 class DataProductRepository(Protocol):
     def reserve_idempotency(
         self, record_id: str, record: DataProductIdempotencyRecord
-    ) -> DataProductIdempotencyRecord: ...
+    ) -> IdempotencyReservationResult: ...
     def get_idempotency(self, record_id: str) -> DataProductIdempotencyRecord | None: ...
     def complete_idempotency(self, record_id: str, *, operation_id: str, revision: int, etag: str) -> None: ...
     def fail_idempotency(self, record_id: str, *, error_code: str) -> None: ...

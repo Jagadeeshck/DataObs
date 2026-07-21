@@ -23,7 +23,12 @@ from packages.domain_model.data_product import (
     DataProductRevisionEvent,
 )
 from services.data_products.events import ProductConsistencyError
-from services.data_products.idempotency import DataProductIdempotencyRecord, IdempotencyConflict
+from services.data_products.idempotency import (
+    DataProductIdempotencyRecord,
+    IdempotencyConflict,
+    IdempotencyReservationResult,
+    IdempotencyReservationStatus,
+)
 from services.data_products.repository import ProductVersionConflict
 
 PRODUCTS = "dataobs-data-products-v1"
@@ -61,17 +66,21 @@ class ElasticsearchDataProductRepository:
     def __init__(self, client: Elasticsearch) -> None:
         self.client = client
 
-    def reserve_idempotency(self, record_id: str, record: DataProductIdempotencyRecord) -> DataProductIdempotencyRecord:
+    def reserve_idempotency(self, record_id: str, record: DataProductIdempotencyRecord) -> IdempotencyReservationResult:
         try:
             self.client.create(index=IDEMPOTENCY, id=record_id, document=record.model_dump(mode="json"))
-            return record
+            return IdempotencyReservationResult(status=IdempotencyReservationStatus.CREATED, record=record)
         except ConflictError as exc:
             existing = DataProductIdempotencyRecord.model_validate(
                 self.client.get(index=IDEMPOTENCY, id=record_id)["_source"]
             )
             if existing.request_fingerprint != record.request_fingerprint:
                 raise IdempotencyConflict("idempotency_conflict") from exc
-            return existing
+            return IdempotencyReservationResult(
+                status=IdempotencyReservationStatus(f"existing_{existing.state}"),
+                record=existing,
+                immutable_result_ref=existing.operation_id,
+            )
 
     def get_idempotency(self, record_id: str) -> DataProductIdempotencyRecord | None:
         try:

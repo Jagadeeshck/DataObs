@@ -39,7 +39,7 @@ class ManualMembershipRequest(ActionRequest):
 
 
 class ProposalActionRequest(ActionRequest):
-    pass
+    expected_revision: int = Field(ge=1)
 
 
 class DependencyReplaceRequest(ActionRequest):
@@ -304,7 +304,7 @@ def create_data_product_router(
         idempotency_key: str = Header(..., alias="Idempotency-Key"),
         application: DataProductMembershipService = Depends(membership_service),
     ) -> dict[str, Any]:
-        member = application.exclude_member(
+        result = application.exclude_member(
             request.state.tenant_id,
             environment,
             product_id,
@@ -314,8 +314,13 @@ def create_data_product_router(
             idempotency_key=idempotency_key,
             expected_etag=if_match,
         )
-        response.headers["ETag"] = member.etag
-        return {"membership": member, "replayed": False}
+        response.headers["ETag"] = result.membership.etag
+        response.headers["Idempotency-Replayed"] = str(result.replayed).lower()
+        return {
+            **result.__dict__,
+            "request_id": request.state.request_id,
+            "trace_id": request.headers.get("traceparent", request.state.request_id),
+        }
 
     @router.post("/{product_id}/membership-proposals/{proposal_id}/{decision}")
     def decide_proposal(
@@ -324,6 +329,7 @@ def create_data_product_router(
         decision: Literal["accept", "reject", "expire", "supersede"],
         body: ProposalActionRequest,
         request: Request,
+        response: Response,
         environment: str = Query(...),
         idempotency_key: str = Header(..., alias="Idempotency-Key"),
         application: DataProductMembershipService = Depends(membership_service),
@@ -334,8 +340,22 @@ def create_data_product_router(
             "expire": application.expire_proposal,
             "supersede": application.supersede_proposal,
         }
-        proposal = handlers[decision](request.state.tenant_id, environment, product_id, proposal_id)
-        return {"proposal": proposal, "replayed": False, "operation_key_hash_persisted": False}
+        result = handlers[decision](
+            request.state.tenant_id,
+            environment,
+            product_id,
+            proposal_id,
+            actor=body.actor,
+            reason=body.reason,
+            idempotency_key=idempotency_key,
+            expected_revision=body.expected_revision,
+        )
+        response.headers["Idempotency-Replayed"] = str(result.replayed).lower()
+        return {
+            **result.__dict__,
+            "request_id": request.state.request_id,
+            "trace_id": request.headers.get("traceparent", request.state.request_id),
+        }
 
     @router.post("/{product_id}/membership-proposals/generate")
     def generate_proposals(

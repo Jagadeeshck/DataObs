@@ -3745,6 +3745,8 @@ export interface components {
         ProposalActionRequest: {
             /** Actor */
             actor: string;
+            /** Expected Revision */
+            expected_revision: number;
             /** Reason */
             reason: string;
         };

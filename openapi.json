@@ -1707,6 +1707,11 @@
             "title": "Actor",
             "type": "string"
           },
+          "expected_revision": {
+            "minimum": 1.0,
+            "title": "Expected Revision",
+            "type": "integer"
+          },
           "reason": {
             "maxLength": 1000,
             "minLength": 1,
@@ -1716,7 +1721,8 @@
         },
         "required": [
           "actor",
-          "reason"
+          "reason",
+          "expected_revision"
         ],
         "title": "ProposalActionRequest",
         "type": "object"

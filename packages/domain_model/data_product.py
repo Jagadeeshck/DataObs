@@ -60,7 +60,7 @@ class DataProductMembership(DomainModel):
     environment: str
     entity_id: str
     entity_type: str
-    source: Literal["manual", "lineage", "dependency", "import"]
+    source: Literal["manual", "lineage", "dependency", "import", "proposal"]
     state: Literal["active", "excluded", "removed"] = "active"
     proposal_id: str | None = None
     evidence_refs: List[str] = Field(default_factory=list, max_length=50)

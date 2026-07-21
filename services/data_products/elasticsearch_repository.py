@@ -515,7 +515,14 @@ class ElasticsearchDataProductRepository:
         return DataProductMembershipProposalPage(items=items, has_more=more, search_after=after)
 
     def _transition_membership_proposal(
-        self, tenant_id: str, environment: str, product_id: str, proposal_id: str, state: str
+        self,
+        tenant_id: str,
+        environment: str,
+        product_id: str,
+        proposal_id: str,
+        state: str,
+        *,
+        expected_revision: int | None = None,
     ) -> DataProductMembershipProposal:
         response = self.client.search(
             index=PROPOSALS,
@@ -538,6 +545,8 @@ class ElasticsearchDataProductRepository:
             raise KeyError(proposal_id)
         hit = hits[0]
         current = DataProductMembershipProposal.model_validate(hit["_source"])
+        if expected_revision is not None and current.proposal_revision != expected_revision:
+            raise ProductVersionConflict("proposal_revision_conflict")
         if current.state == state:
             return current
         if current.state != "proposed":
@@ -556,24 +565,32 @@ class ElasticsearchDataProductRepository:
         return updated
 
     def accept_membership_proposal(
-        self, tenant_id: str, environment: str, product_id: str, proposal_id: str
+        self, tenant_id: str, environment: str, product_id: str, proposal_id: str, **options
     ) -> DataProductMembershipProposal:
-        return self._transition_membership_proposal(tenant_id, environment, product_id, proposal_id, "accepted")
+        return self._transition_membership_proposal(
+            tenant_id, environment, product_id, proposal_id, "accepted", **options
+        )
 
     def reject_membership_proposal(
-        self, tenant_id: str, environment: str, product_id: str, proposal_id: str
+        self, tenant_id: str, environment: str, product_id: str, proposal_id: str, **options
     ) -> DataProductMembershipProposal:
-        return self._transition_membership_proposal(tenant_id, environment, product_id, proposal_id, "rejected")
+        return self._transition_membership_proposal(
+            tenant_id, environment, product_id, proposal_id, "rejected", **options
+        )
 
     def expire_membership_proposal(
-        self, tenant_id: str, environment: str, product_id: str, proposal_id: str
+        self, tenant_id: str, environment: str, product_id: str, proposal_id: str, **options
     ) -> DataProductMembershipProposal:
-        return self._transition_membership_proposal(tenant_id, environment, product_id, proposal_id, "expired")
+        return self._transition_membership_proposal(
+            tenant_id, environment, product_id, proposal_id, "expired", **options
+        )
 
     def supersede_membership_proposal(
-        self, tenant_id: str, environment: str, product_id: str, proposal_id: str
+        self, tenant_id: str, environment: str, product_id: str, proposal_id: str, **options
     ) -> DataProductMembershipProposal:
-        return self._transition_membership_proposal(tenant_id, environment, product_id, proposal_id, "superseded")
+        return self._transition_membership_proposal(
+            tenant_id, environment, product_id, proposal_id, "superseded", **options
+        )
 
     def append_membership_decision(
         self, tenant_id: str, environment: str, product_id: str, decision: DataProductMembershipDecision

@@ -71,6 +71,16 @@ class DataProductProposalDecisionResult:
     membership: DataProductMembership | None
     operation_id: str
     replayed: bool = False
+    decision_refs: tuple[str, ...] = ()
+    warnings: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class DataProductMembershipExclusionResult:
+    membership: DataProductMembership
+    operation_id: str
+    decision_refs: tuple[str, ...] = ()
+    replayed: bool = False
 
 
 @dataclass(frozen=True)

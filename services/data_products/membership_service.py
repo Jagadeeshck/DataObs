@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import timedelta
 from hashlib import sha256
-from typing import Sequence
+from typing import Literal, Sequence
 
 from packages.domain_model.base import utc_now
 from packages.domain_model.data_product import (
@@ -16,7 +16,13 @@ from packages.domain_model.data_product import (
 from services.data_products.events import ProductConsistencyError
 from services.data_products.idempotency import hash_key, new_record, request_fingerprint, scoped_record_id
 from services.data_products.membership_events import MembershipMutation
-from services.data_products.repository import DataProductMembershipMutationResult, DataProductRepository
+from services.data_products.repository import (
+    DataProductMembershipExclusionResult,
+    DataProductMembershipMutationResult,
+    DataProductProposalDecisionResult,
+    DataProductRepository,
+    ProductVersionConflict,
+)
 
 
 class DataProductMembershipService:
@@ -164,6 +170,94 @@ class DataProductMembershipService:
             tenant_id, environment, product_id, limit=limit, search_after=search_after
         )
 
+    @staticmethod
+    def _proposal_identity(
+        tenant_id: str, environment: str, product_id: str, entity_type: str, entity_id: str, source: str
+    ) -> str:
+        return sha256(
+            "\0".join((tenant_id, environment, product_id, entity_type, entity_id, source)).encode()
+        ).hexdigest()
+
+    @staticmethod
+    def _proposal_fingerprint(proposal: DataProductMembershipProposal) -> str:
+        return request_fingerprint(
+            tenant_id=proposal.tenant_id,
+            environment=proposal.environment,
+            product_id=proposal.product_id,
+            action=f"proposal_evidence:{proposal.source}",
+            body={
+                "entity_type": proposal.entity_type,
+                "entity_id": proposal.entity_id,
+                "evidence_refs": sorted(set(proposal.evidence_refs)),
+                "confidence": proposal.confidence,
+                "source_coverage": proposal.source_coverage,
+                "missing_inputs": sorted(set(proposal.missing_inputs)),
+                "truncated": proposal.truncated,
+            },
+            actor="generator",
+            reason="canonical proposal evidence",
+            expected_etag=None,
+        )
+
+    def _generate_proposals(
+        self,
+        tenant_id: str,
+        environment: str,
+        product_id: str,
+        *,
+        source: Literal["lineage", "dependency"],
+        evidence: Sequence[tuple[str, str, str]],
+        max_proposals: int,
+    ) -> DataProductMembershipGenerationResult:
+        if self.repository.get_product(tenant_id, environment, product_id) is None:
+            raise KeyError(product_id)
+        grouped: dict[tuple[str, str], set[str]] = {}
+        for entity_id, entity_type, reference in evidence:
+            if not entity_id.strip() or not entity_type.strip() or not reference.strip():
+                raise ValueError("proposal entity and evidence references must not be empty")
+            grouped.setdefault((entity_id, entity_type), set()).add(reference)
+        now = utc_now()
+        generated = existing = superseded = 0
+        candidates = sorted(grouped.items())
+        for (entity_id, entity_type), references in candidates[:max_proposals]:
+            proposal_id = self._proposal_identity(tenant_id, environment, product_id, entity_type, entity_id, source)
+            latest = self.repository.get_membership_proposal(tenant_id, environment, product_id, proposal_id)
+            proposal = DataProductMembershipProposal(
+                proposal_id=proposal_id,
+                product_id=product_id,
+                tenant_id=tenant_id,
+                environment=environment,
+                entity_id=entity_id,
+                entity_type=entity_type,
+                source=source,
+                evidence_refs=sorted(references)[:50],
+                confidence=1,
+                source_coverage=1,
+                truncated=len(references) > 50,
+                observed_at=now,
+                expires_at=now + timedelta(days=7),
+                proposal_revision=(latest.proposal_revision + 1 if latest else 1),
+            )
+            if latest and self._proposal_fingerprint(latest) == self._proposal_fingerprint(proposal):
+                existing += 1
+                continue
+            if latest and latest.state == "proposed":
+                self.repository.supersede_membership_proposal(
+                    tenant_id, environment, product_id, proposal_id, expected_revision=latest.proposal_revision
+                )
+                superseded += 1
+            self.repository.create_membership_proposal(proposal)
+            generated += 1
+        return DataProductMembershipGenerationResult(
+            generated=generated,
+            existing=existing,
+            superseded=superseded,
+            truncated=len(candidates) > max_proposals,
+            source_coverage=1 if evidence else 0,
+            missing_inputs=[] if evidence else [source],
+            observed_at=now,
+        )
+
     def generate_lineage_proposals(
         self,
         tenant_id: str,
@@ -173,38 +267,21 @@ class DataProductMembershipService:
         evidence: Sequence[tuple[str, str, str]],
         max_proposals: int = 100,
     ):
-        now = utc_now()
-        generated = existing = 0
-        for entity_id, entity_type, evidence_ref in sorted(evidence)[:max_proposals]:
-            proposal_id = self._identity(product_id, entity_type, entity_id)
-            if self.repository.get_membership_proposal(tenant_id, environment, product_id, proposal_id):
-                existing += 1
-                continue
-            proposal = DataProductMembershipProposal(
-                proposal_id=proposal_id,
-                product_id=product_id,
-                tenant_id=tenant_id,
-                environment=environment,
-                entity_id=entity_id,
-                entity_type=entity_type,
-                source="lineage",
-                evidence_refs=[evidence_ref],
-                confidence=1,
-                source_coverage=1,
-                observed_at=now,
-                expires_at=now + timedelta(days=7),
-                proposal_revision=1,
-            )
-            self.repository.create_membership_proposal(proposal)
-            generated += 1
-        return DataProductMembershipGenerationResult(
-            generated=generated,
-            existing=existing,
-            superseded=0,
-            truncated=len(evidence) > max_proposals,
-            source_coverage=1 if evidence else 0,
-            missing_inputs=[] if evidence else ["lineage"],
-            observed_at=now,
+        return self._generate_proposals(
+            tenant_id, environment, product_id, source="lineage", evidence=evidence, max_proposals=max_proposals
+        )
+
+    def generate_dependency_proposals(
+        self,
+        tenant_id: str,
+        environment: str,
+        product_id: str,
+        *,
+        evidence: Sequence[tuple[str, str, str]],
+        max_proposals: int = 100,
+    ):
+        return self._generate_proposals(
+            tenant_id, environment, product_id, source="dependency", evidence=evidence, max_proposals=max_proposals
         )
 
     def list_proposals(
@@ -233,43 +310,146 @@ class DataProductMembershipService:
             tenant_id, environment, product_id, limit=limit, search_after=search_after
         )
 
-    def generate_dependency_proposals(
+    def get_proposal(self, tenant_id: str, environment: str, product_id: str, proposal_id: str):
+        return self.repository.get_membership_proposal(tenant_id, environment, product_id, proposal_id)
+
+    def _decide_proposal(
         self,
+        action: Literal["accept", "reject", "expire", "supersede"],
         tenant_id: str,
         environment: str,
         product_id: str,
+        proposal_id: str,
         *,
-        evidence: Sequence[tuple[str, str, str]],
-        max_proposals: int = 100,
-    ):
-        return self.generate_lineage_proposals(
-            tenant_id, environment, product_id, evidence=evidence, max_proposals=max_proposals
+        actor: str,
+        reason: str,
+        idempotency_key: str,
+        expected_revision: int,
+    ) -> DataProductProposalDecisionResult:
+        if not actor.strip() or not reason.strip() or not idempotency_key.strip() or expected_revision < 1:
+            raise ValueError("actor, reason, idempotency key, and expected revision are required")
+        mutation = MembershipMutation(
+            tenant_id,
+            environment,
+            product_id,
+            action,
+            actor,
+            reason,
+            idempotency_key,
+            {"proposal_id": proposal_id, "expected_revision": expected_revision},
+            expected_revision=expected_revision,
+        )
+        record_id = scoped_record_id(tenant_id, environment, product_id, idempotency_key)
+        reservation = self.repository.reserve_idempotency(
+            record_id,
+            new_record(
+                tenant_id=tenant_id,
+                environment=environment,
+                product_id=product_id,
+                action=f"proposal_{action}",
+                key=idempotency_key,
+                fingerprint=mutation.fingerprint,
+            ),
+        )
+        reserved = reservation.record
+        if reserved.state == "completed":
+            proposal = self.repository.get_membership_proposal(tenant_id, environment, product_id, proposal_id)
+            if (
+                not proposal
+                or reserved.result_revision != expected_revision
+                or proposal.proposal_revision != expected_revision
+                or proposal.state
+                != (
+                    {"accept": "accepted", "reject": "rejected", "expire": "expired", "supersede": "superseded"}[action]
+                )
+            ):
+                raise ProductConsistencyError("proposal_result_inconsistent")
+            membership = None
+            if action == "accept":
+                membership = self.repository.get_membership(
+                    tenant_id,
+                    environment,
+                    product_id,
+                    self._identity(product_id, proposal.entity_type, proposal.entity_id),
+                )
+                if membership is None or membership.proposal_id != proposal_id:
+                    raise ProductConsistencyError("proposal_result_inconsistent")
+            terminal = mutation.event(
+                outcome="applied",
+                proposal_id=proposal_id,
+                membership_id=membership.membership_id if membership else None,
+            )
+            return DataProductProposalDecisionResult(
+                proposal, membership, reserved.operation_id or mutation.operation_id, True, (terminal.decision_id,)
+            )
+        proposal = self.repository.get_membership_proposal(tenant_id, environment, product_id, proposal_id)
+        if proposal is None:
+            raise KeyError(proposal_id)
+        if proposal.proposal_revision != expected_revision:
+            raise ProductVersionConflict("proposal_revision_conflict")
+        if proposal.state != "proposed":
+            raise ProductVersionConflict(f"proposal_already_{proposal.state}")
+        membership = None
+        membership_id = None
+        pending = mutation.event(outcome="pending", proposal_id=proposal_id)
+        self.repository.append_membership_decision(tenant_id, environment, product_id, pending)
+        if action == "accept":
+            membership_id = self._identity(product_id, proposal.entity_type, proposal.entity_id)
+            membership = self.repository.get_membership(tenant_id, environment, product_id, membership_id)
+            if membership is None:
+                now = utc_now()
+                membership = self.repository.create_membership(
+                    tenant_id,
+                    environment,
+                    DataProductMembership(
+                        membership_id=membership_id,
+                        product_id=product_id,
+                        tenant_id=tenant_id,
+                        environment=environment,
+                        entity_id=proposal.entity_id,
+                        entity_type=proposal.entity_type,
+                        source="proposal",
+                        proposal_id=proposal_id,
+                        evidence_refs=proposal.evidence_refs,
+                        confidence=proposal.confidence,
+                        source_coverage=proposal.source_coverage,
+                        observed_at=proposal.observed_at,
+                        created_at=now,
+                        updated_at=now,
+                        created_by=actor,
+                        etag=sha256(f"{membership_id}:1".encode()).hexdigest(),
+                    ),
+                )
+            elif membership.proposal_id != proposal_id or membership.state != "active":
+                raise ProductVersionConflict("proposal_result_inconsistent")
+        handler = getattr(self.repository, f"{action}_membership_proposal")
+        decided = handler(tenant_id, environment, product_id, proposal_id, expected_revision=expected_revision)
+        terminal = mutation.event(
+            outcome="applied",
+            proposal_id=proposal_id,
+            membership_id=membership_id,
+            result_revision=expected_revision,
+            result_etag=decided.state,
+        )
+        self.repository.append_membership_decision(tenant_id, environment, product_id, terminal)
+        self.repository.complete_idempotency(
+            record_id, operation_id=mutation.operation_id, revision=expected_revision, etag=decided.state
+        )
+        return DataProductProposalDecisionResult(
+            decided, membership, mutation.operation_id, False, (pending.decision_id, terminal.decision_id)
         )
 
-    def get_proposal(
-        self, tenant_id: str, environment: str, product_id: str, proposal_id: str
-    ) -> DataProductMembershipProposal | None:
-        return self.repository.get_membership_proposal(tenant_id, environment, product_id, proposal_id)
+    def accept_proposal(self, *args, **kwargs):
+        return self._decide_proposal("accept", *args, **kwargs)
 
-    def accept_proposal(
-        self, tenant_id: str, environment: str, product_id: str, proposal_id: str
-    ) -> DataProductMembershipProposal:
-        return self.repository.accept_membership_proposal(tenant_id, environment, product_id, proposal_id)
+    def reject_proposal(self, *args, **kwargs):
+        return self._decide_proposal("reject", *args, **kwargs)
 
-    def reject_proposal(
-        self, tenant_id: str, environment: str, product_id: str, proposal_id: str
-    ) -> DataProductMembershipProposal:
-        return self.repository.reject_membership_proposal(tenant_id, environment, product_id, proposal_id)
+    def expire_proposal(self, *args, **kwargs):
+        return self._decide_proposal("expire", *args, **kwargs)
 
-    def expire_proposal(
-        self, tenant_id: str, environment: str, product_id: str, proposal_id: str
-    ) -> DataProductMembershipProposal:
-        return self.repository.expire_membership_proposal(tenant_id, environment, product_id, proposal_id)
-
-    def supersede_proposal(
-        self, tenant_id: str, environment: str, product_id: str, proposal_id: str
-    ) -> DataProductMembershipProposal:
-        return self.repository.supersede_membership_proposal(tenant_id, environment, product_id, proposal_id)
+    def supersede_proposal(self, *args, **kwargs):
+        return self._decide_proposal("supersede", *args, **kwargs)
 
     def exclude_member(
         self,
@@ -282,7 +462,9 @@ class DataProductMembershipService:
         reason: str,
         idempotency_key: str,
         expected_etag: str,
-    ) -> DataProductMembership:
+    ) -> DataProductMembershipExclusionResult:
+        if not actor.strip() or not reason.strip() or not idempotency_key.strip() or not expected_etag.strip():
+            raise ValueError("actor, reason, idempotency key, and If-Match are required")
         mutation = MembershipMutation(
             tenant_id,
             environment,
@@ -294,21 +476,49 @@ class DataProductMembershipService:
             {"membership_id": membership_id},
             expected_etag,
         )
-        self.repository.append_membership_decision(
-            tenant_id, environment, product_id, mutation.event(outcome="pending", membership_id=membership_id)
+        record_id = scoped_record_id(tenant_id, environment, product_id, idempotency_key)
+        reservation = self.repository.reserve_idempotency(
+            record_id,
+            new_record(
+                tenant_id=tenant_id,
+                environment=environment,
+                product_id=product_id,
+                action="membership_exclude",
+                key=idempotency_key,
+                fingerprint=mutation.fingerprint,
+            ),
         )
+        reserved = reservation.record
+        if reserved.state == "completed":
+            member = self.repository.get_membership(tenant_id, environment, product_id, membership_id)
+            if (
+                member is None
+                or member.state != "excluded"
+                or member.revision != reserved.result_revision
+                or member.etag != reserved.result_etag
+            ):
+                raise ProductConsistencyError("immutable exclusion result is missing or divergent")
+            terminal = mutation.event(
+                outcome="applied", membership_id=membership_id, result_revision=member.revision, result_etag=member.etag
+            )
+            return DataProductMembershipExclusionResult(
+                member, reserved.operation_id or mutation.operation_id, (terminal.decision_id,), True
+            )
+        pending = mutation.event(outcome="pending", membership_id=membership_id)
+        self.repository.append_membership_decision(tenant_id, environment, product_id, pending)
         result = self.repository.exclude_membership(
             tenant_id, environment, product_id, membership_id, actor=actor, reason=reason, expected_etag=expected_etag
         )
-        self.repository.append_membership_decision(
-            tenant_id,
-            environment,
-            product_id,
-            mutation.event(
-                outcome="applied", membership_id=membership_id, result_revision=result.revision, result_etag=result.etag
-            ),
+        terminal = mutation.event(
+            outcome="applied", membership_id=membership_id, result_revision=result.revision, result_etag=result.etag
         )
-        return result
+        self.repository.append_membership_decision(tenant_id, environment, product_id, terminal)
+        self.repository.complete_idempotency(
+            record_id, operation_id=mutation.operation_id, revision=result.revision, etag=result.etag
+        )
+        return DataProductMembershipExclusionResult(
+            result, mutation.operation_id, (pending.decision_id, terminal.decision_id), False
+        )
 
     def reconcile_membership_operation(self, tenant_id: str, environment: str, operation_id: str):
         from services.data_products.reconciliation import DataProductReconciler

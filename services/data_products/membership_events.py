@@ -26,6 +26,7 @@ class MembershipMutation:
     idempotency_key: str
     body: dict[str, object]
     expected_etag: str | None = None
+    expected_revision: int | None = None
 
     @property
     def fingerprint(self) -> str:
@@ -37,7 +38,8 @@ class MembershipMutation:
             body=self.body,
             actor=self.actor,
             reason=self.reason,
-            expected_etag=self.expected_etag,
+            expected_etag=self.expected_etag
+            or (str(self.expected_revision) if self.expected_revision is not None else None),
         )
 
     @property
@@ -72,6 +74,7 @@ class MembershipMutation:
             reason=self.reason,
             request_fingerprint=self.fingerprint,
             idempotency_key_hash=hash_key(self.idempotency_key),
+            expected_revision=self.expected_revision,
             result_revision=result_revision,
             result_etag=result_etag,
             error_code=error_code,

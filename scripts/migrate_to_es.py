@@ -34,6 +34,7 @@ Exit codes
 1 — argument / connection error
 2 — partial failure (some docs failed to index)
 """
+
 from __future__ import annotations
 
 import argparse
@@ -57,8 +58,8 @@ def _es_client():
         logger.error("elasticsearch-py is not installed.  Run: pip install elasticsearch")
         sys.exit(1)
 
-    url      = os.getenv("ELASTICSEARCH_URL", "http://localhost:9200")
-    user     = os.getenv("ELASTICSEARCH_USER", "elastic")
+    url = os.getenv("ELASTICSEARCH_URL", "http://localhost:9200")
+    user = os.getenv("ELASTICSEARCH_USER", "elastic")
     password = os.getenv("ELASTICSEARCH_PASSWORD", "")
     es = Elasticsearch([url], basic_auth=(user, password), request_timeout=30)
     if not es.ping():
@@ -119,13 +120,15 @@ def main(argv: List[str] | None = None) -> None:
         logger.error("Invalid JSON in snapshot: %s", exc)
         sys.exit(1)
 
-    rules   = snapshot.get("rules",   [])
+    rules = snapshot.get("rules", [])
     quality = snapshot.get("quality", [])
     lineage = snapshot.get("lineage", [])
 
     logger.info(
         "Snapshot loaded — rules: %d, quality results: %d, lineage nodes: %d",
-        len(rules), len(quality), len(lineage),
+        len(rules),
+        len(quality),
+        len(lineage),
     )
 
     if args.dry_run:
@@ -166,7 +169,8 @@ def main(argv: List[str] | None = None) -> None:
     succeeded = total - total_failures
     logger.info(
         "Migration complete — %d/%d documents indexed successfully.",
-        succeeded, total,
+        succeeded,
+        total,
     )
 
     if total_failures > 0:

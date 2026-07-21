@@ -12,6 +12,7 @@ from packages.domain_model.data_product import (
     DataProductSLODefinition,
     DataProductSLOEvaluation,
 )
+from services.data_products.idempotency import DataProductIdempotencyRecord
 
 
 class ProductVersionConflict(RuntimeError):
@@ -19,6 +20,11 @@ class ProductVersionConflict(RuntimeError):
 
 
 class DataProductRepository(Protocol):
+    def reserve_idempotency(
+        self, record_id: str, record: DataProductIdempotencyRecord
+    ) -> DataProductIdempotencyRecord: ...
+    def complete_idempotency(self, record_id: str, *, operation_id: str, revision: int, etag: str) -> None: ...
+
     # Every lookup takes trusted scope, even where the document also carries it.
     def create_product(self, product: DataProduct) -> DataProduct: ...
     def get_product(self, tenant_id: str, environment: str, product_id: str) -> DataProduct | None: ...

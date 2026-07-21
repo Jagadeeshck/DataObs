@@ -76,12 +76,19 @@ class DataProductApplicationService:
         if_match: str,
         actor: str,
         reason: str,
+        idempotency_key: str,
         request_id: str = "",
         trace_id: str = "",
     ) -> MutationResult:
         if action not in {"activate", "deprecate", "archive"}:
             raise ValueError("unsupported lifecycle action")
         saved = getattr(self.lifecycle, action)(
-            tenant_id, environment, product_id, if_match=if_match, actor=actor, reason=reason
+            tenant_id,
+            environment,
+            product_id,
+            if_match=if_match,
+            actor=actor,
+            reason=reason,
+            idempotency_key=idempotency_key,
         )
         return self._result(saved, request_id or str(uuid.uuid4()), trace_id or str(uuid.uuid4()))

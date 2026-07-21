@@ -9,6 +9,7 @@ from packages.domain_model.data_product import (
     DataProductOutput,
     DataProductOwner,
 )
+from services.data_products.idempotency import IdempotencyConflict
 from services.data_products.memory_repository import MemoryDataProductRepository
 from services.data_products.repository import ProductVersionConflict
 from services.data_products.service import DataProductService
@@ -89,3 +90,60 @@ def test_lifecycle_idempotency_key_reaches_pending_operation_identity():
     assert len(applied) == 1
     expected = service._pending(activated, "alice", "ready", "activate", "activate-request")
     assert applied[0].operation_id == expected.operation_id
+
+
+def test_completed_lifecycle_replays_before_state_and_etag_validation():
+    repository = MemoryDataProductRepository()
+    service = DataProductService(repository)
+    draft = product("orders")
+    draft.outputs = [DataProductOutput(entity_id="orders-table", entity_type="asset")]
+    created = service.create(draft, actor="alice", idempotency_key="create-request")
+    activated = service.activate(
+        created.tenant_id,
+        created.environment,
+        created.id,
+        if_match=created.etag,
+        actor="alice",
+        reason="ready",
+        idempotency_key="activate-request",
+    )
+
+    replay = service.activate(
+        created.tenant_id,
+        created.environment,
+        created.id,
+        if_match=created.etag,
+        actor="alice",
+        reason="ready",
+        idempotency_key="activate-request",
+    )
+
+    assert replay.model_dump() == activated.model_dump()
+    assert len([event for event, _ in repository.operations.values() if event.action == "activate"]) == 1
+
+
+def test_lifecycle_key_cannot_be_reused_for_divergent_request():
+    repository = MemoryDataProductRepository()
+    service = DataProductService(repository)
+    draft = product("orders")
+    draft.outputs = [DataProductOutput(entity_id="orders-table", entity_type="asset")]
+    created = service.create(draft, actor="alice", idempotency_key="create-request")
+    service.activate(
+        created.tenant_id,
+        created.environment,
+        created.id,
+        if_match=created.etag,
+        actor="alice",
+        reason="ready",
+        idempotency_key="same-key",
+    )
+    with pytest.raises(IdempotencyConflict, match="idempotency_conflict"):
+        service.deprecate(
+            created.tenant_id,
+            created.environment,
+            created.id,
+            if_match=created.etag,
+            actor="alice",
+            reason="ready",
+            idempotency_key="same-key",
+        )

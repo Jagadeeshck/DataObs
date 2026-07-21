@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from packages.domain_model.data_product import DataProduct, DataProductRevisionEvent
 from services.data_products.events import ProductConsistencyError
+from services.data_products.idempotency import DataProductIdempotencyRecord, IdempotencyConflict
 from services.data_products.repository import ProductVersionConflict
 
 
@@ -12,6 +13,64 @@ class MemoryDataProductRepository:
         self.items: dict[tuple[str, str, str], DataProduct] = {}
         self.revisions: dict[tuple[str, str, str, int], tuple[DataProduct, str, str]] = {}
         self.operations: dict[str, tuple[DataProductRevisionEvent, DataProduct]] = {}
+        self.idempotency: dict[str, DataProductIdempotencyRecord] = {}
+
+    def reserve_idempotency(self, record_id: str, record: DataProductIdempotencyRecord) -> DataProductIdempotencyRecord:
+        existing = self.idempotency.get(record_id)
+        if existing:
+            if existing.request_fingerprint != record.request_fingerprint:
+                raise IdempotencyConflict("idempotency_conflict")
+            return existing.model_copy(deep=True)
+        self.idempotency[record_id] = record.model_copy(deep=True)
+        return record
+
+    def complete_idempotency(self, record_id: str, *, operation_id: str, revision: int, etag: str) -> None:
+        from packages.domain_model.base import utc_now
+
+        record = self.idempotency[record_id]
+        now = utc_now()
+        self.idempotency[record_id] = record.model_copy(
+            update={
+                "operation_id": operation_id,
+                "state": "completed",
+                "result_revision": revision,
+                "result_etag": etag,
+                "completed_at": now,
+                "updated_at": now,
+            }
+        )
+
+    def get_operation(self, tenant_id: str, environment: str, operation_id: str):
+        found = self.operations.get(operation_id)
+        if found and (found[0].tenant_id, found[0].environment) == (tenant_id, environment):
+            return found[0].model_copy(deep=True)
+        return None
+
+    def list_pending_operations(
+        self, tenant_id: str, environment: str, *, product_id=None, limit=100, include_applied=False
+    ):
+        values = [
+            event
+            for event, _ in self.operations.values()
+            if (event.tenant_id, event.environment) == (tenant_id, environment)
+            and (product_id is None or event.product_id == product_id)
+            and (include_applied or event.outcome == "pending")
+        ]
+        return [
+            value.model_copy(deep=True)
+            for value in sorted(values, key=lambda x: (x.occurred_at, x.operation_id))[:limit]
+        ]
+
+    def list_revisions(self, tenant_id: str, environment: str, product_id: str, *, limit=100, search_after=None):
+        values = [
+            event
+            for event, _ in self.operations.values()
+            if (event.tenant_id, event.environment, event.product_id) == (tenant_id, environment, product_id)
+        ]
+        values.sort(key=lambda x: (x.revision, x.operation_id), reverse=True)
+        if search_after:
+            values = [v for v in values if (v.revision, v.operation_id) < tuple(search_after)]
+        return [v.model_copy(deep=True) for v in values[:limit]]
 
     def begin_operation(self, event: DataProductRevisionEvent, product: DataProduct) -> DataProductRevisionEvent:
         existing = self.operations.get(event.operation_id)

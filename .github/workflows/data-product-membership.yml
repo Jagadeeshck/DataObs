@@ -1,0 +1,78 @@
+name: Data Product membership certification
+on: [pull_request, workflow_dispatch]
+jobs:
+  data-product-membership-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: pip install -r requirements.txt
+      - run: python scripts/check_migration_immutability.py --base-ref origin/main
+      - run: python scripts/check_generated_artifacts.py
+      - run: ruff check services/data_products src/api/data_product_routes.py tests/data_products tests/integration/data_products
+  data-product-membership-unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: pip install -r requirements.txt
+      - run: python -m pytest tests/data_products -q --junitxml=membership-unit.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: membership-results, path: membership-unit.xml, retention-days: 30}
+  data-product-membership-elasticsearch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      elasticsearch:
+        image: docker.elastic.co/elasticsearch/elasticsearch:9.4.2
+        env: {discovery.type: single-node, xpack.security.enabled: 'false'}
+        ports: ['9200:9200']
+        options: --health-cmd 'curl -f http://localhost:9200/_cluster/health' --health-interval 10s --health-timeout 5s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: pip install -r requirements.txt
+      - run: ./bin/dataobs elastic migrate
+        env: {ELASTICSEARCH_URL: 'http://127.0.0.1:9200'}
+      - run: RUN_INTEGRATION_TESTS=1 ELASTICSEARCH_URL=http://127.0.0.1:9200 python -m pytest tests/integration/data_products -q --junitxml=elasticsearch.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: dependency-results, path: elasticsearch.xml, retention-days: 30}
+  data-product-membership-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: {version: 10.28.1}
+      - uses: actions/setup-node@v4
+        with: {node-version: '24.15.0', cache: pnpm, cache-dependency-path: ui/dataobs-console/pnpm-lock.yaml}
+      - run: cd ui/dataobs-console && pnpm install --frozen-lockfile && pnpm typecheck && pnpm test && pnpm build
+      - run: CERTIFICATION_PROFILE=cert-browser ./scripts/certification/compose.sh up
+      - run: ./scripts/certification/apply_migrations.sh && ./scripts/certification/run_browser.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: membership-browser, path: "ui/dataobs-console/playwright-report\nui/dataobs-console/test-results", retention-days: 30}
+      - if: always()
+        run: ./scripts/certification/compose.sh down
+  data-product-membership-security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: pip install -r requirements.txt
+      - run: python -m pytest tests/data_products -q -k 'cursor or membership or dependency'
+  data-product-membership-summary:
+    if: always()
+    runs-on: ubuntu-latest
+    needs: [data-product-membership-contracts, data-product-membership-unit, data-product-membership-elasticsearch, data-product-membership-browser, data-product-membership-security]
+    steps:
+      - run: test '${{ join(needs.*.result, ',') }}' = 'success,success,success,success,success'

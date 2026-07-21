@@ -505,6 +505,67 @@ class ElasticsearchDataProductRepository:
         )
         return DataProductMembershipProposalPage(items=items, has_more=more, search_after=after)
 
+    def _transition_membership_proposal(
+        self, tenant_id: str, environment: str, product_id: str, proposal_id: str, state: str
+    ) -> DataProductMembershipProposal:
+        response = self.client.search(
+            index=PROPOSALS,
+            size=1,
+            seq_no_primary_term=True,
+            query={
+                "bool": {
+                    "filter": [
+                        {"term": {"tenant_id": tenant_id}},
+                        {"term": {"environment": environment}},
+                        {"term": {"product_id": product_id}},
+                        {"term": {"proposal_id": proposal_id}},
+                    ]
+                }
+            },
+            sort=[{"proposal_revision": "desc"}, {"_id": "desc"}],
+        )
+        hits = response["hits"]["hits"]
+        if not hits:
+            raise KeyError(proposal_id)
+        hit = hits[0]
+        current = DataProductMembershipProposal.model_validate(hit["_source"])
+        if current.state == state:
+            return current
+        if current.state != "proposed":
+            raise ProductVersionConflict("proposal already has a terminal decision")
+        updated = current.model_copy(update={"state": state})
+        try:
+            self.client.index(
+                index=PROPOSALS,
+                id=hit["_id"],
+                document=updated.model_dump(mode="json"),
+                if_seq_no=hit["_seq_no"],
+                if_primary_term=hit["_primary_term"],
+            )
+        except ConflictError as exc:
+            raise ProductVersionConflict("concurrent proposal decision") from exc
+        return updated
+
+    def accept_membership_proposal(
+        self, tenant_id: str, environment: str, product_id: str, proposal_id: str
+    ) -> DataProductMembershipProposal:
+        return self._transition_membership_proposal(tenant_id, environment, product_id, proposal_id, "accepted")
+
+    def reject_membership_proposal(
+        self, tenant_id: str, environment: str, product_id: str, proposal_id: str
+    ) -> DataProductMembershipProposal:
+        return self._transition_membership_proposal(tenant_id, environment, product_id, proposal_id, "rejected")
+
+    def expire_membership_proposal(
+        self, tenant_id: str, environment: str, product_id: str, proposal_id: str
+    ) -> DataProductMembershipProposal:
+        return self._transition_membership_proposal(tenant_id, environment, product_id, proposal_id, "expired")
+
+    def supersede_membership_proposal(
+        self, tenant_id: str, environment: str, product_id: str, proposal_id: str
+    ) -> DataProductMembershipProposal:
+        return self._transition_membership_proposal(tenant_id, environment, product_id, proposal_id, "superseded")
+
     def append_membership_decision(
         self, tenant_id: str, environment: str, product_id: str, decision: DataProductMembershipDecision
     ) -> DataProductMembershipDecision:
@@ -587,6 +648,102 @@ class ElasticsearchDataProductRepository:
             ),
         )
         return DataProductDependencyPage(items=items, has_more=more, search_after=after)
+
+    def _dependency_graph(
+        self,
+        tenant_id: str,
+        environment: str,
+        product_id: str,
+        direction: str,
+        *,
+        max_depth: int = 8,
+        max_nodes: int = 200,
+    ) -> DataProductDependencyGraph:
+        if not 1 <= max_depth <= 32 or not 1 <= max_nodes <= 1000:
+            raise ValueError("dependency traversal bounds invalid")
+        response = self.client.search(
+            index=DEPENDENCIES,
+            size=1000,
+            query={
+                "bool": {
+                    "filter": [
+                        {"term": {"tenant_id": tenant_id}},
+                        {"term": {"environment": environment}},
+                        {"term": {"removed": False}},
+                    ]
+                }
+            },
+            sort=[{"product_id": "asc"}, {"upstream_product_id": "asc"}, {"_id": "asc"}],
+        )
+        edges = [DataProductDependencyProjection.model_validate(h["_source"]) for h in response["hits"]["hits"]]
+        adjacency: dict[str, list[tuple[str, DataProductDependencyProjection]]] = {}
+        for edge in edges:
+            source, target = (
+                (edge.product_id, edge.upstream_product_id)
+                if direction == "upstream"
+                else (edge.upstream_product_id, edge.product_id)
+            )
+            adjacency.setdefault(source, []).append((target, edge))
+        queue = [(product_id, 0)]
+        seen = {product_id}
+        nodes: list[str] = []
+        selected: list[DataProductDependencyProjection] = []
+        cycle: list[str] = []
+        truncated = False
+        depth_reached = 0
+        while queue:
+            node, depth = queue.pop(0)
+            depth_reached = max(depth_reached, depth)
+            for target, edge in sorted(adjacency.get(node, []), key=lambda item: item[0]):
+                if target in seen:
+                    cycle = [node, target]
+                    continue
+                if depth >= max_depth or len(nodes) >= max_nodes:
+                    truncated = True
+                    continue
+                seen.add(target)
+                nodes.append(target)
+                selected.append(edge)
+                queue.append((target, depth + 1))
+        versions = sorted({edge.graph_version for edge in selected})
+        return DataProductDependencyGraph(
+            nodes=nodes,
+            edges=selected,
+            direction=direction,
+            depth_reached=depth_reached,
+            visited_count=len(seen),
+            truncated=truncated,
+            cycle_detected=bool(cycle),
+            cycle_path=cycle,
+            graph_version=sha256("\0".join(versions).encode()).hexdigest(),
+            observed_at=datetime.now(timezone.utc),
+        )
+
+    def get_direct_upstream(
+        self, tenant_id: str, environment: str, product_id: str, *, max_nodes: int = 200
+    ) -> DataProductDependencyGraph:
+        return self._dependency_graph(tenant_id, environment, product_id, "upstream", max_depth=1, max_nodes=max_nodes)
+
+    def get_direct_downstream(
+        self, tenant_id: str, environment: str, product_id: str, *, max_nodes: int = 200
+    ) -> DataProductDependencyGraph:
+        return self._dependency_graph(
+            tenant_id, environment, product_id, "downstream", max_depth=1, max_nodes=max_nodes
+        )
+
+    def get_transitive_upstream(
+        self, tenant_id: str, environment: str, product_id: str, *, max_depth: int = 8, max_nodes: int = 200
+    ) -> DataProductDependencyGraph:
+        return self._dependency_graph(
+            tenant_id, environment, product_id, "upstream", max_depth=max_depth, max_nodes=max_nodes
+        )
+
+    def get_transitive_downstream(
+        self, tenant_id: str, environment: str, product_id: str, *, max_depth: int = 8, max_nodes: int = 200
+    ) -> DataProductDependencyGraph:
+        return self._dependency_graph(
+            tenant_id, environment, product_id, "downstream", max_depth=max_depth, max_nodes=max_nodes
+        )
 
     def get_product_revision(
         self, tenant_id: str, environment: str, product_id: str, revision: int

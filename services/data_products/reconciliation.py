@@ -5,7 +5,7 @@ from collections.abc import Callable, Iterable
 from packages.domain_model.data_product import DataProductRevisionEvent
 
 
-class OperationReconciler:
+class DataProductReconciler:
     """Bounded reconciliation facade. Claiming and fencing remain repository-owned."""
 
     def __init__(self, repository: object) -> None:
@@ -34,6 +34,9 @@ class OperationReconciler:
             outcome = self.reconcile_operation(tenant_id, environment, event.operation_id)
             outcomes[outcome] += 1
         return outcomes
+
+
+OperationReconciler = DataProductReconciler
 
 
 def reconcile_pending(

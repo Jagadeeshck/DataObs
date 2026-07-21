@@ -699,6 +699,41 @@ export interface paths {
         };
         /** Dependencies */
         get: operations["dependencies_api_v1_data_products__product_id__dependencies_get"];
+        /** Replace Dependencies */
+        put: operations["replace_dependencies_api_v1_data_products__product_id__dependencies_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/data-products/{product_id}/dependencies/{direction}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Traverse Dependencies */
+        get: operations["traverse_dependencies_api_v1_data_products__product_id__dependencies__direction__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/data-products/{product_id}/impact": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Impact */
+        get: operations["impact_api_v1_data_products__product_id__impact_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -717,7 +752,25 @@ export interface paths {
         /** Members */
         get: operations["members_api_v1_data_products__product_id__members_get"];
         put?: never;
-        post?: never;
+        /** Add Member */
+        post: operations["add_member_api_v1_data_products__product_id__members_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/data-products/{product_id}/members/{membership_id}/exclude": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Exclude Member */
+        post: operations["exclude_member_api_v1_data_products__product_id__members__membership_id__exclude_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -752,6 +805,40 @@ export interface paths {
         get: operations["proposals_api_v1_data_products__product_id__membership_proposals_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/data-products/{product_id}/membership-proposals/generate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Generate Proposals */
+        post: operations["generate_proposals_api_v1_data_products__product_id__membership_proposals_generate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/data-products/{product_id}/membership-proposals/{proposal_id}/{decision}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Decide Proposal */
+        post: operations["decide_proposal_api_v1_data_products__product_id__membership_proposals__proposal_id___decision__post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3213,6 +3300,15 @@ export interface components {
             /** Window */
             window: string;
         };
+        /** DependencyReplaceRequest */
+        DependencyReplaceRequest: {
+            /** Actor */
+            actor: string;
+            /** Reason */
+            reason: string;
+            /** Upstream Product Ids */
+            upstream_product_ids?: string[];
+        };
         /** EnterpriseBacklogResponse */
         EnterpriseBacklogResponse: {
             /** Backlog */
@@ -3299,6 +3395,20 @@ export interface components {
                 [key: string]: unknown;
             }[];
             pagination: components["schemas"]["PaginationMeta"];
+        };
+        /** ManualMembershipRequest */
+        ManualMembershipRequest: {
+            /** Actor */
+            actor: string;
+            /** Entity Id */
+            entity_id: string;
+            /**
+             * Entity Type
+             * @enum {string}
+             */
+            entity_type: "asset" | "api" | "kafka_topic" | "dashboard" | "model" | "application" | "app";
+            /** Reason */
+            reason: string;
         };
         /** MonitorAlertPolicy */
         MonitorAlertPolicy: {
@@ -3630,6 +3740,32 @@ export interface components {
             /** Outputs */
             outputs?: components["schemas"]["DataProductOutput"][];
             owner: components["schemas"]["DataProductOwner"];
+        };
+        /** ProposalActionRequest */
+        ProposalActionRequest: {
+            /** Actor */
+            actor: string;
+            /** Reason */
+            reason: string;
+        };
+        /** ProposalGenerationRequest */
+        ProposalGenerationRequest: {
+            /** Evidence */
+            evidence?: [
+                string,
+                string,
+                string
+            ][];
+            /**
+             * Max Proposals
+             * @default 100
+             */
+            max_proposals: number;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "lineage" | "dependency";
         };
         /** QualityResultCreateResponse */
         QualityResultCreateResponse: {
@@ -5556,6 +5692,127 @@ export interface operations {
             };
         };
     };
+    replace_dependencies_api_v1_data_products__product_id__dependencies_put: {
+        parameters: {
+            query: {
+                environment: string;
+            };
+            header: {
+                "If-Match": string;
+                "Idempotency-Key": string;
+                authorization?: string | null;
+            };
+            path: {
+                product_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DependencyReplaceRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    traverse_dependencies_api_v1_data_products__product_id__dependencies__direction__get: {
+        parameters: {
+            query: {
+                environment: string;
+                depth?: number;
+                max_nodes?: number;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                product_id: string;
+                direction: "upstream" | "downstream";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    impact_api_v1_data_products__product_id__impact_get: {
+        parameters: {
+            query: {
+                environment: string;
+                limit?: number;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                product_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     members_api_v1_data_products__product_id__members_get: {
         parameters: {
             query: {
@@ -5572,6 +5829,92 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_member_api_v1_data_products__product_id__members_post: {
+        parameters: {
+            query: {
+                environment: string;
+            };
+            header: {
+                "Idempotency-Key": string;
+                authorization?: string | null;
+            };
+            path: {
+                product_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ManualMembershipRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    exclude_member_api_v1_data_products__product_id__members__membership_id__exclude_post: {
+        parameters: {
+            query: {
+                environment: string;
+            };
+            header: {
+                "If-Match": string;
+                "Idempotency-Key": string;
+                authorization?: string | null;
+            };
+            path: {
+                product_id: string;
+                membership_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["src__api__data_product_routes__ActionRequest"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -5650,6 +5993,91 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    generate_proposals_api_v1_data_products__product_id__membership_proposals_generate_post: {
+        parameters: {
+            query: {
+                environment: string;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                product_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProposalGenerationRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    decide_proposal_api_v1_data_products__product_id__membership_proposals__proposal_id___decision__post: {
+        parameters: {
+            query: {
+                environment: string;
+            };
+            header: {
+                "Idempotency-Key": string;
+                authorization?: string | null;
+            };
+            path: {
+                product_id: string;
+                proposal_id: string;
+                decision: "accept" | "reject" | "expire" | "supersede";
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProposalActionRequest"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {

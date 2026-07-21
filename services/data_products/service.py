@@ -33,22 +33,22 @@ class DataProductService:
         event = self._pending(product, actor, reason, "create", idempotency_key)
         existing = self.repository.begin_operation(event, product)
         if existing.outcome == "applied":
-            replay = self.repository.get(product.tenant_id, product.environment, product.id)
+            replay = self.repository.get_product(product.tenant_id, product.environment, product.id)
             if replay is None:
                 raise RuntimeError("applied operation is missing current state")
             return replay
-        created = self.repository.create(product)
+        created = self.repository.create_product(product)
         self.repository.finish_operation(event.model_copy(update={"outcome": "applied", "applied_at": utc_now()}))
         return created
 
     def get(self, tenant_id: str, environment: str, product_id: str) -> DataProduct:
-        product = self.repository.get(tenant_id, environment, product_id)
+        product = self.repository.get_product(tenant_id, environment, product_id)
         if product is None:
             raise KeyError(product_id)
         return product
 
     def list(self, tenant_id: str, environment: str, *, limit: int = 50, cursor: str | None = None):
-        return self.repository.list(tenant_id, environment, limit=limit, cursor=cursor)
+        return self.repository.list_products(tenant_id, environment, limit=limit, cursor=cursor)
 
     def update(
         self,
@@ -61,7 +61,7 @@ class DataProductService:
     ) -> DataProduct:
         if not if_match:
             raise ProductVersionConflict("If-Match is required")
-        current = self.repository.get(product.tenant_id, product.environment, product.id)
+        current = self.repository.get_product(product.tenant_id, product.environment, product.id)
         if current is None:
             raise KeyError(product.id)
         if current.etag != if_match:
@@ -73,10 +73,10 @@ class DataProductService:
         event = self._pending(product, actor, reason, "update", idempotency_key)
         existing = self.repository.begin_operation(event, product)
         if existing.outcome == "applied":
-            replay = self.repository.get(product.tenant_id, product.environment, product.id)
+            replay = self.repository.get_product(product.tenant_id, product.environment, product.id)
             if replay and replay.revision >= product.revision:
                 return replay
-        saved = self.repository.update(product, expected_etag=if_match)
+        saved = self.repository.update_product(product, expected_etag=if_match)
         self.repository.finish_operation(event.model_copy(update={"outcome": "applied", "applied_at": utc_now()}))
         return saved
 
@@ -167,7 +167,7 @@ class DataProductService:
                 raise ValueError("data product dependency node limit exceeded")
             visiting.add(node)
             if node not in graph:
-                candidate = self.repository.get(product.tenant_id, product.environment, node)
+                candidate = self.repository.get_product(product.tenant_id, product.environment, node)
                 if candidate is None:
                     raise ValueError(f"unknown or cross-tenant dependency: {node}")
                 graph[node] = sorted({d.upstream_product_id for d in candidate.dependencies})

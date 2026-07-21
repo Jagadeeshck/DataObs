@@ -75,6 +75,9 @@ export function AppShell() {
           <NavLink to="/streams">
             ≋ <span>Streams</span>
           </NavLink>
+          <NavLink to="/data-products">
+            ▣ <span>Data Products</span>
+          </NavLink>
           {future.map((x) => (
             <span className="future" key={x}>
               ○ <b>{x}</b>

@@ -18,6 +18,16 @@ const Stream360 = lazy(() =>
     default: m.Stream360,
   })),
 );
+const DataProductList = lazy(() =>
+  import("../features/data-products/DataProductList").then((m) => ({
+    default: m.DataProductList,
+  })),
+);
+const DataProduct360 = lazy(() =>
+  import("../features/data-products/DataProduct360").then((m) => ({
+    default: m.DataProduct360,
+  })),
+);
 export function App() {
   return (
     <ProductContextProvider>
@@ -36,6 +46,11 @@ export function App() {
                 element={<IncidentDetail />}
               />
               <Route path="streams" element={<StreamsInventory />} />
+              <Route path="data-products" element={<DataProductList />} />
+              <Route
+                path="data-products/:productId"
+                element={<DataProduct360 />}
+              />
               <Route
                 path="streams/clusters/:clusterId"
                 element={<Stream360 kind="cluster" />}

@@ -43,18 +43,20 @@ class MemoryDataProductRepository:
             event.reason,
         )
 
-    def create(self, product: DataProduct) -> DataProduct:
+    def create_product(self, product: DataProduct) -> DataProduct:
         key = (product.tenant_id, product.environment, product.id)
         if key in self.items:
             raise ProductVersionConflict("data product exists")
         self.items[key] = product.model_copy(deep=True)
         return product
 
-    def get(self, tenant_id: str, environment: str, product_id: str) -> DataProduct | None:
+    def get_product(self, tenant_id: str, environment: str, product_id: str) -> DataProduct | None:
         item = self.items.get((tenant_id, environment, product_id))
         return item.model_copy(deep=True) if item else None
 
-    def list(self, tenant_id: str, environment: str, *, limit: int, cursor: str | None = None) -> list[DataProduct]:
+    def list_products(
+        self, tenant_id: str, environment: str, *, limit: int, cursor: str | None = None
+    ) -> list[DataProduct]:
         if not 1 <= limit <= 200:
             raise ValueError("limit outside bounds")
         values = sorted(
@@ -64,7 +66,7 @@ class MemoryDataProductRepository:
             values = [p for p in values if p.id > cursor]
         return [p.model_copy(deep=True) for p in values[:limit]]
 
-    def update(self, product: DataProduct, *, expected_etag: str) -> DataProduct:
+    def update_product(self, product: DataProduct, *, expected_etag: str) -> DataProduct:
         key = (product.tenant_id, product.environment, product.id)
         current = self.items.get(key)
         if current is None:

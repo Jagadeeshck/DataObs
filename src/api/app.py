@@ -29,6 +29,7 @@ from services.monitoring.elasticsearch_repository import ElasticsearchMonitorRep
 from services.product_query import ElasticsearchConsoleRepository
 from services.product_query.path_search import search_paths
 from src.api.monitor_routes import router as monitor_router
+from src.api.data_product_routes import create_data_product_router
 from src.api.store import StoreProtocol, get_store
 from src.api.stream_routes import create_stream_router
 from src.config.settings import AppSettings, load_settings
@@ -235,6 +236,14 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
         if resolved_settings.store_backend.lower() == "elasticsearch"
         else None
     )
+    if resolved_settings.store_backend.lower() == "elasticsearch":
+        from services.data_products.elasticsearch_repository import ElasticsearchDataProductRepository
+
+        app.state.data_product_repository = ElasticsearchDataProductRepository(make_es_client(resolved_settings))
+    else:
+        from services.data_products.memory_repository import MemoryDataProductRepository
+
+        app.state.data_product_repository = MemoryDataProductRepository()
     app.include_router(monitor_router)
 
     @app.middleware("http")
@@ -261,6 +270,9 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
         if repository is None:
             raise HTTPException(status_code=503, detail="Console projections require the Elasticsearch store backend")
         return repository
+
+    def get_data_product_repository(request: Request):
+        return request.app.state.data_product_repository
 
     async def require_auth(
         settings: AppSettings = Depends(get_settings),
@@ -1435,5 +1447,6 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
         return {"backlog": enterprise_backlog(implemented_keys=[])}
 
     app.include_router(create_stream_router(get_console_repository, require_auth))
+    app.include_router(create_data_product_router(get_data_product_repository, require_auth))
 
     return app

@@ -41,7 +41,7 @@ class ElasticsearchDataProductRepository:
     def __init__(self, client: Elasticsearch) -> None:
         self.client = client
 
-    def create(self, product: DataProduct) -> DataProduct:
+    def create_product(self, product: DataProduct) -> DataProduct:
         try:
             self.client.create(
                 index=PRODUCTS,
@@ -52,7 +52,7 @@ class ElasticsearchDataProductRepository:
             raise ProductVersionConflict("data product exists") from exc
         return product
 
-    def get(self, tenant_id: str, environment: str, product_id: str) -> DataProduct | None:
+    def get_product(self, tenant_id: str, environment: str, product_id: str) -> DataProduct | None:
         try:
             hit = self.client.get(
                 index=PRODUCTS, id=scoped_id(tenant_id, environment, product_id), seq_no_primary_term=True
@@ -64,7 +64,9 @@ class ElasticsearchDataProductRepository:
             return None
         return DataProduct.model_validate(source)
 
-    def list(self, tenant_id: str, environment: str, *, limit: int, cursor: str | None = None) -> list[DataProduct]:
+    def list_products(
+        self, tenant_id: str, environment: str, *, limit: int, cursor: str | None = None
+    ) -> list[DataProduct]:
         if not 1 <= limit <= 200:
             raise ValueError("limit outside bounds")
         body: dict[str, Any] = {
@@ -78,7 +80,7 @@ class ElasticsearchDataProductRepository:
         hits = self.client.search(**body)["hits"]["hits"]
         return [DataProduct.model_validate(hit["_source"]) for hit in hits]
 
-    def update(self, product: DataProduct, *, expected_etag: str) -> DataProduct:
+    def update_product(self, product: DataProduct, *, expected_etag: str) -> DataProduct:
         document_id = scoped_id(product.tenant_id, product.environment, product.id)
         try:
             hit = self.client.get(index=PRODUCTS, id=document_id, seq_no_primary_term=True)

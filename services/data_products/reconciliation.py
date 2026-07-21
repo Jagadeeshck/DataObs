@@ -27,6 +27,41 @@ class DataProductReconciler:
             return "superseded"
         return "retry"
 
+    def reconcile_proposal_decision(self, tenant_id: str, environment: str, product_id: str, proposal_id: str) -> str:
+        """Inspect immutable evidence and projection without inventing a cross-index transaction."""
+        proposal = getattr(self.repository, "get_membership_proposal")(tenant_id, environment, product_id, proposal_id)
+        if proposal is None:
+            return "missing"
+        decisions = getattr(self.repository, "list_membership_decisions")(
+            tenant_id, environment, product_id, limit=200
+        ).items
+        terminal = [event for event in decisions if event.proposal_id == proposal_id and event.outcome == "applied"]
+        if terminal and proposal.state != "proposed":
+            return "applied"
+        if proposal.state != "proposed":
+            return "terminal_evidence_missing"
+        return "retry"
+
+    def reconcile_membership_exclusion(
+        self, tenant_id: str, environment: str, product_id: str, membership_id: str
+    ) -> str:
+        membership = getattr(self.repository, "get_membership")(tenant_id, environment, product_id, membership_id)
+        if membership is None:
+            return "missing"
+        decisions = getattr(self.repository, "list_membership_decisions")(
+            tenant_id, environment, product_id, limit=200
+        ).items
+        terminal = [
+            event
+            for event in decisions
+            if event.membership_id == membership_id and event.decision == "exclude" and event.outcome == "applied"
+        ]
+        if membership.state == "excluded" and terminal:
+            return "applied"
+        if membership.state == "excluded":
+            return "terminal_evidence_missing"
+        return "retry"
+
     def run(self, tenant_id: str, environment: str, *, limit: int = 100) -> dict[str, int]:
         events = getattr(self.repository, "list_pending_operations")(tenant_id, environment, limit=limit)
         outcomes = {"applied": 0, "superseded": 0, "retry": 0, "missing": 0}

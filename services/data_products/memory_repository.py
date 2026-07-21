@@ -309,6 +309,39 @@ class MemoryDataProductRepository:
             items=[v.model_copy(deep=True) for v in values[:limit]], has_more=len(values) > limit
         )
 
+    def _transition_membership_proposal(
+        self,
+        tenant_id: str,
+        environment: str,
+        product_id: str,
+        proposal_id: str,
+        state: str,
+        *,
+        expected_revision: int | None = None,
+    ) -> DataProductMembershipProposal:
+        current = self.get_membership_proposal(tenant_id, environment, product_id, proposal_id)
+        if current is None:
+            raise KeyError(proposal_id)
+        if expected_revision is not None and current.proposal_revision != expected_revision:
+            raise ProductVersionConflict("proposal_revision_conflict")
+        if current.state != "proposed":
+            raise ProductVersionConflict(f"proposal_already_{current.state}")
+        updated = current.model_copy(update={"state": state})
+        self.proposals[(tenant_id, environment, product_id, proposal_id, current.proposal_revision)] = updated
+        return updated.model_copy(deep=True)
+
+    def accept_membership_proposal(self, *args, **kwargs):
+        return self._transition_membership_proposal(*args, "accepted", **kwargs)
+
+    def reject_membership_proposal(self, *args, **kwargs):
+        return self._transition_membership_proposal(*args, "rejected", **kwargs)
+
+    def expire_membership_proposal(self, *args, **kwargs):
+        return self._transition_membership_proposal(*args, "expired", **kwargs)
+
+    def supersede_membership_proposal(self, *args, **kwargs):
+        return self._transition_membership_proposal(*args, "superseded", **kwargs)
+
     def append_membership_decision(
         self, tenant_id: str, environment: str, product_id: str, decision: DataProductMembershipDecision
     ) -> DataProductMembershipDecision:

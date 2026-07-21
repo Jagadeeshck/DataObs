@@ -9,6 +9,15 @@ class DependencyGraph:
     truncated: bool
 
 
+def build_adjacency(edges: list[tuple[str, str]]) -> dict[str, set[str]]:
+    """Build stable adjacency without dropping isolated upstream nodes."""
+    graph: dict[str, set[str]] = {}
+    for product_id, upstream_id in edges:
+        graph.setdefault(product_id, set()).add(upstream_id)
+        graph.setdefault(upstream_id, set())
+    return graph
+
+
 def traverse(graph: dict[str, set[str]], root: str, *, max_depth: int = 8, max_nodes: int = 200) -> DependencyGraph:
     if max_depth < 0 or not 1 <= max_nodes <= 1000:
         raise ValueError("dependency bounds invalid")

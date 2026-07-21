@@ -77,6 +77,18 @@ export const api = {
       tenant,
       signal,
     ),
+  dataProductSection: (
+    tenant: string,
+    env: string,
+    id: string,
+    section: string,
+    signal?: AbortSignal,
+  ) =>
+    read<Record<string, unknown>>(
+      `/api/v1/data-products/${encodeURIComponent(id)}/${section}?environment=${encodeURIComponent(env)}`,
+      tenant,
+      signal,
+    ),
   streams: (
     tenant: string,
     env: string,

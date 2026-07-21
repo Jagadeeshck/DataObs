@@ -19,6 +19,16 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  data-product-membership-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -r requirements.txt
+      - run: python -m compileall -q packages/domain_model/data_product.py services/data_products src/api/data_product_routes.py tests/data_products
+      - run: python -m pytest tests/data_products/test_membership_dependency_closure.py tests/data_products/test_cursors.py -q
   incident-migration-occ-gate:
     name: Incident migration and OCC gate
     runs-on: ubuntu-latest

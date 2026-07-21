@@ -328,6 +328,22 @@ class DataProductRevisionEvent(DomainModel):
     error_code: str | None = None
 
 
+class DataProductOperationResult(DomainModel):
+    """Immutable operation outcome and the exact snapshot returned on replay."""
+
+    operation_id: str
+    action: Literal["create", "update", "activate", "deprecate", "archive"]
+    outcome: Literal["applied", "superseded", "failed"]
+    product: DataProductDefinition
+    revision: int = Field(ge=1)
+    etag: str
+    definition_checksum: str
+    actor: str
+    reason: str
+    occurred_at: datetime
+    applied_at: datetime | None = None
+
+
 class RepositoryPageMetadata(DomainModel):
     has_more: bool = False
     search_after: List[str | int | float] | None = None

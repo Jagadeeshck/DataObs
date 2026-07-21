@@ -8,7 +8,20 @@ from typing import Any, Sequence
 
 from elasticsearch import ConflictError, Elasticsearch, NotFoundError
 
-from packages.domain_model.data_product import DataProduct, DataProductRevisionEvent
+from packages.domain_model.data_product import (
+    DataProduct,
+    DataProductDependencyGraph,
+    DataProductDependencyPage,
+    DataProductDependencyProjection,
+    DataProductMembership,
+    DataProductMembershipDecision,
+    DataProductMembershipDecisionPage,
+    DataProductMembershipPage,
+    DataProductMembershipProposal,
+    DataProductMembershipProposalPage,
+    DataProductOperationResult,
+    DataProductRevisionEvent,
+)
 from services.data_products.events import ProductConsistencyError
 from services.data_products.idempotency import DataProductIdempotencyRecord, IdempotencyConflict
 from services.data_products.repository import ProductVersionConflict
@@ -17,6 +30,10 @@ PRODUCTS = "dataobs-data-products-v1"
 REVISIONS = "dataobs-data-product-revisions-v1"
 OPERATIONS = "dataobs-data-product-operation-state-v1"
 IDEMPOTENCY = "dataobs-data-product-idempotency-v1"
+MEMBERSHIPS = "dataobs-data-product-membership-v1"
+PROPOSALS = "dataobs-data-product-membership-proposals-v1"
+DECISIONS = "dataobs-data-product-membership-decisions-v1"
+DEPENDENCIES = "dataobs-data-product-dependency-current-v1"
 REQUIRED_RESOURCES = (
     PRODUCTS,
     REVISIONS,
@@ -248,6 +265,307 @@ class ElasticsearchDataProductRepository:
         if (source.get("tenant_id"), source.get("environment")) != (tenant_id, environment):
             return None
         return DataProductRevisionEvent.model_validate({k: v for k, v in source.items() if k != "document"})
+
+    def get_operation_result(
+        self, tenant_id: str, environment: str, operation_id: str, expected_revision: int, expected_etag: str
+    ) -> DataProductOperationResult:
+        try:
+            source = self.client.get(index=OPERATIONS, id=operation_id)["_source"]
+        except NotFoundError as exc:
+            raise ProductConsistencyError("immutable operation result missing") from exc
+        if (source.get("tenant_id"), source.get("environment")) != (tenant_id, environment):
+            raise ProductConsistencyError("immutable operation result missing")
+        if (
+            source.get("outcome") != "applied"
+            or source.get("revision") != expected_revision
+            or source.get("etag") != expected_etag
+        ):
+            raise ProductConsistencyError("immutable operation result diverged")
+        try:
+            product = DataProduct.model_validate(source["document"])
+        except (KeyError, ValueError) as exc:
+            raise ProductConsistencyError("immutable operation snapshot missing") from exc
+        return DataProductOperationResult(
+            product=product,
+            **{
+                k: source[k]
+                for k in (
+                    "operation_id",
+                    "action",
+                    "outcome",
+                    "revision",
+                    "etag",
+                    "definition_checksum",
+                    "actor",
+                    "reason",
+                    "occurred_at",
+                    "applied_at",
+                )
+            },
+        )
+
+    @staticmethod
+    def _page_hits(response: dict[str, Any], model: Any, limit: int) -> tuple[list[Any], bool, list[Any] | None]:
+        hits = response["hits"]["hits"]
+        more = len(hits) > limit
+        page = hits[:limit]
+        return [model.model_validate(h["_source"]) for h in page], more, (page[-1].get("sort") if more else None)
+
+    def _scoped_page(
+        self,
+        index: str,
+        model: Any,
+        tenant_id: str,
+        environment: str,
+        product_id: str,
+        *,
+        limit: int,
+        search_after: Sequence[str | int | float] | None = None,
+        extra: list[dict[str, Any]] | None = None,
+    ) -> tuple[list[Any], bool, list[Any] | None]:
+        if not 1 <= limit <= 200:
+            raise ValueError("limit outside bounds")
+        filters = [
+            {"term": {"tenant_id": tenant_id}},
+            {"term": {"environment": environment}},
+            {"term": {"product_id": product_id}},
+        ] + (extra or [])
+        request: dict[str, Any] = {
+            "index": index,
+            "size": limit + 1,
+            "query": {"bool": {"filter": filters}},
+            "sort": [{"updated_at": "desc"}, {"_id": "asc"}],
+        }
+        if search_after:
+            request["search_after"] = list(search_after)
+        return self._page_hits(self.client.search(**request), model, limit)
+
+    def create_membership(
+        self, tenant_id: str, environment: str, membership: DataProductMembership, *, create_only: bool = True
+    ) -> DataProductMembership:
+        if (membership.tenant_id, membership.environment) != (tenant_id, environment):
+            raise ValueError("membership scope mismatch")
+        document_id = scoped_id(tenant_id, environment, f"{membership.product_id}:{membership.membership_id}")
+        try:
+            self.client.create(index=MEMBERSHIPS, id=document_id, document=membership.model_dump(mode="json"))
+        except ConflictError as exc:
+            existing = DataProductMembership.model_validate(
+                self.client.get(index=MEMBERSHIPS, id=document_id)["_source"]
+            )
+            if existing.model_dump(mode="json") == membership.model_dump(mode="json"):
+                return existing
+            raise ProductVersionConflict("divergent membership replay") from exc
+        return membership
+
+    def get_membership(
+        self, tenant_id: str, environment: str, product_id: str, membership_id: str
+    ) -> DataProductMembership | None:
+        try:
+            source = self.client.get(
+                index=MEMBERSHIPS, id=scoped_id(tenant_id, environment, f"{product_id}:{membership_id}")
+            )["_source"]
+        except NotFoundError:
+            return None
+        return (
+            DataProductMembership.model_validate(source)
+            if (source.get("tenant_id"), source.get("environment"), source.get("product_id"))
+            == (tenant_id, environment, product_id)
+            else None
+        )
+
+    def list_memberships(
+        self,
+        tenant_id: str,
+        environment: str,
+        product_id: str,
+        *,
+        limit: int = 50,
+        search_after: Sequence[str | int | float] | None = None,
+    ) -> DataProductMembershipPage:
+        items, more, after = self._scoped_page(
+            MEMBERSHIPS,
+            DataProductMembership,
+            tenant_id,
+            environment,
+            product_id,
+            limit=limit,
+            search_after=search_after,
+        )
+        return DataProductMembershipPage(items=items, has_more=more, search_after=after)
+
+    def exclude_membership(
+        self,
+        tenant_id: str,
+        environment: str,
+        product_id: str,
+        membership_id: str,
+        *,
+        actor: str,
+        reason: str,
+        expected_etag: str,
+    ) -> DataProductMembership:
+        document_id = scoped_id(tenant_id, environment, f"{product_id}:{membership_id}")
+        hit = self.client.get(index=MEMBERSHIPS, id=document_id, seq_no_primary_term=True)
+        current = DataProductMembership.model_validate(hit["_source"])
+        if current.etag != expected_etag:
+            raise ProductVersionConflict("stale membership ETag")
+        now = datetime.now(timezone.utc)
+        updated = current.model_copy(
+            update={
+                "state": "excluded",
+                "excluded_at": now,
+                "excluded_by": actor,
+                "exclusion_reason": reason,
+                "updated_at": now,
+                "revision": current.revision + 1,
+                "etag": sha256(f"{current.etag}:excluded".encode()).hexdigest(),
+            }
+        )
+        try:
+            self.client.index(
+                index=MEMBERSHIPS,
+                id=document_id,
+                document=updated.model_dump(mode="json"),
+                if_seq_no=hit["_seq_no"],
+                if_primary_term=hit["_primary_term"],
+            )
+        except ConflictError as exc:
+            raise ProductVersionConflict("concurrent membership decision") from exc
+        return updated
+
+    def create_membership_proposal(self, proposal: DataProductMembershipProposal) -> DataProductMembershipProposal:
+        document_id = scoped_id(
+            proposal.tenant_id,
+            proposal.environment,
+            f"{proposal.product_id}:{proposal.proposal_id}:{proposal.proposal_revision}",
+        )
+        try:
+            self.client.create(index=PROPOSALS, id=document_id, document=proposal.model_dump(mode="json"))
+        except ConflictError as exc:
+            existing = DataProductMembershipProposal.model_validate(
+                self.client.get(index=PROPOSALS, id=document_id)["_source"]
+            )
+            if existing == proposal:
+                return existing
+            raise ProductVersionConflict("divergent proposal replay") from exc
+        return proposal
+
+    def get_membership_proposal(
+        self, tenant_id: str, environment: str, product_id: str, proposal_id: str
+    ) -> DataProductMembershipProposal | None:
+        response = self.client.search(
+            index=PROPOSALS,
+            size=1,
+            query={
+                "bool": {
+                    "filter": [
+                        {"term": {"tenant_id": tenant_id}},
+                        {"term": {"environment": environment}},
+                        {"term": {"product_id": product_id}},
+                        {"term": {"proposal_id": proposal_id}},
+                    ]
+                }
+            },
+            sort=[{"proposal_revision": "desc"}, {"_id": "desc"}],
+        )
+        hits = response["hits"]["hits"]
+        return DataProductMembershipProposal.model_validate(hits[0]["_source"]) if hits else None
+
+    def list_membership_proposals(
+        self,
+        tenant_id: str,
+        environment: str,
+        product_id: str,
+        *,
+        limit: int = 50,
+        search_after: Sequence[str | int | float] | None = None,
+    ) -> DataProductMembershipProposalPage:
+        items, more, after = self._scoped_page(
+            PROPOSALS,
+            DataProductMembershipProposal,
+            tenant_id,
+            environment,
+            product_id,
+            limit=limit,
+            search_after=search_after,
+        )
+        return DataProductMembershipProposalPage(items=items, has_more=more, search_after=after)
+
+    def append_membership_decision(
+        self, tenant_id: str, environment: str, product_id: str, decision: DataProductMembershipDecision
+    ) -> DataProductMembershipDecision:
+        if (decision.tenant_id, decision.environment, decision.product_id) != (tenant_id, environment, product_id):
+            raise ValueError("decision scope mismatch")
+        document_id = scoped_id(tenant_id, environment, decision.decision_id)
+        try:
+            self.client.create(index=DECISIONS, id=document_id, document=decision.model_dump(mode="json"))
+        except ConflictError as exc:
+            existing = DataProductMembershipDecision.model_validate(
+                self.client.get(index=DECISIONS, id=document_id)["_source"]
+            )
+            if existing == decision:
+                return existing
+            raise ProductConsistencyError("divergent decision replay") from exc
+        return decision
+
+    def list_membership_decisions(
+        self,
+        tenant_id: str,
+        environment: str,
+        product_id: str,
+        *,
+        limit: int = 50,
+        search_after: Sequence[str | int | float] | None = None,
+    ) -> DataProductMembershipDecisionPage:
+        items, more, after = self._scoped_page(
+            DECISIONS,
+            DataProductMembershipDecision,
+            tenant_id,
+            environment,
+            product_id,
+            limit=limit,
+            search_after=search_after,
+        )
+        return DataProductMembershipDecisionPage(items=items, has_more=more, search_after=after)
+
+    def save_dependencies(
+        self, tenant_id: str, environment: str, product_id: str, dependencies: Sequence[DataProductDependencyProjection]
+    ) -> DataProductDependencyPage:
+        current = self.list_dependencies(tenant_id, environment, product_id, limit=200).items
+        proposed = {edge.upstream_product_id: edge for edge in dependencies}
+        now = datetime.now(timezone.utc)
+        for edge in current:
+            if not edge.removed and edge.upstream_product_id not in proposed:
+                proposed[edge.upstream_product_id] = edge.model_copy(update={"removed": True, "updated_at": now})
+        for edge in proposed.values():
+            if (edge.tenant_id, edge.environment, edge.product_id) != (tenant_id, environment, product_id):
+                raise ValueError("dependency scope mismatch")
+            self.client.index(
+                index=DEPENDENCIES,
+                id=scoped_id(tenant_id, environment, f"{product_id}:{edge.upstream_product_id}"),
+                document=edge.model_dump(mode="json"),
+            )
+        return DataProductDependencyPage(items=sorted(proposed.values(), key=lambda x: x.upstream_product_id))
+
+    def list_dependencies(
+        self,
+        tenant_id: str,
+        environment: str,
+        product_id: str,
+        *,
+        limit: int = 50,
+        search_after: Sequence[str | int | float] | None = None,
+    ) -> DataProductDependencyPage:
+        items, more, after = self._scoped_page(
+            DEPENDENCIES,
+            DataProductDependencyProjection,
+            tenant_id,
+            environment,
+            product_id,
+            limit=limit,
+            search_after=search_after,
+        )
+        return DataProductDependencyPage(items=items, has_more=more, search_after=after)
 
     def get_product_revision(
         self, tenant_id: str, environment: str, product_id: str, revision: int

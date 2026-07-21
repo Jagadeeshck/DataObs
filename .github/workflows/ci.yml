@@ -408,3 +408,45 @@ jobs:
         run: python -m pytest -q tests/elastic_store/test_migrations.py tests/unit/product_query tests/unit/test_pathway_worker_paging.py
       - name: Demo compose contract
         run: docker compose -f docker-compose.console-demo.yml config
+
+  documentation-truth-gate:
+    name: Documentation truth gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install documentation dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pytest ruff black
+      - name: Validate and render capability source of truth
+        run: |
+          python scripts/validate_capability_ledger.py
+          python scripts/render_capability_docs.py
+          git diff --exit-code
+          python scripts/check_generated_artifacts.py
+          python scripts/check_docs_links.py
+      - name: Documentation truth tests
+        run: >-
+          python -m pytest
+          tests/documentation/test_capability_ledger.py
+          tests/documentation/test_generated_capability_docs.py
+          tests/documentation/test_product_claims.py -q
+      - name: Capability diff
+        run: python scripts/capability_diff.py "${{ github.event.pull_request.base.sha }}" > capability-diff-report.txt
+      - name: Upload documentation truth reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: documentation-truth-reports
+          path: |
+            docs/product/feature-matrix.md
+            capability-validation-report.json
+            capability-state-counts.json
+            capability-diff-report.txt
+            broken-link-report.txt

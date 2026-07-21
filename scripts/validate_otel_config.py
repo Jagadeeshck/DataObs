@@ -27,6 +27,7 @@ collector container (exit code 1 at startup):
 Usage:
     python3 scripts/validate_otel_config.py [path/to/config.yaml]
 """
+
 from __future__ import annotations
 
 import sys
@@ -35,9 +36,7 @@ from pathlib import Path
 try:
     import yaml
 except ImportError:  # pragma: no cover - environment requirement
-    sys.stderr.write(
-        "ERROR: PyYAML is required. Install with `pip install pyyaml`.\n"
-    )
+    sys.stderr.write("ERROR: PyYAML is required. Install with `pip install pyyaml`.\n")
     sys.exit(2)
 
 
@@ -73,7 +72,7 @@ def validate(path: Path) -> list[str]:
     if otlp is None:
         _err(problems, "receivers.otlp must be defined for the POC pipeline.")
     else:
-        protos = (otlp.get("protocols") or {})
+        protos = otlp.get("protocols") or {}
         for proto, expected_port in (("grpc", 4317), ("http", 4318)):
             p = protos.get(proto)
             if p is None:
@@ -143,7 +142,7 @@ def validate(path: Path) -> list[str]:
                 )
 
     # ── Every pipeline component must exist in its top-level map ──
-    pipelines = (service.get("pipelines") or {})
+    pipelines = service.get("pipelines") or {}
     for pname, pipe in pipelines.items():
         for kind, table in (
             ("receivers", receivers),
@@ -154,8 +153,7 @@ def validate(path: Path) -> list[str]:
                 if ref not in table:
                     _err(
                         problems,
-                        f"service.pipelines.{pname}.{kind}: '{ref}' is "
-                        f"not defined in top-level {kind}.",
+                        f"service.pipelines.{pname}.{kind}: '{ref}' is " f"not defined in top-level {kind}.",
                     )
 
     return problems

@@ -1,27 +1,69 @@
-# DataObs Roadmap v1
+# Evidence-gated product roadmap
 
-Phase 0 preserves legacy product-scale issues in versioned roadmap scope rather than representing broad epics as complete. Elasticsearch/Kibana is the primary investigation platform; OpenTelemetry, OpenLineage, Elastic Agent/Fleet, EDOT, and DataObs Scanner are the collection foundations.
+No delivery dates are implied. The capability ledger, not issue or PR titles, determines current state.
 
-| Issue | Requirement destination | Target six-pillar destination | Milestone | Collection mechanism | Elasticsearch storage model | API destination | UI destination | Security requirements | Licensing requirements | Current-release non-goals |
-|---|---|---|---|---|---|---|---|---|---|---|
-| #24 | Column drift checks: Z-score, KL divergence, IQR/outlier ratio, dynamic thresholds, rolling baseline windows, null-rate drift, OTel metrics/span events, and Slack/PagerDuty/ServiceNow payloads | Data Observability | v1.0/v1.1 hardening | Quality worker and DataObs Scanner profiling | `dataobs-quality-*`, baseline state indices, trace/metric data streams | Quality checks/results API | Kibana quality investigation and later Console quality pages | tenant isolation, no raw-row persistence, redacted alerts | Elastic Stack license and webhook provider terms | no unbounded profiling or raw data capture |
-| #25 | Container-backed quality failure to OTel collector, Elasticsearch, API, and alert adapters | Data Observability + Automated Incident Response | v1.0 Phase 0 gate | Quality worker, OTLP HTTP, OTel Collector, API, mockable alert webhooks | `dataobs-traces`, `dataobs-quality-results-*`, alert delivery records | Quality results/rules APIs | Kibana investigation and later alert workflow UI | unauthenticated dev only in tests, tenant-aware API storage | Elastic Stack and alert provider terms | no real SaaS alert credentials in CI |
-| #28 | AWS Lambda OTel decorator/layer, Python 3.11, cold start, W3C propagation, SQS/SNS/EventBridge examples, Terraform, docs, Elasticsearch/Kibana destination | Pipeline and Job Observability | v1.1 | AWS Lambda OTel layer, EDOT, AWS integrations | AWS/OTLP trace and metric data streams | Serverless integration API | Cloud integration pages and Kibana dashboards | IAM least privilege, secret redaction | AWS and Elastic licensing | no new Lambda vertical expansion in Phase 0 |
-| #29 | dbt Core/Cloud run results, model/test/source freshness signals, OTel spans/metrics, run correlation, retries/errors, Elasticsearch destination | Data Pipeline and Job Observability | v1.1 | dbt artifacts parser and dbt Cloud poller | dbt run/test/freshness data streams and correlation state | dbt integration API | Pipeline run detail pages | token redaction, tenant/source isolation | dbt Cloud and Elastic terms | no new dbt product surface in Phase 0 |
-| #30 | Anomaly detection: bootstrap expected ranges, histogram drift, seasonality/time-series behaviour, multivariate correlation, baseline persistence, alerting, deterministic tests | Data Observability + Automated Incident Response | v1.1 | Quality worker, Elastic ML where available, deterministic rule engine | anomaly result streams and baseline state | Anomaly API | Kibana ML/anomaly views and later Console | explainability, auditability, tenant isolation | Elastic ML license policy | no opaque autonomous remediation in Phase 0 |
-| #31 | Optional Alloy multi-tenant exporter/configuration path | Optional Integrations | v1.x optional | Grafana Alloy exporter integration only | optional exporter output; Elasticsearch remains source of record | Optional exporter configuration API | Optional integration docs, not primary UI | tenant labels, secret redaction | Grafana/Alloy terms | Alloy is not core product architecture |
-| #32 | Optional Grafana Terraform dashboard provisioning | Optional Integrations | v1.x optional | Terraform module consuming DataObs/OTel metrics | optional Grafana dashboard state; Elasticsearch/Kibana remains primary | Optional integration metadata | Optional Grafana dashboards | provider credential isolation | Grafana provider terms | Grafana is not equal primary platform |
-| #46 | AI agents and autonomous remediation | Automated Incident Response and Remediation | v1.3 | Elastic Workflows, DataObs Advisor, guarded tool execution | workflow event streams, policy state, audit indices | Advisor/remediation APIs | Advisor and remediation Console | human approval, audit logs, least privilege | AI/model/provider license review | no autonomous agent product in Phase 0 |
-| #47 | Azure observability across platform and data services | Data Pipeline and Job Observability | v1.1 | Elastic Azure integration, EDOT, DataObs connectors | Azure/OTLP/dataobs data streams | Cloud integration API | Azure integration pages | managed identity, tenant isolation | Azure and Elastic licensing | no Azure vertical slice in Phase 0 |
-| #48 | GCP observability across platform and data services | Data Pipeline and Job Observability | v1.1 | Elastic GCP integration, EDOT, DataObs connectors | GCP/OTLP/dataobs data streams | Cloud integration API | GCP integration pages | workload identity, API quotas | GCP and Elastic licensing | no GCP vertical slice in Phase 0 |
-| #49 | Snowflake observability | Data Observability + Pipeline/Job Observability | v1.1 | DataObs Snowflake connector and OTel | warehouse telemetry streams and scanner state | Warehouse integration API | Warehouse asset pages | key-pair auth, query safety, cost controls | Snowflake and Elastic licensing | no Snowflake connector expansion in Phase 0 |
-| #50 | Multi-cloud OpenLineage; existing ingestion foundation does not prove original cross-cloud scope is fully implemented/tested | End-to-end Lineage and Impact Analysis | v1.1 | OpenLineage events from Spark, dbt, Airflow, Glue, ADF, Dataflow | lineage event streams and graph state indices | Lineage/impact APIs | Topology and impact UI | tenant isolation, source authentication | OpenLineage-compatible source licenses | no cross-cloud completion claim in Phase 0 |
-| #51 | DataObs Advisor recommendations | Automated Incident Response and Remediation | v1.2 | Elastic ML, rules, curated heuristics, optional AI | recommendation streams and case/workflow state | Advisor APIs | Advisor UI | explainability, audit, model governance | model/provider license review | no Advisor product in Phase 0 |
+## Phase A — Stabilization and truth
 
-## Product foundation milestone
+### Migration/OCC/replay corrections, capability ledger, and CI enforcement
+- **Current state:** corrections are functional but unvalidated; the truth tooling is implemented in this milestone.
+- **Entry criteria:** migrations `0001`–`0012` remain checksum-identical.
+- **Deliverables:** authoritative ledger, deterministic docs, documentation truth gate.
+- **Evidence gate:** validators, focused tests, links, and generated-drift checks pass in retained hosted CI.
+- **Exit criteria:** reports and artifacts are retained and review links resolve.
+- **Dependencies:** PR #106 merged baseline and repository CI.
+- **Non-goals:** product features or migration edits.
 
-The v1 foundation path establishes `/api/v1` domain APIs, tenant-aware contracts, explicit Elasticsearch migrations, and a minimal Collection Manager. Follow-up PRs should add real connector vertical slices, Fleet/EDOT orchestration, hardened IAM, backup/restore automation, and production workflow packs without claiming production readiness in this milestone.
+## Phase B — Unified real-stack certification
 
-## Elastic incident automation milestone
+### Elasticsearch/Kibana 9.4.2, PostgreSQL, Kafka, OpenLineage, and Console certification
+- **Current state:** components range from foundation to functional unvalidated.
+- **Entry criteria:** Phase A exits and a reproducible version-pinned environment exists.
+- **Deliverables:** unified stack, Console journey, browser/accessibility/security scenarios.
+- **Evidence gate:** retained real-stack and hosted CI artifacts for all named components.
+- **Exit criteria:** applicable browser, accessibility, security, and upgrade dimensions pass.
+- **Dependencies:** Elasticsearch/Kibana 9.4.2 and test data services.
+- **Non-goals:** additional providers or messaging systems.
 
-This milestone adds a production-oriented vertical slice for correlated DataObs incidents and controlled workflow-assisted response. It explicitly excludes the standalone console, Kafka monitoring, autonomous AI remediation and destructive database remediation.
+## Phase C — Complete the existing core product
+
+### Monitoring, Data Products/RCA, Job/Run Explorer, Asset/Pathway, and Stream 360
+- **Current state:** foundations exist; principal end-to-end workflows are incomplete.
+- **Entry criteria:** Phase B baseline is reproducible.
+- **Deliverables:** complete existing workflows and coherent Console navigation.
+- **Evidence gate:** focused integration plus browser/accessibility and security evidence.
+- **Exit criteria:** each capability independently meets its ledger next gate.
+- **Dependencies:** collection, storage, APIs, and Console certification.
+- **Non-goals:** differentiating future pillars.
+
+## Phase D — Incident and Automation Workbench
+
+### Collaboration, Cases, Workflows, approvals, actions, verification, and learning
+- **Current state:** domain/storage/service foundations exist; Console and execution remain incomplete.
+- **Entry criteria:** incident correctness and IAM safety prerequisites have retained evidence.
+- **Deliverables:** controlled workbench workflows, notifications, reviews, and analytics.
+- **Evidence gate:** lifecycle, concurrency, approval, security, recovery, and browser tests.
+- **Exit criteria:** bounded, auditable workflows pass failure and recovery scenarios.
+- **Dependencies:** IAM/RBAC design, incident repository, action safety.
+- **Non-goals:** autonomous remediation.
+
+## Phase E — Enterprise hardening
+
+### OIDC/RBAC, HA, backup/restore, deployment, release, and product SLOs
+- **Current state:** IAM and backup/restore are not started; packaging is foundational.
+- **Entry criteria:** core workflows are stable and threat models are current.
+- **Deliverables:** identity enforcement, HA, recovery, supported deployment and release controls.
+- **Evidence gate:** security, scale, restore, upgrade, HA, and release rehearsals retained.
+- **Exit criteria:** production-candidate criteria are explicitly reviewed; no readiness is implied early.
+- **Dependencies:** operator ownership, environments, licensing and support model.
+- **Non-goals:** new product pillars.
+
+## Phase F — Differentiating pillars
+
+### FinOps, Business Reliability, AI/Agent Observability, Advisor, and providers
+- **Current state:** FinOps, scorecards, AI/Agent Observability, Advisor, Snowflake/cloud connectors, and multi-cloud lineage are not started.
+- **Entry criteria:** Phase E evidence gates pass and customer demand is documented.
+- **Deliverables:** in order: FinOps; Business Reliability Scorecards; AI/Agent Observability; Advisor; Snowflake/cloud providers; multi-cloud lineage; then demand-led messaging systems.
+- **Evidence gate:** capability-specific executable, hosted, security, scale, and user-workflow evidence.
+- **Exit criteria:** each new capability independently satisfies promotion policy.
+- **Dependencies:** provider agreements, licensing, customer validation, hardened platform.
+- **Non-goals:** speculative connectors or delivery dates.

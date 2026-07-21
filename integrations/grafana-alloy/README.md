@@ -98,6 +98,6 @@ You can run both stacks simultaneously — they use isolated Docker networks
 
 ## Full guide
 
-See [`../../docs/GUIDE.md`](../../docs/GUIDE.md) (if present) or the
+See [`../../docs/poc-setup.md`](../../docs/poc-setup.md) (if present) or the
 [`docs/GUIDE.md`](../grafana-alloy/docs/GUIDE.md) inside this directory
 for the complete 10-step walkthrough including Kubernetes migration and alerting rules.

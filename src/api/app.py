@@ -23,6 +23,7 @@ from services.collection_manager.elasticsearch_repository import ElasticsearchCo
 from services.collection_manager.leases import claim_task, renew_task
 from services.collection_manager.memory_repository import InMemoryCollectionRepository
 from services.incident_manager import IncidentManagerService
+from services.incident_manager.elasticsearch_repository import ElasticsearchIncidentRepository
 from services.product_query import ElasticsearchConsoleRepository
 from services.product_query.path_search import search_paths
 from src.api.store import StoreProtocol, get_store
@@ -202,7 +203,12 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
     else:
         repo = InMemoryCollectionRepository()
     app.state.collection_manager = CollectionManagerService(repo)
-    app.state.incident_manager = IncidentManagerService()
+    incident_repo = (
+        ElasticsearchIncidentRepository(make_es_client(resolved_settings))
+        if resolved_settings.store_backend.lower() == "elasticsearch"
+        else None
+    )
+    app.state.incident_manager = IncidentManagerService(incident_repo)
     app.state.console_repository = (
         ElasticsearchConsoleRepository(make_es_client(resolved_settings))
         if resolved_settings.store_backend.lower() == "elasticsearch"
@@ -438,6 +444,8 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
             )
         except KeyError as exc:
             raise HTTPException(status_code=404, detail=f"Incident '{incident_id}' not found") from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     @app.post("/api/v1/incidents/{incident_id}/acknowledge", dependencies=[Depends(require_auth)])
     async def acknowledge_incident(

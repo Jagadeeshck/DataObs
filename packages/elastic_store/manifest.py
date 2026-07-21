@@ -156,6 +156,62 @@ INCIDENT_AUTOMATION_PROPERTIES: Dict[str, Any] = {
     "resolved_at": {"type": "date"},
     "closed_at": {"type": "date"},
     "expires_at": {"type": "date"},
+    # Canonical Finding and Incident documents are stored directly in the mutable
+    # indices. Keep this list in sync with packages.domain_model.incident because
+    # the shared index mapping is deliberately strict.
+    **{
+        key: {"type": "keyword"}
+        for key in [
+            "source_event_id",
+            "priority",
+            "urgency",
+            "impact",
+            "primary_resource",
+            "commander",
+            "correlation_version",
+            "elastic_case_version",
+            "notification_state",
+            "resolution_reason",
+            "state_reason",
+            "recovery_state",
+            "recurrence_of",
+            "split_from",
+            "workflow_ref",
+        ]
+    },
+    "title": {"type": "text", "fields": {"keyword": {"type": "keyword", "ignore_above": 256}}},
+    "summary": {"type": "match_only_text"},
+    "impact_summary": {"type": "match_only_text"},
+    "observed_value": {"type": "flattened"},
+    "expected_value": {"type": "flattened"},
+    "correlation_features": {"type": "flattened"},
+    "correlation_explanation": {"type": "flattened"},
+    "severity_factors": {"type": "flattened"},
+    "evidence": {"type": "flattened"},
+    "most_recent_evidence": {"type": "flattened"},
+    "root_cause_candidates": {"type": "flattened"},
+    "recovery_evidence": {"type": "flattened"},
+    "confidence": {"type": "double"},
+    "occurrence_count": {"type": "long"},
+    "recovery_signal": {"type": "boolean"},
+    "suppressed_until": {"type": "date"},
+    "recovered_at": {"type": "date"},
+    "reopened_at": {"type": "date"},
+    **{
+        key: {"type": "keyword"}
+        for key in [
+            "resource_ids",
+            "data_product_ids",
+            "downstream_impact",
+            "finding_ids",
+            "affected_assets",
+            "responders",
+            "watchers",
+            "tags",
+            "business_services",
+            "merged_from",
+        ]
+    },
 }
 
 KAFKA_MUTABLE_INDICES = [

@@ -494,7 +494,7 @@ jobs:
   certification-migrations-incidents:
     name: Certification migrations and incidents
     needs: [certification-contracts]
-    if: ${{ github.event_name != 'workflow_dispatch' || inputs.certification_scope == 'all' || inputs.certification_scope == 'all' }}
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.certification_scope == 'all' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -504,6 +504,14 @@ jobs:
       - run: pip install -r requirements.txt pytest requests psycopg[binary] confluent-kafka
       - name: Start focused stack
         run: CERTIFICATION_PROFILE=cert-migrations ./scripts/certification/compose.sh up
+      - name: Apply and verify released migrations
+        run: |
+          ./scripts/certification/apply_migrations.sh
+          ./bin/dataobs elastic status
+          curl -fsS http://127.0.0.1:19200/_mapping >/dev/null
+          curl -fsS http://127.0.0.1:19200/_alias >/dev/null
+      - name: Prove migration apply is idempotent
+        run: ./scripts/certification/apply_migrations.sh
       - name: Run live assertions
         env:
           RUN_CERTIFICATION_TESTS: "1"
@@ -534,6 +542,12 @@ jobs:
       - run: pip install -r requirements.txt pytest requests psycopg[binary] confluent-kafka
       - name: Start focused stack
         run: CERTIFICATION_PROFILE=cert-postgres ./scripts/certification/compose.sh up
+      - name: Apply and verify released migrations
+        run: |
+          ./scripts/certification/apply_migrations.sh
+          ./bin/dataobs elastic status
+          curl -fsS http://127.0.0.1:19200/_mapping >/dev/null
+          curl -fsS http://127.0.0.1:19200/_alias >/dev/null
       - name: Run live assertions
         env:
           RUN_CERTIFICATION_TESTS: "1"
@@ -564,6 +578,20 @@ jobs:
       - run: pip install -r requirements.txt pytest requests psycopg[binary] confluent-kafka
       - name: Start focused stack
         run: CERTIFICATION_PROFILE=cert-kafka ./scripts/certification/compose.sh up
+      - name: Apply and verify released migrations
+        run: |
+          ./scripts/certification/apply_migrations.sh
+          ./bin/dataobs elastic status
+          curl -fsS http://127.0.0.1:19200/_mapping >/dev/null
+          curl -fsS http://127.0.0.1:19200/_alias >/dev/null
+      - name: Seed deterministic Kafka fixtures
+        run: |
+          ./scripts/certification/kafka/create_topics.sh
+          ./scripts/certification/kafka/register_schemas.sh
+          ./scripts/certification/kafka/create_connectors.sh
+          python scripts/certification/kafka/run_producers.py
+          python scripts/certification/kafka/run_consumers.py
+          ./scripts/certification/wait_for_kafka_observer.sh
       - name: Run live assertions
         env:
           RUN_CERTIFICATION_TESTS: "1"
@@ -584,7 +612,7 @@ jobs:
   certification-openlineage-product:
     name: Certification OpenLineage and product queries
     needs: [certification-contracts]
-    if: ${{ github.event_name != 'workflow_dispatch' || inputs.certification_scope == 'all' || inputs.certification_scope == 'openlineage' }}
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.certification_scope == 'all' || inputs.certification_scope == 'openlineage' || inputs.certification_scope == 'product' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -594,6 +622,12 @@ jobs:
       - run: pip install -r requirements.txt pytest requests psycopg[binary] confluent-kafka
       - name: Start focused stack
         run: CERTIFICATION_PROFILE=cert-product ./scripts/certification/compose.sh up
+      - name: Apply and verify released migrations
+        run: |
+          ./scripts/certification/apply_migrations.sh
+          ./bin/dataobs elastic status
+          curl -fsS http://127.0.0.1:19200/_mapping >/dev/null
+          curl -fsS http://127.0.0.1:19200/_alias >/dev/null
       - name: Run live assertions
         env:
           RUN_CERTIFICATION_TESTS: "1"
@@ -624,6 +658,12 @@ jobs:
       - run: pip install -r requirements.txt pytest requests psycopg[binary] confluent-kafka
       - name: Start focused stack
         run: CERTIFICATION_PROFILE=cert-security ./scripts/certification/compose.sh up
+      - name: Apply and verify released migrations
+        run: |
+          ./scripts/certification/apply_migrations.sh
+          ./bin/dataobs elastic status
+          curl -fsS http://127.0.0.1:19200/_mapping >/dev/null
+          curl -fsS http://127.0.0.1:19200/_alias >/dev/null
       - name: Run live assertions
         env:
           RUN_CERTIFICATION_TESTS: "1"
@@ -644,6 +684,7 @@ jobs:
   certification-browser:
     name: Certification browser
     needs: [certification-contracts]
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.certification_scope == 'all' || inputs.certification_scope == 'browser' }}
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
@@ -652,9 +693,20 @@ jobs:
         with: {version: 10.28.1}
       - uses: actions/setup-node@v4
         with: {node-version: "24.15.0", cache: pnpm, cache-dependency-path: ui/dataobs-console/pnpm-lock.yaml}
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.11", cache: pip}
+      - run: pip install -r requirements.txt
       - run: cd ui/dataobs-console && pnpm install --frozen-lockfile && pnpm api:generate && pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm build && pnpm bundle:check
-      - run: CERTIFICATION_PROFILE=cert-browser ./scripts/certification/compose.sh up
-      - run: ./scripts/certification/run_browser.sh
+      - name: Start production Console stack
+        run: CERTIFICATION_PROFILE=cert-browser ./scripts/certification/compose.sh up
+      - name: Apply and verify released migrations
+        run: |
+          ./scripts/certification/apply_migrations.sh
+          ./bin/dataobs elastic status
+          curl -fsS http://127.0.0.1:19200/_mapping >/dev/null
+          curl -fsS http://127.0.0.1:19200/_alias >/dev/null
+      - name: Run browser live assertions
+        run: ./scripts/certification/run_browser.sh
       - uses: actions/upload-artifact@v4
         if: always()
         with: {name: browser, path: "ui/dataobs-console/playwright-report\nui/dataobs-console/test-results", retention-days: 30}
@@ -672,15 +724,12 @@ jobs:
         with: {path: artifacts}
       - uses: actions/setup-python@v5
         with: {python-version: "3.11"}
-      - name: Require every result explicitly
+      - name: Validate requested scope and job results
+        env:
+          REQUESTED_SCOPE: ${{ github.event_name == 'workflow_dispatch' && inputs.certification_scope || 'all' }}
+          JOB_RESULTS: '{"contracts":"${{ needs.certification-contracts.result }}","migrations-incidents":"${{ needs.certification-migrations-incidents.result }}","postgres":"${{ needs.certification-postgres.result }}","kafka":"${{ needs.certification-kafka.result }}","openlineage-product":"${{ needs.certification-openlineage-product.result }}","browser":"${{ needs.certification-browser.result }}","security":"${{ needs.certification-security.result }}"}'
         run: |
-          test "${{ needs.certification-contracts.result }}" = success
-          test "${{ needs.certification-migrations-incidents.result }}" = success
-          test "${{ needs.certification-postgres.result }}" = success
-          test "${{ needs.certification-kafka.result }}" = success
-          test "${{ needs.certification-openlineage-product.result }}" = success
-          test "${{ needs.certification-browser.result }}" = success
-          test "${{ needs.certification-security.result }}" = success
+          python scripts/certification/validate_job_results.py "$REQUESTED_SCOPE" "$JOB_RESULTS" | tee artifacts/job-results.json
           python scripts/certification/redact_artifacts.py artifacts
           python scripts/certification/verify_artifacts.py artifacts --sentinels-only
           python scripts/certification/build_manifest.py artifacts

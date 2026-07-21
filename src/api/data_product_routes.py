@@ -10,6 +10,9 @@ from pydantic import BaseModel, Field
 
 from packages.domain_model.data_product import DataProduct, DataProductCriticality, DataProductOutput, DataProductOwner
 from services.data_products.cursors import CursorContext, InvalidCursor, SignedCursorCodec
+from services.data_products.dependency_service import DataProductDependencyService
+from services.data_products.impact import DataProductImpactService
+from services.data_products.membership_service import DataProductMembershipService
 from services.data_products.repository import ProductVersionConflict
 from services.data_products.service import DataProductService
 
@@ -30,6 +33,25 @@ class ActionRequest(BaseModel):
     reason: str = Field(min_length=1, max_length=1000)
 
 
+class ManualMembershipRequest(ActionRequest):
+    entity_id: str = Field(min_length=1, max_length=256)
+    entity_type: Literal["asset", "api", "kafka_topic", "dashboard", "model", "application", "app"]
+
+
+class ProposalActionRequest(ActionRequest):
+    pass
+
+
+class DependencyReplaceRequest(ActionRequest):
+    upstream_product_ids: list[str] = Field(default_factory=list, max_length=200)
+
+
+class ProposalGenerationRequest(BaseModel):
+    source: Literal["lineage", "dependency"]
+    evidence: list[tuple[str, str, str]] = Field(default_factory=list, max_length=500)
+    max_proposals: int = Field(default=100, ge=1, le=200)
+
+
 class ProductEnvelope(BaseModel):
     product: DataProduct
     data_status: Literal["available"] = "available"
@@ -47,6 +69,15 @@ def create_data_product_router(
 
     def service(repository: Any = Depends(repository_provider)) -> DataProductService:
         return DataProductService(repository)
+
+    def membership_service(repository: Any = Depends(repository_provider)) -> DataProductMembershipService:
+        return DataProductMembershipService(repository)
+
+    def dependency_service(repository: Any = Depends(repository_provider)) -> DataProductDependencyService:
+        return DataProductDependencyService(repository)
+
+    def impact_service(repository: Any = Depends(repository_provider)) -> DataProductImpactService:
+        return DataProductImpactService(repository)
 
     cursor_codec = SignedCursorCodec(
         os.environ.get("DATAOBS_CURSOR_SECRET", "development-only-cursor-secret-32-bytes").encode()
@@ -235,6 +266,161 @@ def create_data_product_router(
     ) -> dict[str, Any]:
         return paged(
             application.repository, "list_dependencies", request, environment, product_id, "dependencies", limit, cursor
+        )
+
+    @router.post("/{product_id}/members", status_code=201)
+    def add_member(
+        product_id: str,
+        body: ManualMembershipRequest,
+        request: Request,
+        response: Response,
+        environment: str = Query(...),
+        idempotency_key: str = Header(..., alias="Idempotency-Key"),
+        application: DataProductMembershipService = Depends(membership_service),
+    ) -> dict[str, Any]:
+        member = application.add_manual_member(
+            request.state.tenant_id,
+            environment,
+            product_id,
+            entity_id=body.entity_id,
+            entity_type=body.entity_type,
+            actor=body.actor,
+            reason=body.reason,
+            idempotency_key=idempotency_key,
+        )
+        response.headers["ETag"] = member.etag
+        return {"membership": member, "replayed": False, "request_id": request.state.request_id}
+
+    @router.post("/{product_id}/members/{membership_id}/exclude")
+    def exclude_member(
+        product_id: str,
+        membership_id: str,
+        body: ActionRequest,
+        request: Request,
+        response: Response,
+        environment: str = Query(...),
+        if_match: str = Header(..., alias="If-Match"),
+        idempotency_key: str = Header(..., alias="Idempotency-Key"),
+        application: DataProductMembershipService = Depends(membership_service),
+    ) -> dict[str, Any]:
+        member = application.exclude_member(
+            request.state.tenant_id,
+            environment,
+            product_id,
+            membership_id,
+            actor=body.actor,
+            reason=body.reason,
+            idempotency_key=idempotency_key,
+            expected_etag=if_match,
+        )
+        response.headers["ETag"] = member.etag
+        return {"membership": member, "replayed": False}
+
+    @router.post("/{product_id}/membership-proposals/{proposal_id}/{decision}")
+    def decide_proposal(
+        product_id: str,
+        proposal_id: str,
+        decision: Literal["accept", "reject", "expire", "supersede"],
+        body: ProposalActionRequest,
+        request: Request,
+        environment: str = Query(...),
+        idempotency_key: str = Header(..., alias="Idempotency-Key"),
+        application: DataProductMembershipService = Depends(membership_service),
+    ) -> dict[str, Any]:
+        handlers = {
+            "accept": application.accept_proposal,
+            "reject": application.reject_proposal,
+            "expire": application.expire_proposal,
+            "supersede": application.supersede_proposal,
+        }
+        proposal = handlers[decision](request.state.tenant_id, environment, product_id, proposal_id)
+        return {"proposal": proposal, "replayed": False, "operation_key_hash_persisted": False}
+
+    @router.post("/{product_id}/membership-proposals/generate")
+    def generate_proposals(
+        product_id: str,
+        body: ProposalGenerationRequest,
+        request: Request,
+        environment: str = Query(...),
+        application: DataProductMembershipService = Depends(membership_service),
+    ) -> dict[str, Any]:
+        handler = (
+            application.generate_lineage_proposals
+            if body.source == "lineage"
+            else application.generate_dependency_proposals
+        )
+        return handler(
+            request.state.tenant_id,
+            environment,
+            product_id,
+            evidence=body.evidence,
+            max_proposals=body.max_proposals,
+        ).model_dump(mode="json")
+
+    @router.put("/{product_id}/dependencies")
+    def replace_dependencies(
+        product_id: str,
+        body: DependencyReplaceRequest,
+        request: Request,
+        environment: str = Query(...),
+        if_match: str = Header(..., alias="If-Match"),
+        idempotency_key: str = Header(..., alias="Idempotency-Key"),
+        application: DataProductDependencyService = Depends(dependency_service),
+    ) -> dict[str, Any]:
+        page = application.replace_declared_dependencies(
+            request.state.tenant_id,
+            environment,
+            product_id,
+            body.upstream_product_ids,
+            expected_etag=if_match,
+            actor=body.actor,
+            reason=body.reason,
+            idempotency_key=idempotency_key,
+        )
+        return page.model_dump(mode="json")
+
+    @router.get("/{product_id}/dependencies/{direction}")
+    def traverse_dependencies(
+        product_id: str,
+        direction: Literal["upstream", "downstream"],
+        request: Request,
+        environment: str = Query(...),
+        depth: int = Query(1, ge=1, le=32),
+        max_nodes: int = Query(200, ge=1, le=1000),
+        application: DataProductService = Depends(service),
+    ) -> dict[str, Any]:
+        repository = application.repository
+        graph = (
+            repository.get_direct_upstream
+            if direction == "upstream" and depth == 1
+            else (
+                repository.get_direct_downstream
+                if direction == "downstream" and depth == 1
+                else (
+                    repository.get_transitive_upstream
+                    if direction == "upstream"
+                    else repository.get_transitive_downstream
+                )
+            )
+        )(
+            request.state.tenant_id,
+            environment,
+            product_id,
+            max_nodes=max_nodes,
+            **({"max_depth": depth} if depth > 1 else {}),
+        )
+        return graph.model_dump(mode="json")
+
+    @router.get("/{product_id}/impact")
+    def impact(
+        product_id: str,
+        request: Request,
+        environment: str = Query(...),
+        limit: int = Query(200, ge=1, le=1000),
+        application: DataProductImpactService = Depends(impact_service),
+    ) -> dict[str, Any]:
+        return application.summarize(request.state.tenant_id, environment, product_id, limit=limit).model_dump(
+            mode="json"
         )
 
     @router.post("", status_code=201, response_model=ProductEnvelope)

@@ -13,13 +13,15 @@ from packages.domain_model.data_product import (
     DataProductMembershipGenerationResult,
     DataProductMembershipProposal,
 )
-from services.data_products.idempotency import hash_key, request_fingerprint
+from services.data_products.idempotency import hash_key, new_record, request_fingerprint, scoped_record_id
+from services.data_products.membership_events import MembershipMutation
+from services.data_products.repository import DataProductRepository
 
 
 class DataProductMembershipService:
     """Coordinates deterministic membership writes; repositories provide OCC."""
 
-    def __init__(self, repository: object) -> None:
+    def __init__(self, repository: DataProductRepository) -> None:
         self.repository = repository
 
     @staticmethod
@@ -40,10 +42,32 @@ class DataProductMembershipService:
     ) -> DataProductMembership:
         if not all((actor.strip(), reason.strip(), idempotency_key.strip())):
             raise ValueError("actor, reason, and idempotency key are required")
-        if getattr(self.repository, "get_product")(tenant_id, environment, product_id) is None:
+        if self.repository.get_product(tenant_id, environment, product_id) is None:
             raise KeyError(product_id)
         membership_id = self._identity(product_id, entity_type, entity_id)
-        existing = getattr(self.repository, "get_membership")(tenant_id, environment, product_id, membership_id)
+        mutation = MembershipMutation(
+            tenant_id,
+            environment,
+            product_id,
+            "add",
+            actor,
+            reason,
+            idempotency_key,
+            {"entity_id": entity_id, "entity_type": entity_type},
+        )
+        record_id = scoped_record_id(tenant_id, environment, product_id, idempotency_key)
+        self.repository.reserve_idempotency(
+            record_id,
+            new_record(
+                tenant_id=tenant_id,
+                environment=environment,
+                product_id=product_id,
+                action="membership_add",
+                key=idempotency_key,
+                fingerprint=mutation.fingerprint,
+            ),
+        )
+        existing = self.repository.get_membership(tenant_id, environment, product_id, membership_id)
         if existing:
             if existing.state == "active":
                 return existing
@@ -62,30 +86,30 @@ class DataProductMembershipService:
             created_by=actor,
             etag=etag,
         )
-        created = getattr(self.repository, "create_membership")(tenant_id, environment, member)
-        decision = DataProductMembershipDecision(
-            decision_id=sha256(f"manual:{membership_id}".encode()).hexdigest(),
-            tenant_id=tenant_id,
-            environment=environment,
-            product_id=product_id,
-            membership_id=membership_id,
-            decision="accept",
-            actor=actor,
-            reason=reason,
-            idempotency_key_hash=hash_key(idempotency_key),
-            request_fingerprint=request_fingerprint(
-                tenant_id=tenant_id,
-                environment=environment,
-                product_id=product_id,
-                action="manual_add",
-                body={"membership": membership_id},
-                actor=actor,
-                reason=reason,
-                expected_etag=None,
+        self.repository.append_membership_decision(
+            tenant_id, environment, product_id, mutation.event(outcome="pending", membership_id=membership_id)
+        )
+        created = self.repository.create_membership(tenant_id, environment, member)
+        self.repository.append_membership_decision(
+            tenant_id,
+            environment,
+            product_id,
+            mutation.event(
+                outcome="applied",
+                membership_id=membership_id,
+                result_revision=created.revision,
+                result_etag=created.etag,
             ),
         )
-        getattr(self.repository, "append_membership_decision")(tenant_id, environment, product_id, decision)
+        self.repository.complete_idempotency(
+            record_id, operation_id=mutation.operation_id, revision=created.revision, etag=created.etag
+        )
         return created
+
+    def get_membership(
+        self, tenant_id: str, environment: str, product_id: str, membership_id: str
+    ) -> DataProductMembership | None:
+        return self.repository.get_membership(tenant_id, environment, product_id, membership_id)
 
     def list_members(
         self,
@@ -96,7 +120,7 @@ class DataProductMembershipService:
         limit: int = 50,
         search_after: Sequence[str | int | float] | None = None,
     ):
-        return getattr(self.repository, "list_memberships")(
+        return self.repository.list_memberships(
             tenant_id, environment, product_id, limit=limit, search_after=search_after
         )
 
@@ -113,7 +137,7 @@ class DataProductMembershipService:
         generated = existing = 0
         for entity_id, entity_type, evidence_ref in sorted(evidence)[:max_proposals]:
             proposal_id = self._identity(product_id, entity_type, entity_id)
-            if getattr(self.repository, "get_membership_proposal")(tenant_id, environment, product_id, proposal_id):
+            if self.repository.get_membership_proposal(tenant_id, environment, product_id, proposal_id):
                 existing += 1
                 continue
             proposal = DataProductMembershipProposal(
@@ -131,7 +155,7 @@ class DataProductMembershipService:
                 expires_at=now + timedelta(days=7),
                 proposal_revision=1,
             )
-            getattr(self.repository, "create_membership_proposal")(proposal)
+            self.repository.create_membership_proposal(proposal)
             generated += 1
         return DataProductMembershipGenerationResult(
             generated=generated,
@@ -152,7 +176,7 @@ class DataProductMembershipService:
         limit: int = 50,
         search_after: Sequence[str | int | float] | None = None,
     ):
-        return getattr(self.repository, "list_membership_proposals")(
+        return self.repository.list_membership_proposals(
             tenant_id, environment, product_id, limit=limit, search_after=search_after
         )
 
@@ -165,6 +189,88 @@ class DataProductMembershipService:
         limit: int = 50,
         search_after: Sequence[str | int | float] | None = None,
     ):
-        return getattr(self.repository, "list_membership_decisions")(
+        return self.repository.list_membership_decisions(
             tenant_id, environment, product_id, limit=limit, search_after=search_after
         )
+
+    def generate_dependency_proposals(
+        self,
+        tenant_id: str,
+        environment: str,
+        product_id: str,
+        *,
+        evidence: Sequence[tuple[str, str, str]],
+        max_proposals: int = 100,
+    ):
+        return self.generate_lineage_proposals(
+            tenant_id, environment, product_id, evidence=evidence, max_proposals=max_proposals
+        )
+
+    def get_proposal(
+        self, tenant_id: str, environment: str, product_id: str, proposal_id: str
+    ) -> DataProductMembershipProposal | None:
+        return self.repository.get_membership_proposal(tenant_id, environment, product_id, proposal_id)
+
+    def accept_proposal(
+        self, tenant_id: str, environment: str, product_id: str, proposal_id: str
+    ) -> DataProductMembershipProposal:
+        return self.repository.accept_membership_proposal(tenant_id, environment, product_id, proposal_id)
+
+    def reject_proposal(
+        self, tenant_id: str, environment: str, product_id: str, proposal_id: str
+    ) -> DataProductMembershipProposal:
+        return self.repository.reject_membership_proposal(tenant_id, environment, product_id, proposal_id)
+
+    def expire_proposal(
+        self, tenant_id: str, environment: str, product_id: str, proposal_id: str
+    ) -> DataProductMembershipProposal:
+        return self.repository.expire_membership_proposal(tenant_id, environment, product_id, proposal_id)
+
+    def supersede_proposal(
+        self, tenant_id: str, environment: str, product_id: str, proposal_id: str
+    ) -> DataProductMembershipProposal:
+        return self.repository.supersede_membership_proposal(tenant_id, environment, product_id, proposal_id)
+
+    def exclude_member(
+        self,
+        tenant_id: str,
+        environment: str,
+        product_id: str,
+        membership_id: str,
+        *,
+        actor: str,
+        reason: str,
+        idempotency_key: str,
+        expected_etag: str,
+    ) -> DataProductMembership:
+        mutation = MembershipMutation(
+            tenant_id,
+            environment,
+            product_id,
+            "exclude",
+            actor,
+            reason,
+            idempotency_key,
+            {"membership_id": membership_id},
+            expected_etag,
+        )
+        self.repository.append_membership_decision(
+            tenant_id, environment, product_id, mutation.event(outcome="pending", membership_id=membership_id)
+        )
+        result = self.repository.exclude_membership(
+            tenant_id, environment, product_id, membership_id, actor=actor, reason=reason, expected_etag=expected_etag
+        )
+        self.repository.append_membership_decision(
+            tenant_id,
+            environment,
+            product_id,
+            mutation.event(
+                outcome="applied", membership_id=membership_id, result_revision=result.revision, result_etag=result.etag
+            ),
+        )
+        return result
+
+    def reconcile_membership_operation(self, tenant_id: str, environment: str, operation_id: str):
+        from services.data_products.reconciliation import DataProductReconciler
+
+        return DataProductReconciler(self.repository).reconcile_operation(tenant_id, environment, operation_id)

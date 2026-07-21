@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Protocol, Sequence
+from typing import Any, Protocol, Sequence, TypeAlias
 
 from packages.domain_model.data_product import (
     DataProduct,
@@ -25,6 +26,64 @@ from services.data_products.idempotency import DataProductIdempotencyRecord
 
 class ProductVersionConflict(RuntimeError):
     pass
+
+
+SearchAfter: TypeAlias = Sequence[str | int | float]
+
+
+@dataclass(frozen=True)
+class DataProductListOptions:
+    limit: int = 50
+    search_after: SearchAfter | None = None
+
+
+class DataProductRevisionListOptions(DataProductListOptions):
+    pass
+
+
+class DataProductMembershipListOptions(DataProductListOptions):
+    pass
+
+
+class DataProductProposalListOptions(DataProductListOptions):
+    pass
+
+
+class DataProductDecisionListOptions(DataProductListOptions):
+    pass
+
+
+class DataProductDependencyListOptions(DataProductListOptions):
+    pass
+
+
+@dataclass(frozen=True)
+class DataProductMembershipMutationResult:
+    membership: DataProductMembership
+    operation_id: str
+    replayed: bool = False
+
+
+@dataclass(frozen=True)
+class DataProductProposalDecisionResult:
+    proposal: DataProductMembershipProposal
+    membership: DataProductMembership | None
+    operation_id: str
+    replayed: bool = False
+
+
+@dataclass(frozen=True)
+class DataProductDependencyMutationResult:
+    page: DataProductDependencyPage
+    operation_id: str
+    replayed: bool = False
+
+
+@dataclass(frozen=True)
+class DataProductReconciliationResult:
+    operation_id: str
+    outcome: str
+    repaired_idempotency: bool
 
 
 class DataProductRepository(Protocol):

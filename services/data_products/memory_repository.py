@@ -1,6 +1,18 @@
 from __future__ import annotations
 
-from packages.domain_model.data_product import DataProduct, DataProductOperationResult, DataProductRevisionEvent
+from packages.domain_model.data_product import (
+    DataProduct,
+    DataProductDependencyPage,
+    DataProductDependencyProjection,
+    DataProductMembership,
+    DataProductMembershipDecision,
+    DataProductMembershipDecisionPage,
+    DataProductMembershipPage,
+    DataProductMembershipProposal,
+    DataProductMembershipProposalPage,
+    DataProductOperationResult,
+    DataProductRevisionEvent,
+)
 from services.data_products.events import ProductConsistencyError
 from services.data_products.idempotency import DataProductIdempotencyRecord, IdempotencyConflict
 from services.data_products.repository import ProductVersionConflict
@@ -14,6 +26,10 @@ class MemoryDataProductRepository:
         self.revisions: dict[tuple[str, str, str, int], tuple[DataProduct, str, str]] = {}
         self.operations: dict[str, tuple[DataProductRevisionEvent, DataProduct]] = {}
         self.idempotency: dict[str, DataProductIdempotencyRecord] = {}
+        self.memberships: dict[tuple[str, str, str, str], DataProductMembership] = {}
+        self.proposals: dict[tuple[str, str, str, str, int], DataProductMembershipProposal] = {}
+        self.decisions: dict[tuple[str, str, str, str], DataProductMembershipDecision] = {}
+        self.dependencies: dict[tuple[str, str, str, str], DataProductDependencyProjection] = {}
 
     def reserve_idempotency(self, record_id: str, record: DataProductIdempotencyRecord) -> DataProductIdempotencyRecord:
         existing = self.idempotency.get(record_id)
@@ -187,3 +203,157 @@ class MemoryDataProductRepository:
                 return
             raise ProductVersionConflict("divergent data product revision")
         self.revisions[key] = event
+
+    def create_membership(
+        self, tenant_id: str, environment: str, membership: DataProductMembership, *, create_only: bool = True
+    ) -> DataProductMembership:
+        if (tenant_id, environment) != (membership.tenant_id, membership.environment):
+            raise ValueError("membership scope mismatch")
+        key = (tenant_id, environment, membership.product_id, membership.membership_id)
+        current = self.memberships.get(key)
+        if current and current != membership:
+            raise ProductVersionConflict("divergent membership replay")
+        self.memberships[key] = membership.model_copy(deep=True)
+        return membership.model_copy(deep=True)
+
+    def get_membership(
+        self, tenant_id: str, environment: str, product_id: str, membership_id: str
+    ) -> DataProductMembership | None:
+        value = self.memberships.get((tenant_id, environment, product_id, membership_id))
+        return value.model_copy(deep=True) if value else None
+
+    def list_memberships(
+        self, tenant_id: str, environment: str, product_id: str, *, limit: int = 50, search_after=None
+    ) -> DataProductMembershipPage:
+        values = sorted(
+            (v for k, v in self.memberships.items() if k[:3] == (tenant_id, environment, product_id)),
+            key=lambda v: (-v.updated_at.timestamp(), v.membership_id),
+        )
+        return DataProductMembershipPage(
+            items=[v.model_copy(deep=True) for v in values[:limit]], has_more=len(values) > limit
+        )
+
+    def exclude_membership(
+        self,
+        tenant_id: str,
+        environment: str,
+        product_id: str,
+        membership_id: str,
+        *,
+        actor: str,
+        reason: str,
+        expected_etag: str,
+    ) -> DataProductMembership:
+        from hashlib import sha256
+
+        from packages.domain_model.base import utc_now
+
+        current = self.get_membership(tenant_id, environment, product_id, membership_id)
+        if not current:
+            raise KeyError(membership_id)
+        if current.etag != expected_etag:
+            raise ProductVersionConflict("stale membership ETag")
+        now = utc_now()
+        updated = current.model_copy(
+            update={
+                "state": "excluded",
+                "excluded_at": now,
+                "excluded_by": actor,
+                "exclusion_reason": reason,
+                "updated_at": now,
+                "revision": current.revision + 1,
+                "etag": sha256(f"{current.etag}:excluded".encode()).hexdigest(),
+            }
+        )
+        self.memberships[(tenant_id, environment, product_id, membership_id)] = updated
+        return updated.model_copy(deep=True)
+
+    def create_membership_proposal(self, proposal: DataProductMembershipProposal) -> DataProductMembershipProposal:
+        key = (
+            proposal.tenant_id,
+            proposal.environment,
+            proposal.product_id,
+            proposal.proposal_id,
+            proposal.proposal_revision,
+        )
+        current = self.proposals.get(key)
+        if current and current != proposal:
+            raise ProductVersionConflict("divergent proposal replay")
+        self.proposals[key] = proposal.model_copy(deep=True)
+        return proposal.model_copy(deep=True)
+
+    def get_membership_proposal(
+        self, tenant_id: str, environment: str, product_id: str, proposal_id: str
+    ) -> DataProductMembershipProposal | None:
+        values = [v for k, v in self.proposals.items() if k[:4] == (tenant_id, environment, product_id, proposal_id)]
+        return max(values, key=lambda v: v.proposal_revision).model_copy(deep=True) if values else None
+
+    def list_membership_proposals(
+        self, tenant_id: str, environment: str, product_id: str, *, limit: int = 50, search_after=None
+    ) -> DataProductMembershipProposalPage:
+        values = sorted(
+            (v for k, v in self.proposals.items() if k[:3] == (tenant_id, environment, product_id)),
+            key=lambda v: (v.created_at, v.proposal_revision),
+            reverse=True,
+        )
+        return DataProductMembershipProposalPage(
+            items=[v.model_copy(deep=True) for v in values[:limit]], has_more=len(values) > limit
+        )
+
+    def append_membership_decision(
+        self, tenant_id: str, environment: str, product_id: str, decision: DataProductMembershipDecision
+    ) -> DataProductMembershipDecision:
+        key = (tenant_id, environment, product_id, decision.decision_id)
+        current = self.decisions.get(key)
+        if current and current != decision:
+            raise ProductConsistencyError("divergent decision replay")
+        self.decisions[key] = decision.model_copy(deep=True)
+        return decision.model_copy(deep=True)
+
+    def list_membership_decisions(
+        self, tenant_id: str, environment: str, product_id: str, *, limit: int = 50, search_after=None
+    ) -> DataProductMembershipDecisionPage:
+        values = sorted(
+            (v for k, v in self.decisions.items() if k[:3] == (tenant_id, environment, product_id)),
+            key=lambda v: (v.decided_at, v.decision_id),
+            reverse=True,
+        )
+        return DataProductMembershipDecisionPage(
+            items=[v.model_copy(deep=True) for v in values[:limit]], has_more=len(values) > limit
+        )
+
+    def save_dependencies(
+        self, tenant_id: str, environment: str, product_id: str, dependencies: list[DataProductDependencyProjection]
+    ) -> DataProductDependencyPage:
+        from packages.domain_model.base import utc_now
+
+        proposed = {d.upstream_product_id: d for d in dependencies}
+        now = utc_now()
+        for key, edge in list(self.dependencies.items()):
+            if key[:3] == (tenant_id, environment, product_id) and key[3] not in proposed and not edge.removed:
+                self.dependencies[key] = edge.model_copy(
+                    update={
+                        "removed": True,
+                        "removed_at": now,
+                        "removed_by_revision": max(
+                            (d.product_revision for d in dependencies), default=edge.product_revision + 1
+                        ),
+                        "updated_at": now,
+                    }
+                )
+        for edge in dependencies:
+            self.dependencies[(tenant_id, environment, product_id, edge.upstream_product_id)] = edge.model_copy(
+                deep=True
+            )
+        return self.list_dependencies(tenant_id, environment, product_id)
+
+    def list_dependencies(
+        self, tenant_id: str, environment: str, product_id: str, *, limit: int = 50, search_after=None
+    ) -> DataProductDependencyPage:
+        values = sorted(
+            (v for k, v in self.dependencies.items() if k[:3] == (tenant_id, environment, product_id)),
+            key=lambda v: (v.removed, v.upstream_product_id, v.graph_version),
+        )
+        return DataProductDependencyPage(
+            items=[v.model_copy(deep=True) for v in values[:limit]], has_more=len(values) > limit
+        )

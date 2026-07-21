@@ -122,6 +122,51 @@ def test_completed_lifecycle_replays_before_state_and_etag_validation():
     assert len([event for event, _ in repository.operations.values() if event.action == "activate"]) == 1
 
 
+def test_completed_lifecycle_replays_immutable_result_after_later_revision():
+    repository = MemoryDataProductRepository()
+    service = DataProductService(repository)
+    draft = product("orders")
+    draft.outputs = [DataProductOutput(entity_id="orders-table", entity_type="asset")]
+    created = service.create(draft, actor="alice", idempotency_key="create-request")
+    activated = service.activate(
+        created.tenant_id,
+        created.environment,
+        created.id,
+        if_match=created.etag,
+        actor="alice",
+        reason="ready",
+        idempotency_key="activate-request",
+    )
+    deprecated = service.deprecate(
+        activated.tenant_id,
+        activated.environment,
+        activated.id,
+        if_match=activated.etag,
+        actor="alice",
+        reason="replacement available",
+        idempotency_key="deprecate-request",
+    )
+
+    replay = service.activate(
+        created.tenant_id,
+        created.environment,
+        created.id,
+        if_match=created.etag,
+        actor="alice",
+        reason="ready",
+        idempotency_key="activate-request",
+    )
+
+    assert deprecated.revision == 3
+    assert (replay.revision, replay.etag, replay.lifecycle_state) == (
+        activated.revision,
+        activated.etag,
+        "active",
+    )
+    record = next(item for item in repository.idempotency.values() if item.action == "activate")
+    assert record.action == "activate"
+
+
 def test_lifecycle_key_cannot_be_reused_for_divergent_request():
     repository = MemoryDataProductRepository()
     service = DataProductService(repository)

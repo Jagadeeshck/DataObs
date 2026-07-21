@@ -40,6 +40,38 @@ class MemoryDataProductRepository:
             }
         )
 
+    def get_idempotency(self, record_id: str):
+        value = self.idempotency.get(record_id)
+        return value.model_copy(deep=True) if value else None
+
+    def _terminal_idempotency(self, record_id: str, state: str, error_code: str | None = None) -> None:
+        from packages.domain_model.base import utc_now
+
+        record = self.idempotency[record_id]
+        if record.state == "completed":
+            return
+        now = utc_now()
+        self.idempotency[record_id] = record.model_copy(
+            update={"state": state, "error_code": error_code, "updated_at": now}
+        )
+
+    def fail_idempotency(self, record_id: str, *, error_code: str) -> None:
+        self._terminal_idempotency(record_id, "failed", error_code)
+
+    def supersede_idempotency(self, record_id: str, *, error_code: str = "newer_revision") -> None:
+        self._terminal_idempotency(record_id, "superseded", error_code)
+
+    def list_expired_idempotency(self, tenant_id: str, environment: str, *, now, limit: int = 100):
+        return [
+            value.model_copy(deep=True)
+            for value in sorted(self.idempotency.values(), key=lambda item: (item.expires_at, item.resource_id))
+            if (value.tenant_id, value.environment) == (tenant_id, environment) and value.expires_at <= now
+        ][:limit]
+
+    def get_product_revision(self, tenant_id: str, environment: str, product_id: str, revision: int):
+        value = self.revisions.get((tenant_id, environment, product_id, revision))
+        return value[0].model_copy(deep=True) if value else None
+
     def get_operation(self, tenant_id: str, environment: str, operation_id: str):
         found = self.operations.get(operation_id)
         if found and (found[0].tenant_id, found[0].environment) == (tenant_id, environment):

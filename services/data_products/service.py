@@ -124,11 +124,12 @@ class DataProductService:
     ) -> DataProduct:
         if not idempotency_key:
             raise ValueError("Idempotency-Key is required")
+        canonical_action = {"active": "activate", "deprecated": "deprecate", "archived": "archive"}[target]
         fingerprint = request_fingerprint(
             tenant_id=tenant_id,
             environment=environment,
             product_id=product_id,
-            action=target,
+            action=canonical_action,
             body={},
             actor=actor,
             reason=reason,
@@ -139,21 +140,25 @@ class DataProductService:
             tenant_id=tenant_id,
             environment=environment,
             product_id=product_id,
-            action=target,
+            action=canonical_action,
             key=idempotency_key,
             fingerprint=fingerprint,
         )
         reserved = self.repository.reserve_idempotency(record_id, record)
         # Critically, replay is resolved before current lifecycle and ETag validation.
         if reserved.state == "completed":
-            replay = self.get(tenant_id, environment, product_id)
-            if replay.revision < (reserved.result_revision or 0):
+            if reserved.result_revision is None:
+                raise IdempotencyPending("completed result has no revision")
+            replay = self.repository.get_product_revision(tenant_id, environment, product_id, reserved.result_revision)
+            if replay is None or replay.etag != reserved.result_etag:
                 raise IdempotencyPending("completed result is not yet visible")
             return replay
         if reserved.state == "pending" and reserved.operation_id:
             operation = self.repository.get_operation(tenant_id, environment, reserved.operation_id)
             if operation and operation.outcome == "applied":
-                replay = self.get(tenant_id, environment, product_id)
+                replay = self.repository.get_product_revision(tenant_id, environment, product_id, operation.revision)
+                if replay is None or replay.etag != operation.etag:
+                    raise IdempotencyPending("operation result is not yet visible")
                 self.repository.complete_idempotency(
                     record_id, operation_id=operation.operation_id, revision=operation.revision, etag=operation.etag
                 )
@@ -177,13 +182,13 @@ class DataProductService:
             actor=actor,
             reason=reason,
             idempotency_key=idempotency_key,
-            action={"active": "activate", "deprecated": "deprecate", "archived": "archive"}[target],
+            action=canonical_action,
         )
         operation = self._pending(
             saved,
             actor,
             reason,
-            {"active": "activate", "deprecated": "deprecate", "archived": "archive"}[target],
+            canonical_action,
             idempotency_key,
         )
         self.repository.complete_idempotency(

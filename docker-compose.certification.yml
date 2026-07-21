@@ -16,7 +16,7 @@ x-kafka-env: &kafka-env
 services:
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:9.4.2
-    profiles: [core, postgres, kafka, jobs, browser, security, full]
+    profiles: [core, postgres, kafka, jobs, browser-infra, security-infra, full-backend, full]
     environment: {discovery.type: single-node, xpack.security.enabled: "false", ES_JAVA_OPTS: -Xms512m -Xmx512m}
     ports: ["127.0.0.1:19200:9200"]
     networks: [certification-data, certification-control]
@@ -25,30 +25,33 @@ services:
     deploy: {resources: {limits: {memory: 1g}}}
   kibana:
     image: docker.elastic.co/kibana/kibana:9.4.2
-    profiles: [core, browser, full]
+    profiles: [core, browser-infra, full]
     environment: {ELASTICSEARCH_HOSTS: http://elasticsearch:9200, XPACK_SECURITY_ENABLED: "false"}
     ports: ["127.0.0.1:15601:5601"]
     networks: [certification-public, certification-data]
     depends_on: {elasticsearch: {condition: service_healthy}}
+    healthcheck: {test: [CMD-SHELL, "curl -fsS http://localhost:5601/api/status >/dev/null"], interval: 10s, timeout: 5s, retries: 30}
     deploy: {resources: {limits: {memory: 1g}}}
   api:
     build: {context: ., dockerfile: Dockerfile.api}
-    profiles: [core, postgres, kafka, jobs, browser, security, full]
+    profiles: [core, postgres, kafka, jobs, browser-infra, security-infra, full-backend, full]
     environment: {DATAOBS_STORE_BACKEND: elasticsearch, ELASTICSEARCH_URL: http://elasticsearch:9200, DATAOBS_ALLOW_UNAUTHENTICATED_DEV: "true", API_PORT: "8080", OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317}
     ports: ["127.0.0.1:18000:8080"]
     networks: [certification-public, certification-control]
     depends_on: {elasticsearch: {condition: service_healthy}, otel-collector: {condition: service_healthy}}
+    healthcheck: {test: [CMD-SHELL, "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8080/health', timeout=3)\""], interval: 10s, timeout: 5s, retries: 30}
     deploy: {resources: {limits: {memory: 512m}}}
   console:
     build: {context: ui/dataobs-console}
-    profiles: [core, browser, full]
+    profiles: [core, browser-infra, full]
     ports: ["127.0.0.1:18080:8080"]
     networks: [certification-public]
-    depends_on: [api]
+    depends_on: {api: {condition: service_healthy}}
+    healthcheck: {test: [CMD-SHELL, "wget -q -O- http://localhost:8080/healthz >/dev/null && wget -q -O- http://localhost:8080/api/health >/dev/null"], interval: 10s, timeout: 5s, retries: 30}
     deploy: {resources: {limits: {memory: 256m}}}
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.139.0
-    profiles: [core, postgres, kafka, jobs, browser, security, full]
+    profiles: [core, postgres, kafka, jobs, browser-infra, security-infra, full-backend, full]
     command: [--config=/etc/otelcol/config.yaml]
     volumes: [./certification/config/otel-collector.yaml:/etc/otelcol/config.yaml:ro]
     networks: [certification-control]
@@ -56,16 +59,16 @@ services:
     deploy: {resources: {limits: {memory: 256m}}}
   fixture-service:
     image: nginxinc/nginx-unprivileged:1.29.4-alpine
-    profiles: [core, jobs, security, full]
+    profiles: [core, jobs, security-infra, full]
     volumes: [./certification/fixtures:/usr/share/nginx/html:ro]
     networks: [certification-control]
   denied-destination:
     image: nginxinc/nginx-unprivileged:1.29.4-alpine
-    profiles: [security, full]
+    profiles: [security-infra, full]
     networks: [certification-denied]
   postgres:
     image: postgres:16.9-alpine
-    profiles: [postgres, full]
+    profiles: [postgres, full-backend, full]
     environment: {POSTGRES_DB: orders, POSTGRES_USER: dataobs_fixture, POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password}
     secrets: [postgres_password]
     volumes: [./certification/fixtures/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro, certification-pg:/var/lib/postgresql/data]
@@ -74,9 +77,11 @@ services:
     deploy: {resources: {limits: {memory: 512m}}}
   scanner:
     build: {context: ., dockerfile: Dockerfile.scanner}
-    profiles: [postgres, full]
+    profiles: [postgres, full-backend, full]
     secrets: [postgres_password]
-    environment: {POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password, DATAOBS_API_URL: http://api:8080}
+    command: [run, --config, /app/certification/config/postgres-scanner.yaml]
+    volumes: [./certification/config/postgres-scanner.yaml:/app/certification/config/postgres-scanner.yaml:ro]
+    environment: {DATAOBS_API_URL: http://api:8080}
     networks: [certification-data, certification-control]
     depends_on: {postgres: {condition: service_healthy}}
   kafka-1:
@@ -108,7 +113,7 @@ services:
     depends_on: [kafka-1, kafka-2, kafka-3]
   playwright:
     image: mcr.microsoft.com/playwright:v1.58.2-noble
-    profiles: [browser, full]
+    profiles: [browser-runner]
     working_dir: /work/ui/dataobs-console
     volumes: [.:/work]
     environment: {PLAYWRIGHT_BASE_URL: http://console:8080}

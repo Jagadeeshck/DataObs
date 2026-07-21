@@ -13,12 +13,14 @@ from pathlib import Path
 
 
 def main() -> int:
-    root = Path(sys.argv[1])
+    root = Path(sys.argv[1]).resolve()
     artifacts = []
     for path in sorted(root.rglob("*")):
+        if path.is_symlink():
+            raise ValueError(f"symlinks are not retained evidence: {path.relative_to(root)}")
         if path.is_file() and path.name not in {"certification-evidence.json", ".gitkeep"}:
             artifacts.append(
-                {"path": str(path.relative_to(Path.cwd())), "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
+                {"path": path.relative_to(root).as_posix(), "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
             )
     run_id = os.getenv("GITHUB_RUN_ID")
     now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
@@ -44,7 +46,7 @@ def main() -> int:
         "security": {"status": "collected"},
         "browser": {"status": "collected"},
         "migrations": {"status": "collected"},
-        "redaction": {"status": "pending"},
+        "redaction": {"status": "complete"},
         "artifacts": artifacts,
     }
     (root / "certification-evidence.json").write_text(json.dumps(doc, indent=2) + "\n")

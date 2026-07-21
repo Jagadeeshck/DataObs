@@ -170,7 +170,6 @@ def create_data_product_router(
         idempotency_key: str = Header(..., alias="Idempotency-Key"),
         application: DataProductService = Depends(service),
     ) -> dict[str, Any]:
-        del idempotency_key
         try:
             product = getattr(application, action)(
                 request.state.tenant_id,
@@ -179,6 +178,7 @@ def create_data_product_router(
                 if_match=if_match,
                 actor=body.actor,
                 reason=body.reason,
+                idempotency_key=idempotency_key,
             )
             return envelope(product, request, response)
         except KeyError as exc:

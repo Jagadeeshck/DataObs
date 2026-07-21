@@ -6,6 +6,7 @@ from packages.domain_model.data_product import (
     DataProduct,
     DataProductCriticality,
     DataProductDependency,
+    DataProductOutput,
     DataProductOwner,
 )
 from services.data_products.memory_repository import MemoryDataProductRepository
@@ -64,3 +65,27 @@ def test_divergent_revision_event_is_rejected():
     repository.append_revision(value, actor="alice", reason="created")
     with pytest.raises(ProductVersionConflict, match="divergent"):
         repository.append_revision(value.model_copy(update={"name": "different"}), actor="alice", reason="created")
+
+
+def test_lifecycle_idempotency_key_reaches_pending_operation_identity():
+    repository = MemoryDataProductRepository()
+    service = DataProductService(repository)
+    draft = product("orders")
+    draft.outputs = [DataProductOutput(entity_id="orders-table", entity_type="asset")]
+    created = service.create(draft, actor="alice", idempotency_key="create-request")
+
+    activated = service.activate(
+        created.tenant_id,
+        created.environment,
+        created.id,
+        if_match=created.etag,
+        actor="alice",
+        reason="ready",
+        idempotency_key="activate-request",
+    )
+
+    applied = [event for event, _ in repository.operations.values() if event.action == "activate"]
+    assert activated.lifecycle_state == "active"
+    assert len(applied) == 1
+    expected = service._pending(activated, "alice", "ready", "activate", "activate-request")
+    assert applied[0].operation_id == expected.operation_id

@@ -58,6 +58,7 @@ class DataProductService:
         actor: str,
         reason: str = "updated",
         idempotency_key: str | None = None,
+        action: str = "update",
     ) -> DataProduct:
         if not if_match:
             raise ProductVersionConflict("If-Match is required")
@@ -70,7 +71,7 @@ class DataProductService:
         self.validate_dependencies(product)
         product.updated_at = datetime.now(timezone.utc)
         product.etag = product_etag(product)
-        event = self._pending(product, actor, reason, "update", idempotency_key)
+        event = self._pending(product, actor, reason, action, idempotency_key)
         existing = self.repository.begin_operation(event, product)
         if existing.outcome == "applied":
             replay = self.repository.get_product(product.tenant_id, product.environment, product.id)
@@ -113,6 +114,7 @@ class DataProductService:
         if_match: str | None,
         actor: str,
         reason: str,
+        idempotency_key: str | None = None,
     ) -> DataProduct:
         current = self.get(tenant_id, environment, product_id)
         allowed = {
@@ -127,27 +129,79 @@ class DataProductService:
             raise ValueError("activation requires owner, criticality, and at least one output")
         changed = current.model_copy(deep=True)
         changed.lifecycle_state = target
-        return self.update(changed, if_match=if_match, actor=actor, reason=reason)
+        return self.update(
+            changed,
+            if_match=if_match,
+            actor=actor,
+            reason=reason,
+            idempotency_key=idempotency_key,
+            action={"active": "activate", "deprecated": "deprecate", "archived": "archive"}[target],
+        )
 
     def activate(
-        self, tenant_id: str, environment: str, product_id: str, *, if_match: str | None, actor: str, reason: str
+        self,
+        tenant_id: str,
+        environment: str,
+        product_id: str,
+        *,
+        if_match: str | None,
+        actor: str,
+        reason: str,
+        idempotency_key: str | None = None,
     ) -> DataProduct:
         return self._transition(
-            tenant_id, environment, product_id, "active", if_match=if_match, actor=actor, reason=reason
+            tenant_id,
+            environment,
+            product_id,
+            "active",
+            if_match=if_match,
+            actor=actor,
+            reason=reason,
+            idempotency_key=idempotency_key,
         )
 
     def deprecate(
-        self, tenant_id: str, environment: str, product_id: str, *, if_match: str | None, actor: str, reason: str
+        self,
+        tenant_id: str,
+        environment: str,
+        product_id: str,
+        *,
+        if_match: str | None,
+        actor: str,
+        reason: str,
+        idempotency_key: str | None = None,
     ) -> DataProduct:
         return self._transition(
-            tenant_id, environment, product_id, "deprecated", if_match=if_match, actor=actor, reason=reason
+            tenant_id,
+            environment,
+            product_id,
+            "deprecated",
+            if_match=if_match,
+            actor=actor,
+            reason=reason,
+            idempotency_key=idempotency_key,
         )
 
     def archive(
-        self, tenant_id: str, environment: str, product_id: str, *, if_match: str | None, actor: str, reason: str
+        self,
+        tenant_id: str,
+        environment: str,
+        product_id: str,
+        *,
+        if_match: str | None,
+        actor: str,
+        reason: str,
+        idempotency_key: str | None = None,
     ) -> DataProduct:
         return self._transition(
-            tenant_id, environment, product_id, "archived", if_match=if_match, actor=actor, reason=reason
+            tenant_id,
+            environment,
+            product_id,
+            "archived",
+            if_match=if_match,
+            actor=actor,
+            reason=reason,
+            idempotency_key=idempotency_key,
         )
 
     def validate_dependencies(self, product: DataProduct, *, max_depth: int = 32, max_nodes: int = 1000) -> None:

@@ -92,6 +92,7 @@ class DataProductChange(DomainModel):
 
 
 class DataProduct(ProductEntity):
+    revision: int = Field(default=1, ge=1)
     name: str
     domain: str
     criticality: DataProductCriticality

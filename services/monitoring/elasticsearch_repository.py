@@ -6,13 +6,14 @@ environment so identical business IDs cannot collide across scopes.
 
 from __future__ import annotations
 
+import json
 from hashlib import sha256
 from typing import Any
 
 from elasticsearch import ConflictError, Elasticsearch, NotFoundError
 
 from packages.domain_model.monitor import MonitorDefinition
-from services.monitoring.repository import VersionConflict
+from services.monitoring.repository import ConsistencyError, VersionConflict
 
 MONITORS_ALIAS = "dataobs-monitor-definitions-v2"
 DEFINITION_HISTORY_ALIAS = "dataobs-monitor-definition-history-v1"
@@ -84,11 +85,16 @@ class ElasticsearchMonitorRepository:
             "etag": monitor.etag,
             "actor": actor,
             "action": action,
+            "definition_checksum": sha256(
+                json.dumps(self._source(monitor), sort_keys=True, separators=(",", ":")).encode()
+            ).hexdigest(),
             "definition": self._source(monitor),
         }
         try:
             self.client.create(index=DEFINITION_HISTORY_ALIAS, id=event_id, document=document)
-        except ConflictError:
-            # Exact lifecycle replay is idempotent; a differing revision is impossible
-            # because the immutable ID includes that revision.
-            return
+        except ConflictError as exc:
+            existing = self.client.get(index=DEFINITION_HISTORY_ALIAS, id=event_id)["_source"]
+            comparable = ("tenant_id", "environment", "monitor_id", "revision", "etag", "action", "definition_checksum")
+            if all(existing.get(key) == document.get(key) for key in comparable):
+                return
+            raise ConsistencyError("divergent monitor definition history event") from exc

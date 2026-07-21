@@ -2,11 +2,16 @@
 set -Eeuo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 COMPOSE=(docker compose -f "$ROOT/docker-compose.certification.yml")
+if [[ -f "$ROOT/certification/runtime-secrets/compose.env" ]]; then
+  # shellcheck disable=SC1091
+  source "$ROOT/certification/runtime-secrets/compose.env"
+  export CERTIFICATION_POSTGRES_PASSWORD_FILE
+fi
 profile="${CERTIFICATION_PROFILE:-core}"
 command="${1:-help}"; shift || true
 case "$command" in
   config) "${COMPOSE[@]}" --profile "${1:-$profile}" config ;;
-  up) profile="${1:-$profile}"; "$ROOT/scripts/certification/bootstrap.sh"; "${COMPOSE[@]}" --profile "$profile" up -d --build; "$ROOT/scripts/certification/wait_for_stack.sh" "$profile" ;;
+  up) profile="${1:-$profile}"; "$ROOT/scripts/certification/bootstrap.sh"; source "$ROOT/certification/runtime-secrets/compose.env"; export CERTIFICATION_POSTGRES_PASSWORD_FILE; "${COMPOSE[@]}" --profile "$profile" up -d --build; "$ROOT/scripts/certification/wait_for_stack.sh" "$profile" ;;
   seed) "$ROOT/scripts/certification/seed.sh" ;;
   test)
     suite="${1:?test requires backend, browser, or security}"

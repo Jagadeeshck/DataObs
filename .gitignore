@@ -10,6 +10,8 @@
 .env.*.local
 *.env
 config/dataobs.yaml
+certification/runtime-secrets/*
+!certification/runtime-secrets/.gitkeep
 
 # ── Python ───────────────────────────────────────────────────────────────────
 __pycache__/

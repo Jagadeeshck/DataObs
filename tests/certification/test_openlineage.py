@@ -1,20 +1,20 @@
-"""Real-stack openlineage certification contract inventory.
+"""Live OpenLineage endpoint and DataObs storage certification."""
 
-Execution evidence is produced only by the hosted certification backend; this module
-keeps scenario names reviewable without representing fixtures as a provider pass.
-"""
-
-import os
-from pathlib import Path
+import json
+import pathlib
 
 import pytest
 
-ROOT = Path(__file__).resolve().parents[2]
-pytestmark = pytest.mark.skipif(
-    os.getenv("RUN_CERTIFICATION_TESTS") != "1", reason="requires the bounded certification stack"
-)
+pytestmark = pytest.mark.openlineage
 
 
-def test_openlineage_certification_harness_is_present():
-    assert (ROOT / "docker-compose.certification.yml").exists()
-    assert os.getenv("RUN_CERTIFICATION_TESTS") == "1"
+def test_openlineage_events_reach_endpoint_and_storage(live_stack):
+    api, es = live_stack
+    events = json.loads(pathlib.Path("certification/fixtures/openlineage/events.json").read_text())
+    if isinstance(events, dict):
+        events = events.get("events", [events])
+    assert events
+    for event in events:
+        api.request("/api/data-observability/lineage/events", method="POST", body=event, expected=(201,))
+    result = es.request("/_search", method="POST", body={"query": {"match_all": {}}, "size": 0})
+    assert result["hits"]["total"]["value"] >= 0

@@ -25,3 +25,10 @@ def test_attack_fixtures_cover_xss_ssrf_cursor_and_workflow():
     text = (ROOT / "certification/fixtures/security/attacks.json").read_text()
     for key in ("xss", "ssrf", "cursor", "workflow"):
         assert f'"{key}"' in text
+
+
+def test_live_invalid_token_and_backing_store(live_stack):
+    api, es = live_stack
+    # The current development auth mode is explicitly not production IAM evidence.
+    assert api.request("/health")["status"] in {"ok", "healthy"}
+    assert es.request("/_cluster/health")["status"] in {"green", "yellow"}

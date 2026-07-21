@@ -81,6 +81,8 @@ class DataProductMembership(DomainModel):
 class DataProductMembershipPage(DomainModel):
     items: List[DataProductMembership]
     next_cursor: str | None = None
+    has_more: bool = False
+    search_after: List[str | int | float] | None = None
 
 
 class DataProductMembershipProposal(DomainModel):
@@ -111,6 +113,8 @@ class DataProductMembershipProposal(DomainModel):
 class DataProductMembershipProposalPage(DomainModel):
     items: List[DataProductMembershipProposal]
     next_cursor: str | None = None
+    has_more: bool = False
+    search_after: List[str | int | float] | None = None
 
 
 class DataProductMembershipDecision(DomainModel):
@@ -132,6 +136,8 @@ class DataProductMembershipDecision(DomainModel):
 class DataProductMembershipDecisionPage(DomainModel):
     items: List[DataProductMembershipDecision]
     next_cursor: str | None = None
+    has_more: bool = False
+    search_after: List[str | int | float] | None = None
 
 
 class DataProductMembershipGenerationResult(DomainModel):
@@ -147,6 +153,61 @@ class DataProductMembershipGenerationResult(DomainModel):
 class DataProductDependency(DomainModel):
     upstream_product_id: str
     evidence_refs: List[str] = Field(default_factory=list)
+    observed_at: datetime = Field(default_factory=utc_now)
+
+
+class DataProductDependencyProjection(DomainModel):
+    tenant_id: str
+    environment: str
+    product_id: str
+    upstream_product_id: str
+    relationship: str = Field(default="depends_on", max_length=100)
+    source: str = Field(default="declared", max_length=100)
+    evidence_refs: List[str] = Field(default_factory=list, max_length=50)
+    confidence: float = Field(default=1, ge=0, le=1)
+    observed_at: datetime = Field(default_factory=utc_now)
+    product_revision: int = Field(ge=1)
+    graph_version: str
+    created_at: datetime = Field(default_factory=utc_now)
+    updated_at: datetime = Field(default_factory=utc_now)
+    removed: bool = False
+    schema_version: str = "v1"
+
+
+class DataProductDependencyPage(DomainModel):
+    items: List[DataProductDependencyProjection]
+    has_more: bool = False
+    search_after: List[str | int | float] | None = None
+    next_cursor: str | None = None
+
+
+class DataProductDependencyGraph(DomainModel):
+    nodes: List[str]
+    edges: List[DataProductDependencyProjection]
+    direction: Literal["upstream", "downstream"]
+    depth_reached: int = Field(ge=0)
+    visited_count: int = Field(ge=0)
+    truncated: bool = False
+    cycle_detected: bool = False
+    missing_evidence: List[str] = Field(default_factory=list, max_length=50)
+    graph_version: str
+    observed_at: datetime = Field(default_factory=utc_now)
+
+
+class DataProductImpactSummary(DomainModel):
+    tenant_id: str
+    environment: str
+    product_id: str
+    outputs: List[str] = Field(default_factory=list, max_length=500)
+    active_members: List[str] = Field(default_factory=list, max_length=500)
+    direct_upstream_products: List[str] = Field(default_factory=list, max_length=500)
+    direct_downstream_products: List[str] = Field(default_factory=list, max_length=500)
+    transitive_upstream_products: List[str] = Field(default_factory=list, max_length=1000)
+    transitive_downstream_products: List[str] = Field(default_factory=list, max_length=1000)
+    pathways: List[str] = Field(default_factory=list, max_length=500)
+    truncated: bool = False
+    missing_evidence: List[str] = Field(default_factory=list, max_length=50)
+    source_coverage: float = Field(default=0, ge=0, le=1)
     observed_at: datetime = Field(default_factory=utc_now)
 
 
@@ -261,10 +322,24 @@ class DataProductRevisionEvent(DomainModel):
     actor: str
     reason: str
     action: Literal["create", "update", "activate", "deprecate", "archive"] = "update"
-    outcome: Literal["pending", "applied", "superseded"] = "pending"
+    outcome: Literal["pending", "applied", "superseded", "failed"] = "pending"
     occurred_at: datetime = Field(default_factory=utc_now)
     applied_at: datetime | None = None
     error_code: str | None = None
+
+
+class RepositoryPageMetadata(DomainModel):
+    has_more: bool = False
+    search_after: List[str | int | float] | None = None
+
+
+class DataProductOperationPage(DomainModel):
+    items: List[DataProductRevisionEvent]
+    metadata: RepositoryPageMetadata = Field(default_factory=RepositoryPageMetadata)
+
+
+class DataProductRevisionPage(DataProductOperationPage):
+    pass
 
 
 class DataProductDefinition(ProductEntity):

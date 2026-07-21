@@ -2,18 +2,21 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from hashlib import sha256
-from typing import Any
+from typing import Any, Sequence
 
 from elasticsearch import ConflictError, Elasticsearch, NotFoundError
 
 from packages.domain_model.data_product import DataProduct, DataProductRevisionEvent
 from services.data_products.events import ProductConsistencyError
+from services.data_products.idempotency import DataProductIdempotencyRecord, IdempotencyConflict
 from services.data_products.repository import ProductVersionConflict
 
 PRODUCTS = "dataobs-data-products-v1"
 REVISIONS = "dataobs-data-product-revisions-v1"
 OPERATIONS = "dataobs-data-product-operation-state-v1"
+IDEMPOTENCY = "dataobs-data-product-idempotency-v1"
 REQUIRED_RESOURCES = (
     PRODUCTS,
     REVISIONS,
@@ -40,6 +43,87 @@ def scoped_id(tenant_id: str, environment: str, entity_id: str) -> str:
 class ElasticsearchDataProductRepository:
     def __init__(self, client: Elasticsearch) -> None:
         self.client = client
+
+    def reserve_idempotency(self, record_id: str, record: DataProductIdempotencyRecord) -> DataProductIdempotencyRecord:
+        try:
+            self.client.create(index=IDEMPOTENCY, id=record_id, document=record.model_dump(mode="json"))
+            return record
+        except ConflictError as exc:
+            existing = DataProductIdempotencyRecord.model_validate(
+                self.client.get(index=IDEMPOTENCY, id=record_id)["_source"]
+            )
+            if existing.request_fingerprint != record.request_fingerprint:
+                raise IdempotencyConflict("idempotency_conflict") from exc
+            return existing
+
+    def get_idempotency(self, record_id: str) -> DataProductIdempotencyRecord | None:
+        try:
+            return DataProductIdempotencyRecord.model_validate(
+                self.client.get(index=IDEMPOTENCY, id=record_id)["_source"]
+            )
+        except NotFoundError:
+            return None
+
+    def _transition_idempotency(self, record_id: str, **changes: Any) -> None:
+        try:
+            hit = self.client.get(index=IDEMPOTENCY, id=record_id, seq_no_primary_term=True)
+        except NotFoundError as exc:
+            raise ProductConsistencyError("idempotency reservation missing") from exc
+        record = DataProductIdempotencyRecord.model_validate(hit["_source"])
+        if record.state in {"completed", "failed", "superseded"}:
+            if record.state == changes.get("state") and all(
+                getattr(record, key) == value for key, value in changes.items()
+            ):
+                return
+            raise ProductConsistencyError("terminal idempotency state cannot regress")
+        changes["updated_at"] = datetime.now(timezone.utc)
+        try:
+            self.client.index(
+                index=IDEMPOTENCY,
+                id=record_id,
+                document=record.model_copy(update=changes).model_dump(mode="json"),
+                if_seq_no=hit["_seq_no"],
+                if_primary_term=hit["_primary_term"],
+            )
+        except ConflictError as exc:
+            raise ProductVersionConflict("concurrent idempotency transition") from exc
+
+    def complete_idempotency(self, record_id: str, *, operation_id: str, revision: int, etag: str) -> None:
+        self._transition_idempotency(
+            record_id,
+            state="completed",
+            operation_id=operation_id,
+            result_revision=revision,
+            result_etag=etag,
+            completed_at=datetime.now(timezone.utc),
+        )
+
+    def fail_idempotency(self, record_id: str, *, error_code: str) -> None:
+        self._transition_idempotency(record_id, state="failed", error_code=error_code)
+
+    def supersede_idempotency(self, record_id: str, *, error_code: str = "newer_revision") -> None:
+        self._transition_idempotency(record_id, state="superseded", error_code=error_code)
+
+    def list_expired_idempotency(
+        self, tenant_id: str, environment: str, *, now: datetime, limit: int = 100
+    ) -> list[DataProductIdempotencyRecord]:
+        if not 1 <= limit <= 200:
+            raise ValueError("limit outside bounds")
+        response = self.client.search(
+            index=IDEMPOTENCY,
+            size=limit,
+            query={
+                "bool": {
+                    "filter": [
+                        {"term": {"tenant_id": tenant_id}},
+                        {"term": {"environment": environment}},
+                        {"range": {"expires_at": {"lte": now.isoformat()}}},
+                    ]
+                }
+            },
+            sort=[{"expires_at": "asc"}, {"_id": "asc"}],
+        )
+        return [DataProductIdempotencyRecord.model_validate(hit["_source"]) for hit in response["hits"]["hits"]]
 
     def create_product(self, product: DataProduct) -> DataProduct:
         try:
@@ -133,6 +217,21 @@ class ElasticsearchDataProductRepository:
             )
 
     def finish_operation(self, event: DataProductRevisionEvent) -> None:
+        try:
+            pending = self.client.get(index=OPERATIONS, id=event.operation_id, seq_no_primary_term=True)
+            source = pending["_source"]
+            if source.get("definition_checksum") != event.definition_checksum:
+                raise ProductConsistencyError("operation outcome has no matching pending operation")
+            if source.get("outcome") != event.outcome:
+                self.client.index(
+                    index=OPERATIONS,
+                    id=event.operation_id,
+                    document=source | event.model_dump(mode="json"),
+                    if_seq_no=pending["_seq_no"],
+                    if_primary_term=pending["_primary_term"],
+                )
+        except (NotFoundError, ConflictError) as exc:
+            raise ProductConsistencyError("operation outcome could not be committed") from exc
         outcome_id = scoped_id(event.tenant_id, event.environment, f"{event.operation_id}:{event.outcome}")
         try:
             self.client.create(index=REVISIONS, id=outcome_id, document=event.model_dump(mode="json"))
@@ -140,6 +239,97 @@ class ElasticsearchDataProductRepository:
             existing = self.client.get(index=REVISIONS, id=outcome_id)["_source"]
             if existing != event.model_dump(mode="json"):
                 raise ProductConsistencyError("divergent operation outcome") from exc
+
+    def get_operation(self, tenant_id: str, environment: str, operation_id: str) -> DataProductRevisionEvent | None:
+        try:
+            source = self.client.get(index=OPERATIONS, id=operation_id)["_source"]
+        except NotFoundError:
+            return None
+        if (source.get("tenant_id"), source.get("environment")) != (tenant_id, environment):
+            return None
+        return DataProductRevisionEvent.model_validate({k: v for k, v in source.items() if k != "document"})
+
+    def get_product_revision(
+        self, tenant_id: str, environment: str, product_id: str, revision: int
+    ) -> DataProduct | None:
+        response = self.client.search(
+            index=OPERATIONS,
+            size=1,
+            query={
+                "bool": {
+                    "filter": [
+                        {"term": {"tenant_id": tenant_id}},
+                        {"term": {"environment": environment}},
+                        {"term": {"product_id": product_id}},
+                        {"term": {"revision": revision}},
+                    ]
+                }
+            },
+            sort=[{"occurred_at": "desc"}, {"_id": "desc"}],
+        )
+        hits = response["hits"]["hits"]
+        return DataProduct.model_validate(hits[0]["_source"]["document"]) if hits else None
+
+    def list_pending_operations(
+        self,
+        tenant_id: str,
+        environment: str,
+        *,
+        product_id: str | None = None,
+        limit: int = 100,
+        include_applied: bool = False,
+    ) -> list[DataProductRevisionEvent]:
+        if not 1 <= limit <= 200:
+            raise ValueError("limit outside bounds")
+        filters: list[dict[str, Any]] = [{"term": {"tenant_id": tenant_id}}, {"term": {"environment": environment}}]
+        if product_id:
+            filters.append({"term": {"product_id": product_id}})
+        if not include_applied:
+            filters.append({"term": {"outcome": "pending"}})
+        response = self.client.search(
+            index=OPERATIONS,
+            size=limit,
+            query={"bool": {"filter": filters}},
+            sort=[{"occurred_at": "asc"}, {"_id": "asc"}],
+        )
+        return [
+            DataProductRevisionEvent.model_validate({k: v for k, v in hit["_source"].items() if k != "document"})
+            for hit in response["hits"]["hits"]
+        ]
+
+    def list_revisions(
+        self,
+        tenant_id: str,
+        environment: str,
+        product_id: str,
+        *,
+        limit: int = 100,
+        search_after: Sequence[str | int | float] | None = None,
+    ) -> list[DataProductRevisionEvent]:
+        if not 1 <= limit <= 200:
+            raise ValueError("limit outside bounds")
+        request: dict[str, Any] = {
+            "index": REVISIONS,
+            "size": limit,
+            "query": {
+                "bool": {
+                    "filter": [
+                        {"term": {"tenant_id": tenant_id}},
+                        {"term": {"environment": environment}},
+                        {"term": {"product_id": product_id}},
+                    ]
+                }
+            },
+            "sort": [{"revision": "desc"}, {"operation_id": "desc"}, {"_id": "desc"}],
+        }
+        if search_after:
+            request["search_after"] = list(search_after)
+        response = self.client.search(**request)
+        return [
+            DataProductRevisionEvent.model_validate({k: v for k, v in hit["_source"].items() if k != "document"})
+            for hit in response["hits"]["hits"]
+            if "operation_id" in hit["_source"]
+        ]
 
     def readiness(self) -> dict[str, Any]:
         """Return diagnostic readiness; never collapse a partial migration to healthy."""

@@ -180,15 +180,24 @@ def _mapping_type_matches(expected: Dict[str, Any], installed: Dict[str, Any]) -
         return False
     expected_fields = expected.get("fields", {})
     installed_fields = installed.get("fields", {})
-    return all(
+    fields_match = all(
         name in installed_fields and _mapping_type_matches(definition, installed_fields[name])
         for name, definition in expected_fields.items()
+    )
+    expected_properties = expected.get("properties", {})
+    installed_properties = installed.get("properties", {})
+    return fields_match and all(
+        name in installed_properties and _mapping_type_matches(definition, installed_properties[name])
+        for name, definition in expected_properties.items()
     )
 
 
 def _apply_mapping_update(es: Elasticsearch, index: str, properties: Dict[str, Any]) -> None:
     """Add and verify explicit fields on a trusted concrete product index."""
-    if index not in {"dataobs-findings-v1", "dataobs-incidents-v1"}:
+    registered_targets = {
+        name for migration in migrations() for name in migration.operations.get("mapping_updates", {})
+    }
+    if index not in registered_targets:
         raise RuntimeError(f"Mapping migration targets an unregistered concrete index: {index}")
     if not es.indices.exists(index=index):
         raise RuntimeError(f"Required mapping target does not exist: {index}")

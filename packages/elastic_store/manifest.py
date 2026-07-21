@@ -1028,14 +1028,191 @@ DATA_PRODUCT_360_COMPLETION_MIGRATION = Migration(
             "logs-dataobs.data-product-slo-event-*",
             "logs-dataobs.data-product-impact-event-*",
         ],
-        "transforms": [{
-            "id": "dataobs-current-product-reliability",
-            "source": "metrics-dataobs.data-product-reliability-*",
-            "destination": "dataobs-data-product-scorecards-v1",
-            "unique_key": ["tenant_id", "environment", "product_id"],
-            "sort": "evaluation_timestamp",
-        }],
+        "transforms": [
+            {
+                "id": "dataobs-current-product-reliability",
+                "source": "metrics-dataobs.data-product-reliability-*",
+                "destination": "dataobs-data-product-scorecards-v1",
+                "unique_key": ["tenant_id", "environment", "product_id"],
+                "sort": "evaluation_timestamp",
+            }
+        ],
         "retention_defaults": {"events": "365d", "evaluations": "365d"},
+    },
+)
+
+DATA_PRODUCT_PROPERTIES: Dict[str, Any] = {
+    **{
+        key: {"type": "keyword"}
+        for key in [
+            "id",
+            "tenant_id",
+            "environment",
+            "schema_version",
+            "etag",
+            "name",
+            "domain",
+            "criticality",
+            "lifecycle_state",
+            "source_id",
+            "integration_id",
+            "owner_team",
+            "business_service",
+            "pillar",
+            "status",
+            "correlation_id",
+        ]
+    },
+    "description": {"type": "text"},
+    "revision": {"type": "integer"},
+    "created_at": {"type": "date"},
+    "updated_at": {"type": "date"},
+    "tags": {"type": "keyword"},
+    "labels": {"type": "flattened"},
+    "annotations": {"type": "flattened"},
+    "owner": {
+        "properties": {
+            "team": {"type": "keyword"},
+            "support_url": {"type": "keyword"},
+            "on_call_url": {"type": "keyword"},
+        }
+    },
+    "outputs": {
+        "type": "nested",
+        "properties": {
+            "entity_id": {"type": "keyword"},
+            "entity_type": {"type": "keyword"},
+            "display_name": {"type": "text"},
+            "primary": {"type": "boolean"},
+            "evidence_refs": {"type": "keyword"},
+            "lineage_evidence_refs": {"type": "keyword"},
+            "observed_at": {"type": "date"},
+        },
+    },
+    # Compatibility collections are serialized by DataProductDefinition and must
+    # therefore remain explicitly admitted even though production stores them separately.
+    "members": {"type": "flattened"},
+    "dependencies": {"type": "flattened"},
+    "slos": {"type": "flattened"},
+}
+
+DATA_PRODUCT_EVENT_PROPERTIES: Dict[str, Any] = {
+    **{
+        key: {"type": "keyword"}
+        for key in [
+            "operation_id",
+            "product_id",
+            "tenant_id",
+            "environment",
+            "etag",
+            "definition_checksum",
+            "actor",
+            "reason",
+            "action",
+            "outcome",
+            "error_code",
+        ]
+    },
+    "revision": {"type": "integer"},
+    "occurred_at": {"type": "date"},
+    "applied_at": {"type": "date"},
+    "document": {"type": "flattened"},
+}
+
+DATA_PRODUCT_AUXILIARY_PROPERTIES: Dict[str, Any] = {
+    **{
+        key: {"type": "keyword"}
+        for key in [
+            "membership_id",
+            "proposal_id",
+            "product_id",
+            "tenant_id",
+            "environment",
+            "entity_id",
+            "entity_type",
+            "source",
+            "membership_source",
+            "state",
+            "actor",
+            "reason",
+            "slo_id",
+            "component",
+            "window",
+            "evaluation_method",
+            "etag",
+            "overall_state",
+            "trend",
+        ]
+    },
+    **{key: {"type": "integer"} for key in ["proposal_revision", "definition_revision", "revision"]},
+    **{
+        key: {"type": "double"}
+        for key in [
+            "confidence",
+            "source_coverage",
+            "objective",
+            "weight",
+            "actual_value",
+            "denominator",
+            "coverage",
+            "overall_score",
+            "value",
+        ]
+    },
+    "critical": {"type": "boolean"},
+    "truncated": {"type": "boolean"},
+    **{key: {"type": "date"} for key in ["observed_at", "decided_at", "window_start", "window_end", "evaluated_at"]},
+    **{
+        key: {"type": "keyword"}
+        for key in [
+            "evidence_refs",
+            "source_monitor_ids",
+            "source_evaluation_refs",
+            "exclusions",
+            "missing_evidence",
+            "missing_components",
+            "stale_components",
+            "outputs",
+            "members",
+            "upstream_products",
+            "downstream_products",
+            "pathways",
+            "known_consumers",
+            "missing_dimensions",
+        ]
+    },
+    "component_values": {"type": "flattened"},
+    "component_weights": {"type": "flattened"},
+    "formula": {"type": "keyword"},
+    "observed_period": {"type": "keyword"},
+}
+
+DATA_PRODUCT_360_PRODUCTIZATION_MIGRATION = Migration(
+    "0015_data_product_360_productization",
+    "Install writer-complete strict Data Product mappings and readiness resources",
+    "v1",
+    dependencies=["0014_data_product_360_completion"],
+    rollback_strategy="stop Data Product writers; retain additive mappings and immutable evidence",
+    operations={
+        "mapping_updates": {
+            "dataobs-data-products-v1": DATA_PRODUCT_PROPERTIES,
+            "dataobs-data-product-revisions-v1": DATA_PRODUCT_EVENT_PROPERTIES,
+            "dataobs-data-product-operation-state-v1": DATA_PRODUCT_EVENT_PROPERTIES,
+            **{
+                name: DATA_PRODUCT_AUXILIARY_PROPERTIES
+                for name in [
+                    "dataobs-data-product-membership-v1",
+                    "dataobs-data-product-membership-proposals-v1",
+                    "dataobs-data-product-membership-decisions-v1",
+                    "dataobs-data-product-slos-v1",
+                    "dataobs-data-product-slo-evaluations-v1",
+                    "dataobs-data-product-scorecards-v1",
+                    "dataobs-data-product-coverage-v1",
+                    "dataobs-data-product-impact-current-v1",
+                    "dataobs-data-product-dependency-current-v1",
+                ]
+            },
+        },
     },
 )
 
@@ -1056,4 +1233,5 @@ def migrations() -> List[Migration]:
         INCIDENT_MAPPING_AND_OCC_FIX_MIGRATION,
         MONITOR_RUNTIME_COMPLETION_MIGRATION,
         DATA_PRODUCT_360_COMPLETION_MIGRATION,
+        DATA_PRODUCT_360_PRODUCTIZATION_MIGRATION,
     ]

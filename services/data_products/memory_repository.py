@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from packages.domain_model.data_product import DataProduct
+from packages.domain_model.data_product import DataProduct, DataProductRevisionEvent
+from services.data_products.events import ProductConsistencyError
 from services.data_products.repository import ProductVersionConflict
 
 
@@ -10,6 +11,37 @@ class MemoryDataProductRepository:
     def __init__(self) -> None:
         self.items: dict[tuple[str, str, str], DataProduct] = {}
         self.revisions: dict[tuple[str, str, str, int], tuple[DataProduct, str, str]] = {}
+        self.operations: dict[str, tuple[DataProductRevisionEvent, DataProduct]] = {}
+
+    def begin_operation(self, event: DataProductRevisionEvent, product: DataProduct) -> DataProductRevisionEvent:
+        existing = self.operations.get(event.operation_id)
+        if existing:
+            if existing[0].definition_checksum != event.definition_checksum:
+                raise ProductConsistencyError("divergent operation replay")
+            return existing[0].model_copy(deep=True)
+        revision_key = (event.tenant_id, event.environment, event.product_id, event.revision)
+        for saved_event, _ in self.operations.values():
+            if (
+                saved_event.tenant_id,
+                saved_event.environment,
+                saved_event.product_id,
+                saved_event.revision,
+            ) == revision_key and saved_event.definition_checksum != event.definition_checksum:
+                raise ProductConsistencyError("divergent same-revision checksum")
+        self.operations[event.operation_id] = (event.model_copy(deep=True), product.model_copy(deep=True))
+        return event
+
+    def finish_operation(self, event: DataProductRevisionEvent) -> None:
+        existing = self.operations.get(event.operation_id)
+        if not existing or existing[0].definition_checksum != event.definition_checksum:
+            raise ProductConsistencyError("operation outcome has no matching pending operation")
+        self.operations[event.operation_id] = (event.model_copy(deep=True), existing[1])
+        product = existing[1]
+        self.revisions[(event.tenant_id, event.environment, event.product_id, event.revision)] = (
+            product.model_copy(deep=True),
+            event.actor,
+            event.reason,
+        )
 
     def create(self, product: DataProduct) -> DataProduct:
         key = (product.tenant_id, product.environment, product.id)

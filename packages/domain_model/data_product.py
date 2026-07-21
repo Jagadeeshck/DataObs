@@ -108,6 +108,9 @@ class DataProductSLODefinition(DomainModel):
 
 class DataProductSLOEvaluation(DomainModel):
     id: str
+    tenant_id: str
+    environment: str
+    product_id: str
     slo_id: str
     definition_revision: int
     window_start: datetime
@@ -181,10 +184,14 @@ class DataProductRevisionEvent(DomainModel):
     environment: str
     revision: int
     etag: str
+    definition_checksum: str
     actor: str
     reason: str
+    action: Literal["create", "update", "activate", "deprecate", "archive"] = "update"
     outcome: Literal["pending", "applied", "superseded"] = "pending"
     occurred_at: datetime = Field(default_factory=utc_now)
+    applied_at: datetime | None = None
+    error_code: str | None = None
 
 
 class DataProductDefinition(ProductEntity):

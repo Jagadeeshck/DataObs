@@ -1,31 +1,6 @@
 {
   "components": {
     "schemas": {
-      "ActionRequest": {
-        "properties": {
-          "action": {
-            "enum": [
-              "restart_failed_connector",
-              "restart_failed_task",
-              "verify_recovery"
-            ],
-            "title": "Action",
-            "type": "string"
-          },
-          "reason": {
-            "maxLength": 500,
-            "minLength": 8,
-            "title": "Reason",
-            "type": "string"
-          }
-        },
-        "required": [
-          "action",
-          "reason"
-        ],
-        "title": "ActionRequest",
-        "type": "object"
-      },
       "CompareRequest": {
         "properties": {
           "baseline_end": {
@@ -87,6 +62,526 @@
         "additionalProperties": true,
         "properties": {},
         "title": "DataObservabilityRequest",
+        "type": "object"
+      },
+      "DataProductCriticality": {
+        "enum": [
+          "low",
+          "medium",
+          "high",
+          "critical"
+        ],
+        "title": "DataProductCriticality",
+        "type": "string"
+      },
+      "DataProductDefinition": {
+        "additionalProperties": false,
+        "properties": {
+          "annotations": {
+            "additionalProperties": true,
+            "title": "Annotations",
+            "type": "object"
+          },
+          "business_service": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Business Service"
+          },
+          "correlation_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Correlation Id"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "criticality": {
+            "$ref": "#/components/schemas/DataProductCriticality"
+          },
+          "dependencies": {
+            "items": {
+              "$ref": "#/components/schemas/DataProductDependency"
+            },
+            "title": "Dependencies",
+            "type": "array"
+          },
+          "description": {
+            "default": "",
+            "title": "Description",
+            "type": "string"
+          },
+          "domain": {
+            "title": "Domain",
+            "type": "string"
+          },
+          "environment": {
+            "default": "default",
+            "title": "Environment",
+            "type": "string"
+          },
+          "etag": {
+            "title": "Etag",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "integration_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Integration Id"
+          },
+          "labels": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Labels",
+            "type": "object"
+          },
+          "lifecycle_state": {
+            "default": "draft",
+            "enum": [
+              "draft",
+              "active",
+              "deprecated",
+              "archived"
+            ],
+            "title": "Lifecycle State",
+            "type": "string"
+          },
+          "members": {
+            "items": {
+              "$ref": "#/components/schemas/DataProductMember"
+            },
+            "title": "Members",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "outputs": {
+            "items": {
+              "$ref": "#/components/schemas/DataProductOutput"
+            },
+            "title": "Outputs",
+            "type": "array"
+          },
+          "owner": {
+            "$ref": "#/components/schemas/DataProductOwner"
+          },
+          "owner_team": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner Team"
+          },
+          "pillar": {
+            "$ref": "#/components/schemas/Pillar",
+            "default": "data"
+          },
+          "revision": {
+            "default": 1,
+            "minimum": 1.0,
+            "title": "Revision",
+            "type": "integer"
+          },
+          "schema_version": {
+            "default": "v1",
+            "title": "Schema Version",
+            "type": "string"
+          },
+          "slos": {
+            "items": {
+              "$ref": "#/components/schemas/DataProductSLODefinition"
+            },
+            "title": "Slos",
+            "type": "array"
+          },
+          "source_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Id"
+          },
+          "status": {
+            "default": "active",
+            "title": "Status",
+            "type": "string"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
+          },
+          "tenant_id": {
+            "title": "Tenant Id",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "tenant_id",
+          "etag",
+          "name",
+          "domain",
+          "criticality",
+          "owner"
+        ],
+        "title": "DataProductDefinition",
+        "type": "object"
+      },
+      "DataProductDependency": {
+        "additionalProperties": false,
+        "properties": {
+          "evidence_refs": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Evidence Refs",
+            "type": "array"
+          },
+          "observed_at": {
+            "format": "date-time",
+            "title": "Observed At",
+            "type": "string"
+          },
+          "upstream_product_id": {
+            "title": "Upstream Product Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "upstream_product_id"
+        ],
+        "title": "DataProductDependency",
+        "type": "object"
+      },
+      "DataProductMember": {
+        "additionalProperties": false,
+        "properties": {
+          "confidence": {
+            "default": 1,
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence",
+            "type": "number"
+          },
+          "entity_id": {
+            "title": "Entity Id",
+            "type": "string"
+          },
+          "entity_type": {
+            "title": "Entity Type",
+            "type": "string"
+          },
+          "environment": {
+            "default": "default",
+            "title": "Environment",
+            "type": "string"
+          },
+          "evidence_refs": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Evidence Refs",
+            "type": "array"
+          },
+          "excluded": {
+            "default": false,
+            "title": "Excluded",
+            "type": "boolean"
+          },
+          "id": {
+            "default": "",
+            "title": "Id",
+            "type": "string"
+          },
+          "membership_source": {
+            "enum": [
+              "manual",
+              "lineage",
+              "dependency",
+              "import"
+            ],
+            "title": "Membership Source",
+            "type": "string"
+          },
+          "observed_at": {
+            "format": "date-time",
+            "title": "Observed At",
+            "type": "string"
+          },
+          "product_id": {
+            "default": "",
+            "title": "Product Id",
+            "type": "string"
+          },
+          "state": {
+            "default": "active",
+            "enum": [
+              "active",
+              "excluded",
+              "removed"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "tenant_id": {
+            "default": "",
+            "title": "Tenant Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "entity_id",
+          "entity_type",
+          "membership_source"
+        ],
+        "title": "DataProductMember",
+        "type": "object"
+      },
+      "DataProductOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "display_name": {
+            "default": "",
+            "title": "Display Name",
+            "type": "string"
+          },
+          "entity_id": {
+            "title": "Entity Id",
+            "type": "string"
+          },
+          "entity_type": {
+            "enum": [
+              "asset",
+              "api",
+              "kafka_topic",
+              "dashboard",
+              "model",
+              "application",
+              "app"
+            ],
+            "title": "Entity Type",
+            "type": "string"
+          },
+          "evidence_refs": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Evidence Refs",
+            "type": "array"
+          },
+          "lineage_evidence_refs": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Lineage Evidence Refs",
+            "type": "array"
+          },
+          "observed_at": {
+            "format": "date-time",
+            "title": "Observed At",
+            "type": "string"
+          },
+          "primary": {
+            "default": false,
+            "title": "Primary",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "entity_id",
+          "entity_type"
+        ],
+        "title": "DataProductOutput",
+        "type": "object"
+      },
+      "DataProductOwner": {
+        "additionalProperties": false,
+        "properties": {
+          "on_call_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "On Call Url"
+          },
+          "support_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Support Url"
+          },
+          "team": {
+            "title": "Team",
+            "type": "string"
+          }
+        },
+        "required": [
+          "team"
+        ],
+        "title": "DataProductOwner",
+        "type": "object"
+      },
+      "DataProductSLODefinition": {
+        "additionalProperties": false,
+        "properties": {
+          "component": {
+            "enum": [
+              "freshness",
+              "quality",
+              "availability",
+              "pipeline_success",
+              "pipeline_duration",
+              "stream_lag",
+              "throughput",
+              "error_rate",
+              "schema_stability"
+            ],
+            "title": "Component",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "critical": {
+            "default": false,
+            "title": "Critical",
+            "type": "boolean"
+          },
+          "environment": {
+            "title": "Environment",
+            "type": "string"
+          },
+          "etag": {
+            "title": "Etag",
+            "type": "string"
+          },
+          "evaluation_method": {
+            "title": "Evaluation Method",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "objective": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Objective",
+            "type": "number"
+          },
+          "product_id": {
+            "title": "Product Id",
+            "type": "string"
+          },
+          "revision": {
+            "default": 1,
+            "minimum": 1.0,
+            "title": "Revision",
+            "type": "integer"
+          },
+          "source_monitor_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Source Monitor Ids",
+            "type": "array"
+          },
+          "state": {
+            "default": "draft",
+            "enum": [
+              "draft",
+              "active",
+              "disabled",
+              "archived"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "tenant_id": {
+            "title": "Tenant Id",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "weight": {
+            "default": 1,
+            "minimum": 0.0,
+            "title": "Weight",
+            "type": "number"
+          },
+          "window": {
+            "title": "Window",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "product_id",
+          "tenant_id",
+          "environment",
+          "component",
+          "objective",
+          "window",
+          "evaluation_method",
+          "etag"
+        ],
+        "title": "DataProductSLODefinition",
         "type": "object"
       },
       "EnterpriseBacklogResponse": {
@@ -1023,6 +1518,114 @@
         "title": "Pillar",
         "type": "string"
       },
+      "ProductEnvelope": {
+        "properties": {
+          "confidence": {
+            "default": 1,
+            "title": "Confidence",
+            "type": "number"
+          },
+          "data_status": {
+            "const": "available",
+            "default": "available",
+            "title": "Data Status",
+            "type": "string"
+          },
+          "product": {
+            "$ref": "#/components/schemas/DataProductDefinition"
+          },
+          "request_id": {
+            "title": "Request Id",
+            "type": "string"
+          },
+          "source_coverage": {
+            "default": 1,
+            "title": "Source Coverage",
+            "type": "number"
+          },
+          "trace_id": {
+            "title": "Trace Id",
+            "type": "string"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "product",
+          "request_id",
+          "trace_id"
+        ],
+        "title": "ProductEnvelope",
+        "type": "object"
+      },
+      "ProductWrite": {
+        "properties": {
+          "criticality": {
+            "$ref": "#/components/schemas/DataProductCriticality"
+          },
+          "description": {
+            "default": "",
+            "maxLength": 4000,
+            "title": "Description",
+            "type": "string"
+          },
+          "domain": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Domain",
+            "type": "string"
+          },
+          "id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9._-]+$",
+            "title": "Id",
+            "type": "string"
+          },
+          "lifecycle_state": {
+            "default": "draft",
+            "enum": [
+              "draft",
+              "active",
+              "deprecated",
+              "archived"
+            ],
+            "title": "Lifecycle State",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "outputs": {
+            "items": {
+              "$ref": "#/components/schemas/DataProductOutput"
+            },
+            "maxItems": 200,
+            "title": "Outputs",
+            "type": "array"
+          },
+          "owner": {
+            "$ref": "#/components/schemas/DataProductOwner"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "domain",
+          "criticality",
+          "owner"
+        ],
+        "title": "ProductWrite",
+        "type": "object"
+      },
       "QualityResultCreateResponse": {
         "properties": {
           "id": {
@@ -1367,6 +1970,53 @@
           "type"
         ],
         "title": "ValidationError",
+        "type": "object"
+      },
+      "src__api__data_product_routes__ActionRequest": {
+        "properties": {
+          "actor": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Actor",
+            "type": "string"
+          },
+          "reason": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "actor",
+          "reason"
+        ],
+        "title": "ActionRequest",
+        "type": "object"
+      },
+      "src__api__stream_routes__ActionRequest": {
+        "properties": {
+          "action": {
+            "enum": [
+              "restart_failed_connector",
+              "restart_failed_task",
+              "verify_recovery"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "reason": {
+            "maxLength": 500,
+            "minLength": 8,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action",
+          "reason"
+        ],
+        "title": "ActionRequest",
         "type": "object"
       }
     },
@@ -4910,6 +5560,583 @@
         "summary": "Get Consumer-Groups Retention-Risk",
         "tags": [
           "stream-360"
+        ]
+      }
+    },
+    "/api/v1/data-products": {
+      "get": {
+        "operationId": "list_products_api_v1_data_products_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "minLength": 1,
+              "title": "Environment",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 2048,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "domain",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 128,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Domain"
+            }
+          },
+          {
+            "in": "query",
+            "name": "lifecycle",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 32,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lifecycle"
+            }
+          },
+          {
+            "in": "query",
+            "name": "owner",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 128,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Owner"
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "in": "query",
+            "name": "include_archived",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Include Archived",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response List Products Api V1 Data Products Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Products",
+        "tags": [
+          "data-products"
+        ]
+      },
+      "post": {
+        "operationId": "create_product_api_v1_data_products_post",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "minLength": 1,
+              "title": "Environment",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DataObs-Actor",
+            "required": true,
+            "schema": {
+              "title": "X-Dataobs-Actor",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DataObs-Reason",
+            "required": true,
+            "schema": {
+              "title": "X-Dataobs-Reason",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 200,
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProductWrite"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Product",
+        "tags": [
+          "data-products"
+        ]
+      }
+    },
+    "/api/v1/data-products/{product_id}": {
+      "get": {
+        "operationId": "get_product_api_v1_data_products__product_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product_id",
+            "required": true,
+            "schema": {
+              "title": "Product Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Product",
+        "tags": [
+          "data-products"
+        ]
+      },
+      "patch": {
+        "operationId": "update_product_api_v1_data_products__product_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product_id",
+            "required": true,
+            "schema": {
+              "title": "Product Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Match",
+            "required": true,
+            "schema": {
+              "title": "If-Match",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DataObs-Actor",
+            "required": true,
+            "schema": {
+              "title": "X-Dataobs-Actor",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DataObs-Reason",
+            "required": true,
+            "schema": {
+              "title": "X-Dataobs-Reason",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProductWrite"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Product",
+        "tags": [
+          "data-products"
+        ]
+      }
+    },
+    "/api/v1/data-products/{product_id}/{action}": {
+      "post": {
+        "operationId": "transition_api_v1_data_products__product_id___action__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product_id",
+            "required": true,
+            "schema": {
+              "title": "Product Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "action",
+            "required": true,
+            "schema": {
+              "enum": [
+                "activate",
+                "deprecate",
+                "archive"
+              ],
+              "title": "Action",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Match",
+            "required": true,
+            "schema": {
+              "title": "If-Match",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/src__api__data_product_routes__ActionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductEnvelope"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Transition",
+        "tags": [
+          "data-products"
         ]
       }
     },
@@ -11366,7 +12593,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ActionRequest"
+                "$ref": "#/components/schemas/src__api__stream_routes__ActionRequest"
               }
             }
           },

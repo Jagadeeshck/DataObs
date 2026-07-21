@@ -55,6 +55,28 @@ async function write<T>(
   return response.json() as Promise<T>;
 }
 export const api = {
+  dataProducts: (
+    tenant: string,
+    env: string,
+    query: URLSearchParams,
+    signal?: AbortSignal,
+  ) =>
+    read<DataProductList>(
+      `/api/v1/data-products?environment=${encodeURIComponent(env)}&${query}`,
+      tenant,
+      signal,
+    ),
+  dataProduct: (
+    tenant: string,
+    env: string,
+    id: string,
+    signal?: AbortSignal,
+  ) =>
+    read<{ product: DataProduct; data_status: string; warnings: string[] }>(
+      `/api/v1/data-products/${encodeURIComponent(id)}?environment=${encodeURIComponent(env)}`,
+      tenant,
+      signal,
+    ),
   streams: (
     tenant: string,
     env: string,
@@ -134,6 +156,30 @@ export const api = {
       signal,
     ),
 };
+export interface DataProduct {
+  id: string;
+  name: string;
+  description: string;
+  domain: string;
+  criticality: string;
+  lifecycle_state: string;
+  owner: { team: string };
+  outputs: Array<{
+    entity_id: string;
+    entity_type: string;
+    display_name: string;
+    primary: boolean;
+  }>;
+  revision: number;
+  etag: string;
+  updated_at: string;
+}
+export interface DataProductList {
+  items: DataProduct[];
+  data_status: string;
+  warnings: string[];
+  pagination: { limit: number; next_cursor: string | null };
+}
 export interface StreamItem {
   stream_id?: string;
   topic?: string;

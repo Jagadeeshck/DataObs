@@ -977,6 +977,31 @@ INCIDENT_MAPPING_AND_OCC_FIX_MIGRATION = Migration(
     },
 )
 
+MONITOR_RUNTIME_COMPLETION_MIGRATION = Migration(
+    "0013_monitor_runtime_completion",
+    "Add durable monitor definition history, scheduling, fenced leases, checkpoints and runtime audit evidence",
+    "v1",
+    dependencies=["0012_incident_mapping_and_occ_fix"],
+    rollback_strategy="stop monitor-runtime writers; retain immutable evidence and snapshot runtime state before alias removal",
+    operations={
+        "mutable_indices": [
+            "dataobs-monitor-definition-history-v1",
+            "dataobs-monitor-schedules-v1",
+            "dataobs-monitor-runtime-leases-v1",
+            "dataobs-monitor-runtime-checkpoints-v1",
+            "dataobs-monitor-baseline-history-v1",
+            "dataobs-monitor-runtime-state-v1",
+            "dataobs-monitor-idempotency-v1",
+        ],
+        "data_streams": [
+            "logs-dataobs.monitor-definition-event-*",
+            "logs-dataobs.monitor-runtime-event-*",
+            "logs-dataobs.monitor-suppression-event-*",
+        ],
+        "retention_defaults": {"runtime_events": "90d", "definition_and_suppression_audit": "365d"},
+    },
+)
+
 
 def migrations() -> List[Migration]:
     return [
@@ -992,4 +1017,5 @@ def migrations() -> List[Migration]:
         TOPIC_QUEUE_STREAM_360_COMPLETION_MIGRATION,
         INCIDENT_AUTOMATION_WORKBENCH_MIGRATION,
         INCIDENT_MAPPING_AND_OCC_FIX_MIGRATION,
+        MONITOR_RUNTIME_COMPLETION_MIGRATION,
     ]

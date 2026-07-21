@@ -9,7 +9,7 @@ class MemoryDataProductRepository:
 
     def __init__(self) -> None:
         self.items: dict[tuple[str, str, str], DataProduct] = {}
-        self.revisions: list[DataProduct] = []
+        self.revisions: dict[tuple[str, str, str, int], tuple[DataProduct, str, str]] = {}
 
     def create(self, product: DataProduct) -> DataProduct:
         key = (product.tenant_id, product.environment, product.id)
@@ -42,6 +42,12 @@ class MemoryDataProductRepository:
         self.items[key] = product.model_copy(deep=True)
         return product
 
-    def append_revision(self, product: DataProduct, *, actor: str) -> None:
-        del actor
-        self.revisions.append(product.model_copy(deep=True))
+    def append_revision(self, product: DataProduct, *, actor: str, reason: str) -> None:
+        key = (product.tenant_id, product.environment, product.id, product.revision)
+        existing = self.revisions.get(key)
+        event = (product.model_copy(deep=True), actor, reason)
+        if existing:
+            if existing[0].model_dump(mode="json") == event[0].model_dump(mode="json") and existing[1:] == event[1:]:
+                return
+            raise ProductVersionConflict("divergent data product revision")
+        self.revisions[key] = event

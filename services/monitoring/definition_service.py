@@ -46,9 +46,11 @@ class DefinitionService:
 
     def create(self, monitor: MonitorDefinition, *, actor: str) -> MonitorDefinition:
         monitor.etag = definition_etag(monitor)
-        created = self.repository.create_monitor(monitor)
-        self.repository.append_definition_event(created, actor=actor, action="created")
-        return created
+        # Elasticsearch cannot transact across aliases. Persist the immutable
+        # intent first so a failed current-state write remains discoverable and
+        # can be replayed safely by reconciliation.
+        self.repository.append_definition_event(monitor, actor=actor, action="created")
+        return self.repository.create_monitor(monitor)
 
     def update(self, monitor: MonitorDefinition, *, if_match: str | None, actor: str) -> MonitorDefinition:
         if not if_match:
@@ -60,9 +62,8 @@ class DefinitionService:
             raise VersionConflict("stale monitor ETag")
         monitor.revision = current.revision + 1
         monitor.etag = definition_etag(monitor)
-        saved = self.repository.update_monitor(monitor, expected_etag=if_match)
-        self.repository.append_definition_event(saved, actor=actor, action="updated")
-        return saved
+        self.repository.append_definition_event(monitor, actor=actor, action="updated")
+        return self.repository.update_monitor(monitor, expected_etag=if_match)
 
     def transition(
         self,

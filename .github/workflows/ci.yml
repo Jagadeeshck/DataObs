@@ -11,6 +11,60 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  incident-migration-occ-gate:
+    name: Incident migration and OCC gate
+    runs-on: ubuntu-latest
+    services:
+      elasticsearch:
+        image: docker.elastic.co/elasticsearch/elasticsearch:9.4.2
+        ports:
+          - 9200:9200
+        env:
+          discovery.type: single-node
+          xpack.security.enabled: "false"
+          ES_JAVA_OPTS: -Xms512m -Xmx512m
+        options: >-
+          --health-cmd "curl -fsS http://localhost:9200/_cluster/health"
+          --health-interval 10s --health-timeout 5s --health-retries 24
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install focused dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pytest ruff black mypy
+      - name: Focused quality checks
+        run: |
+          ruff check packages/elastic_store services/incident_manager tests/elastic_store tests/unit/test_incident_*.py tests/integration/incident_migration_occ
+          black --check packages/elastic_store services/incident_manager tests/elastic_store tests/unit/test_incident_*.py tests/integration/incident_migration_occ
+          mypy packages/elastic_store services/incident_manager
+      - name: Capture migration plan
+        run: python -m packages.elastic_store.cli plan > incident-migration-plan.json
+      - name: Unit migration and incident tests
+        run: python -m pytest tests/elastic_store tests/unit/test_incident_automation.py tests/unit/test_incident_occ.py tests/unit/test_incident_workbench_safety.py -q --junitxml=incident-unit.xml
+      - name: Elasticsearch 9.4.2 migration and concurrency tests
+        env:
+          RUN_INTEGRATION_TESTS: "1"
+          ELASTICSEARCH_URL: http://localhost:9200
+        run: python -m pytest tests/integration/incident_migration_occ -q --junitxml=incident-integration.xml
+      - name: Capture redacted mapping snapshots
+        if: always()
+        run: |
+          curl -fsS http://localhost:9200/dataobs-findings-v1,dataobs-incidents-v1/_mapping > incident-mappings.json || true
+      - name: Upload incident gate artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: incident-migration-occ-artifacts
+          path: |
+            incident-migration-plan.json
+            incident-mappings.json
+            incident-unit.xml
+            incident-integration.xml
+
   python-quality:
     name: Python quality and unit tests
     runs-on: ubuntu-latest

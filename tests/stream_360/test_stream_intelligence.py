@@ -15,8 +15,8 @@ from services.kafka_observer.retention import retention_risk
 
 def test_forward_only_completion_migration_preserves_0009():
     plan = migrations()
-    original = plan[-2]
-    completion = plan[-1]
+    original = next(item for item in plan if item.migration_id == "0009_topic_queue_stream_360")
+    completion = next(item for item in plan if item.migration_id == "0010_topic_queue_stream_360_completion")
     assert original.migration_id == "0009_topic_queue_stream_360"
     assert original.dependencies == ["0008_job_run_observability"]
     assert completion.migration_id == "0010_topic_queue_stream_360_completion"

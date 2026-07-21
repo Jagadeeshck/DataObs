@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from math import isfinite
+
 from packages.domain_model.data_product import DataProductReliability
 
 
@@ -9,9 +11,11 @@ def calculate_reliability(
     values: dict[str, float | None], weights: dict[str, float], *, observed_period: str, stale: set[str] | None = None
 ) -> DataProductReliability:
     stale = stale or set()
-    if any(weight < 0 for weight in weights.values()):
-        raise ValueError("component weights cannot be negative")
-    missing = sorted(name for name, value in values.items() if value is None or name in stale)
+    if any(not isfinite(weight) or weight < 0 for weight in weights.values()):
+        raise ValueError("component weights must be finite and non-negative")
+    if any(value is not None and (not isfinite(value) or not 0 <= value <= 1) for value in values.values()):
+        raise ValueError("component values must be finite and between zero and one")
+    missing = sorted(name for name, value in values.items() if value is None)
     observed = {
         name: value
         for name, value in values.items()
@@ -37,6 +41,7 @@ def calculate_reliability(
         component_values=values,
         component_weights=weights,
         missing_components=missing,
+        stale_components=sorted(stale),
         confidence=confidence,
         observed_period=observed_period,
         overall_score=score,

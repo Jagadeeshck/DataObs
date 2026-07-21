@@ -1358,8 +1358,8 @@ capabilities:
   last_audited_commit: d8a04d0
 - id: integration.optional
   name: OpenSearch, Grafana, and Alloy interoperability
-  summary: Evidence-led status for opensearch, grafana, and alloy interoperability. Elasticsearch remains authoritative;
-    this is export/interoperability only.
+  summary: Evidence-led status for opensearch, grafana, and alloy interoperability.
+    Elasticsearch remains authoritative; this is export/interoperability only.
   pillar: platform
   domain: integrations
   state: optional_integration
@@ -1448,3 +1448,4 @@ migration_checksums:
   0011_incident_automation_workbench: e5ac77c3fb833c9e8380922d2d38c5e23409f1446afe6b131a137d272b6ce1aa
   0012_incident_mapping_and_occ_fix: 4ca3e9b2959b948c09879f125c5cd1de59b4b9c29df4e0f7e348c7a6316fa2b9
   0013_monitor_runtime_completion: b8690cc9655a3992633ea57d07c9175dae90fb8dfbe602d3d4aea06155bdffef
+  0014_data_product_360_completion: 7b0c111cff713342ebac7040a19a03399d9266f861749792269607b1842a7bc8

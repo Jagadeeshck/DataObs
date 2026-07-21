@@ -1,14 +1,15 @@
 from __future__ import annotations
 
 import hashlib
+import re
 from pathlib import Path
 from typing import Any
 
 import yaml  # type: ignore[import-untyped]
 
 ALLOWED_STEP_PREFIXES = ("cases.", "dataobs.", "streams.", "notifications.")
-ALLOWED_STEP_TYPES = {"wait", "condition"}
-FORBIDDEN_TOKENS = ("kibana.request", "shell", "exec", "sql", "http.request", "credential", "${secret")
+ALLOWED_STEP_TYPES = {"wait", "waitForInput", "condition", "elasticsearch.esql"}
+FORBIDDEN_TOKENS = ("kibana.request", "shell", "exec", "http.request", "credential", "${secret")
 
 
 def checksum(path: Path) -> str:
@@ -23,7 +24,7 @@ def validate_workflow(path: Path) -> dict[str, Any]:
     if "kibana." in text:
         raise ValueError(f"{path} uses deprecated kibana.* workflow steps; use cases.*")
     lowered = text.lower()
-    if any(token in lowered for token in FORBIDDEN_TOKENS):
+    if any(token in lowered for token in FORBIDDEN_TOKENS) or re.search(r"(?<!e)\bsql\b", lowered):
         raise ValueError(f"{path} contains a forbidden workflow capability")
     for position, step in enumerate(data["steps"]):
         if not isinstance(step, dict):

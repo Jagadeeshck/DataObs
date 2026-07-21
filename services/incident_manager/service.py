@@ -10,7 +10,7 @@ from .correlator import correlation_key
 from .deduplication import deduplication_key
 from .lifecycle import transition
 from .normalizer import normalize_event
-from .repository import InMemoryIncidentRepository
+from .repository import IncidentRepository, InMemoryIncidentRepository
 from .severity import calculate_severity
 
 SAFE_ACTIONS = {
@@ -26,7 +26,7 @@ SAFE_ACTIONS = {
 
 
 class IncidentManagerService:
-    def __init__(self, repo: InMemoryIncidentRepository | None = None) -> None:
+    def __init__(self, repo: IncidentRepository | None = None) -> None:
         # The in-memory implementation is deliberately opt-in outside tests. Production
         # composition must inject ElasticsearchIncidentRepository.
         self.repo = repo or InMemoryIncidentRepository()

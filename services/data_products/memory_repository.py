@@ -14,7 +14,12 @@ from packages.domain_model.data_product import (
     DataProductRevisionEvent,
 )
 from services.data_products.events import ProductConsistencyError
-from services.data_products.idempotency import DataProductIdempotencyRecord, IdempotencyConflict
+from services.data_products.idempotency import (
+    DataProductIdempotencyRecord,
+    IdempotencyConflict,
+    IdempotencyReservationResult,
+    IdempotencyReservationStatus,
+)
 from services.data_products.repository import ProductVersionConflict
 
 
@@ -31,14 +36,18 @@ class MemoryDataProductRepository:
         self.decisions: dict[tuple[str, str, str, str], DataProductMembershipDecision] = {}
         self.dependencies: dict[tuple[str, str, str, str], DataProductDependencyProjection] = {}
 
-    def reserve_idempotency(self, record_id: str, record: DataProductIdempotencyRecord) -> DataProductIdempotencyRecord:
+    def reserve_idempotency(self, record_id: str, record: DataProductIdempotencyRecord) -> IdempotencyReservationResult:
         existing = self.idempotency.get(record_id)
         if existing:
             if existing.request_fingerprint != record.request_fingerprint:
                 raise IdempotencyConflict("idempotency_conflict")
-            return existing.model_copy(deep=True)
+            return IdempotencyReservationResult(
+                status=IdempotencyReservationStatus(f"existing_{existing.state}"),
+                record=existing.model_copy(deep=True),
+                immutable_result_ref=existing.operation_id,
+            )
         self.idempotency[record_id] = record.model_copy(deep=True)
-        return record
+        return IdempotencyReservationResult(status=IdempotencyReservationStatus.CREATED, record=record)
 
     def complete_idempotency(self, record_id: str, *, operation_id: str, revision: int, etag: str) -> None:
         from packages.domain_model.base import utc_now

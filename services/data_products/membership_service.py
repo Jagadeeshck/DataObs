@@ -13,9 +13,10 @@ from packages.domain_model.data_product import (
     DataProductMembershipGenerationResult,
     DataProductMembershipProposal,
 )
+from services.data_products.events import ProductConsistencyError
 from services.data_products.idempotency import hash_key, new_record, request_fingerprint, scoped_record_id
 from services.data_products.membership_events import MembershipMutation
-from services.data_products.repository import DataProductRepository
+from services.data_products.repository import DataProductMembershipMutationResult, DataProductRepository
 
 
 class DataProductMembershipService:
@@ -39,7 +40,7 @@ class DataProductMembershipService:
         actor: str,
         reason: str,
         idempotency_key: str,
-    ) -> DataProductMembership:
+    ) -> DataProductMembershipMutationResult:
         if not all((actor.strip(), reason.strip(), idempotency_key.strip())):
             raise ValueError("actor, reason, and idempotency key are required")
         if self.repository.get_product(tenant_id, environment, product_id) is None:
@@ -56,7 +57,7 @@ class DataProductMembershipService:
             {"entity_id": entity_id, "entity_type": entity_type},
         )
         record_id = scoped_record_id(tenant_id, environment, product_id, idempotency_key)
-        self.repository.reserve_idempotency(
+        reservation = self.repository.reserve_idempotency(
             record_id,
             new_record(
                 tenant_id=tenant_id,
@@ -67,10 +68,45 @@ class DataProductMembershipService:
                 fingerprint=mutation.fingerprint,
             ),
         )
+        reserved = reservation.record
+        if reserved.state == "completed":
+            if not reserved.operation_id or reserved.result_revision is None or not reserved.result_etag:
+                raise ProductConsistencyError("completed membership result reference is incomplete")
+            replay = self.repository.get_membership(tenant_id, environment, product_id, membership_id)
+            if replay is None or replay.revision != reserved.result_revision or replay.etag != reserved.result_etag:
+                raise ProductConsistencyError("immutable membership result is missing or divergent")
+            terminal_id = mutation.event(outcome="applied", membership_id=membership_id).decision_id
+            return DataProductMembershipMutationResult(
+                membership=replay,
+                operation_id=reserved.operation_id,
+                replayed=True,
+                decision_refs=(terminal_id,),
+            )
+        if reserved.state != "pending":
+            raise ProductConsistencyError(f"idempotency reservation is {reserved.state}")
         existing = self.repository.get_membership(tenant_id, environment, product_id, membership_id)
         if existing:
             if existing.state == "active":
-                return existing
+                pending = mutation.event(outcome="pending", membership_id=membership_id)
+                terminal = mutation.event(
+                    outcome="applied",
+                    membership_id=membership_id,
+                    result_revision=existing.revision,
+                    result_etag=existing.etag,
+                )
+                self.repository.append_membership_decision(tenant_id, environment, product_id, pending)
+                self.repository.append_membership_decision(tenant_id, environment, product_id, terminal)
+                self.repository.complete_idempotency(
+                    record_id,
+                    operation_id=mutation.operation_id,
+                    revision=existing.revision,
+                    etag=existing.etag,
+                )
+                return DataProductMembershipMutationResult(
+                    membership=existing,
+                    operation_id=mutation.operation_id,
+                    decision_refs=(pending.decision_id, terminal.decision_id),
+                )
             raise ValueError("excluded membership cannot be silently reactivated")
         now = utc_now()
         etag = sha256(f"{membership_id}:1".encode()).hexdigest()
@@ -86,25 +122,29 @@ class DataProductMembershipService:
             created_by=actor,
             etag=etag,
         )
-        self.repository.append_membership_decision(
-            tenant_id, environment, product_id, mutation.event(outcome="pending", membership_id=membership_id)
-        )
+        pending = mutation.event(outcome="pending", membership_id=membership_id)
+        self.repository.append_membership_decision(tenant_id, environment, product_id, pending)
         created = self.repository.create_membership(tenant_id, environment, member)
+        terminal = mutation.event(
+            outcome="applied",
+            membership_id=membership_id,
+            result_revision=created.revision,
+            result_etag=created.etag,
+        )
         self.repository.append_membership_decision(
             tenant_id,
             environment,
             product_id,
-            mutation.event(
-                outcome="applied",
-                membership_id=membership_id,
-                result_revision=created.revision,
-                result_etag=created.etag,
-            ),
+            terminal,
         )
         self.repository.complete_idempotency(
             record_id, operation_id=mutation.operation_id, revision=created.revision, etag=created.etag
         )
-        return created
+        return DataProductMembershipMutationResult(
+            membership=created,
+            operation_id=mutation.operation_id,
+            decision_refs=(pending.decision_id, terminal.decision_id),
+        )
 
     def get_membership(
         self, tenant_id: str, environment: str, product_id: str, membership_id: str

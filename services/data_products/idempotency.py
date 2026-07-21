@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 from datetime import datetime, timedelta, timezone
+from enum import Enum
 from typing import Any, Literal
 
 from pydantic import Field
@@ -18,6 +19,22 @@ class IdempotencyConflict(RuntimeError):
 
 class IdempotencyPending(RuntimeError):
     pass
+
+
+class IdempotencyReservationStatus(str, Enum):
+    CREATED = "created"
+    EXISTING_PENDING = "existing_pending"
+    EXISTING_COMPLETED = "existing_completed"
+    EXISTING_FAILED = "existing_failed"
+    EXISTING_SUPERSEDED = "existing_superseded"
+
+
+class IdempotencyReservationResult(DomainModel):
+    """Result of an atomic reservation; it deliberately contains no raw key."""
+
+    status: IdempotencyReservationStatus
+    record: "DataProductIdempotencyRecord"
+    immutable_result_ref: str | None = None
 
 
 class DataProductIdempotencyRecord(DomainModel):

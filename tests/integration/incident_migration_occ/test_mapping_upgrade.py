@@ -1,10 +1,14 @@
+import json
 import os
+from pathlib import Path
 
 import pytest
 from elasticsearch import Elasticsearch
 
 from packages.elastic_store.manifest import BASE_PROPERTIES, MIGRATION_STATE_INDEX, migrations
 from packages.elastic_store.registry import apply, status
+from services.incident_manager.elasticsearch_repository import ElasticsearchIncidentRepository
+from services.incident_manager.service import IncidentManagerService
 
 pytestmark = pytest.mark.skipif(
     os.getenv("RUN_INTEGRATION_TESTS") != "1", reason="requires isolated Elasticsearch 9.4.2"
@@ -87,3 +91,33 @@ def test_incompatible_mapping_fails_without_recording_0012(es):
         .meta.status
         == 404
     )
+
+
+def test_replay_sequence_and_occurrence_evidence(es):
+    apply(es)
+    service = IncidentManagerService(ElasticsearchIncidentRepository(es))
+    base = {
+        "id": "event-1",
+        "tenant_id": "t1",
+        "environment": "prod",
+        "asset_id": "asset-1",
+        "event_type": "schema_change",
+        "observed_at": "2026-07-21T10:00:00Z",
+        "evidence": [{"reference": "first"}],
+    }
+    first = service.ingest(base, tenant_id="t1")
+    exact = service.ingest(base, tenant_id="t1")
+    newer = service.ingest(
+        base | {"observed_at": "2026-07-21T10:01:00Z", "evidence": [{"reference": "corrected"}]},
+        tenant_id="t1",
+    )
+    assert exact["incident"]["seq_no"] == first["incident"]["seq_no"]
+    assert newer["incident"]["seq_no"] == first["incident"]["seq_no"] + 1
+    assert newer["incident"]["occurrence_count"] == 1
+    assert exact["ingestion"]["reason"] == "exact_replay"
+    evidence = {
+        "first_seq_no": first["incident"]["seq_no"],
+        "exact_replay_seq_no": exact["incident"]["seq_no"],
+        "corrected_replay_seq_no": newer["incident"]["seq_no"],
+    }
+    Path("replay-sequence-number-evidence.json").write_text(json.dumps(evidence, indent=2))

@@ -4,7 +4,7 @@ import logging
 import uuid
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 from elasticsearch import Elasticsearch
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, Response
@@ -91,6 +91,19 @@ class HealthResponse(BaseModel):
     service: str = "dataobs-api"
     store_backend: str
     auth_mode: str
+
+
+class IncidentIngestionMetadata(BaseModel):
+    status: Literal["created", "updated", "replayed", "stale"]
+    reason: Literal["new_occurrence", "exact_replay", "newer_replay", "stale_replay", "projection_enrichment"]
+    occurrence_added: bool
+    incident_changed: bool
+
+
+class FindingIngestionResponse(BaseModel):
+    finding: Dict[str, Any]
+    incident: Dict[str, Any]
+    ingestion: IncidentIngestionMetadata
 
 
 class RuleRequest(DataObsModel):
@@ -341,7 +354,12 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
             headers={"Deprecation": "true", "Link": "</livez>; rel=successor-version"},
         )
 
-    @app.post("/api/v1/findings", status_code=201, dependencies=[Depends(require_auth)])
+    @app.post(
+        "/api/v1/findings",
+        status_code=201,
+        response_model=FindingIngestionResponse,
+        dependencies=[Depends(require_auth)],
+    )
     async def create_finding(
         request: Request,
         body: DataObservabilityRequest,
@@ -352,7 +370,10 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         except VersionConflict as exc:
-            raise HTTPException(status_code=409, detail="Incident changed concurrently") from exc
+            raise HTTPException(
+                status_code=409,
+                detail={"message": "Incident changed concurrently", "request_id": request.state.request_id},
+            ) from exc
 
     @app.get("/api/v1/findings", dependencies=[Depends(require_auth)])
     async def list_findings(

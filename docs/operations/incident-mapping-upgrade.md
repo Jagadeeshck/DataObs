@@ -38,3 +38,7 @@ If apply fails, keep writers drained. Verify 0012 is absent from the migration s
 An incompatible existing type cannot be repaired by changing 0012 or loosening strict mappings. Escalate to a separately reviewed v2-index migration with controlled reindex validation and atomic alias cutover. Preserve the v1 indices and snapshot throughout.
 
 Mapping additions are not destructively rolled back. For application rollback, drain writers, deploy the prior binary only if it can safely read the expanded mapping, and retain all indices and aliases. Otherwise remain on the fixed writer and forward-repair. **Deleting incident or finding indices is never a normal rollback procedure.**
+
+## Replay and rolling-upgrade contract
+
+Migration `0012_incident_mapping_and_occ_fix` remains immutable and this correction adds no migration. Incident IDs use the stable v1 `(tenant_id, deduplication_key)` formula; the deduplication key already contains environment. Mixed workers therefore contend on one create-only document. Exact/stale replay performs no incident update, while corrected/newer replay uses existing OCC metadata. See [incident concurrency](incident-concurrency.md).

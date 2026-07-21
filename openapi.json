@@ -106,6 +106,30 @@
         "title": "EnterpriseBacklogResponse",
         "type": "object"
       },
+      "FindingIngestionResponse": {
+        "properties": {
+          "finding": {
+            "additionalProperties": true,
+            "title": "Finding",
+            "type": "object"
+          },
+          "incident": {
+            "additionalProperties": true,
+            "title": "Incident",
+            "type": "object"
+          },
+          "ingestion": {
+            "$ref": "#/components/schemas/IncidentIngestionMetadata"
+          }
+        },
+        "required": [
+          "finding",
+          "incident",
+          "ingestion"
+        ],
+        "title": "FindingIngestionResponse",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -145,6 +169,47 @@
           "auth_mode"
         ],
         "title": "HealthResponse",
+        "type": "object"
+      },
+      "IncidentIngestionMetadata": {
+        "properties": {
+          "incident_changed": {
+            "title": "Incident Changed",
+            "type": "boolean"
+          },
+          "occurrence_added": {
+            "title": "Occurrence Added",
+            "type": "boolean"
+          },
+          "reason": {
+            "enum": [
+              "new_occurrence",
+              "exact_replay",
+              "newer_replay",
+              "stale_replay",
+              "projection_enrichment"
+            ],
+            "title": "Reason",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "created",
+              "updated",
+              "replayed",
+              "stale"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "reason",
+          "occurrence_added",
+          "incident_changed"
+        ],
+        "title": "IncidentIngestionMetadata",
         "type": "object"
       },
       "LineageEdgesResponse": {
@@ -4537,9 +4602,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Create Finding Api V1 Findings Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/FindingIngestionResponse"
                 }
               }
             },

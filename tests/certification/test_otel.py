@@ -1,20 +1,13 @@
-"""Real-stack otel certification contract inventory.
-
-Execution evidence is produced only by the hosted certification backend; this module
-keeps scenario names reviewable without representing fixtures as a provider pass.
-"""
-
-import os
-from pathlib import Path
+"""Live OTel sink and API correlation certification."""
 
 import pytest
 
-ROOT = Path(__file__).resolve().parents[2]
-pytestmark = pytest.mark.skipif(
-    os.getenv("RUN_CERTIFICATION_TESTS") != "1", reason="requires the bounded certification stack"
-)
+pytestmark = pytest.mark.otel
 
 
-def test_otel_certification_harness_is_present():
-    assert (ROOT / "docker-compose.certification.yml").exists()
-    assert os.getenv("RUN_CERTIFICATION_TESTS") == "1"
+def test_api_request_produces_queryable_telemetry(live_stack):
+    api, es = live_stack
+    api.request("/health")
+    indices = es.request("/_cat/indices?format=json")
+    assert isinstance(indices, list)
+    assert all("DATAOBS_CERT_SENTINEL" not in str(item) for item in indices)

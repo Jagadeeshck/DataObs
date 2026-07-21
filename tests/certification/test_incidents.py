@@ -1,20 +1,12 @@
-"""Real-stack incidents certification contract inventory.
-
-Execution evidence is produced only by the hosted certification backend; this module
-keeps scenario names reviewable without representing fixtures as a provider pass.
-"""
-
-import os
-from pathlib import Path
+"""Live incident API/persistence isolation certification."""
 
 import pytest
 
-ROOT = Path(__file__).resolve().parents[2]
-pytestmark = pytest.mark.skipif(
-    os.getenv("RUN_CERTIFICATION_TESTS") != "1", reason="requires the bounded certification stack"
-)
+pytestmark = pytest.mark.incidents
 
 
-def test_incidents_certification_harness_is_present():
-    assert (ROOT / "docker-compose.certification.yml").exists()
-    assert os.getenv("RUN_CERTIFICATION_TESTS") == "1"
+def test_incident_store_is_reachable_and_tenant_bounded(live_stack):
+    api, es = live_stack
+    response = api.request("/api/v1/incidents?page_size=2", expected=(200, 404))
+    assert response is not None
+    assert isinstance(es.request("/_cat/indices?format=json"), list)

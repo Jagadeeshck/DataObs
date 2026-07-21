@@ -1,0 +1,19 @@
+tenant: tenant-alpha
+environment: staging
+source_id: certification-kafka
+integration_id: kafka-certification
+bootstrap_servers: kafka-1:9092,kafka-2:9092,kafka-3:9092
+security_mode: plaintext
+connect_url: http://kafka-connect:8083
+schema_registry_url: http://schema-registry:8081
+elasticsearch_url: http://elasticsearch:9200
+collection_limits:
+  topics: 100
+  consumer_groups: 100
+poll_interval_seconds: 5
+lease:
+  owner: observer-primary
+  ttl_seconds: 30
+checkpoint:
+  index: dataobs-kafka-observer-checkpoints
+  flush_interval_seconds: 5

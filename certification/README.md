@@ -39,3 +39,11 @@ flowchart LR
 ```
 
 Fixtures contain no personal or real business data. Airflow/dbt/Spark fixtures prove parser/emitter contracts only; real providers are not certified. Connector credentials never enter API/Console/browser containers. Four sentinel classes are injected only at runtime, and any occurrence in retained output fails verification.
+
+## Hosted Phase B execution
+
+Use the focused `cert-migrations`, `cert-postgres`, `cert-kafka`, `cert-jobs`, `cert-product`, `cert-browser`, and `cert-security` profiles. Legacy profile aliases remain temporarily for PR #109 compatibility. `scripts/certification/bootstrap.sh` generates the PostgreSQL credential under ignored `certification/runtime-secrets/` with mode `0600`; the committed example is never an active credential.
+
+A provider gate must make both a live provider assertion and a DataObs API or Elasticsearch assertion. Presence-only checks are rejected by `test_certification_depth.py`. Local manifests intentionally have null hosted fields and cannot promote hosted-required dimensions.
+
+> This hosted certification run validates only the named capabilities and dimensions. It does not make DataObs as a whole production-ready.

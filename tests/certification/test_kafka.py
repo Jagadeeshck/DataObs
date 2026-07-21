@@ -1,20 +1,23 @@
-"""Real-stack kafka certification contract inventory.
-
-Execution evidence is produced only by the hosted certification backend; this module
-keeps scenario names reviewable without representing fixtures as a provider pass.
-"""
-
-import os
-from pathlib import Path
+"""Live Kafka, Connect, Registry, and DataObs storage certification."""
 
 import pytest
 
-ROOT = Path(__file__).resolve().parents[2]
-pytestmark = pytest.mark.skipif(
-    os.getenv("RUN_CERTIFICATION_TESTS") != "1", reason="requires the bounded certification stack"
-)
+from tests.certification.clients.connect import ConnectClient
+from tests.certification.clients.kafka import KafkaClient
+from tests.certification.clients.schema_registry import SchemaRegistryClient
+
+pytestmark = pytest.mark.kafka
 
 
-def test_kafka_certification_harness_is_present():
-    assert (ROOT / "docker-compose.certification.yml").exists()
-    assert os.getenv("RUN_CERTIFICATION_TESTS") == "1"
+def test_kafka_cluster_and_dataobs_storage_are_live(live_stack):
+    api, es = live_stack
+    metadata = KafkaClient().admin().list_topics(timeout=10)
+    assert len(metadata.brokers) == 3
+    assert "certification-orders" in metadata.topics
+    assert isinstance(es.request("/_cat/indices?format=json"), list)
+    assert api.request("/health")["status"] in {"ok", "healthy"}
+
+
+def test_connect_and_schema_registry_are_ready(live_stack):
+    assert isinstance(ConnectClient().request("/connectors"), list)
+    assert isinstance(SchemaRegistryClient().request("/subjects"), list)

@@ -1,20 +1,13 @@
-"""Real-stack migrations certification contract inventory.
-
-Execution evidence is produced only by the hosted certification backend; this module
-keeps scenario names reviewable without representing fixtures as a provider pass.
-"""
-
-import os
-from pathlib import Path
+"""Live released migration application and backing mappings certification."""
 
 import pytest
 
-ROOT = Path(__file__).resolve().parents[2]
-pytestmark = pytest.mark.skipif(
-    os.getenv("RUN_CERTIFICATION_TESTS") != "1", reason="requires the bounded certification stack"
-)
+pytestmark = pytest.mark.migrations
 
 
-def test_migrations_certification_harness_is_present():
-    assert (ROOT / "docker-compose.certification.yml").exists()
-    assert os.getenv("RUN_CERTIFICATION_TESTS") == "1"
+def test_released_mappings_are_live_and_strict(live_stack):
+    api, es = live_stack
+    mappings = es.request("/_mapping")
+    assert mappings
+    assert any(body.get("mappings", {}).get("dynamic") in ("strict", False) for body in mappings.values())
+    assert api.request("/health")["status"] in {"ok", "healthy"}

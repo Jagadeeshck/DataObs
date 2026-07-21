@@ -116,8 +116,29 @@ def validate(data: dict) -> list[str]:
         for mid in impl.get("migrations", []):
             if mid not in actual:
                 e.append(f"{cid}: migration absent: {mid}")
-        if c.get("state") == "validated" and any(val[d] in {"defined_not_run", "missing", "failed"} for d in VDIMS):
-            e.append(f"{cid}: validated with incomplete evidence")
+        if c.get("state") == "validated":
+            surfaces = sum((impl.get(k, []) for k in ("code_paths", "api_paths", "ui_routes", "storage_resources", "migrations")), [])
+            applicable = [d for d in VDIMS if val.get(d) != "not_applicable"]
+            passed = [d for d in applicable if val.get(d) == "passed"]
+            if not surfaces:
+                e.append(f"{cid}: validated without a meaningful implementation surface")
+            if not applicable or not passed:
+                e.append(f"{cid}: validated without applicable passed evidence")
+            incomplete = [d for d in applicable if val.get(d) != "passed"]
+            if incomplete:
+                e.append(f"{cid}: validated with incomplete evidence: {', '.join(incomplete)}")
+            if impl.get("ui_routes"):
+                for required_dim in ("browser", "accessibility"):
+                    if val.get(required_dim) != "passed":
+                        e.append(f"{cid}: user-facing validated capability requires {required_dim} evidence")
+            if val.get("security") == "not_applicable" and any(
+                impl.get(k) for k in ("api_paths", "ui_routes", "storage_resources")
+            ):
+                e.append(f"{cid}: validated product surface requires security evidence")
+            if val.get("real_stack") == "not_applicable" and any(
+                token in cid for token in ("integration", "postgres", "kafka", "elastic")
+            ):
+                e.append(f"{cid}: validated integration requires real-stack evidence")
         if c.get("state") == "not_started" and any(impl.get(k) for k in impl):
             e.append(f"{cid}: not_started lists implemented surfaces")
         if c.get("state") == "optional_integration" and "Elasticsearch remains authoritative" not in c.get(

@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema", "$id": "https://dataobs.dev/schemas/certification-evidence-1.0.json",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema_version","repository","commit_sha","workflow_run_id","workflow_run_url","started_at","completed_at","versions","profiles","capabilities","security","browser","migrations","redaction","artifacts"],
+  "properties": {
+    "schema_version":{"const":"1.0"}, "repository":{"const":"Jagadeeshck/DataObs"},
+    "commit_sha":{"type":"string","pattern":"^[0-9a-f]{40}$"},
+    "workflow_run_id":{"type":["string","null"]}, "workflow_run_url":{"type":["string","null"],"format":"uri"},
+    "started_at":{"type":"string","format":"date-time"}, "completed_at":{"type":"string","format":"date-time"},
+    "versions":{"type":"object","minProperties":1}, "profiles":{"type":"array","items":{"enum":["core","postgres","kafka","jobs","browser","security","full"]}},
+    "capabilities":{"type":"object","additionalProperties":{"type":"object","additionalProperties":false,"required":["status","tests","artifacts","limitations"],"properties":{"status":{"enum":["passed","failed","partial","not_applicable"]},"tests":{"type":"array","items":{"type":"string"}},"artifacts":{"type":"array","items":{"type":"string","pattern":"^(?!/)(?!.*\\.\\.).+$"}},"limitations":{"type":"array","items":{"type":"string"}}}}},
+    "security":{"type":"object"}, "browser":{"type":"object"}, "migrations":{"type":"object"}, "redaction":{"type":"object"},
+    "artifacts":{"type":"array","items":{"type":"object","additionalProperties":false,"required":["path","sha256"],"properties":{"path":{"type":"string","pattern":"^(?!/)(?!.*\\.\\.).+$"},"sha256":{"type":"string","pattern":"^[0-9a-f]{64}$"}}}}
+  }
+}

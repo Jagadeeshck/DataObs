@@ -27,3 +27,7 @@
 | Licensing | blocked | dependency declarations | complete product/license review absent | unassigned | SBOM and human legal review |
 | Operations | foundation | runbooks in `docs/operations/` | on-call, SLO, DR rehearsals absent | unassigned | operational game day |
 | Support | not_started | no support contract | ownership and escalation absent | unassigned | define supported matrix and escalation |
+
+## Phase B certification boundary
+
+The unified certification harness narrows evidence gaps but does not remove the release blockers for secured Elastic deployment, OIDC/RBAC, provider certification, backup/restore, production scale, or incomplete investigation workbenches. Shared-token/development identity and disabled Elastic security in isolated CI remain explicit blockers.

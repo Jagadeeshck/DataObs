@@ -1,0 +1,1 @@
+{"fixture_contracts":["postgres","kafka","openlineage","dbt","spark"],"real_provider_integrations_not_certified":["airflow","dbt-cloud","spark-cluster"]}

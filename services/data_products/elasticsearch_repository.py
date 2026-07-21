@@ -166,7 +166,13 @@ class ElasticsearchDataProductRepository:
         return DataProduct.model_validate(source)
 
     def list_products(
-        self, tenant_id: str, environment: str, *, limit: int, cursor: str | None = None
+        self,
+        tenant_id: str,
+        environment: str,
+        *,
+        limit: int,
+        search_after: Sequence[str | int | float] | None = None,
+        **_: Any,
     ) -> list[DataProduct]:
         if not 1 <= limit <= 200:
             raise ValueError("limit outside bounds")
@@ -176,8 +182,8 @@ class ElasticsearchDataProductRepository:
             "query": {"bool": {"filter": [{"term": {"tenant_id": tenant_id}}, {"term": {"environment": environment}}]}},
             "sort": [{"id": "asc"}, {"_id": "asc"}],
         }
-        if cursor:
-            body["search_after"] = [cursor, scoped_id(tenant_id, environment, cursor)]
+        if search_after:
+            body["search_after"] = list(search_after)
         hits = self.client.search(**body)["hits"]["hits"]
         return [DataProduct.model_validate(hit["_source"]) for hit in hits]
 
@@ -322,6 +328,7 @@ class ElasticsearchDataProductRepository:
         limit: int,
         search_after: Sequence[str | int | float] | None = None,
         extra: list[dict[str, Any]] | None = None,
+        sort: Sequence[dict[str, str]],
     ) -> tuple[list[Any], bool, list[Any] | None]:
         if not 1 <= limit <= 200:
             raise ValueError("limit outside bounds")
@@ -334,7 +341,7 @@ class ElasticsearchDataProductRepository:
             "index": index,
             "size": limit + 1,
             "query": {"bool": {"filter": filters}},
-            "sort": [{"updated_at": "desc"}, {"_id": "asc"}],
+            "sort": list(sort),
         }
         if search_after:
             request["search_after"] = list(search_after)
@@ -390,6 +397,7 @@ class ElasticsearchDataProductRepository:
             product_id,
             limit=limit,
             search_after=search_after,
+            sort=({"updated_at": "desc"}, {"membership_id": "asc"}, {"_id": "asc"}),
         )
         return DataProductMembershipPage(items=items, has_more=more, search_after=after)
 
@@ -488,6 +496,12 @@ class ElasticsearchDataProductRepository:
             product_id,
             limit=limit,
             search_after=search_after,
+            sort=(
+                {"created_at": "desc"},
+                {"proposal_revision": "desc"},
+                {"proposal_id": "asc"},
+                {"_id": "asc"},
+            ),
         )
         return DataProductMembershipProposalPage(items=items, has_more=more, search_after=after)
 
@@ -525,6 +539,7 @@ class ElasticsearchDataProductRepository:
             product_id,
             limit=limit,
             search_after=search_after,
+            sort=({"decided_at": "desc"}, {"decision_id": "asc"}, {"_id": "asc"}),
         )
         return DataProductMembershipDecisionPage(items=items, has_more=more, search_after=after)
 
@@ -564,6 +579,12 @@ class ElasticsearchDataProductRepository:
             product_id,
             limit=limit,
             search_after=search_after,
+            sort=(
+                {"removed": "asc"},
+                {"upstream_product_id": "asc"},
+                {"graph_version": "desc"},
+                {"_id": "asc"},
+            ),
         )
         return DataProductDependencyPage(items=items, has_more=more, search_after=after)
 
@@ -628,7 +649,7 @@ class ElasticsearchDataProductRepository:
             raise ValueError("limit outside bounds")
         request: dict[str, Any] = {
             "index": REVISIONS,
-            "size": limit,
+            "size": limit + 1,
             "query": {
                 "bool": {
                     "filter": [
@@ -638,7 +659,12 @@ class ElasticsearchDataProductRepository:
                     ]
                 }
             },
-            "sort": [{"revision": "desc"}, {"operation_id": "desc"}, {"_id": "desc"}],
+            "sort": [
+                {"revision": "desc"},
+                {"occurred_at": "desc"},
+                {"operation_id": "desc"},
+                {"_id": "desc"},
+            ],
         }
         if search_after:
             request["search_after"] = list(search_after)

@@ -157,15 +157,15 @@ class MemoryDataProductRepository:
         return item.model_copy(deep=True) if item else None
 
     def list_products(
-        self, tenant_id: str, environment: str, *, limit: int, cursor: str | None = None
+        self, tenant_id: str, environment: str, *, limit: int, search_after=None, **_
     ) -> list[DataProduct]:
         if not 1 <= limit <= 200:
             raise ValueError("limit outside bounds")
         values = sorted(
             (p for (t, e, _), p in self.items.items() if (t, e) == (tenant_id, environment)), key=lambda p: p.id
         )
-        if cursor:
-            values = [p for p in values if p.id > cursor]
+        if search_after:
+            values = [p for p in values if p.id > str(search_after[0])]
         return [p.model_copy(deep=True) for p in values[:limit]]
 
     def update_product(self, product: DataProduct, *, expected_etag: str) -> DataProduct:

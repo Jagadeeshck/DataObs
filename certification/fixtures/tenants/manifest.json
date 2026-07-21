@@ -1,0 +1,13 @@
+{
+  "schema_version": "1.0",
+  "tenants": [
+    {"id": "tenant-alpha", "environments": ["development", "staging", "production"]},
+    {"id": "tenant-beta", "environments": ["development", "staging", "production"]}
+  ],
+  "overlapping_resources": {
+    "database": "orders", "table": "customers", "topic": "orders.events",
+    "consumer_group": "payments-worker", "job": "daily-customer-refresh",
+    "asset_display_name": "Customer orders", "incident_summary": "Orders delayed"
+  },
+  "data_classification": "synthetic-no-personal-data"
+}

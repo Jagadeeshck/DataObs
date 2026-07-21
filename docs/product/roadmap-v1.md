@@ -67,3 +67,7 @@ No delivery dates are implied. The capability ledger, not issue or PR titles, de
 - **Exit criteria:** each new capability independently satisfies promotion policy.
 - **Dependencies:** provider agreements, licensing, customer validation, hardened platform.
 - **Non-goals:** speculative connectors or delivery dates.
+
+## Phase B — unified certification environment
+
+Phase B consolidates the existing Elastic, PostgreSQL, Kafka, OpenLineage-fixture, API, incident, browser, and security validation paths. Exit remains evidence-gated: a green hosted summary, retained redacted artifacts, and individual human-reviewed ledger decisions are required. Fixture contracts do not certify real Airflow, dbt Cloud, or Spark providers, and whole-product readiness remains blocked.

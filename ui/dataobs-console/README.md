@@ -14,3 +14,7 @@ The browser calls only the DataObs API. Local authentication uses secure same-or
 ## Performance budgets
 
 The current-view contract is capped at 1,000 nodes and 2,500 edges. Total uncompressed JavaScript must remain below 2 MB; production source maps are disabled.
+
+## Certification browser suite
+
+Applicable existing routes are exercised from `e2e/certification/` against the seeded certification stack. The suite must not turn preview/scaffold routes into product claims; Playwright and axe evidence is retained only after redaction.

@@ -67,3 +67,7 @@ The evidence-gated [roadmap](docs/product/roadmap-v1.md) prioritizes truth, unif
 ## Non-goals
 
 This documentation milestone adds no product capability, connector, IAM, backup/restore, or UI completion. Autonomous remediation is not enabled; actions require explicit safety and approval controls.
+
+## Unified product certification
+
+The version-pinned certification harness and its honest evidence policy are documented in [certification/README.md](certification/README.md). Start with `./scripts/certification/compose.sh config`; the environment validates existing surfaces and does not claim whole-product production readiness.

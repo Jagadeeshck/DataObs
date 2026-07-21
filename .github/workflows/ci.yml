@@ -32,6 +32,8 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
+      - name: Migration immutability against main
+        run: python scripts/check_migration_immutability.py --base-ref HEAD
       - name: Install focused dependencies
         run: |
           pip install -r requirements.txt
@@ -151,6 +153,7 @@ jobs:
       - name: Validate compose files
         run: |
           docker compose -f docker-compose.yml config
+          docker compose -f docker-compose.certification.yml --profile full config
           docker compose -f docker-compose.poc.yml config
           docker compose -f tests/integration/docker-compose.test.yml config
           docker compose -f integrations/grafana-alloy/docker-compose.yml config
@@ -219,7 +222,7 @@ jobs:
           python -m compileall -q services/scanner_worker integrations/databases/postgres tests
           ruff check integrations/databases/postgres services/scanner_worker tests/integration/postgres_vertical_slice
           black --check integrations/databases/postgres services/scanner_worker tests/integration/postgres_vertical_slice
-          mypy services/scanner_worker integrations/databases/postgres || true
+          mypy services/scanner_worker integrations/databases/postgres
       - name: Build API and scanner images
         run: |
           docker build -f Dockerfile.api -t dataobs/api:${{ github.sha }} .
@@ -437,8 +440,15 @@ jobs:
           tests/documentation/test_capability_ledger.py
           tests/documentation/test_generated_capability_docs.py
           tests/documentation/test_product_claims.py -q
+      - name: Resolve documentation comparison base
+        id: docs-base
+        env:
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+        run: echo "base=$(python scripts/resolve_ci_base.py --event-file "$GITHUB_EVENT_PATH")" >> "$GITHUB_OUTPUT"
+      - name: Migration immutability
+        run: python scripts/check_migration_immutability.py --base-ref "${{ steps.docs-base.outputs.base }}"
       - name: Capability diff
-        run: python scripts/capability_diff.py "${{ github.event.pull_request.base.sha }}" > capability-diff-report.txt
+        run: python scripts/capability_diff.py --base-ref "${{ steps.docs-base.outputs.base }}" > capability-diff-report.txt
       - name: Upload documentation truth reports
         if: always()
         uses: actions/upload-artifact@v4
@@ -450,3 +460,105 @@ jobs:
             capability-state-counts.json
             capability-diff-report.txt
             broken-link-report.txt
+
+  certification-contracts:
+    name: Certification contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.11", cache: pip}
+      - run: pip install -r requirements.txt && pip install pytest jsonschema pyyaml ruff black
+      - name: Contract, migration, fixture and evidence validation
+        run: |
+          docker compose -f docker-compose.certification.yml --profile full config > compose-config.txt
+          ! rg -n ':latest([[:space:]"'"']|$)' docker-compose.certification.yml
+          python scripts/check_migration_immutability.py --base-ref HEAD
+          python scripts/validate_capability_ledger.py
+          python -m pytest tests/documentation tests/certification/test_contracts.py tests/certification/test_evidence_manifest.py tests/certification/test_capability_promotion.py -q --junitxml=certification-contracts.xml
+          ruff check scripts/certification tests/certification
+          black --check scripts/certification tests/certification
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: certification-contracts, path: "compose-config.txt\ncertification-contracts.xml", retention-days: 14}
+
+  certification-backend:
+    runs-on: ubuntu-latest
+    needs: [certification-contracts]
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.11", cache: pip}
+      - run: pip install -r requirements.txt && pip install pytest jsonschema
+      - name: Start and certify backend
+        run: CERTIFICATION_PROFILE=full ./scripts/certification/compose.sh up && ./scripts/certification/compose.sh seed && ./scripts/certification/compose.sh test backend
+      - name: Diagnostics
+        if: failure()
+        run: docker compose -f docker-compose.certification.yml --profile full logs --no-color > certification/evidence/backend-redacted.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: certification-backend, path: certification/evidence, retention-days: 14}
+      - if: always()
+        run: ./scripts/certification/compose.sh down
+
+  certification-browser:
+    runs-on: ubuntu-latest
+    needs: [certification-contracts]
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: {version: 10.28.1}
+      - uses: actions/setup-node@v4
+        with: {node-version: "24.15.0", cache: pnpm, cache-dependency-path: ui/dataobs-console/pnpm-lock.yaml}
+      - run: cd ui/dataobs-console && pnpm install --frozen-lockfile
+      - run: CERTIFICATION_PROFILE=browser ./scripts/certification/compose.sh up && ./scripts/certification/compose.sh seed && ./scripts/certification/compose.sh test browser
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: certification-browser, path: "ui/dataobs-console/playwright-report\nui/dataobs-console/test-results", retention-days: 14}
+      - if: always()
+        run: ./scripts/certification/compose.sh down
+
+  certification-security:
+    runs-on: ubuntu-latest
+    needs: [certification-contracts]
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.11"}
+      - run: pip install -r requirements.txt && pip install pytest pip-audit jsonschema
+      - run: pip-audit -r requirements.txt
+      - run: ./scripts/certification/compose.sh test security
+      - uses: aquasecurity/trivy-action@0.35.0
+        with: {scan-type: fs, format: table, severity: "CRITICAL,HIGH", exit-code: "1"}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: certification-security, path: certification/evidence, retention-days: 14}
+
+  certification-summary:
+    runs-on: ubuntu-latest
+    needs: [certification-contracts, certification-backend, certification-browser, certification-security]
+    if: always()
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: {path: certification/evidence/downloaded}
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.11"}
+      - run: pip install jsonschema pyyaml
+      - name: Require all gates and build hosted evidence
+        env:
+          REQUIRED_RESULTS: ${{ join(needs.*.result, ',') }}
+        run: |
+          test "$REQUIRED_RESULTS" = "success,success,success,success"
+          python scripts/certification/build_manifest.py certification/evidence
+          python scripts/certification/redact_artifacts.py certification/evidence
+          python scripts/certification/verify_artifacts.py certification/evidence
+          python scripts/apply_certification_evidence.py certification/evidence/certification-evidence.json
+      - uses: actions/upload-artifact@v4
+        with: {name: certification-summary, path: certification/evidence, retention-days: 14}

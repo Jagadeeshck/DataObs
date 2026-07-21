@@ -124,12 +124,20 @@ class DataProductMembershipDecision(DomainModel):
     product_id: str
     proposal_id: str | None = None
     membership_id: str | None = None
-    decision: Literal["accept", "reject", "exclude"]
+    decision: Literal["add", "accept", "reject", "expire", "supersede", "exclude"]
+    operation_id: str | None = None
+    outcome: Literal["pending", "applied", "superseded", "failed"] = "applied"
     actor: str
     reason: str
     idempotency_key_hash: str
     request_fingerprint: str
+    expected_revision: int | None = None
+    result_revision: int | None = None
+    result_etag: str | None = None
+    error_code: str | None = None
     decided_at: datetime = Field(default_factory=utc_now)
+    occurred_at: datetime = Field(default_factory=utc_now)
+    applied_at: datetime | None = None
     schema_version: str = "v1"
 
 
@@ -171,6 +179,8 @@ class DataProductDependencyProjection(DomainModel):
     created_at: datetime = Field(default_factory=utc_now)
     updated_at: datetime = Field(default_factory=utc_now)
     removed: bool = False
+    removed_at: datetime | None = None
+    removed_by_revision: int | None = Field(default=None, ge=1)
     schema_version: str = "v1"
 
 
@@ -189,6 +199,7 @@ class DataProductDependencyGraph(DomainModel):
     visited_count: int = Field(ge=0)
     truncated: bool = False
     cycle_detected: bool = False
+    cycle_path: List[str] = Field(default_factory=list, max_length=100)
     missing_evidence: List[str] = Field(default_factory=list, max_length=50)
     graph_version: str
     observed_at: datetime = Field(default_factory=utc_now)
@@ -205,9 +216,11 @@ class DataProductImpactSummary(DomainModel):
     transitive_upstream_products: List[str] = Field(default_factory=list, max_length=1000)
     transitive_downstream_products: List[str] = Field(default_factory=list, max_length=1000)
     pathways: List[str] = Field(default_factory=list, max_length=500)
+    known_consumers: List[str] = Field(default_factory=list, max_length=500)
     truncated: bool = False
     missing_evidence: List[str] = Field(default_factory=list, max_length=50)
     source_coverage: float = Field(default=0, ge=0, le=1)
+    data_status: Literal["complete", "partial", "unavailable"] = "partial"
     observed_at: datetime = Field(default_factory=utc_now)
 
 

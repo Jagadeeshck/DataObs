@@ -2565,6 +2565,18 @@ export interface components {
                 [key: string]: unknown;
             }[];
         };
+        /** FindingIngestionResponse */
+        FindingIngestionResponse: {
+            /** Finding */
+            finding: {
+                [key: string]: unknown;
+            };
+            /** Incident */
+            incident: {
+                [key: string]: unknown;
+            };
+            ingestion: components["schemas"]["IncidentIngestionMetadata"];
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -2586,6 +2598,23 @@ export interface components {
             status: string;
             /** Store Backend */
             store_backend: string;
+        };
+        /** IncidentIngestionMetadata */
+        IncidentIngestionMetadata: {
+            /** Incident Changed */
+            incident_changed: boolean;
+            /** Occurrence Added */
+            occurrence_added: boolean;
+            /**
+             * Reason
+             * @enum {string}
+             */
+            reason: "new_occurrence" | "exact_replay" | "newer_replay" | "stale_replay" | "projection_enrichment";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "created" | "updated" | "replayed" | "stale";
         };
         /** LineageEdgesResponse */
         LineageEdgesResponse: {
@@ -4531,9 +4560,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["FindingIngestionResponse"];
                 };
             };
             /** @description Validation Error */

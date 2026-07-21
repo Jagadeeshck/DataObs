@@ -38,22 +38,30 @@ jobs:
           pip install pytest ruff black mypy
       - name: Focused quality checks
         run: |
-          ruff check packages/elastic_store services/incident_manager tests/elastic_store tests/unit/test_incident_*.py tests/integration/incident_migration_occ
-          black --check packages/elastic_store services/incident_manager tests/elastic_store tests/unit/test_incident_*.py tests/integration/incident_migration_occ
+          python scripts/check_generated_artifacts.py
+          python -m compileall -q packages/elastic_store services/incident_manager src/api tests
+          ruff check packages/elastic_store services/incident_manager src/api tests/unit/test_incident_occ.py
+          black --check packages/elastic_store services/incident_manager src/api tests/unit/test_incident_occ.py
           mypy packages/elastic_store services/incident_manager
       - name: Capture migration plan
-        run: python -m packages.elastic_store.cli plan > incident-migration-plan.json
+        run: |
+          python -m packages.elastic_store.cli plan > incident-migration-plan.json
+          curl -fsS http://localhost:9200/_mapping > incident-mappings-before.json
       - name: Unit migration and incident tests
         run: python -m pytest tests/elastic_store tests/unit/test_incident_automation.py tests/unit/test_incident_occ.py tests/unit/test_incident_workbench_safety.py -q --junitxml=incident-unit.xml
       - name: Elasticsearch 9.4.2 migration and concurrency tests
         env:
           RUN_INTEGRATION_TESTS: "1"
           ELASTICSEARCH_URL: http://localhost:9200
-        run: python -m pytest tests/integration/incident_migration_occ -q --junitxml=incident-integration.xml
+        run: |
+          python -m pytest tests/integration/incident_migration_occ -q --junitxml=incident-migration-occ.xml | tee concurrency-test-summary.txt
       - name: Capture redacted mapping snapshots
         if: always()
         run: |
-          curl -fsS http://localhost:9200/dataobs-findings-v1,dataobs-incidents-v1/_mapping > incident-mappings.json || true
+          curl -fsS http://localhost:9200/_mapping > incident-mappings-after.json
+      - name: Capture redacted Elasticsearch diagnostics on failure
+        if: failure()
+        run: curl -fsS http://localhost:9200/_cluster/health > incident-elasticsearch-redacted.log
       - name: Upload incident gate artifacts
         if: always()
         uses: actions/upload-artifact@v4
@@ -61,9 +69,13 @@ jobs:
           name: incident-migration-occ-artifacts
           path: |
             incident-migration-plan.json
-            incident-mappings.json
+            incident-mappings-before.json
+            incident-mappings-after.json
             incident-unit.xml
-            incident-integration.xml
+            incident-migration-occ.xml
+            concurrency-test-summary.txt
+            replay-sequence-number-evidence.json
+            incident-elasticsearch-redacted.log
 
   python-quality:
     name: Python quality and unit tests

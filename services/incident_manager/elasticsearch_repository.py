@@ -6,7 +6,7 @@ from elasticsearch import ConflictError, Elasticsearch, NotFoundError
 
 from packages.domain_model.incident import Finding, Incident
 
-from .repository import VersionConflict
+from .repository import VersionConflict, finding_projection
 
 FINDINGS_ALIAS = "dataobs-findings-v1-write"
 FINDINGS_READ_ALIAS = "dataobs-findings-v1-read"
@@ -33,13 +33,46 @@ class ElasticsearchIncidentRepository:
         return filters
 
     def save_finding(self, finding: Finding) -> Finding:
-        self.client.index(
-            index=FINDINGS_ALIAS,
-            id=finding.id,
-            document=finding.model_dump(mode="json"),
-            refresh="wait_for",
-        )
-        return finding
+        # The deterministic ID makes this a small compare-and-set register. Newer
+        # observations win; stale replays return the durable value unchanged.
+        for _ in range(3):
+            try:
+                current = self.client.get(index=FINDINGS_READ_ALIAS, id=finding.id)
+            except NotFoundError:
+                try:
+                    self.client.index(
+                        index=FINDINGS_ALIAS,
+                        id=finding.id,
+                        document=finding.model_dump(mode="json"),
+                        op_type="create",
+                        refresh="wait_for",
+                    )
+                    return finding
+                except ConflictError:
+                    continue
+            source = current["_source"]
+            stored = Finding.model_validate(source)
+            immutable = ("tenant_id", "environment", "source_event_id", "source_event_version", "asset_id")
+            if any(getattr(stored, name) != getattr(finding, name) for name in immutable):
+                raise ValueError("finding source identity is immutable")
+            if finding.last_observed_at < stored.last_observed_at:
+                return stored
+            incoming = finding.model_dump(mode="json")
+            if finding_projection(finding) == finding_projection(stored):
+                return stored
+            try:
+                self.client.index(
+                    index=FINDINGS_ALIAS,
+                    id=finding.id,
+                    document=incoming,
+                    if_seq_no=current["_seq_no"],
+                    if_primary_term=current["_primary_term"],
+                    refresh="wait_for",
+                )
+                return finding
+            except ConflictError:
+                continue
+        raise VersionConflict("finding version conflict")
 
     def _write_incident(self, incident: Incident, **kwargs: Any) -> Incident:
         try:

@@ -42,3 +42,7 @@ and Schema Registry profiles, Cases execution, lease-based multi-worker
 coordination, and end-to-end failure/recovery evidence remain blocking work. The
 standalone console and any destructive or autonomous remediation remain out of
 scope.
+
+## Incident replay correctness gate (2026-07-21)
+
+The local implementation now restores the stable incident-ID contract, makes replay merging explicit, and skips OCC updates for no-op replays. Elasticsearch 9.4.2 integration and the hosted `incident-migration-occ-gate` remain release evidence requirements; a local result must not be represented as a hosted run. This closes a bounded correctness gap and does not make DataObs production-ready or add product capabilities.

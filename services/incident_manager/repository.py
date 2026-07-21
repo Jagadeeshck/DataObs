@@ -7,6 +7,11 @@ from typing import Any, Protocol
 from packages.domain_model.incident import Finding, Incident
 
 
+def finding_projection(finding: Finding) -> dict[str, Any]:
+    """Comparable durable finding content, excluding write bookkeeping."""
+    return finding.model_dump(mode="json", exclude={"created_at", "updated_at"})
+
+
 class VersionConflict(RuntimeError):
     """A stable domain error for create or optimistic-concurrency conflicts."""
 
@@ -36,7 +41,17 @@ class InMemoryIncidentRepository:
         self.approvals: dict[str, dict[str, Any]] = {}
 
     def save_finding(self, finding: Finding) -> Finding:
-        self.findings[finding.id] = finding
+        current = self.findings.get(finding.id)
+        if current is not None:
+            if (current.tenant_id, current.environment) != (finding.tenant_id, finding.environment):
+                raise ValueError("finding identity scope is immutable")
+            if finding.last_observed_at < current.last_observed_at:
+                return deepcopy(current)
+            if finding.last_observed_at == current.last_observed_at and finding_projection(
+                finding
+            ) == finding_projection(current):
+                return deepcopy(current)
+        self.findings[finding.id] = deepcopy(finding)
         return finding
 
     def find_incident_by_dedup(self, tenant_id: str, environment: str, deduplication_key: str) -> Incident | None:

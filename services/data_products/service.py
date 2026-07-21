@@ -6,6 +6,12 @@ from hashlib import sha256
 from packages.domain_model.base import utc_now
 from packages.domain_model.data_product import DataProduct, DataProductRevisionEvent
 from services.data_products.events import definition_checksum, operation_id
+from services.data_products.idempotency import (
+    IdempotencyPending,
+    new_record,
+    request_fingerprint,
+    scoped_record_id,
+)
 from services.data_products.repository import DataProductRepository, ProductVersionConflict
 
 
@@ -116,6 +122,42 @@ class DataProductService:
         reason: str,
         idempotency_key: str | None = None,
     ) -> DataProduct:
+        if not idempotency_key:
+            raise ValueError("Idempotency-Key is required")
+        fingerprint = request_fingerprint(
+            tenant_id=tenant_id,
+            environment=environment,
+            product_id=product_id,
+            action=target,
+            body={},
+            actor=actor,
+            reason=reason,
+            expected_etag=if_match,
+        )
+        record_id = scoped_record_id(tenant_id, environment, product_id, idempotency_key)
+        record = new_record(
+            tenant_id=tenant_id,
+            environment=environment,
+            product_id=product_id,
+            action=target,
+            key=idempotency_key,
+            fingerprint=fingerprint,
+        )
+        reserved = self.repository.reserve_idempotency(record_id, record)
+        # Critically, replay is resolved before current lifecycle and ETag validation.
+        if reserved.state == "completed":
+            replay = self.get(tenant_id, environment, product_id)
+            if replay.revision < (reserved.result_revision or 0):
+                raise IdempotencyPending("completed result is not yet visible")
+            return replay
+        if reserved.state == "pending" and reserved.operation_id:
+            operation = self.repository.get_operation(tenant_id, environment, reserved.operation_id)
+            if operation and operation.outcome == "applied":
+                replay = self.get(tenant_id, environment, product_id)
+                self.repository.complete_idempotency(
+                    record_id, operation_id=operation.operation_id, revision=operation.revision, etag=operation.etag
+                )
+                return replay
         current = self.get(tenant_id, environment, product_id)
         allowed = {
             "draft": {"active", "archived"},
@@ -129,7 +171,7 @@ class DataProductService:
             raise ValueError("activation requires owner, criticality, and at least one output")
         changed = current.model_copy(deep=True)
         changed.lifecycle_state = target
-        return self.update(
+        saved = self.update(
             changed,
             if_match=if_match,
             actor=actor,
@@ -137,6 +179,17 @@ class DataProductService:
             idempotency_key=idempotency_key,
             action={"active": "activate", "deprecated": "deprecate", "archived": "archive"}[target],
         )
+        operation = self._pending(
+            saved,
+            actor,
+            reason,
+            {"active": "activate", "deprecated": "deprecate", "archived": "archive"}[target],
+            idempotency_key,
+        )
+        self.repository.complete_idempotency(
+            record_id, operation_id=operation.operation_id, revision=saved.revision, etag=saved.etag
+        )
+        return saved
 
     def activate(
         self,

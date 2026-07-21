@@ -47,8 +47,44 @@ class DataProductMember(DomainModel):
     observed_at: datetime = Field(default_factory=utc_now)
 
 
+class DataProductMembershipEvidence(DomainModel):
+    ref: str
+    source: Literal["output", "lineage", "pathway", "dependency", "manual"]
+    observed_at: datetime
+
+
+class DataProductMembership(DomainModel):
+    membership_id: str
+    product_id: str
+    tenant_id: str
+    environment: str
+    entity_id: str
+    entity_type: str
+    source: Literal["manual", "lineage", "dependency", "import"]
+    state: Literal["active", "excluded", "removed"] = "active"
+    proposal_id: str | None = None
+    evidence_refs: List[str] = Field(default_factory=list, max_length=50)
+    confidence: float = Field(default=1, ge=0, le=1)
+    source_coverage: float = Field(default=1, ge=0, le=1)
+    observed_at: datetime
+    created_at: datetime = Field(default_factory=utc_now)
+    updated_at: datetime = Field(default_factory=utc_now)
+    created_by: str
+    excluded_at: datetime | None = None
+    excluded_by: str | None = None
+    exclusion_reason: str | None = None
+    revision: int = Field(default=1, ge=1)
+    etag: str
+    schema_version: str = "v1"
+
+
+class DataProductMembershipPage(DomainModel):
+    items: List[DataProductMembership]
+    next_cursor: str | None = None
+
+
 class DataProductMembershipProposal(DomainModel):
-    id: str
+    proposal_id: str
     product_id: str
     tenant_id: str
     environment: str
@@ -56,19 +92,56 @@ class DataProductMembershipProposal(DomainModel):
     entity_type: str
     source: Literal["lineage", "dependency", "import"]
     state: Literal["proposed", "accepted", "rejected", "superseded", "expired"] = "proposed"
-    evidence_refs: List[str]
+    evidence_refs: List[str] = Field(default_factory=list, max_length=50)
     confidence: float = Field(ge=0, le=1)
     source_coverage: float = Field(ge=0, le=1)
+    missing_inputs: List[str] = Field(default_factory=list, max_length=50)
+    truncated: bool = False
     observed_at: datetime
+    created_at: datetime = Field(default_factory=utc_now)
+    expires_at: datetime
     proposal_revision: int = Field(ge=1)
+    schema_version: str = "v1"
+
+    @property
+    def id(self) -> str:  # compatibility for callers predating the typed projection
+        return self.proposal_id
+
+
+class DataProductMembershipProposalPage(DomainModel):
+    items: List[DataProductMembershipProposal]
+    next_cursor: str | None = None
 
 
 class DataProductMembershipDecision(DomainModel):
-    proposal_id: str
-    state: Literal["accepted", "rejected"]
+    decision_id: str
+    tenant_id: str
+    environment: str
+    product_id: str
+    proposal_id: str | None = None
+    membership_id: str | None = None
+    decision: Literal["accept", "reject", "exclude"]
     actor: str
     reason: str
+    idempotency_key_hash: str
+    request_fingerprint: str
     decided_at: datetime = Field(default_factory=utc_now)
+    schema_version: str = "v1"
+
+
+class DataProductMembershipDecisionPage(DomainModel):
+    items: List[DataProductMembershipDecision]
+    next_cursor: str | None = None
+
+
+class DataProductMembershipGenerationResult(DomainModel):
+    generated: int = Field(ge=0)
+    existing: int = Field(ge=0)
+    superseded: int = Field(ge=0)
+    truncated: bool
+    source_coverage: float = Field(ge=0, le=1)
+    missing_inputs: List[str] = Field(default_factory=list, max_length=50)
+    observed_at: datetime
 
 
 class DataProductDependency(DomainModel):

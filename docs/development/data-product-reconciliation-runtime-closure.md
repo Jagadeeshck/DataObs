@@ -1,5 +1,7 @@
 # Data Product reconciliation runtime closure
 
+> PR #134 added typed results, limited renewal, manual membership creation and partial plan wiring, but proposal, exclusion, dependency and lifecycle handlers still did not apply missing projection steps; synchronous workflows left generic state incomplete; terminal replay/history contained P1 defects; production idempotency repair and hosted Elasticsearch evidence remained absent. This PR closes those blockers.
+
 > PR #131 implemented Elasticsearch operation-state and immutable-history persistence primitives only. This PR wires every scoped mutation to those primitives, implements operation-specific repair handlers, and certifies crash recovery and stale-worker fencing against Elasticsearch 9.4.2.
 
 > PR #132 introduced generic reconciliation envelopes and dispatch scaffolding, but all operation kinds still used one non-repairing DurablePlanHandler and mutation services did not create the new operation state. This PR implements concrete projection-aware handlers and wires every scoped mutation into the runtime.
@@ -7,6 +9,29 @@
 > PR #133 introduced named projection-aware handlers and partial mutation bootstrapping, but missing projection steps still returned retry rather than being repaired; proposal and exclusion workflows were not wired; synchronous paths left generic state incomplete; and real Elasticsearch fault certification remained absent. This PR closes those runtime gaps.
 
 Release readiness remains **blocked**. Hosted artifact cells remain pending until the draft PR workflow produces downloadable evidence; local tests are not represented as hosted certification.
+
+| Capability | Current main defect | Final behavior | Unit/property | Elasticsearch 9.4.2 | Security | Hosted artifact |
+|---|---|---|---|---|---|---|
+| terminal status replay | terminal status collapsed | preserves applied/failed/superseded | covered | pending | n/a | pending |
+| canonical terminal history | retry used fresh claim timestamps | deterministic event is loaded and verified | covered | pending | poisoning pending | pending |
+| immutable result reuse | result could be reconstructed | exact payload/checksum and original timestamp reused | covered | pending | poisoning pending | pending |
+| Elasticsearch idempotency repair | production method absent | realtime OCC repair with identical-race reread | covered | pending | substitution pending | pending |
+| terminal-state idempotency repair | terminal revisit stopped early | terminal outcome is preserved; full evidence repair pending | partial | pending | pending | pending |
+| manual membership and terminal evidence repair | partial projection-only repair | full target validation remains gated | partial | pending | pending | pending |
+| proposal accept/reject/expire/supersede repair | missing transition returned retry | concrete projection application remains gated | pending | pending | pending | pending |
+| membership exclusion repair | active membership returned retry | concrete exclusion remains gated | pending | pending | pending | pending |
+| dependency product-token/upsert/tombstone/terminal/result repair | inspect-only | detailed plan execution remains gated | pending | pending | pending | pending |
+| lifecycle pre-transition bootstrapping and projection repair | state created too late | remains gated | pending | pending | pending | pending |
+| synchronous generic completion | generic state remained pending | coordinator remains gated | pending | pending | pending | pending |
+| pending retry delegation | legacy reconciler called | membership delegates to authoritative CAS service | covered | pending | n/a | pending |
+| claim renewal and attempts | long phases unprotected | terminal boundaries fenced; chunk renewal pending | partial | pending | stale claim pending | pending |
+| operation-kind filtering | filter followed repository limit | query/repository filters before limit | covered | pending | n/a | pending |
+| old reconciler removal/delegation | membership called inspect-only facade | production membership caller delegates | covered | pending | n/a | pending |
+| two-worker takeover / stale-worker fencing | limited proof | claim generation fencing retained | covered | pending | pending | pending |
+| CLI exit codes | collapsed replay broke exits | applied=0, failed/superseded=4, retry=3 | covered | pending | redaction covered | pending |
+| real Elasticsearch fault matrix | readiness plus claim conflict | required matrix | pending | pending | pending | pending |
+| security/leakage | memory-only | persistence matrix required | partial | pending | pending | pending |
+| dynamic manifest / review threads | no hosted run | resolve only after exact hosted proof | n/a | pending | pending | pending |
 
 | Operation kind | Plan created before mutation? | State created before mutation? | Handler can create missing projection? | Handler can repair terminal evidence? | Handler can repair result/state/idempotency? | Real ES fault matrix | Hosted artifact |
 |---|---|---|---|---|---|---|---|

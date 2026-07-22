@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Any, Literal, Mapping
 
 OperationOutcome = Literal["pending", "claimed", "checkpoint", "applied", "superseded", "failed"]
-ReconciliationStatus = Literal["applied", "superseded", "failed", "retry", "missing", "already_terminal"]
+ReconciliationStatus = Literal["applied", "superseded", "failed", "retry", "missing"]
 
 
 @dataclass(frozen=True)

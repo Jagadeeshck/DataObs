@@ -626,6 +626,8 @@ class DataProductMembershipService:
         )
 
     def reconcile_membership_operation(self, tenant_id: str, environment: str, operation_id: str):
-        from services.data_products.reconciliation import DataProductReconciler
+        from services.data_products.reconciliation import DataProductOperationService
 
-        return DataProductReconciler(self.repository).reconcile_operation(tenant_id, environment, operation_id)
+        return DataProductOperationService(self.repository, worker_id="membership-reconciliation").reconcile_operation(
+            tenant_id, environment, operation_id
+        )

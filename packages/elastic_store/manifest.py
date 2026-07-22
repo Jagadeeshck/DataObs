@@ -5,6 +5,34 @@ import json
 from dataclasses import dataclass, field
 from typing import Any, Dict, List
 
+DATA_PRODUCT_RECONCILIATION_EVIDENCE = (
+    "migration-clean-install.json",
+    "migration-upgrade.json",
+    "migration-repeat-apply.json",
+    "mapping-contract.json",
+    "retry-date-boundaries.json",
+    "claim-expiry-boundaries.json",
+    "resource-discriminator.json",
+    "reservation-only-matrix.json",
+    "proposal-immutable-replay.json",
+    "dependency-token-recovery.json",
+    "dependency-partial-write-matrix.json",
+    "dependency-large-result.json",
+    "dependency-detailed-result.json",
+    "dependency-terminal-evidence.json",
+    "dependency-two-worker-takeover.json",
+    "lifecycle-crash-matrix.json",
+    "lifecycle-revision-snapshot.json",
+    "lifecycle-immutable-replay.json",
+    "terminal-revisit.json",
+    "cli-results.json",
+    "elasticsearch.xml",
+    "security.xml",
+    "security-report.json",
+    "sentinel-report.json",
+    "redacted.log",
+)
+
 MIGRATION_STATE_INDEX = "dataobs-system-migrations-v1"
 MUTABLE_INDICES = [
     "dataobs-tenants-v1",

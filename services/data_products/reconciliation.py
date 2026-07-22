@@ -9,6 +9,12 @@ from typing import Any, Literal, Protocol
 
 from packages.domain_model.base import utc_now
 from packages.domain_model.data_product import DataProduct, DataProductMembership, DataProductRevisionEvent
+from services.data_products.dependency_events import (
+    DataProductDependencyOperation,
+    DataProductDependencyOperationResult,
+    DependencyResultInconsistent,
+)
+from services.data_products.events import definition_checksum
 from services.data_products.operation_state import (
     DataProductOperationCheckpoint,
     DataProductOperationClaim,
@@ -258,6 +264,16 @@ class MembershipExclusionReconciliationHandler(ProjectionAwareHandler):
 
 class DependencyReplacementReconciliationHandler(ProjectionAwareHandler):
     operation_kind = "dependency_replace"
+    CHUNK_SIZE = 200
+
+    @staticmethod
+    def _edge_checksum(edge) -> str:
+        return sha256(edge.model_dump_json(exclude_none=False).encode()).hexdigest()
+
+    @classmethod
+    def _snapshot_checksum(cls, edges) -> str:
+        ordered = sorted(edges, key=lambda item: item.upstream_product_id)
+        return sha256("\0".join(cls._edge_checksum(edge) for edge in ordered).encode()).hexdigest()
 
     def reconcile(self, repository, state, history, plan, context):
         context.assert_owned()
@@ -292,20 +308,88 @@ class DependencyReplacementReconciliationHandler(ProjectionAwareHandler):
             )
         if product.etag != payload.get("target_product_etag"):
             raise OperationConsistencyError("dependency_product_diverged")
-        # The detailed durable plan, rather than the generic summary, is the
-        # authoritative mutation source. Repository application is idempotent
-        # and canonical-verifies an already present edge.
-        context.renew_if_needed()
-        repository.apply_dependency_mutation_plan(state.tenant_id, state.environment, state.product_id, mutation_plan)
-        context.checkpoint("dependency_edges_applied", mutation_plan.after_graph_version)
+        # Chunk boundaries are ownership fences: no worker may continue a long
+        # graph repair using a claim that expired during an earlier bulk.
+        for name, edges, apply in (
+            ("upserts", mutation_plan.upserts, repository.apply_dependency_upsert_chunk),
+            ("tombstones", mutation_plan.tombstones, repository.apply_dependency_tombstone_chunk),
+        ):
+            for offset in range(0, len(edges), self.CHUNK_SIZE):
+                context.assert_owned()
+                context.renew_if_needed()
+                chunk = edges[offset : offset + self.CHUNK_SIZE]
+                apply(state.tenant_id, state.environment, state.product_id, chunk)
+                completed = min(offset + len(chunk), len(edges))
+                context.checkpoint(f"{name}:{completed}/{len(edges)}", mutation_plan.after_graph_version)
         snapshot = repository.read_complete_dependency_snapshot(
             state.tenant_id, state.environment, state.product_id, maximum=10_000
         )
-        active = tuple(sorted(edge.upstream_product_id for edge in snapshot.dependencies if not edge.removed))
-        if active != tuple(payload.get("upstream_product_ids", ())):
+        if not snapshot.complete or snapshot.count != len(snapshot.dependencies):
+            raise OperationConsistencyError("dependency_snapshot_incomplete")
+        by_id = {edge.upstream_product_id: edge for edge in snapshot.dependencies}
+        if len(by_id) != len(snapshot.dependencies):
             raise OperationConsistencyError("dependency_snapshot_diverged")
+        for expected in (*mutation_plan.upserts, *mutation_plan.tombstones):
+            actual = by_id.get(expected.upstream_product_id)
+            if actual is None or self._edge_checksum(actual) != self._edge_checksum(expected):
+                raise OperationConsistencyError("dependency_snapshot_diverged")
+        active_edges = tuple(
+            sorted((e for e in snapshot.dependencies if not e.removed), key=lambda e: e.upstream_product_id)
+        )
+        if tuple(e.upstream_product_id for e in active_edges) != tuple(payload.get("upstream_product_ids", ())):
+            raise OperationConsistencyError("dependency_snapshot_diverged")
+        if any(e.graph_version != mutation_plan.after_graph_version for e in snapshot.dependencies):
+            raise OperationConsistencyError("dependency_graph_version_diverged")
+        context.checkpoint("projection_verified", self._snapshot_checksum(snapshot.dependencies))
+
+        applied_at = event.applied_at or event.occurred_at
+        operation = DataProductDependencyOperation(
+            operation_id=state.operation_id,
+            tenant_id=state.tenant_id,
+            environment=state.environment,
+            product_id=state.product_id,
+            actor=event.actor,
+            reason=event.reason,
+            request_fingerprint=mutation_plan.request_fingerprint,
+            idempotency_key_hash="redacted",
+            expected_product_revision=mutation_plan.current_product_revision,
+            expected_product_etag=mutation_plan.expected_product_etag,
+            before_graph_version=mutation_plan.before_graph_version,
+            after_graph_version=mutation_plan.after_graph_version,
+            before_checksum=str(payload.get("before_checksum", "")),
+            after_checksum=self._snapshot_checksum(snapshot.dependencies),
+            outcome="applied",
+            occurred_at=event.occurred_at,
+        )
+        detailed_result = DataProductDependencyOperationResult(
+            operation=operation,
+            operation_result_product=target_product.model_copy(deep=True),
+            result_product_revision=target_product.revision,
+            result_product_etag=target_product.etag,
+            applied_at=applied_at,
+            result_definition_checksum=definition_checksum(target_product),
+            result_graph_version=mutation_plan.after_graph_version,
+            active_dependencies=active_edges,
+            active_dependency_checksums=tuple(self._edge_checksum(edge) for edge in active_edges),
+            removed_dependency_ids=tuple(edge.upstream_product_id for edge in mutation_plan.tombstones),
+            upserted_count=len(mutation_plan.upserts),
+            removed_count=len(mutation_plan.tombstones),
+            warnings=mutation_plan.warnings,
+            request_fingerprint=mutation_plan.request_fingerprint,
+        )
+        try:
+            existing_detailed = repository.get_dependency_operation_result(
+                state.tenant_id, state.environment, state.product_id, state.operation_id
+            )
+        except (KeyError, DependencyResultInconsistent):
+            context.assert_owned()
+            repository.save_dependency_operation_result(detailed_result)
+        else:
+            if existing_detailed != detailed_result:
+                raise OperationConsistencyError("dependency_detailed_result_diverged")
+        context.checkpoint("detailed_result_saved", self._snapshot_checksum(active_edges))
         context.renew_if_needed()
-        terminal = event.model_copy(update={"outcome": "applied", "applied_at": event.applied_at or utc_now()})
+        terminal = event.model_copy(update={"outcome": "applied", "applied_at": applied_at})
         repository.finish_operation(terminal)
         context.checkpoint("dependency_revision_evidence", terminal.definition_checksum)
         result = self._existing_result(repository, state)
@@ -349,7 +433,11 @@ class ProductLifecycleReconciliationHandler(ProjectionAwareHandler):
         if pending is None or pending.definition_checksum != payload.get("target_definition_checksum"):
             raise OperationConsistencyError("lifecycle_revision_event_missing")
         context.renew_if_needed()
-        terminal = pending.model_copy(update={"outcome": "applied", "applied_at": pending.applied_at or utc_now()})
+        # The pending revision event is immutable intent.  Its timestamp is the
+        # canonical terminal time on every takeover, rather than a worker clock.
+        terminal = pending.model_copy(
+            update={"outcome": "applied", "applied_at": pending.applied_at or pending.occurred_at}
+        )
         repository.finish_operation(terminal)
         revision = repository.get_product_revision(
             state.tenant_id, state.environment, state.product_id, target_revision

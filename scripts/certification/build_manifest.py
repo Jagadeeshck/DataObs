@@ -45,6 +45,11 @@ def main() -> int:
         "jobs": json.loads(os.getenv("CERTIFICATION_JOB_RESULTS", "{}")),
         "retention_days": int(os.getenv("CERTIFICATION_RETENTION_DAYS", "30")),
         "review_threads": [
+            "PRRT_kwDOR7DqAc6TC7tK",
+            "PRRT_kwDOR7DqAc6TC7tQ",
+            "PRRT_kwDOR7DqAc6TC7tT",
+            "PRRT_kwDOR7DqAc6TC7tW",
+            "PRRT_kwDOR7DqAc6TAYAv",
             "PRRT_kwDOR7DqAc6S7Ox6",
             "PRRT_kwDOR7DqAc6S7Ox-",
             "PR-133-runtime",

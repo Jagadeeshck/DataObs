@@ -41,6 +41,8 @@ class DataProductDependencyTraversalStats:
     visited_count: int
     edge_count: int
     query_count: int
+    page_count: int = 0
+    elapsed_ms: int = 0
     truncated: bool = False
     truncation_reason: str | None = None
 
@@ -52,6 +54,92 @@ class DependencyGraph:
     edges: tuple[tuple[str, str], ...] = ()
     stats: DataProductDependencyTraversalStats | None = None
     cycle_path: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class FrontierPageRequest:
+    frontier: tuple[str, ...]
+    direction: Literal["upstream", "downstream"]
+    search_after: tuple[str | int | float, ...] | None = None
+
+
+@dataclass(frozen=True)
+class FrontierPageResult:
+    edges: tuple[tuple[str, str], ...]
+    search_after: tuple[str | int | float, ...] | None = None
+
+
+class TraversalBudgetTracker:
+    """Charges each physical backend page; loaders cannot hide free searches."""
+
+    def __init__(self, budget: DataProductDependencyTraversalBudget) -> None:
+        self.budget = budget
+        self.started = monotonic()
+        self.query_count = self.page_count = self.edge_count = 0
+
+    @property
+    def elapsed_ms(self) -> int:
+        return int((monotonic() - self.started) * 1000)
+
+    def before_request(self) -> None:
+        if self.query_count >= self.budget.max_queries:
+            raise TraversalBudgetExhausted("max_queries")
+        if self.elapsed_ms >= self.budget.timeout_ms:
+            raise TraversalBudgetExhausted("timeout_ms")
+        self.query_count += 1
+
+    def after_response(self, edge_count: int) -> None:
+        self.page_count += 1
+        self.edge_count += edge_count
+        if self.edge_count > self.budget.max_edges:
+            raise TraversalBudgetExhausted("max_edges")
+
+
+class TraversalBudgetExhausted(RuntimeError):
+    pass
+
+
+@dataclass(frozen=True)
+class DependencyCycleValidationResult:
+    cycle_detected: bool
+    cycle_path: tuple[str, ...]
+    visited_count: int
+    edge_count: int
+    query_count: int
+    truncated: bool
+    truncation_reason: str | None = None
+
+
+def validate_dependency_replacement_cycle(
+    product_id: str,
+    proposed_upstream_ids: Sequence[str],
+    budget: DataProductDependencyTraversalBudget,
+    loader: FrontierLoader,
+) -> DependencyCycleValidationResult:
+    """Fail-closed relevant-graph validation after logical outgoing replacement."""
+    combined_edges: set[tuple[str, str]] = {(product_id, upstream) for upstream in proposed_upstream_ids}
+    visited: set[str] = {product_id}
+    query_count = 0
+    for upstream in sorted(set(proposed_upstream_ids)):
+        result = traverse_frontiers(upstream, "upstream", budget, loader)
+        combined_edges.update(result.edges)
+        visited.update(result.nodes)
+        query_count += result.stats.query_count if result.stats else 0
+        if result.truncated:
+            return DependencyCycleValidationResult(
+                False,
+                (),
+                len(visited),
+                len(combined_edges),
+                query_count,
+                True,
+                result.stats.truncation_reason if result.stats else "incomplete",
+            )
+    path = find_cycle_path(build_adjacency(combined_edges))
+    relevant = path if path and product_id in path else ()
+    return DependencyCycleValidationResult(
+        bool(relevant), relevant, len(visited), len(combined_edges), query_count, False
+    )
 
 
 def build_adjacency(edges: Iterable[tuple[str, str]]) -> dict[str, set[str]]:
@@ -175,5 +263,8 @@ def traverse_frontiers(
         frontier = sorted(next_frontier)
     if frontier and depth >= budget.max_depth:
         reason = "max_depth"
-    stats = DataProductDependencyTraversalStats(depth, len(seen), len(selected), queries, reason is not None, reason)
+    elapsed_ms = int((monotonic() - started) * 1000)
+    stats = DataProductDependencyTraversalStats(
+        depth, len(seen), len(selected), queries, queries, elapsed_ms, reason is not None, reason
+    )
     return DependencyGraph(tuple(nodes), stats.truncated, tuple(sorted(selected)), stats, cycle)

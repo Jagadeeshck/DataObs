@@ -27,6 +27,13 @@ from services.data_products.dependency_events import (
     DataProductDependencyReadSnapshot,
 )
 from services.data_products.idempotency import DataProductIdempotencyRecord, IdempotencyReservationResult
+from services.data_products.operation_state import (
+    DataProductOperationCheckpoint,
+    DataProductOperationClaim,
+    DataProductOperationFinalResult,
+    DataProductOperationHistoryEvent,
+    DataProductOperationState,
+)
 
 
 class ProductVersionConflict(RuntimeError):
@@ -103,6 +110,38 @@ class DataProductReconciliationResult:
 
 
 class DataProductRepository(Protocol):
+    def list_reconcilable_operations(
+        self, tenant_id: str, environment: str, *, limit: int = 100
+    ) -> Sequence[DataProductOperationState]: ...
+    def get_operation_state(
+        self, tenant_id: str, environment: str, operation_id: str
+    ) -> DataProductOperationState | None: ...
+    def claim_operation(
+        self,
+        tenant_id: str,
+        environment: str,
+        operation_id: str,
+        *,
+        worker_id: str,
+        now: datetime,
+        expires_at: datetime,
+        expected_seq_no: int,
+        expected_primary_term: int,
+    ) -> DataProductOperationClaim: ...
+    def renew_operation_claim(
+        self, claim: DataProductOperationClaim, *, expires_at: datetime
+    ) -> DataProductOperationClaim: ...
+    def checkpoint_operation(
+        self, claim: DataProductOperationClaim, checkpoint: DataProductOperationCheckpoint
+    ) -> None: ...
+    def complete_operation(self, claim: DataProductOperationClaim, result: DataProductOperationFinalResult) -> None: ...
+    def supersede_operation(self, claim: DataProductOperationClaim, *, error_code: str) -> None: ...
+    def fail_operation(self, claim: DataProductOperationClaim, *, error_code: str) -> None: ...
+    def append_operation_history(self, event: DataProductOperationHistoryEvent) -> None: ...
+    def get_operation_history(
+        self, tenant_id: str, environment: str, operation_id: str, *, limit: int = 100
+    ) -> Sequence[DataProductOperationHistoryEvent]: ...
+    def repair_idempotency_completion(self, record_id: str, result: DataProductOperationFinalResult) -> None: ...
     def reserve_idempotency(
         self, record_id: str, record: DataProductIdempotencyRecord
     ) -> IdempotencyReservationResult: ...

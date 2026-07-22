@@ -1,6 +1,6 @@
 # Data Product core hosted certification
 
-> PR #128 added a dependency coordinator foundation but did not complete immutable result replay, pending-operation recovery, relevant-graph cycle validation, CAS reconciliation, per-page traversal accounting, actionable Product 360, real-stack certification, or hosted evidence. This PR closes those blockers.
+> PR #129 completed immutable dependency-result replay and synchronous recovery foundations only. This PR completes independent CAS reconciliation, relevant-graph validation, traversal accounting, impact, APIs, Product 360, real-stack certification, hosted evidence, and inherited review-thread resolution.
 
 ## Certification matrix
 

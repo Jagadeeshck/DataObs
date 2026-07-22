@@ -10,6 +10,20 @@ from services.data_products.dependency_events import (
 )
 
 
+def test_relevant_graph_replacement_returns_full_closed_cycle() -> None:
+    from services.data_products.dependencies import validate_dependency_replacement_cycle
+
+    edges = {"b": [("b", "c")], "c": [("c", "a")]}
+    result = validate_dependency_replacement_cycle(
+        "a",
+        ["b"],
+        DataProductDependencyTraversalBudget(),
+        lambda frontier, _direction: ([edge for node in frontier for edge in edges.get(node, [])], True),
+    )
+    assert result.cycle_detected
+    assert result.cycle_path == ("a", "b", "c", "a")
+
+
 def test_canonical_fingerprint_ignores_order_and_duplicates():
     kwargs = dict(tenant_id="t", environment="prod", product_id="p", actor="a", reason="r", expected_product_etag="e")
     assert canonical_upstream_ids("p", ["b", "a", "b"]) == ("a", "b")

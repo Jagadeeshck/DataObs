@@ -32,6 +32,8 @@ from services.data_products.operation_state import (
     DataProductOperationClaim,
     DataProductOperationFinalResult,
     DataProductOperationHistoryEvent,
+    DataProductOperationPlan,
+    DataProductOperationResultEnvelope,
     DataProductOperationState,
 )
 
@@ -142,6 +144,14 @@ class DataProductRepository(Protocol):
     def get_operation_history(
         self, tenant_id: str, environment: str, operation_id: str, *, limit: int = 100
     ) -> Sequence[DataProductOperationHistoryEvent]: ...
+    def save_operation_plan(self, plan: DataProductOperationPlan) -> None: ...
+    def load_operation_plan(
+        self, tenant_id: str, environment: str, product_id: str, operation_id: str
+    ) -> DataProductOperationPlan | None: ...
+    def save_operation_result(self, result: DataProductOperationResultEnvelope) -> None: ...
+    def load_operation_result(
+        self, tenant_id: str, environment: str, product_id: str, operation_id: str
+    ) -> DataProductOperationResultEnvelope | None: ...
     def repair_idempotency_completion(self, record_id: str, result: DataProductOperationFinalResult) -> None: ...
     def reserve_idempotency(
         self, record_id: str, record: DataProductIdempotencyRecord

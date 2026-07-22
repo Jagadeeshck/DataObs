@@ -6,9 +6,11 @@ from packages.domain_model.base import utc_now
 from services.data_products.memory_repository import MemoryDataProductRepository
 from services.data_products.operation_state import (
     DataProductOperationFinalResult,
+    DataProductOperationPlan,
     DataProductOperationState,
     OperationClaimConflict,
 )
+from services.data_products.reconciliation import DataProductOperationService, OperationReconciliationRegistry
 
 
 def state(operation_id: str = "op-1") -> DataProductOperationState:
@@ -70,3 +72,39 @@ def test_history_is_create_or_canonical_verify() -> None:
     repository.append_operation_history(event)
     with pytest.raises(RuntimeError, match="divergent immutable"):
         repository.append_operation_history(event.__class__(**{**event.__dict__, "reason": "poisoned"}))
+
+
+def test_registry_rejects_unknown_operation_kind() -> None:
+    from services.data_products.operation_state import OperationConsistencyError
+
+    with pytest.raises(OperationConsistencyError, match="unknown_operation_kind"):
+        OperationReconciliationRegistry().get("poisoned")
+
+
+def test_durable_plan_is_recovered_before_state_completion() -> None:
+    repository = MemoryDataProductRepository()
+    initial = state("recover-me")
+    initial = initial.__class__(
+        **{**initial.__dict__, "operation_kind": "manual_membership", "plan_reference": "plan-1"}
+    )
+    repository.add_operation_state(initial)
+    repository.save_operation_plan(
+        DataProductOperationPlan(
+            "plan-1",
+            "tenant",
+            "prod",
+            "product",
+            "recover-me",
+            "manual_membership",
+            "plan-checksum",
+            {"result": {"revision": 4, "etag": "etag-4"}},
+        )
+    )
+
+    assert (
+        DataProductOperationService(repository, worker_id="worker").reconcile_operation("tenant", "prod", "recover-me")
+        == "applied"
+    )
+    completed = repository.get_operation_state("tenant", "prod", "recover-me")
+    assert completed.status == "applied"
+    assert repository.load_operation_result("tenant", "prod", "product", "recover-me") is not None

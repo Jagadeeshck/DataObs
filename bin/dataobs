@@ -3,4 +3,5 @@ set -euo pipefail
 if [[ "${1:-}" == "elastic" ]]; then shift; exec python -m packages.elastic_store.cli "$@"; fi
 if [[ "${1:-}" == "scanner" ]]; then shift; exec python -m services.scanner_worker.cli "$@"; fi
 if [[ "${1:-}" == "workflows" ]]; then shift; exec python -m integrations.elastic.workflows.deployer "$@"; fi
-echo "usage: dataobs elastic {plan|apply|status|rollback} | dataobs workflows {validate|plan|apply|status|run|export|sync-executions} | dataobs scanner {run|test-connection|discover|scan-once|print-capabilities}" >&2; exit 2
+if [[ "${1:-}" == "data-products" ]]; then shift; exec python -m services.data_products.cli "$@"; fi
+echo "usage: dataobs elastic {...} | dataobs workflows {...} | dataobs scanner {...} | dataobs data-products {reconcile|reconcile-operation}" >&2; exit 2

@@ -51,12 +51,23 @@ jobs:
   data-product-reconciliation-security:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    services:
+      elasticsearch:
+        image: docker.elastic.co/elasticsearch/elasticsearch:9.4.2
+        env: {discovery.type: single-node, xpack.security.enabled: 'false'}
+        ports: ['9200:9200']
+        options: --health-cmd 'curl -f http://localhost:9200/_cluster/health' --health-interval 10s --health-timeout 5s --health-retries 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: {python-version: '3.11'}
       - run: pip install -r requirements.txt
-      - run: python -m pytest tests/security/data_products -q --junitxml=security.xml
+      - run: ./bin/dataobs elastic migrate
+        env: {ELASTICSEARCH_URL: 'http://127.0.0.1:9200'}
+      - run: RUN_INTEGRATION_TESTS=1 ELASTICSEARCH_URL=http://127.0.0.1:9200 python -m pytest tests/security/data_products -q --junitxml=security.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: reconciliation-security-results, path: security.xml, retention-days: 30}
   data-product-reconciliation-evidence:
     runs-on: ubuntu-latest
     needs: [data-product-reconciliation-contracts, data-product-reconciliation-unit, data-product-reconciliation-elasticsearch, data-product-reconciliation-security]

@@ -145,32 +145,35 @@ class ElasticsearchDataProductRepository:
             return None
         return self._state_from_hit(hit)
 
-    def list_reconcilable_operations(self, tenant_id: str, environment: str, *, limit: int = 100):
+    def list_reconcilable_operations(
+        self, tenant_id: str, environment: str, *, limit: int = 100, operation_kind: str | None = None
+    ):
         if not 1 <= limit <= 200:
             raise ValueError("limit outside bounds")
+        filters: list[dict[str, Any]] = [
+            {"term": {"tenant_id": tenant_id}},
+            {"term": {"environment": environment}},
+            {"terms": {"outcome": ["pending", "claimed"]}},
+            {
+                "bool": {
+                    "should": [
+                        {"term": {"outcome": "pending"}},
+                        {"range": {"document.claim_expires_at": {"lte": "now"}}},
+                    ],
+                    "minimum_should_match": 1,
+                }
+            },
+            {"exists": {"field": "document.status"}},
+        ]
+        if operation_kind is not None:
+            # Filtering belongs in the query: applying it after `size` silently
+            # starves a kind when an older kind fills the requested batch.
+            filters.append({"term": {"action": operation_kind}})
         response = self.client.search(
             index=OPERATIONS,
             size=limit,
             seq_no_primary_term=True,
-            query={
-                "bool": {
-                    "filter": [
-                        {"term": {"tenant_id": tenant_id}},
-                        {"term": {"environment": environment}},
-                        {"terms": {"outcome": ["pending", "claimed"]}},
-                        {
-                            "bool": {
-                                "should": [
-                                    {"term": {"outcome": "pending"}},
-                                    {"range": {"document.claim_expires_at": {"lte": "now"}}},
-                                ],
-                                "minimum_should_match": 1,
-                            }
-                        },
-                        {"exists": {"field": "document.status"}},
-                    ]
-                }
-            },
+            query={"bool": {"filter": filters}},
             sort=[{"occurred_at": "asc"}, {"operation_id": "asc"}, {"_id": "asc"}],
         )
         return [
@@ -470,6 +473,30 @@ class ElasticsearchDataProductRepository:
             result_etag=etag,
             completed_at=datetime.now(timezone.utc),
         )
+
+    def repair_idempotency_completion(self, record_id: str, result: DataProductOperationFinalResult) -> None:
+        """CAS-complete a persisted reservation from immutable result evidence.
+
+        The operation id is taken from the reservation, never reconstructed from
+        a client key.  `_transition_idempotency` performs a realtime read,
+        terminal equality check, and seq-no/primary-term fenced update.
+        """
+        record = self.get_idempotency(record_id)
+        if record is None or not record.operation_id:
+            raise ProductConsistencyError("idempotency reservation missing operation")
+        try:
+            self.complete_idempotency(
+                record_id, operation_id=record.operation_id, revision=result.revision, etag=result.etag
+            )
+        except ProductVersionConflict:
+            current = self.get_idempotency(record_id)
+            if not current or (
+                current.state,
+                current.operation_id,
+                current.result_revision,
+                current.result_etag,
+            ) != ("completed", record.operation_id, result.revision, result.etag):
+                raise
 
     def fail_idempotency(self, record_id: str, *, error_code: str) -> None:
         self._transition_idempotency(record_id, state="failed", error_code=error_code)

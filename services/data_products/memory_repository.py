@@ -72,11 +72,12 @@ class MemoryDataProductRepository:
         state = self.operation_states.get((tenant_id, environment, operation_id))
         return state if state and (state.tenant_id, state.environment) == (tenant_id, environment) else None
 
-    def list_reconcilable_operations(self, tenant_id, environment, *, limit=100):
+    def list_reconcilable_operations(self, tenant_id, environment, *, limit=100, operation_kind=None):
         values = [
             s
             for s in self.operation_states.values()
             if (s.tenant_id, s.environment) == (tenant_id, environment)
+            and (operation_kind is None or s.operation_kind == operation_kind)
             and (
                 s.status == "pending"
                 or (s.status == "claimed" and s.claim_expires_at and s.claim_expires_at <= utc_now())

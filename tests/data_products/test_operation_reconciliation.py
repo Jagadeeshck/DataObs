@@ -156,3 +156,31 @@ def test_registry_has_distinct_concrete_handlers() -> None:
     handlers = [registry.get(kind) for kind in registry.REQUIRED_KINDS]
     assert isinstance(registry.get("manual_membership"), ManualMembershipReconciliationHandler)
     assert len({type(handler) for handler in handlers}) == len(handlers)
+
+
+@pytest.mark.parametrize("terminal", ["applied", "failed", "superseded"])
+def test_terminal_replay_preserves_underlying_status(terminal: str) -> None:
+    repository = MemoryDataProductRepository()
+    initial = state(f"terminal-{terminal}")
+    repository.add_operation_state(initial.__class__(**{**initial.__dict__, "status": terminal}))
+
+    result = DataProductOperationService(repository, worker_id="worker").reconcile_operation(
+        "tenant", "prod", f"terminal-{terminal}"
+    )
+
+    assert result.status == terminal
+    assert result.replayed is True
+    assert result.recovered is False
+    assert result.retryable is False
+
+
+def test_operation_kind_filter_is_applied_before_limit() -> None:
+    repository = MemoryDataProductRepository()
+    for index in range(3):
+        repository.add_operation_state(state(f"dependency-{index}"))
+    wanted = state("manual")
+    repository.add_operation_state(wanted.__class__(**{**wanted.__dict__, "operation_kind": "manual_membership"}))
+
+    selected = repository.list_reconcilable_operations("tenant", "prod", limit=1, operation_kind="manual_membership")
+
+    assert [item.operation_id for item in selected] == ["manual"]

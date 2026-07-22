@@ -20,7 +20,12 @@ def main() -> int:
             raise ValueError(f"symlinks are not retained evidence: {path.relative_to(root)}")
         if path.is_file() and path.name not in {"certification-evidence.json", "manifest.json", ".gitkeep"}:
             artifacts.append(
-                {"path": path.relative_to(root).as_posix(), "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
+                {
+                    "name": path.name,
+                    "path": path.relative_to(root).as_posix(),
+                    "bytes": path.stat().st_size,
+                    "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+                }
             )
     run_id = os.getenv("GITHUB_RUN_ID")
     now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
@@ -39,7 +44,16 @@ def main() -> int:
         ),
         "jobs": json.loads(os.getenv("CERTIFICATION_JOB_RESULTS", "{}")),
         "retention_days": int(os.getenv("CERTIFICATION_RETENTION_DAYS", "30")),
-        "review_threads": ["PR-127-P1", "PR-125-P1", "PR-118-P1"],
+        "review_threads": [
+            "PRRT_kwDOR7DqAc6S7Ox6",
+            "PRRT_kwDOR7DqAc6S7Ox-",
+            "PR-133-runtime",
+            "PR-132-runtime",
+            "PR-131-runtime",
+            "PR-127-P1",
+            "PR-125-P1",
+            "PR-118-P1",
+        ],
         "started_at": os.getenv("CERTIFICATION_STARTED_AT", now),
         "completed_at": now,
         "versions": {

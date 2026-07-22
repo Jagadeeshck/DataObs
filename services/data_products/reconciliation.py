@@ -359,7 +359,9 @@ class DataProductOperationService:
         if state is None:
             return self._result(operation_id, "missing", None)
         if state.status in {"applied", "superseded", "failed"}:
-            return self._result(operation_id, "already_terminal", state)
+            # Replays preserve the durable outcome. This keeps failed and
+            # superseded exit semantics intact and makes batch accounting total.
+            return self._result(operation_id, state.status, state)
         now = utc_now()
         try:
             claim = self.repository.claim_operation(
@@ -403,16 +405,21 @@ class DataProductOperationService:
             if outcome.status == "applied":
                 payload = outcome.final_result or {}
                 checksum = _checksum(payload)
-                result = DataProductOperationResultEnvelope(
-                    f"result:{operation_id}:{checksum}",
-                    tenant_id,
-                    environment,
-                    claimed.product_id,
-                    operation_id,
-                    checksum,
-                    payload,
-                    utc_now(),
-                )
+                result = self.repository.load_operation_result(tenant_id, environment, claimed.product_id, operation_id)
+                if result is not None:
+                    if result.checksum != checksum or dict(result.payload) != dict(payload):
+                        raise OperationConsistencyError("operation_result_mismatch")
+                else:
+                    result = DataProductOperationResultEnvelope(
+                        f"result:{operation_id}:{checksum}",
+                        tenant_id,
+                        environment,
+                        claimed.product_id,
+                        operation_id,
+                        checksum,
+                        payload,
+                        utc_now(),
+                    )
                 # Ownership is checked immediately before each owner-sensitive
                 # terminal boundary. An immutable result may be replayed, but a
                 # stale generation can never author terminal evidence or state.
@@ -443,26 +450,26 @@ class DataProductOperationService:
                     worker_id=self.worker_id,
                     applied_at=result.created_at,
                 )
-                self.repository.append_operation_history(terminal)
-                self.repository.complete_operation(
-                    claim,
-                    DataProductOperationFinalResult(
-                        int(payload.get("revision", 0)),
-                        str(payload.get("etag", "recovered")),
-                        result.reference,
-                        result.created_at,
-                    ),
+                existing_terminal = next((event for event in history if event.event_id == terminal.event_id), None)
+                if existing_terminal is None:
+                    self.repository.append_operation_history(terminal)
+                elif (
+                    existing_terminal.outcome != "applied"
+                    or existing_terminal.plan_checksum != plan.checksum
+                    or existing_terminal.result_checksum != result.checksum
+                ):
+                    raise OperationConsistencyError("terminal_history_mismatch")
+                final_result = DataProductOperationFinalResult(
+                    int(payload.get("revision", 0)),
+                    str(payload.get("etag", "recovered")),
+                    result.reference,
+                    result.created_at,
                 )
                 if claimed.idempotency_record_id:
-                    self.repository.repair_idempotency_completion(
-                        claimed.idempotency_record_id,
-                        DataProductOperationFinalResult(
-                            int(payload.get("revision", 0)),
-                            str(payload.get("etag", "recovered")),
-                            result.reference,
-                            result.created_at,
-                        ),
-                    )
+                    self.repository.repair_idempotency_completion(claimed.idempotency_record_id, final_result)
+                # Mutable state is deliberately last: a takeover can repair all
+                # earlier immutable/idempotency boundaries after a lost response.
+                self.repository.complete_operation(claim, final_result)
                 final = self.repository.get_operation_state(tenant_id, environment, operation_id)
                 return self._result(operation_id, "applied", final, recovered=True)
             if outcome.status == "superseded":
@@ -500,9 +507,24 @@ class DataProductOperationService:
         status: Literal["superseded", "failed"],
     ) -> None:
         error = outcome.error_code or f"reconciliation_{status}"
+        event_id = f"terminal:{state.operation_id}:{status}:{plan.checksum}"
+        existing = next(
+            (
+                event
+                for event in self.repository.get_operation_history(
+                    state.tenant_id, state.environment, state.operation_id
+                )
+                if event.event_id == event_id
+            ),
+            None,
+        )
+        if existing is not None:
+            if existing.outcome != status or existing.error_code != error or existing.plan_checksum != plan.checksum:
+                raise OperationConsistencyError("terminal_history_mismatch")
+            return
         self.repository.append_operation_history(
             DataProductOperationHistoryEvent(
-                f"terminal:{state.operation_id}:{status}:{plan.checksum}",
+                event_id,
                 state.operation_id,
                 state.tenant_id,
                 state.environment,
@@ -526,11 +548,11 @@ class DataProductOperationService:
         if not 1 <= limit <= 1000:
             raise ValueError("reconciliation limit outside bounds")
         outcomes = {"applied": 0, "superseded": 0, "failed": 0, "retry": 0, "missing": 0}
-        for state in self.repository.list_reconcilable_operations(tenant_id, environment, limit=limit):
-            if operation_kind is not None and state.operation_kind != operation_kind:
-                continue
+        for state in self.repository.list_reconcilable_operations(
+            tenant_id, environment, limit=limit, operation_kind=operation_kind
+        ):
             outcome = self.reconcile_operation(tenant_id, environment, state.operation_id)
-            outcomes[outcome.status] += 1
+            outcomes[outcome.status] = outcomes.get(outcome.status, 0) + 1
         return outcomes
 
 

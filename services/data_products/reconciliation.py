@@ -171,14 +171,22 @@ class ProposalDecisionReconciliationHandler(ProjectionAwareHandler):
             if membership is None or membership.state != "active":
                 return OperationReconciliationOutcome("retry", "proposal_transition_verified", retryable=True)
         result = self._existing_result(repository, state)
-        final = (
-            result.payload
-            if result
-            else {
-                "revision": membership.revision if membership else proposal.revision,
-                "etag": membership.etag if membership else proposal.etag,
+        if result:
+            final = result.payload
+        elif membership:
+            final = {"revision": membership.revision, "etag": membership.etag}
+        else:
+            # Proposals expose proposal_revision and state, not a generic
+            # revision or ETag.  The decision identifier is deterministic so
+            # this result remains stable through crash recovery and takeover.
+            final = {
+                "proposal_id": proposal.proposal_id,
+                "proposal_revision": proposal.proposal_revision,
+                "proposal_state": proposal.state,
+                "decision_id": sha256(f"{state.operation_id}:applied".encode()).hexdigest(),
+                "operation_id": state.operation_id,
+                "applied_at": utc_now().isoformat(),
             }
-        )
         return OperationReconciliationOutcome("applied", "proposal_projection_verified", final)
 
 
@@ -351,7 +359,9 @@ def _terminal_semantics(event: DataProductOperationHistoryEvent) -> tuple[Any, .
         event.plan_checksum,
         event.result_checksum,
         event.error_code,
-        event.worker_id,
+        # worker_id is operational delivery metadata.  Legacy workers wrote it
+        # into immutable history; canonical replay ignores it without mutating
+        # that evidence.
         event.applied_at,
         event.schema_version,
     )
@@ -545,6 +555,10 @@ class DataProductOperationService:
             if outcome.status == "applied":
                 payload = outcome.final_result or {}
                 checksum = _checksum(payload)
+                result_revision = int(payload.get("revision", payload.get("proposal_revision", 0)))
+                # Non-accept proposal results have no ETag.  Bind generic
+                # evidence to their canonical result checksum instead.
+                result_etag = str(payload.get("etag", checksum))
                 result = self.repository.load_operation_result(tenant_id, environment, claimed.product_id, operation_id)
                 if result is not None:
                     if result.checksum != checksum or dict(result.payload) != dict(payload):
@@ -583,8 +597,8 @@ class DataProductOperationService:
                     utc_now(),
                     expected_revision=plan.payload.get("expected_revision"),
                     expected_etag=plan.payload.get("expected_etag"),
-                    result_revision=int(payload.get("revision", 0)),
-                    result_etag=str(payload.get("etag", "recovered")),
+                    result_revision=result_revision,
+                    result_etag=result_etag,
                     plan_checksum=plan.checksum,
                     result_checksum=result.checksum,
                     # Worker identity is intentionally redacted from canonical
@@ -598,8 +612,8 @@ class DataProductOperationService:
                 elif _terminal_semantics(existing_terminal) != _terminal_semantics(terminal):
                     raise OperationConsistencyError("terminal_history_mismatch")
                 final_result = DataProductOperationFinalResult(
-                    int(payload.get("revision", 0)),
-                    str(payload.get("etag", "recovered")),
+                    result_revision,
+                    result_etag,
                     result.reference,
                     result.created_at,
                 )

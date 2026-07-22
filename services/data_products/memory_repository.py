@@ -290,6 +290,36 @@ class MemoryDataProductRepository:
         value = self.idempotency.get(record_id)
         return value.model_copy(deep=True) if value else None
 
+    def bind_or_verify_idempotency_operation(
+        self,
+        record_id,
+        *,
+        tenant_id,
+        environment,
+        product_id,
+        action,
+        request_fingerprint,
+        expected_operation_id,
+    ):
+        """Atomically bind once, or verify the complete durable request scope."""
+        record = self.idempotency.get(record_id)
+        if record is None:
+            raise ProductConsistencyError("idempotency reservation missing")
+        binding = (
+            record.tenant_id,
+            record.environment,
+            record.resource_id,
+            record.action,
+            record.request_fingerprint,
+        )
+        expected = (tenant_id, environment, product_id, action, request_fingerprint)
+        if binding != expected or record.operation_id not in (None, expected_operation_id):
+            raise ProductConsistencyError("idempotency operation binding mismatch")
+        if record.operation_id is None:
+            record = record.model_copy(update={"operation_id": expected_operation_id})
+            self.idempotency[record_id] = record
+        return record.model_copy(deep=True)
+
     def _terminal_idempotency(self, record_id: str, state: str, error_code: str | None = None) -> None:
         from packages.domain_model.base import utc_now
 

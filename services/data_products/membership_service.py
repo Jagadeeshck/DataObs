@@ -499,7 +499,14 @@ class DataProductMembershipService:
                 )
             elif membership.proposal_id != proposal_id or membership.state != "active":
                 raise ProductVersionConflict("proposal_result_inconsistent")
-        handler = getattr(self.repository, f"{action}_membership_proposal")
+        # Keep proposal transitions explicit and type-checkable; recovery must
+        # never dispatch an arbitrary repository attribute from runtime data.
+        handler = {
+            "accept": self.repository.accept_membership_proposal,
+            "reject": self.repository.reject_membership_proposal,
+            "expire": self.repository.expire_membership_proposal,
+            "supersede": self.repository.supersede_membership_proposal,
+        }[action]
         decided = handler(tenant_id, environment, product_id, proposal_id, expected_revision=expected_revision)
         terminal = mutation.event(
             outcome="applied",

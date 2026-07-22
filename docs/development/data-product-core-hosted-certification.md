@@ -1,25 +1,25 @@
 # Data Product core hosted certification
 
-> PR #127 added dependency OCC and frontier foundations only. This PR is complete only when dependency replacement is a durable recoverable operation, every traversal page is budget-accounted, Product 360 is actionable, real-stack/browser/accessibility/security gates pass, retained hosted evidence exists, and all inherited review threads are resolved with that evidence.
+> PR #128 added a dependency coordinator foundation but did not complete immutable result replay, pending-operation recovery, relevant-graph cycle validation, CAS reconciliation, per-page traversal accounting, actionable Product 360, real-stack certification, or hosted evidence. This PR closes those blockers.
 
 ## Certification matrix
 
 This audit is deliberately fail-closed: a local result is not hosted certification. Release readiness remains **blocked** and the next milestone is **Data Product SLOs, reliability, and coverage**.
 
-| Capability | Implementation | Local evidence | Hosted evidence |
-|---|---|---|---|
-| Empty replacement, canonical request, replay | Dependency coordinator and immutable result replay | `test_dependency_operation_coordinator.py` | Pending workflow run |
-| Complete snapshot and batch validation | Repository snapshot contract and scoped batch lookup | unit repository tests | Pending Elasticsearch job |
-| Pending operation, product OCC, projections, tombstones | pending revision precedes product serialization token and idempotent edge plan | coordinator test | Pending fault-injection artifact |
-| Reconciliation and inherited recovery | typed repository contracts required | incomplete | blocked |
-| Frontier page/query/timeout accounting | frontier budget foundation | frontier unit tests | incomplete: paged ES loader must be certified |
-| Cycle path and graph consistency | deterministic full cycle helper | frontier unit tests | Pending Elasticsearch job |
-| Impact | evidence-derived summary exists | unit suite | incomplete |
-| API/OpenAPI/client | typed mutation payload and replay headers | compile/type checks | Pending contract job |
-| Members, dependency editor/graph/history/Impact | evidence tabs and membership components exist | UI build | incomplete |
-| Pagination/revision cursor | signed cursor foundation | cursor tests | Pending security job |
-| Elasticsearch/Playwright/axe/security/manifest | core workflow declares separate gates | local suites where available | Pending; no certification claim |
-| PR #127/#125/#121/#118 review threads | references retained for hosted replies | none | unresolved until hosted proof |
+| Capability | Current main | Blocking defect | Final behavior | Unit/property | Elasticsearch | Browser/axe | Security | Hosted artifact |
+|---|---|---|---|---|---|---|---|---|
+| Manual/proposal/exclusion pending recovery | immutable decisions exist | typed lookup/recovery incomplete | reuse pending evidence; append only terminal evidence | membership suites | recovery scenarios | Members journey | takeover/leakage | recovery evidence |
+| Dependency immutable replay/result snapshot | replay reads current edges | original result can be lost | bounded immutable product and edge snapshot, verified on replay | coordinator immutable-replay test | later-mutation replay | editor replay | poisoning | operation/result evidence |
+| Empty replacement/current snapshot/batch validation | coordinator foundation | PIT certification pending | complete bounded snapshot and one scoped validation batch | coordinator tests | >200 edges | dependency list | oversized input | snapshot evidence |
+| Pending payload/product OCC/projection OCC | pending event precedes product write | full CAS fencing pending | durable plan, product token, restartable targets | coordinator tests | fault injection | pending status | stale worker | OCC evidence |
+| Partial writes/terminal/idempotency/CAS | inspect-only reconciler | crash matrix incomplete | bounded claimed recovery at every boundary | reconciliation tests | two reconcilers | operation history | takeover | reconciliation evidence |
+| Tombstones/re-add | tombstones supported | retained-history proof pending | no deletes; deterministic remove/re-add metadata | remove-all test | remove/re-add | removal history | tenant isolation | tombstone evidence |
+| Frontier accounting/timeout/cycle/consistency | frontier foundation | paged request accounting pending | each page charged; full path and explicit reason | frontier tests | >1,000 edges | controls/table | amplification | traversal evidence |
+| Impact | evidence summary | source completeness pending | available/partial/unavailable from real evidence | impact tests | mixed sources | Impact panel | sentinel | impact evidence |
+| Operation API and signed dependency/revision pagination | cursor foundation | hosted drift proof pending | scoped status and signed exact sort tuple | cursor tests | concurrent paging | load-more focus | tamper/expiry | API evidence |
+| Product 360 workflows | membership components exist | remaining panels pending | actionable Members, Dependencies, graph/table, Impact, revisions | component tests | real API | Playwright/axe | stored XSS | browser evidence |
+| Real stack and dynamic manifest | jobs declared | hosted run not yet available | ES 9.4.2, Chromium/axe, dedicated security, generated run manifest | unit job | Elasticsearch job | browser job | security job | manifest.json |
+| Review threads | inherited threads open | hosted proof required | reply with SHA, test, job, artifact before resolution | n/a | n/a | n/a | n/a | review references |
 
 ## Operation ordering
 

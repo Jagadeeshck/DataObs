@@ -75,8 +75,14 @@ jobs:
     needs: [data-product-core-contracts, data-product-core-unit, data-product-core-elasticsearch, data-product-core-browser, data-product-core-security]
     steps:
       - uses: actions/checkout@v4
-      - name: Validate fail-closed evidence manifest
-        run: python -m json.tool artifacts/data-product-core/manifest.json
+      - uses: actions/download-artifact@v4
+        with: {path: artifacts/data-product-core/retained, merge-multiple: true}
+      - name: Generate current-run evidence manifest
+        env:
+          CERTIFICATION_JOB_RESULTS: >-
+            {"contracts":"${{ needs.data-product-core-contracts.result }}","unit":"${{ needs.data-product-core-unit.result }}","elasticsearch":"${{ needs.data-product-core-elasticsearch.result }}","browser":"${{ needs.data-product-core-browser.result }}","security":"${{ needs.data-product-core-security.result }}"}
+        run: python scripts/certification/build_manifest.py artifacts/data-product-core
+      - run: python -m json.tool artifacts/data-product-core/manifest.json
       - uses: actions/upload-artifact@v4
         with: {name: data-product-core-evidence, path: artifacts/data-product-core, retention-days: 30}
   data-product-core-summary:

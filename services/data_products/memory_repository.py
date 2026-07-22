@@ -13,7 +13,12 @@ from packages.domain_model.data_product import (
     DataProductOperationResult,
     DataProductRevisionEvent,
 )
-from services.data_products.dependency_events import DataProductDependencyReadSnapshot
+from services.data_products.dependency_events import (
+    DataProductDependencyMutationPlan,
+    DataProductDependencyOperationResult,
+    DataProductDependencyReadSnapshot,
+    DependencyResultInconsistent,
+)
 from services.data_products.events import ProductConsistencyError
 from services.data_products.idempotency import (
     DataProductIdempotencyRecord,
@@ -36,6 +41,8 @@ class MemoryDataProductRepository:
         self.proposals: dict[tuple[str, str, str, str, int], DataProductMembershipProposal] = {}
         self.decisions: dict[tuple[str, str, str, str], DataProductMembershipDecision] = {}
         self.dependencies: dict[tuple[str, str, str, str], DataProductDependencyProjection] = {}
+        self.dependency_plans: dict[str, DataProductDependencyMutationPlan] = {}
+        self.dependency_results: dict[str, DataProductDependencyOperationResult] = {}
 
     def reserve_idempotency(self, record_id: str, record: DataProductIdempotencyRecord) -> IdempotencyReservationResult:
         existing = self.idempotency.get(record_id)
@@ -170,6 +177,38 @@ class MemoryDataProductRepository:
                 raise ProductConsistencyError("divergent same-revision checksum")
         self.operations[event.operation_id] = (event.model_copy(deep=True), product.model_copy(deep=True))
         return event
+
+    def begin_dependency_operation(self, event, product, plan):
+        saved = self.begin_operation(event, product)
+        existing = self.dependency_plans.get(event.operation_id)
+        if existing is not None and existing != plan:
+            raise ProductConsistencyError("divergent dependency operation plan")
+        self.dependency_plans[event.operation_id] = plan
+        return saved
+
+    def load_dependency_operation_plan(self, tenant_id, environment, operation_id):
+        found = self.operations.get(operation_id)
+        plan = self.dependency_plans.get(operation_id)
+        if not found or plan is None or (found[0].tenant_id, found[0].environment) != (tenant_id, environment):
+            return None
+        return found[0].model_copy(deep=True), found[1].model_copy(deep=True), plan
+
+    def save_dependency_operation_result(self, result):
+        operation_id = result.operation.operation_id
+        existing = self.dependency_results.get(operation_id)
+        if existing is not None and existing != result:
+            raise DependencyResultInconsistent("dependency_result_inconsistent")
+        self.dependency_results[operation_id] = result
+
+    def get_dependency_operation_result(self, tenant_id, environment, product_id, operation_id):
+        result = self.dependency_results.get(operation_id)
+        if result is None or (
+            result.operation.tenant_id,
+            result.operation.environment,
+            result.operation.product_id,
+        ) != (tenant_id, environment, product_id):
+            raise DependencyResultInconsistent("dependency_result_inconsistent")
+        return result
 
     def finish_operation(self, event: DataProductRevisionEvent) -> None:
         existing = self.operations.get(event.operation_id)
@@ -364,6 +403,17 @@ class MemoryDataProductRepository:
             raise ProductConsistencyError("divergent decision replay")
         self.decisions[key] = decision.model_copy(deep=True)
         return decision.model_copy(deep=True)
+
+    def get_membership_decision(self, tenant_id, environment, product_id, decision_id):
+        value = self.decisions.get((tenant_id, environment, product_id, decision_id))
+        return value.model_copy(deep=True) if value else None
+
+    def get_membership_decisions_for_operation(self, tenant_id, environment, product_id, operation_id):
+        return tuple(
+            value.model_copy(deep=True)
+            for key, value in sorted(self.decisions.items())
+            if key[:3] == (tenant_id, environment, product_id) and value.operation_id == operation_id
+        )
 
     def list_membership_decisions(
         self, tenant_id: str, environment: str, product_id: str, *, limit: int = 50, search_after=None

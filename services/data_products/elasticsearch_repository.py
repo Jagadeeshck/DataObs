@@ -270,6 +270,139 @@ class ElasticsearchDataProductRepository:
                 {key: value for key, value in existing.items() if key != "document"}
             )
 
+    def begin_dependency_operation(self, event, product, plan):
+        plan_document = {
+            "current_product_revision": plan.current_product_revision,
+            "next_product_revision": plan.next_product_revision,
+            "expected_product_etag": plan.expected_product_etag,
+            "new_product_etag": plan.new_product_etag,
+            "before_graph_version": plan.before_graph_version,
+            "after_graph_version": plan.after_graph_version,
+            "upserts": [edge.model_dump(mode="json") for edge in plan.upserts],
+            "tombstones": [edge.model_dump(mode="json") for edge in plan.tombstones],
+            "warnings": list(plan.warnings),
+            "request_fingerprint": plan.request_fingerprint,
+        }
+        document = event.model_dump(mode="json") | {
+            "document": {"product": product.model_dump(mode="json"), "dependency_plan": plan_document}
+        }
+        try:
+            self.client.create(index=OPERATIONS, id=event.operation_id, document=document)
+            return event
+        except ConflictError as exc:
+            existing = self.client.get(index=OPERATIONS, id=event.operation_id)["_source"]
+            if existing != document:
+                raise ProductConsistencyError("divergent dependency operation plan") from exc
+            return event
+
+    def load_dependency_operation_plan(self, tenant_id, environment, operation_id):
+        from services.data_products.dependency_events import DataProductDependencyMutationPlan
+
+        try:
+            source = self.client.get(index=OPERATIONS, id=operation_id)["_source"]
+            envelope = source["document"]
+            raw = envelope["dependency_plan"]
+        except (NotFoundError, KeyError):
+            return None
+        if (source.get("tenant_id"), source.get("environment")) != (tenant_id, environment):
+            return None
+        plan = DataProductDependencyMutationPlan(
+            current_product_revision=raw["current_product_revision"],
+            next_product_revision=raw["next_product_revision"],
+            expected_product_etag=raw["expected_product_etag"],
+            new_product_etag=raw["new_product_etag"],
+            before_graph_version=raw["before_graph_version"],
+            after_graph_version=raw["after_graph_version"],
+            upserts=tuple(DataProductDependencyProjection.model_validate(value) for value in raw["upserts"]),
+            tombstones=tuple(DataProductDependencyProjection.model_validate(value) for value in raw["tombstones"]),
+            warnings=tuple(raw["warnings"]),
+            request_fingerprint=raw["request_fingerprint"],
+        )
+        event = DataProductRevisionEvent.model_validate(
+            {key: value for key, value in source.items() if key != "document"}
+        )
+        return event, DataProduct.model_validate(envelope["product"]), plan
+
+    def save_dependency_operation_result(self, result):
+        from services.data_products.dependency_events import DependencyResultInconsistent
+
+        try:
+            hit = self.client.get(index=OPERATIONS, id=result.operation.operation_id, seq_no_primary_term=True)
+        except NotFoundError as exc:
+            raise DependencyResultInconsistent("dependency_result_inconsistent") from exc
+        source = hit["_source"]
+        payload = {
+            "operation": result.operation.__dict__ | {"occurred_at": result.operation.occurred_at.isoformat()},
+            "operation_result_product": result.operation_result_product.model_dump(mode="json"),
+            "result_product_revision": result.result_product_revision,
+            "result_product_etag": result.result_product_etag,
+            "applied_at": result.applied_at.isoformat(),
+            "result_definition_checksum": result.result_definition_checksum,
+            "result_graph_version": result.result_graph_version,
+            "active_dependencies": [edge.model_dump(mode="json") for edge in result.active_dependencies],
+            "active_dependency_checksums": list(result.active_dependency_checksums),
+            "removed_dependency_ids": list(result.removed_dependency_ids),
+            "upserted_count": result.upserted_count,
+            "removed_count": result.removed_count,
+            "warnings": list(result.warnings),
+            "request_fingerprint": result.request_fingerprint,
+        }
+        existing = source.get("document", {}).get("dependency_result")
+        if existing is not None:
+            if existing != payload:
+                raise DependencyResultInconsistent("dependency_result_inconsistent")
+            return
+        envelope = source.get("document", {}) | {"dependency_result": payload}
+        try:
+            self.client.index(
+                index=OPERATIONS,
+                id=result.operation.operation_id,
+                document=source | {"document": envelope},
+                if_seq_no=hit["_seq_no"],
+                if_primary_term=hit["_primary_term"],
+            )
+        except ConflictError as exc:
+            raise DependencyResultInconsistent("dependency_result_inconsistent") from exc
+
+    def get_dependency_operation_result(self, tenant_id, environment, product_id, operation_id):
+        from services.data_products.dependency_events import (
+            DataProductDependencyOperation,
+            DataProductDependencyOperationResult,
+            DependencyResultInconsistent,
+        )
+
+        try:
+            source = self.client.get(index=OPERATIONS, id=operation_id)["_source"]
+            raw = source["document"]["dependency_result"]
+        except (NotFoundError, KeyError) as exc:
+            raise DependencyResultInconsistent("dependency_result_inconsistent") from exc
+        if (source.get("tenant_id"), source.get("environment"), source.get("product_id")) != (
+            tenant_id,
+            environment,
+            product_id,
+        ):
+            raise DependencyResultInconsistent("dependency_result_inconsistent")
+        return DataProductDependencyOperationResult(
+            operation=DataProductDependencyOperation(
+                **(raw["operation"] | {"occurred_at": datetime.fromisoformat(raw["operation"]["occurred_at"])})
+            ),
+            operation_result_product=DataProduct.model_validate(raw["operation_result_product"]),
+            result_product_revision=raw["result_product_revision"],
+            result_product_etag=raw["result_product_etag"],
+            applied_at=datetime.fromisoformat(raw["applied_at"]),
+            result_definition_checksum=raw["result_definition_checksum"],
+            result_graph_version=raw["result_graph_version"],
+            active_dependencies=tuple(
+                DataProductDependencyProjection.model_validate(v) for v in raw["active_dependencies"]
+            ),
+            active_dependency_checksums=tuple(raw["active_dependency_checksums"]),
+            removed_dependency_ids=tuple(raw["removed_dependency_ids"]),
+            upserted_count=raw["upserted_count"],
+            removed_count=raw["removed_count"],
+            warnings=tuple(raw["warnings"]),
+            request_fingerprint=raw["request_fingerprint"],
+        )
+
     def finish_operation(self, event: DataProductRevisionEvent) -> None:
         try:
             pending = self.client.get(index=OPERATIONS, id=event.operation_id, seq_no_primary_term=True)
@@ -630,6 +763,34 @@ class ElasticsearchDataProductRepository:
                 return existing
             raise ProductConsistencyError("divergent decision replay") from exc
         return decision
+
+    def get_membership_decision(self, tenant_id, environment, product_id, decision_id):
+        try:
+            source = self.client.get(index=DECISIONS, id=scoped_id(tenant_id, environment, decision_id))["_source"]
+        except NotFoundError:
+            return None
+        value = DataProductMembershipDecision.model_validate(source)
+        if (value.tenant_id, value.environment, value.product_id) != (tenant_id, environment, product_id):
+            return None
+        return value
+
+    def get_membership_decisions_for_operation(self, tenant_id, environment, product_id, operation_id):
+        response = self.client.search(
+            index=DECISIONS,
+            size=200,
+            query={
+                "bool": {
+                    "filter": [
+                        {"term": {"tenant_id": tenant_id}},
+                        {"term": {"environment": environment}},
+                        {"term": {"product_id": product_id}},
+                        {"term": {"operation_id": operation_id}},
+                    ]
+                }
+            },
+            sort=[{"occurred_at": "asc"}, {"decision_id": "asc"}, {"_id": "asc"}],
+        )
+        return tuple(DataProductMembershipDecision.model_validate(hit["_source"]) for hit in response["hits"]["hits"])
 
     def list_membership_decisions(
         self,

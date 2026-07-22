@@ -1,0 +1,1 @@
+{"certification":"pending-hosted-run","release_readiness":"blocked","required_jobs":["data-product-core-contracts","data-product-core-unit","data-product-core-elasticsearch","data-product-core-browser","data-product-core-security","data-product-core-evidence","data-product-core-summary"],"next_milestone":"Data Product SLOs, reliability, and coverage"}

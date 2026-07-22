@@ -383,12 +383,13 @@ def create_data_product_router(
         product_id: str,
         body: DependencyReplaceRequest,
         request: Request,
+        response: Response,
         environment: str = Query(...),
         if_match: str = Header(..., alias="If-Match"),
         idempotency_key: str = Header(..., alias="Idempotency-Key"),
         application: DataProductDependencyService = Depends(dependency_service),
     ) -> dict[str, Any]:
-        page = application.replace_declared_dependencies(
+        result = application.replace_declared_dependencies(
             request.state.tenant_id,
             environment,
             product_id,
@@ -398,7 +399,15 @@ def create_data_product_router(
             reason=body.reason,
             idempotency_key=idempotency_key,
         )
-        return page.model_dump(mode="json")
+        response.headers["ETag"] = result.product.etag
+        response.headers["Idempotency-Replayed"] = str(result.replayed).lower()
+        payload = result.__dict__.copy()
+        payload["product"] = result.product.model_dump(mode="json")
+        payload["dependencies"] = [edge.model_dump(mode="json") for edge in result.dependencies]
+        payload["request_id"] = getattr(request.state, "request_id", None)
+        payload["trace_id"] = getattr(request.state, "trace_id", None)
+        payload["operation_status"] = "completed"
+        return payload
 
     @router.get("/{product_id}/dependencies/{direction}")
     def traverse_dependencies(

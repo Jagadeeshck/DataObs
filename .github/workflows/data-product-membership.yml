@@ -1,7 +1,7 @@
-name: Data Product membership certification
+name: Data Product core certification
 on: [pull_request, workflow_dispatch]
 jobs:
-  data-product-proposal-contracts:
+  data-product-core-contracts:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -12,7 +12,7 @@ jobs:
       - run: python scripts/check_migration_immutability.py --base-ref origin/main
       - run: python scripts/check_generated_artifacts.py
       - run: ruff check services/data_products src/api/data_product_routes.py tests/data_products tests/integration/data_products
-  data-product-proposal-unit:
+  data-product-core-unit:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -24,7 +24,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with: {name: membership-results, path: membership-unit.xml, retention-days: 30}
-  data-product-proposal-elasticsearch:
+  data-product-core-elasticsearch:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     services:
@@ -44,7 +44,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with: {name: dependency-results, path: elasticsearch.xml, retention-days: 30}
-  data-product-proposal-browser:
+  data-product-core-browser:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -61,7 +61,7 @@ jobs:
         with: {name: membership-browser, path: "ui/dataobs-console/playwright-report\nui/dataobs-console/test-results", retention-days: 30}
       - if: always()
         run: ./scripts/certification/compose.sh down
-  data-product-proposal-security:
+  data-product-core-security:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -69,19 +69,28 @@ jobs:
       - uses: actions/setup-python@v5
         with: {python-version: '3.11'}
       - run: pip install -r requirements.txt
-      - run: python -m pytest tests/data_products -q -k 'cursor or membership or dependency'
-  data-product-proposal-summary:
+      - run: python -m pytest tests/security/data_products -q --junitxml=security.xml
+  data-product-core-evidence:
+    runs-on: ubuntu-latest
+    needs: [data-product-core-contracts, data-product-core-unit, data-product-core-elasticsearch, data-product-core-browser, data-product-core-security]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate fail-closed evidence manifest
+        run: python -m json.tool artifacts/data-product-core/manifest.json
+      - uses: actions/upload-artifact@v4
+        with: {name: data-product-core-evidence, path: artifacts/data-product-core, retention-days: 30}
+  data-product-core-summary:
     if: always()
     runs-on: ubuntu-latest
-    needs: [data-product-proposal-contracts, data-product-proposal-unit, data-product-proposal-elasticsearch, data-product-proposal-browser, data-product-proposal-security]
+    needs: [data-product-core-contracts, data-product-core-unit, data-product-core-elasticsearch, data-product-core-browser, data-product-core-security, data-product-core-evidence]
     steps:
       - name: Require contracts
-        run: test "${{ needs.data-product-proposal-contracts.result }}" = success
+        run: test "${{ needs.data-product-core-contracts.result }}" = success
       - name: Require unit
-        run: test "${{ needs.data-product-proposal-unit.result }}" = success
+        run: test "${{ needs.data-product-core-unit.result }}" = success
       - name: Require Elasticsearch
-        run: test "${{ needs.data-product-proposal-elasticsearch.result }}" = success
+        run: test "${{ needs.data-product-core-elasticsearch.result }}" = success
       - name: Require browser
-        run: test "${{ needs.data-product-proposal-browser.result }}" = success
-      - name: Require security
-        run: test "${{ needs.data-product-proposal-security.result }}" = success
+        run: test "${{ needs.data-product-core-browser.result }}" = success
+      - name: Require security and evidence
+        run: test "${{ needs.data-product-core-security.result }}" = success && test "${{ needs.data-product-core-evidence.result }}" = success

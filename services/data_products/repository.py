@@ -21,6 +21,7 @@ from packages.domain_model.data_product import (
     DataProductSLODefinition,
     DataProductSLOEvaluation,
 )
+from services.data_products.dependency_events import DataProductDependencyReadSnapshot
 from services.data_products.idempotency import DataProductIdempotencyRecord, IdempotencyReservationResult
 
 
@@ -185,6 +186,12 @@ class DataProductRepository(Protocol):
     ) -> DataProductDependencyPage: ...
     def list_dependencies(
         self, tenant_id: str, environment: str, product_id: str, **options: Any
+    ) -> DataProductDependencyPage: ...
+    def read_complete_dependency_snapshot(
+        self, tenant_id: str, environment: str, product_id: str, *, maximum: int
+    ) -> DataProductDependencyReadSnapshot: ...
+    def apply_dependency_mutation_plan(
+        self, tenant_id: str, environment: str, product_id: str, plan: Any
     ) -> DataProductDependencyPage: ...
     def get_direct_upstream(
         self, tenant_id: str, environment: str, product_id: str, **options: Any

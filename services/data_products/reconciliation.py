@@ -262,22 +262,52 @@ class DependencyReplacementReconciliationHandler(ProjectionAwareHandler):
     def reconcile(self, repository, state, history, plan, context):
         context.assert_owned()
         payload = self._verify(state, plan)
+        detailed = repository.load_dependency_operation_plan(state.tenant_id, state.environment, state.operation_id)
+        if detailed is None:
+            raise OperationConsistencyError("dependency_mutation_plan_missing")
+        event, target_product, mutation_plan = detailed
+        if (
+            event.product_id != state.product_id
+            or target_product.id != state.product_id
+            or mutation_plan.request_fingerprint != payload.get("request_fingerprint")
+            or mutation_plan.next_product_revision != payload.get("target_product_revision")
+            or mutation_plan.new_product_etag != payload.get("target_product_etag")
+        ):
+            raise OperationConsistencyError("dependency_mutation_plan_poisoned")
         product = repository.get_product(state.tenant_id, state.environment, state.product_id)
         target_revision = int(payload.get("target_product_revision", -1))
-        if product is None or product.revision < target_revision:
-            return OperationReconciliationOutcome("retry", "product_pending", retryable=True)
+        if product is None:
+            raise OperationConsistencyError("dependency_product_missing")
+        if product.revision < target_revision:
+            if (product.revision, product.etag) != (
+                mutation_plan.current_product_revision,
+                mutation_plan.expected_product_etag,
+            ):
+                raise OperationConsistencyError("dependency_product_diverged")
+            product = repository.update_product(target_product, expected_etag=product.etag)
+        context.checkpoint("dependency_product_token", _checksum(product.model_dump(mode="json")))
         if product.revision > target_revision:
             return OperationReconciliationOutcome(
                 "superseded", "newer_product_revision", error_code="newer_product_revision"
             )
         if product.etag != payload.get("target_product_etag"):
             raise OperationConsistencyError("dependency_product_diverged")
+        # The detailed durable plan, rather than the generic summary, is the
+        # authoritative mutation source. Repository application is idempotent
+        # and canonical-verifies an already present edge.
+        context.renew_if_needed()
+        repository.apply_dependency_mutation_plan(state.tenant_id, state.environment, state.product_id, mutation_plan)
+        context.checkpoint("dependency_edges_applied", mutation_plan.after_graph_version)
         snapshot = repository.read_complete_dependency_snapshot(
             state.tenant_id, state.environment, state.product_id, maximum=10_000
         )
         active = tuple(sorted(edge.upstream_product_id for edge in snapshot.dependencies if not edge.removed))
         if active != tuple(payload.get("upstream_product_ids", ())):
-            return OperationReconciliationOutcome("retry", "dependency_edges_pending", retryable=True)
+            raise OperationConsistencyError("dependency_snapshot_diverged")
+        context.renew_if_needed()
+        terminal = event.model_copy(update={"outcome": "applied", "applied_at": event.applied_at or utc_now()})
+        repository.finish_operation(terminal)
+        context.checkpoint("dependency_revision_evidence", terminal.definition_checksum)
         result = self._existing_result(repository, state)
         return OperationReconciliationOutcome(
             "applied",
@@ -315,6 +345,18 @@ class ProductLifecycleReconciliationHandler(ProjectionAwareHandler):
             return OperationReconciliationOutcome("superseded", error_code="newer_lifecycle_revision")
         if product.lifecycle_state != payload.get("target_lifecycle") or product.etag != payload.get("target_etag"):
             raise OperationConsistencyError("lifecycle_projection_diverged")
+        pending = repository.get_operation(state.tenant_id, state.environment, state.operation_id)
+        if pending is None or pending.definition_checksum != payload.get("target_definition_checksum"):
+            raise OperationConsistencyError("lifecycle_revision_event_missing")
+        context.renew_if_needed()
+        terminal = pending.model_copy(update={"outcome": "applied", "applied_at": pending.applied_at or utc_now()})
+        repository.finish_operation(terminal)
+        revision = repository.get_product_revision(
+            state.tenant_id, state.environment, state.product_id, target_revision
+        )
+        if revision is None or revision.etag != product.etag:
+            raise OperationConsistencyError("lifecycle_revision_snapshot_missing")
+        context.checkpoint("lifecycle_revision_evidence", terminal.definition_checksum)
         result = self._existing_result(repository, state)
         return OperationReconciliationOutcome(
             "applied",

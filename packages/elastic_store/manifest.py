@@ -1359,6 +1359,16 @@ DATA_PRODUCT_MEMBERSHIP_DEPENDENCY_RUNTIME_MIGRATION = Migration(
     },
 )
 
+# Additive mapping only: released migrations above remain checksum-identical.
+DATA_PRODUCT_RECONCILIATION_RETRY_DATE_MIGRATION = Migration(
+    "0017_data_product_reconciliation_retry_date",
+    "Add a date-safe retry schedule field to Data Product operation state",
+    "v1",
+    dependencies=["0016_data_product_membership_dependency_runtime"],
+    rollback_strategy="stop reconciliation workers; retain the additive date mapping and operation evidence",
+    operations={"mapping_updates": {"dataobs-data-product-operation-state-v1": {"next_attempt_at": {"type": "date"}}}},
+)
+
 
 def migrations() -> List[Migration]:
     return [
@@ -1378,4 +1388,5 @@ def migrations() -> List[Migration]:
         DATA_PRODUCT_360_COMPLETION_MIGRATION,
         DATA_PRODUCT_360_PRODUCTIZATION_MIGRATION,
         DATA_PRODUCT_MEMBERSHIP_DEPENDENCY_RUNTIME_MIGRATION,
+        DATA_PRODUCT_RECONCILIATION_RETRY_DATE_MIGRATION,
     ]

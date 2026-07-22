@@ -106,6 +106,12 @@ class DataProductOperationState:
     claim_expires_at: datetime | None = None
     last_checkpoint: DataProductOperationCheckpoint | None = None
     last_error_code: str | None = None
+    # Retry eligibility is durable rather than inferred from claim expiry.  A
+    # retryable handler releases its claim and records the exact backoff so
+    # pollers cannot hot-loop the same operation.
+    last_retryable_error: str | None = None
+    next_attempt_at: datetime | None = None
+    retry_after_seconds: int | None = None
     plan_reference: str | None = None
     result_reference: str | None = None
     idempotency_record_id: str | None = None
@@ -122,6 +128,8 @@ class DataProductOperationState:
             claimed_at=claim.claimed_at,
             claim_expires_at=claim.expires_at,
             updated_at=now,
+            next_attempt_at=None,
+            retry_after_seconds=None,
             seq_no=self.seq_no + 1,
         )
 

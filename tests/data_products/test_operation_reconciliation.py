@@ -343,3 +343,46 @@ def test_final_result_decoder_rejects_divergent_immutable_payload() -> None:
 
     with pytest.raises(RuntimeError, match="operation_result_mismatch"):
         decode_final_result("proposal_reject", envelope)
+
+
+@pytest.mark.parametrize("raw", ["", "not-a-date", "2026-01-01T00:00:00"])
+def test_non_accept_decoder_rejects_invalid_or_naive_applied_at(raw: str) -> None:
+    payload = {"proposal_revision": 1, "applied_at": raw}
+    envelope = DataProductOperationResultEnvelope(
+        "result", "tenant", "prod", "product", "operation", _checksum(payload), payload, utc_now()
+    )
+    with pytest.raises(RuntimeError, match="operation_result_schema_mismatch"):
+        decode_final_result("proposal_reject", envelope)
+
+
+def test_non_accept_decoder_preserves_business_time_after_delayed_persistence() -> None:
+    applied_at = utc_now() - timedelta(days=2)
+    payload = {"proposal_revision": 3, "applied_at": applied_at.isoformat()}
+    envelope = DataProductOperationResultEnvelope(
+        "result", "tenant", "prod", "product", "operation", _checksum(payload), payload, utc_now()
+    )
+    assert decode_final_result("proposal_expire", envelope).applied_at == applied_at
+
+
+def test_retry_schedule_controls_eligibility_and_releases_claim() -> None:
+    repository = MemoryDataProductRepository()
+    initial = state("retry-op")
+    repository.add_operation_state(initial)
+    now = utc_now()
+    claim = repository.claim_operation(
+        "tenant",
+        "prod",
+        "retry-op",
+        worker_id="one",
+        now=now,
+        expires_at=now + timedelta(seconds=30),
+        expected_seq_no=0,
+        expected_primary_term=1,
+    )
+    repository.schedule_operation_retry(
+        claim, error_code="projection_pending", next_attempt_at=now + timedelta(minutes=5), retry_after_seconds=300
+    )
+    scheduled = repository.get_operation_state("tenant", "prod", "retry-op")
+    assert scheduled is not None and scheduled.status == "pending" and scheduled.attempt_count == 1
+    assert scheduled.claim_owner is None and scheduled.last_retryable_error == "projection_pending"
+    assert repository.list_reconcilable_operations("tenant", "prod") == []

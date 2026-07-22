@@ -24,7 +24,10 @@ from services.data_products.dependency_events import (
 )
 from services.data_products.events import definition_checksum
 from services.data_products.idempotency import IdempotencyReservationStatus, new_record, scoped_record_id
-from services.data_products.reconciliation import persist_pending_operation
+from services.data_products.reconciliation import (
+    DataProductOperationService,
+    RecoverableDataProductOperationCoordinator,
+)
 from services.data_products.repository import DataProductRepository, ProductVersionConflict
 from services.data_products.service import product_etag
 
@@ -32,6 +35,35 @@ from services.data_products.service import product_etag
 class DataProductDependencyService:
     def __init__(self, repository: DataProductRepository) -> None:
         self.repository = repository
+        runtime = DataProductOperationService(repository, worker_id="dependency-runtime")
+        self.coordinator = RecoverableDataProductOperationCoordinator(repository, runtime)
+
+    def read_and_verify_complete_dependency_result(
+        self,
+        tenant_id: str,
+        environment: str,
+        product_id: str,
+        plan: DataProductDependencyMutationPlan,
+    ) -> tuple[DataProductDependencyProjection, ...]:
+        """Read the complete scope and verify every planned edge deterministically."""
+        snapshot = self.repository.read_complete_dependency_snapshot(tenant_id, environment, product_id, maximum=10_000)
+        if not snapshot.complete or snapshot.count != len(snapshot.dependencies):
+            raise DependencyResultInconsistent("dependency_snapshot_incomplete")
+        by_upstream: dict[str, DataProductDependencyProjection] = {}
+        for edge in snapshot.dependencies:
+            if edge.upstream_product_id in by_upstream:
+                raise DependencyResultInconsistent("duplicate_upstream_dependency")
+            by_upstream[edge.upstream_product_id] = edge
+        for expected in (*plan.upserts, *plan.tombstones):
+            actual = by_upstream.get(expected.upstream_product_id)
+            if actual is None or self._edge_checksum(actual) != self._edge_checksum(expected):
+                raise DependencyResultInconsistent("dependency_plan_edge_diverged")
+        return tuple(
+            sorted(
+                (edge for edge in snapshot.dependencies if not edge.removed),
+                key=lambda edge: edge.upstream_product_id,
+            )
+        )
 
     def replace_declared_dependencies(
         self,
@@ -96,8 +128,22 @@ class DataProductDependencyService:
             )
         if reservation.status == IdempotencyReservationStatus.EXISTING_PENDING:
             operation_id = reservation.record.operation_id or sha256((record_id + fingerprint).encode()).hexdigest()
-            return self.recover_dependency_operation(
-                tenant_id, environment, product_id, operation_id, record_id=record_id
+            outcome = self.coordinator.reconcile_pending(tenant_id, environment, operation_id)
+            if outcome.status != "applied":
+                raise DependencyOperationPending(operation_id)
+            immutable = self.repository.get_dependency_operation_result(
+                tenant_id, environment, product_id, operation_id
+            )
+            return DataProductDependencyMutationResult(
+                immutable.operation_result_product,
+                immutable.active_dependencies,
+                operation_id,
+                True,
+                immutable.warnings,
+                immutable.removed_count,
+                immutable.upserted_count,
+                immutable.result_graph_version,
+                recovered=True,
             )
 
         product = self.repository.get_product(tenant_id, environment, product_id)
@@ -194,8 +240,7 @@ class DataProductDependencyService:
             occurred_at=now,
         )
         self.repository.begin_dependency_operation(event, next_product, plan)  # durable plan before writes
-        persist_pending_operation(
-            self.repository,
+        self.coordinator.begin(
             tenant_id=tenant_id,
             environment=environment,
             product_id=product_id,
@@ -217,11 +262,9 @@ class DataProductDependencyService:
             },
         )
         self.repository.update_product(next_product, expected_etag=expected_etag)  # serialization token
-        page = self.repository.apply_dependency_mutation_plan(tenant_id, environment, product_id, plan)
+        self.repository.apply_dependency_mutation_plan(tenant_id, environment, product_id, plan)
         self.repository.finish_operation(event.model_copy(update={"outcome": "applied", "applied_at": utc_now()}))
-        active = tuple(
-            sorted((edge for edge in page.items if not edge.removed), key=lambda edge: edge.upstream_product_id)
-        )
+        active = self.read_and_verify_complete_dependency_result(tenant_id, environment, product_id, plan)
         applied_at = utc_now()
         operation = DataProductDependencyOperation(
             operation_id=operation_id,
@@ -259,9 +302,9 @@ class DataProductDependencyService:
                 request_fingerprint=fingerprint,
             )
         )
-        self.repository.complete_idempotency(
-            record_id, operation_id=operation_id, revision=next_product.revision, etag=next_product.etag
-        )
+        outcome = self.coordinator.reconcile_pending(tenant_id, environment, operation_id)
+        if outcome.status != "applied":
+            raise DependencyOperationPending(operation_id)
         return DataProductDependencyMutationResult(
             next_product,
             active,

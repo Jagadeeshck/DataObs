@@ -117,3 +117,25 @@ The next milestone is Data Product APIs, Product 360, browser/security, and fina
 Migrations `0001`–`0016` remain immutable. The existing generic document mapping is retained until the strict Elasticsearch writer/query suite proves that a `0017` mapping is necessary; no unproven mapping fields are added here. Plan/result persistence, state/history creation, CAS claiming, expiry/takeover, renewal, stale-worker fencing, checkpoints, bounded attempts, two-worker races, tenant isolation, CLI exit behavior, and leakage remain explicit certification controls. Hosted cells above intentionally remain pending until GitHub Actions artifacts exist.
 
 Release readiness remains **blocked**. The next milestone is **Data Product APIs, Product 360, browser/security, and final hosted core certification**.
+
+## Recoverable coordinator implementation gate
+
+The synchronous manual-membership, proposal-decision, membership-exclusion,
+dependency-replacement, and lifecycle entry points now create generic durable
+state through `RecoverableDataProductOperationCoordinator` and delegate generic
+completion to `DataProductOperationService`. Projection success is no longer
+considered completion: immutable results and terminal history precede repaired
+idempotency and applied state.
+
+Lifecycle plans contain the complete target product and are persisted before
+the OCC update; the lifecycle handler can apply that target when the source
+revision and ETag still match. Dependency results are read from a complete
+snapshot and every planned upsert/tombstone is checksum-verified, avoiding a
+single-page result cap. Retryable reconciliation releases its claim into a
+persisted, due-time-filtered retry schedule, and non-accept proposal replay uses
+the durable UTC `payload.applied_at` rather than envelope persistence time.
+
+This remains an implementation-only gate. Release readiness is **blocked** and
+the next gate is **real Elasticsearch 9.4.2 reconciliation, security, and hosted
+artifact certification**; no Product 360, Impact, SLO, reliability, coverage,
+RCA, or production-readiness capability is promoted here.

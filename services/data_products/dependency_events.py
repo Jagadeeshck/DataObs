@@ -15,9 +15,10 @@ from packages.domain_model.data_product import (
 
 
 def canonical_upstream_ids(product_id: str, values: Sequence[str], *, maximum: int = 10_000) -> tuple[str, ...]:
-    normalized = tuple(sorted({value.strip() for value in values}))
-    if not normalized or any(not value for value in normalized):
-        raise ValueError("upstream product IDs must be non-empty")
+    stripped = tuple(value.strip() for value in values)
+    if any(not value for value in stripped):
+        raise ValueError("upstream product IDs must not be whitespace-only")
+    normalized = tuple(sorted(set(stripped)))
     if product_id in normalized:
         raise ValueError("self dependency is not allowed")
     if len(normalized) > maximum:

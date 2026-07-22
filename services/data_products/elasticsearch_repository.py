@@ -710,6 +710,65 @@ class ElasticsearchDataProductRepository:
                     raise ProductVersionConflict("concurrent dependency update") from exc
         return DataProductDependencyPage(items=sorted(proposed.values(), key=lambda x: x.upstream_product_id))
 
+    def read_complete_dependency_snapshot(self, tenant_id: str, environment: str, product_id: str, *, maximum: int):
+        from services.data_products.dependency_events import DataProductDependencyReadSnapshot
+
+        values: list[DataProductDependencyProjection] = []
+        after = None
+        while True:
+            page = self.list_dependencies(
+                tenant_id,
+                environment,
+                product_id,
+                limit=min(200, maximum + 1),
+                search_after=after,
+            )
+            values.extend(page.items)
+            if len(values) > maximum:
+                raise ValueError("dependency_snapshot_maximum_exceeded")
+            if not page.has_more:
+                break
+            if not page.search_after:
+                raise ProductConsistencyError("dependency page missing continuation")
+            after = page.search_after
+        ordered = tuple(sorted(values, key=lambda edge: (edge.removed, edge.upstream_product_id, edge.graph_version)))
+        return DataProductDependencyReadSnapshot(ordered, len(ordered), True)
+
+    def apply_dependency_mutation_plan(self, tenant_id, environment, product_id, plan):
+        targets = (*plan.upserts, *plan.tombstones)
+        for edge in targets:
+            if (edge.tenant_id, edge.environment, edge.product_id) != (tenant_id, environment, product_id):
+                raise ValueError("dependency scope mismatch")
+            edge_id = scoped_id(tenant_id, environment, f"{product_id}:{edge.upstream_product_id}")
+            document = edge.model_dump(mode="json")
+            try:
+                hit = self.client.get(index=DEPENDENCIES, id=edge_id, seq_no_primary_term=True)
+            except NotFoundError:
+                try:
+                    self.client.create(index=DEPENDENCIES, id=edge_id, document=document)
+                except ConflictError as exc:
+                    # A racing create may be an exact already-applied plan step.
+                    current = DataProductDependencyProjection.model_validate(
+                        self.client.get(index=DEPENDENCIES, id=edge_id)["_source"]
+                    )
+                    if current != edge:
+                        raise ProductVersionConflict("concurrent dependency create") from exc
+            else:
+                current = DataProductDependencyProjection.model_validate(hit["_source"])
+                if current == edge:
+                    continue
+                try:
+                    self.client.index(
+                        index=DEPENDENCIES,
+                        id=edge_id,
+                        document=document,
+                        if_seq_no=hit["_seq_no"],
+                        if_primary_term=hit["_primary_term"],
+                    )
+                except ConflictError as exc:
+                    raise ProductVersionConflict("concurrent dependency update") from exc
+        return self.list_dependencies(tenant_id, environment, product_id, limit=max(1, min(200, len(targets))))
+
     def list_dependencies(
         self,
         tenant_id: str,

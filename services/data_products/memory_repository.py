@@ -13,6 +13,7 @@ from packages.domain_model.data_product import (
     DataProductOperationResult,
     DataProductRevisionEvent,
 )
+from services.data_products.dependency_events import DataProductDependencyReadSnapshot
 from services.data_products.events import ProductConsistencyError
 from services.data_products.idempotency import (
     DataProductIdempotencyRecord,
@@ -121,7 +122,10 @@ class MemoryDataProductRepository:
         event, product = found
         if event.outcome != "applied" or event.revision != expected_revision or event.etag != expected_etag:
             raise ProductConsistencyError("immutable operation result diverged")
-        return DataProductOperationResult(product=product.model_copy(deep=True), **event.model_dump())
+        return DataProductOperationResult(
+            product=product.model_copy(deep=True),
+            **event.model_dump(exclude={"product_id", "tenant_id", "environment", "error_code"}),
+        )
 
     def list_pending_operations(
         self, tenant_id: str, environment: str, *, product_id=None, limit=100, include_applied=False
@@ -397,6 +401,30 @@ class MemoryDataProductRepository:
                 deep=True
             )
         return self.list_dependencies(tenant_id, environment, product_id)
+
+    def read_complete_dependency_snapshot(self, tenant_id, environment, product_id, *, maximum):
+        values = sorted(
+            (
+                v.model_copy(deep=True)
+                for k, v in self.dependencies.items()
+                if k[:3] == (tenant_id, environment, product_id)
+            ),
+            key=lambda value: (value.removed, value.upstream_product_id, value.graph_version),
+        )
+        if len(values) > maximum:
+            raise ValueError("dependency_snapshot_maximum_exceeded")
+        return DataProductDependencyReadSnapshot(tuple(values), len(values), True)
+
+    def apply_dependency_mutation_plan(self, tenant_id, environment, product_id, plan):
+        # The product OCC token has already been acquired. Each target comparison is
+        # idempotent, making a retry safe after any edge boundary.
+        for edge in (*plan.upserts, *plan.tombstones):
+            key = (tenant_id, environment, product_id, edge.upstream_product_id)
+            current = self.dependencies.get(key)
+            if current == edge:
+                continue
+            self.dependencies[key] = edge.model_copy(deep=True)
+        return self.list_dependencies(tenant_id, environment, product_id, limit=max(1, len(self.dependencies)))
 
     def list_dependencies(
         self, tenant_id: str, environment: str, product_id: str, *, limit: int = 50, search_after=None

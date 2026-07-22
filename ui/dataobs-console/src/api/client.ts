@@ -83,12 +83,16 @@ export const api = {
     id: string,
     section: string,
     signal?: AbortSignal,
-  ) =>
-    read<Record<string, unknown>>(
-      `/api/v1/data-products/${encodeURIComponent(id)}/${section}?environment=${encodeURIComponent(env)}`,
+  ) => {
+    const [path, rawQuery = ""] = section.split("?", 2);
+    const query = new URLSearchParams(rawQuery);
+    query.set("environment", env);
+    return read<Record<string, unknown>>(
+      `/api/v1/data-products/${encodeURIComponent(id)}/${path}?${query.toString()}`,
       tenant,
       signal,
-    ),
+    );
+  },
   streams: (
     tenant: string,
     env: string,

@@ -1,21 +1,106 @@
 from __future__ import annotations
 
-from collections.abc import Callable, Iterable
+import json
+from collections.abc import Callable, Iterable, Mapping
+from dataclasses import dataclass
 from datetime import timedelta
+from hashlib import sha256
+from typing import Any, Literal, Protocol
 
 from packages.domain_model.base import utc_now
 from packages.domain_model.data_product import DataProductRevisionEvent
-from services.data_products.operation_state import DataProductOperationFinalResult, OperationClaimConflict
+from services.data_products.operation_state import (
+    DataProductOperationCheckpoint,
+    DataProductOperationClaim,
+    DataProductOperationFinalResult,
+    DataProductOperationPlan,
+    DataProductOperationResultEnvelope,
+    DataProductOperationState,
+    OperationClaimConflict,
+    OperationConsistencyError,
+)
 from services.data_products.repository import DataProductRepository
+
+
+@dataclass(frozen=True)
+class OperationReconciliationContext:
+    worker_id: str
+    now: Any
+
+
+@dataclass(frozen=True)
+class OperationReconciliationOutcome:
+    status: Literal["applied", "superseded", "failed", "retry"]
+    checkpoint: str | None = None
+    final_result: Mapping[str, Any] | None = None
+    error_code: str | None = None
+    retryable: bool = False
+
+
+class OperationReconciliationHandler(Protocol):
+    def reconcile(self, repository, state, claim, history, plan) -> OperationReconciliationOutcome: ...
+
+
+class DurablePlanHandler:
+    """Common recovery handler; operation services may supply projection-specific callbacks in the plan."""
+
+    def reconcile(self, repository, state, claim, history, plan):
+        if plan.operation_kind != state.operation_kind or plan.reference != state.plan_reference:
+            raise OperationConsistencyError("operation_plan_mismatch")
+        result = repository.load_operation_result(
+            state.tenant_id, state.environment, state.product_id, state.operation_id
+        )
+        if result:
+            if result.reference != state.result_reference and state.result_reference is not None:
+                raise OperationConsistencyError("operation_result_mismatch")
+            return OperationReconciliationOutcome("applied", "result_persisted", result.payload)
+        payload = plan.payload.get("result")
+        if not isinstance(payload, Mapping):
+            return OperationReconciliationOutcome(
+                "retry", state.last_checkpoint.name if state.last_checkpoint else None, retryable=True
+            )
+        return OperationReconciliationOutcome("applied", "projections_verified", payload)
+
+
+class OperationReconciliationRegistry:
+    REQUIRED_KINDS = (
+        "manual_membership",
+        "proposal_accept",
+        "proposal_reject",
+        "proposal_expire",
+        "proposal_supersede",
+        "membership_exclude",
+        "dependency_replace",
+        "product_lifecycle",
+    )
+
+    def __init__(self, handlers: Mapping[str, OperationReconciliationHandler] | None = None) -> None:
+        default = DurablePlanHandler()
+        self._handlers: dict[str, OperationReconciliationHandler] = {kind: default for kind in self.REQUIRED_KINDS}
+        if handlers:
+            self._handlers.update(handlers)
+
+    def get(self, operation_kind: str) -> OperationReconciliationHandler:
+        try:
+            return self._handlers[operation_kind]
+        except KeyError as exc:
+            raise OperationConsistencyError("unknown_operation_kind") from exc
+
+
+def _checksum(payload: Mapping[str, Any]) -> str:
+    return sha256(json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str).encode()).hexdigest()
 
 
 class DataProductOperationService:
     """Independently runnable, CAS-fenced operation reconciliation service."""
 
-    def __init__(self, repository: DataProductRepository, *, worker_id: str, claim_ttl_seconds: int = 30) -> None:
+    def __init__(
+        self, repository: DataProductRepository, *, worker_id: str, claim_ttl_seconds: int = 30, registry=None
+    ) -> None:
         self.repository = repository
         self.worker_id = worker_id
         self.claim_ttl_seconds = claim_ttl_seconds
+        self.registry = registry or OperationReconciliationRegistry()
 
     def get_operation_status(self, tenant_id: str, environment: str, operation_id: str):
         return self.repository.get_operation_state(tenant_id, environment, operation_id)
@@ -40,15 +125,70 @@ class DataProductOperationService:
             )
         except OperationClaimConflict:
             return "retry"
-        # Handlers persist their target result before exposing its immutable reference.
-        # A result reference means projections/evidence are complete and only state repair remains.
         claimed = self.repository.get_operation_state(tenant_id, environment, operation_id)
-        if claimed and claimed.result_reference:
-            self.repository.complete_operation(
-                claim, DataProductOperationFinalResult(0, "recovered", claimed.result_reference, now)
+        if claimed is None:
+            return "missing"
+        plan = self.repository.load_operation_plan(tenant_id, environment, claimed.product_id, operation_id)
+        if plan is None:
+            self.repository.fail_operation(claim, error_code="operation_plan_missing")
+            return "failed"
+        history = self.repository.get_operation_history(tenant_id, environment, operation_id)
+        try:
+            outcome = self.registry.get(claimed.operation_kind).reconcile(
+                self.repository, claimed, claim, history, plan
             )
-            return "applied"
-        return "retry"
+            if outcome.status == "retry":
+                return "retry"
+            checkpoint_name = outcome.checkpoint or "projections_verified"
+            checkpoint = DataProductOperationCheckpoint(checkpoint_name, plan.checksum, utc_now())
+            self.repository.checkpoint_operation(claim, checkpoint)
+            if outcome.status == "applied":
+                payload = outcome.final_result or {}
+                checksum = _checksum(payload)
+                result = DataProductOperationResultEnvelope(
+                    f"result:{operation_id}:{checksum}",
+                    tenant_id,
+                    environment,
+                    claimed.product_id,
+                    operation_id,
+                    checksum,
+                    payload,
+                    utc_now(),
+                )
+                self.repository.save_operation_result(result)
+                self.repository.complete_operation(
+                    claim,
+                    DataProductOperationFinalResult(
+                        int(payload.get("revision", 0)),
+                        str(payload.get("etag", "recovered")),
+                        result.reference,
+                        result.created_at,
+                    ),
+                )
+                if claimed.idempotency_record_id:
+                    self.repository.repair_idempotency_completion(
+                        claimed.idempotency_record_id,
+                        DataProductOperationFinalResult(
+                            int(payload.get("revision", 0)),
+                            str(payload.get("etag", "recovered")),
+                            result.reference,
+                            result.created_at,
+                        ),
+                    )
+                return "applied"
+            if outcome.status == "superseded":
+                self.repository.supersede_operation(claim, error_code=outcome.error_code or "newer_operation")
+                return "superseded"
+            self.repository.fail_operation(claim, error_code=outcome.error_code or "reconciliation_failed")
+            return "failed"
+        except OperationClaimConflict:
+            return "retry"
+        except OperationConsistencyError as exc:
+            try:
+                self.repository.fail_operation(claim, error_code=exc.code)
+            except OperationClaimConflict:
+                return "retry"
+            return "failed"
 
     def reconcile_batch(self, tenant_id: str, environment: str, *, limit: int = 100) -> dict[str, int]:
         if not 1 <= limit <= 1000:

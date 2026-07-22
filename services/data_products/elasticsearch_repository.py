@@ -35,6 +35,8 @@ from services.data_products.operation_state import (
     DataProductOperationClaim,
     DataProductOperationFinalResult,
     DataProductOperationHistoryEvent,
+    DataProductOperationPlan,
+    DataProductOperationResultEnvelope,
     DataProductOperationState,
     OperationClaimConflict,
 )
@@ -87,7 +89,9 @@ class ElasticsearchDataProductRepository:
 
     @staticmethod
     def _state_document(state: DataProductOperationState) -> dict[str, Any]:
-        document = ElasticsearchDataProductRepository._json_value(asdict(replace(state, seq_no=0, primary_term=1)))
+        document = ElasticsearchDataProductRepository._json_value(asdict(state))
+        document.pop("seq_no", None)
+        document.pop("primary_term", None)
         return {
             "operation_id": state.operation_id,
             "product_id": state.product_id,
@@ -153,6 +157,16 @@ class ElasticsearchDataProductRepository:
                         {"term": {"tenant_id": tenant_id}},
                         {"term": {"environment": environment}},
                         {"terms": {"outcome": ["pending", "claimed"]}},
+                        {
+                            "bool": {
+                                "should": [
+                                    {"term": {"outcome": "pending"}},
+                                    {"range": {"document.claim_expires_at": {"lte": "now"}}},
+                                ],
+                                "minimum_should_match": 1,
+                            }
+                        },
+                        {"exists": {"field": "document.status"}},
                     ]
                 }
             },
@@ -185,7 +199,16 @@ class ElasticsearchDataProductRepository:
             state.status == "claimed" and state.claim_expires_at and state.claim_expires_at > now
         ):
             raise OperationClaimConflict("operation_claim_conflict")
-        claim = DataProductOperationClaim(operation_id, worker_id, state.claim_generation + 1, now, expires_at)
+        claim = DataProductOperationClaim(
+            operation_id,
+            worker_id,
+            state.claim_generation + 1,
+            now,
+            expires_at,
+            tenant_id,
+            environment,
+            state.product_id,
+        )
         self._replace_state(state.claimed(claim, now=now), expected_seq_no, expected_primary_term)
         return claim
 
@@ -202,19 +225,22 @@ class ElasticsearchDataProductRepository:
             raise OperationClaimConflict("operation_claim_conflict") from exc
 
     def _owned_state(self, claim: DataProductOperationClaim):
-        response = self.client.search(
-            index=OPERATIONS,
-            size=1,
-            seq_no_primary_term=True,
-            query={
-                "bool": {"filter": [{"term": {"operation_id": claim.operation_id}}, {"term": {"outcome": "claimed"}}]}
-            },
-        )
-        hits = response["hits"]["hits"]
-        if not hits:
+        if not claim.tenant_id or not claim.environment or not claim.product_id:
             raise OperationClaimConflict("operation_claim_conflict")
-        state = self._state_from_hit(hits[0])
-        if (state.claim_owner, state.claim_generation) != (claim.owner, claim.generation):
+        state = self.get_operation_state(claim.tenant_id, claim.environment, claim.operation_id)
+        now = datetime.now(timezone.utc)
+        if (
+            state is None
+            or state.product_id != claim.product_id
+            or state.status != "claimed"
+            or (
+                state.claim_owner,
+                state.claim_generation,
+            )
+            != (claim.owner, claim.generation)
+            or state.claim_expires_at is None
+            or state.claim_expires_at <= now
+        ):
             raise OperationClaimConflict("operation_claim_conflict")
         return state
 
@@ -291,6 +317,7 @@ class ElasticsearchDataProductRepository:
                         {"term": {"tenant_id": tenant_id}},
                         {"term": {"environment": environment}},
                         {"term": {"operation_id": operation_id}},
+                        {"exists": {"field": "document.event_id"}},
                     ]
                 }
             },
@@ -306,6 +333,74 @@ class ElasticsearchDataProductRepository:
                     value[key] = datetime.fromisoformat(value[key])
             events.append(DataProductOperationHistoryEvent(**value))
         return sorted(events, key=lambda event: (event.occurred_at, event.event_id))
+
+    def _save_immutable_envelope(self, kind, reference, tenant_id, environment, product_id, operation_id, value):
+        document_id = scoped_id(tenant_id, environment, f"{kind}:{product_id}:{operation_id}:{reference}")
+        envelope = {
+            "action": f"__{kind}",
+            "tenant_id": tenant_id,
+            "environment": environment,
+            "product_id": product_id,
+            "operation_id": operation_id,
+            "document": self._json_value(asdict(value)),
+        }
+        try:
+            self.client.create(index=OPERATIONS, id=document_id, document=envelope)
+        except ConflictError as exc:
+            if self.client.get(index=OPERATIONS, id=document_id)["_source"] != envelope:
+                raise ProductConsistencyError(f"divergent {kind}") from exc
+
+    def save_operation_plan(self, plan):
+        self._save_immutable_envelope(
+            "operation_plan", plan.reference, plan.tenant_id, plan.environment, plan.product_id, plan.operation_id, plan
+        )
+
+    def load_operation_plan(self, tenant_id, environment, product_id, operation_id):
+        return self._load_immutable_envelope(
+            "operation_plan", DataProductOperationPlan, tenant_id, environment, product_id, operation_id
+        )
+
+    def save_operation_result(self, result):
+        self._save_immutable_envelope(
+            "operation_result",
+            result.reference,
+            result.tenant_id,
+            result.environment,
+            result.product_id,
+            result.operation_id,
+            result,
+        )
+
+    def load_operation_result(self, tenant_id, environment, product_id, operation_id):
+        value = self._load_immutable_envelope(
+            "operation_result", DataProductOperationResultEnvelope, tenant_id, environment, product_id, operation_id
+        )
+        if value and isinstance(value.created_at, str):
+            value = replace(value, created_at=datetime.fromisoformat(value.created_at))
+        return value
+
+    def _load_immutable_envelope(self, kind, model, tenant_id, environment, product_id, operation_id):
+        response = self.client.search(
+            index=OPERATIONS,
+            size=2,
+            query={
+                "bool": {
+                    "filter": [
+                        {"term": {"action": f"__{kind}"}},
+                        {"term": {"tenant_id": tenant_id}},
+                        {"term": {"environment": environment}},
+                        {"term": {"product_id": product_id}},
+                        {"term": {"operation_id": operation_id}},
+                    ]
+                }
+            },
+        )
+        hits = response["hits"]["hits"]
+        if not hits:
+            return None
+        if len(hits) != 1:
+            raise ProductConsistencyError(f"ambiguous {kind}")
+        return model(**hits[0]["_source"]["document"])
 
     def reserve_idempotency(self, record_id: str, record: DataProductIdempotencyRecord) -> IdempotencyReservationResult:
         try:

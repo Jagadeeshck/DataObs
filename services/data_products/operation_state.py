@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal, Mapping
 
 OperationOutcome = Literal["pending", "claimed", "checkpoint", "applied", "superseded", "failed"]
 
@@ -49,6 +49,9 @@ class DataProductOperationClaim:
     generation: int
     claimed_at: datetime
     expires_at: datetime
+    tenant_id: str = ""
+    environment: str = ""
+    product_id: str = ""
 
 
 @dataclass(frozen=True)
@@ -77,6 +80,7 @@ class DataProductOperationState:
     last_error_code: str | None = None
     plan_reference: str | None = None
     result_reference: str | None = None
+    idempotency_record_id: str | None = None
     seq_no: int = 0
     primary_term: int = 1
 
@@ -96,3 +100,39 @@ class DataProductOperationState:
 
 class OperationClaimConflict(RuntimeError):
     """The caller does not own the current claim generation/CAS token."""
+
+
+@dataclass(frozen=True)
+class DataProductOperationPlan:
+    """Immutable, checksum-addressed instructions used by a recovery handler."""
+
+    reference: str
+    tenant_id: str
+    environment: str
+    product_id: str
+    operation_id: str
+    operation_kind: str
+    checksum: str
+    payload: Mapping[str, Any]
+
+
+@dataclass(frozen=True)
+class DataProductOperationResultEnvelope:
+    """Immutable result persisted before the mutable state becomes terminal."""
+
+    reference: str
+    tenant_id: str
+    environment: str
+    product_id: str
+    operation_id: str
+    checksum: str
+    payload: Mapping[str, Any]
+    created_at: datetime
+
+
+class OperationConsistencyError(RuntimeError):
+    """A durable plan, projection, history event, or result has diverged."""
+
+    def __init__(self, code: str) -> None:
+        self.code = code
+        super().__init__(code)

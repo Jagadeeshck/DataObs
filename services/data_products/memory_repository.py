@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from packages.domain_model.base import utc_now
 from packages.domain_model.data_product import (
     DataProduct,
     DataProductDependencyPage,
@@ -31,6 +32,8 @@ from services.data_products.operation_state import (
     DataProductOperationClaim,
     DataProductOperationFinalResult,
     DataProductOperationHistoryEvent,
+    DataProductOperationPlan,
+    DataProductOperationResultEnvelope,
     DataProductOperationState,
     OperationClaimConflict,
 )
@@ -53,6 +56,8 @@ class MemoryDataProductRepository:
         self.dependency_results: dict[str, DataProductDependencyOperationResult] = {}
         self.operation_states: dict[str, DataProductOperationState] = {}
         self.operation_history: dict[str, DataProductOperationHistoryEvent] = {}
+        self.operation_plans: dict[tuple[str, str, str, str], DataProductOperationPlan] = {}
+        self.operation_results: dict[tuple[str, str, str, str], DataProductOperationResultEnvelope] = {}
 
     def add_operation_state(self, state: DataProductOperationState) -> None:
         self.operation_states[state.operation_id] = state
@@ -71,7 +76,11 @@ class MemoryDataProductRepository:
         values = [
             s
             for s in self.operation_states.values()
-            if (s.tenant_id, s.environment) == (tenant_id, environment) and s.status in {"pending", "claimed"}
+            if (s.tenant_id, s.environment) == (tenant_id, environment)
+            and (
+                s.status == "pending"
+                or (s.status == "claimed" and s.claim_expires_at and s.claim_expires_at <= utc_now())
+            )
         ]
         return sorted(values, key=lambda s: (s.updated_at, s.operation_id))[:limit]
 
@@ -94,13 +103,36 @@ class MemoryDataProductRepository:
             raise OperationClaimConflict("operation_claim_conflict")
         if state.claim_expires_at and state.claim_expires_at > now and state.claim_owner != worker_id:
             raise OperationClaimConflict("operation_already_claimed")
-        claim = DataProductOperationClaim(operation_id, worker_id, state.claim_generation + 1, now, expires_at)
+        if state.status not in {"pending", "claimed"} or (
+            state.status == "claimed" and (state.claim_expires_at is None or state.claim_expires_at > now)
+        ):
+            raise OperationClaimConflict("operation_not_reconcilable")
+        claim = DataProductOperationClaim(
+            operation_id,
+            worker_id,
+            state.claim_generation + 1,
+            now,
+            expires_at,
+            tenant_id,
+            environment,
+            state.product_id,
+        )
         self.operation_states[operation_id] = state.claimed(claim, now=now)
         return claim
 
     def _owned_state(self, claim):
         state = self.operation_states.get(claim.operation_id)
-        if state is None or (state.claim_owner, state.claim_generation) != (claim.owner, claim.generation):
+        if (
+            state is None
+            or (
+                claim.tenant_id
+                and (state.tenant_id, state.environment, state.product_id)
+                != (claim.tenant_id, claim.environment, claim.product_id)
+            )
+            or (state.claim_owner, state.claim_generation) != (claim.owner, claim.generation)
+            or state.claim_expires_at is None
+            or state.claim_expires_at <= utc_now()
+        ):
             raise OperationClaimConflict("stale_operation_claim")
         return state
 
@@ -158,6 +190,26 @@ class MemoryDataProductRepository:
             if (e.tenant_id, e.environment, e.operation_id) == (tenant_id, environment, operation_id)
         ]
         return sorted(values, key=lambda e: (e.occurred_at, e.event_id))[:limit]
+
+    def save_operation_plan(self, plan):
+        key = (plan.tenant_id, plan.environment, plan.product_id, plan.operation_id)
+        existing = self.operation_plans.get(key)
+        if existing is not None and existing != plan:
+            raise ProductConsistencyError("divergent operation plan")
+        self.operation_plans[key] = plan
+
+    def load_operation_plan(self, tenant_id, environment, product_id, operation_id):
+        return self.operation_plans.get((tenant_id, environment, product_id, operation_id))
+
+    def save_operation_result(self, result):
+        key = (result.tenant_id, result.environment, result.product_id, result.operation_id)
+        existing = self.operation_results.get(key)
+        if existing is not None and existing != result:
+            raise ProductConsistencyError("divergent operation result")
+        self.operation_results[key] = result
+
+    def load_operation_result(self, tenant_id, environment, product_id, operation_id):
+        return self.operation_results.get((tenant_id, environment, product_id, operation_id))
 
     def repair_idempotency_completion(self, record_id, result):
         self.complete_idempotency(

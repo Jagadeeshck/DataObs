@@ -253,6 +253,9 @@ class ElasticsearchDataProductRepository:
         self._replace_state(replace(state, claim_expires_at=expires_at), state.seq_no, state.primary_term)
         return replace(claim, expires_at=expires_at)
 
+    def assert_operation_claim(self, claim):
+        self._owned_state(claim)
+
     def checkpoint_operation(self, claim, checkpoint):
         state = self._owned_state(claim)
         self._replace_state(
@@ -486,9 +489,9 @@ class ElasticsearchDataProductRepository:
         record = self.get_idempotency(record_id)
         if record is None:
             raise ProductConsistencyError("idempotency reservation missing operation")
-        if (record.operation_id, record.request_fingerprint) != (
+        if record.request_fingerprint != expected_request_fingerprint or record.operation_id not in (
+            None,
             expected_operation_id,
-            expected_request_fingerprint,
         ):
             raise ProductConsistencyError("idempotency operation binding mismatch")
         if outcome == "completed" and isinstance(final_result_or_error, DataProductOperationFinalResult):

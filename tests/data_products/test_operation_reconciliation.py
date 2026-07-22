@@ -215,3 +215,26 @@ def test_idempotency_terminal_repair_is_bound_and_idempotent(outcome, evidence, 
     assert "never-persist-this-raw-key" not in repaired.model_dump_json()
     with pytest.raises(RuntimeError, match="binding mismatch"):
         repository.repair_idempotency_terminal("record", "substituted", "fingerprint", outcome, evidence)
+
+
+def test_pending_idempotency_without_operation_id_is_atomically_bound() -> None:
+    repository = MemoryDataProductRepository()
+    record = new_record(
+        tenant_id="tenant",
+        environment="prod",
+        product_id="product",
+        action="repair",
+        key="raw-key",
+        fingerprint="fingerprint",
+    )
+    repository.reserve_idempotency("record", record)
+    evidence = DataProductOperationFinalResult(2, "etag-2", "result", utc_now())
+
+    repository.repair_idempotency_terminal("record", "operation", "fingerprint", "completed", evidence)
+    repaired = repository.get_idempotency("record")
+
+    assert repaired is not None
+    assert repaired.operation_id == "operation"
+    assert repaired.completed_at == evidence.applied_at
+    with pytest.raises(RuntimeError, match="binding mismatch"):
+        repository.repair_idempotency_terminal("record", "different", "fingerprint", "completed", evidence)

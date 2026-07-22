@@ -56,7 +56,7 @@ class OperationReconciliationOutcome:
 
 
 class OperationReconciliationHandler(Protocol):
-    def reconcile(self, repository, state, claim, history, plan) -> OperationReconciliationOutcome: ...
+    def reconcile(self, repository, state, history, plan, context) -> OperationReconciliationOutcome: ...
 
 
 class ProjectionAwareHandler:
@@ -86,7 +86,8 @@ class ProjectionAwareHandler:
 class ManualMembershipReconciliationHandler(ProjectionAwareHandler):
     operation_kind = "manual_membership"
 
-    def reconcile(self, repository, state, claim, history, plan):
+    def reconcile(self, repository, state, history, plan, context):
+        context.assert_owned()
         payload = self._verify(state, plan)
         membership = repository.get_membership(
             state.tenant_id, state.environment, state.product_id, str(payload.get("membership_id", ""))
@@ -104,8 +105,12 @@ class ManualMembershipReconciliationHandler(ProjectionAwareHandler):
             ) != (state.tenant_id, state.environment, state.product_id, payload.get("membership_id")):
                 raise OperationConsistencyError("manual_membership_plan_poisoned")
             membership = repository.create_membership(state.tenant_id, state.environment, candidate)
+        target = payload.get("membership_target")
+        if target and _checksum(membership.model_dump(mode="json")) != _checksum(target):
+            raise OperationConsistencyError("membership_projection_diverged")
         if membership.entity_id != payload.get("entity_id") or membership.entity_type != payload.get("entity_type"):
             raise OperationConsistencyError("membership_projection_diverged")
+        context.checkpoint("membership_projection", _checksum(membership.model_dump(mode="json")))
         result = self._existing_result(repository, state)
         final = result.payload if result else {"revision": membership.revision, "etag": membership.etag}
         return OperationReconciliationOutcome("applied", "membership_verified", final)
@@ -114,7 +119,8 @@ class ManualMembershipReconciliationHandler(ProjectionAwareHandler):
 class ProposalDecisionReconciliationHandler(ProjectionAwareHandler):
     action: str
 
-    def reconcile(self, repository, state, claim, history, plan):
+    def reconcile(self, repository, state, history, plan, context):
+        context.assert_owned()
         payload = self._verify(state, plan)
         proposal = repository.get_membership_proposal(
             state.tenant_id, state.environment, state.product_id, str(payload.get("proposal_id", ""))
@@ -125,7 +131,36 @@ class ProposalDecisionReconciliationHandler(ProjectionAwareHandler):
             self.action
         ]
         if proposal.state == "proposed":
-            return OperationReconciliationOutcome("retry", "pending_history", retryable=True)
+            membership = None
+            if self.action == "accept":
+                target = payload.get("membership_target")
+                if not isinstance(target, Mapping):
+                    raise OperationConsistencyError("proposal_membership_plan_incomplete")
+                membership = repository.get_membership(
+                    state.tenant_id, state.environment, state.product_id, str(payload.get("membership_id", ""))
+                )
+                if membership is None:
+                    membership = repository.create_membership(
+                        state.tenant_id, state.environment, DataProductMembership.model_validate(target)
+                    )
+                elif _checksum(membership.model_dump(mode="json")) != _checksum(target):
+                    raise OperationConsistencyError("proposal_membership_diverged")
+                context.checkpoint("proposal_membership", _checksum(target))
+            context.renew_if_needed()
+            transition = {
+                "accept": repository.accept_membership_proposal,
+                "reject": repository.reject_membership_proposal,
+                "expire": repository.expire_membership_proposal,
+                "supersede": repository.supersede_membership_proposal,
+            }[self.action]
+            proposal = transition(
+                state.tenant_id,
+                state.environment,
+                state.product_id,
+                str(payload["proposal_id"]),
+                expected_revision=int(payload["proposal_revision"]),
+            )
+            context.checkpoint("proposal_transition", _checksum(proposal.model_dump(mode="json")))
         if proposal.state != expected_state:
             raise OperationConsistencyError("newer_proposal_decision")
         membership = None
@@ -166,7 +201,8 @@ class ProposalSupersedeReconciliationHandler(ProposalDecisionReconciliationHandl
 class MembershipExclusionReconciliationHandler(ProjectionAwareHandler):
     operation_kind = "membership_exclude"
 
-    def reconcile(self, repository, state, claim, history, plan):
+    def reconcile(self, repository, state, history, plan, context):
+        context.assert_owned()
         payload = self._verify(state, plan)
         membership = repository.get_membership(
             state.tenant_id, state.environment, state.product_id, str(payload.get("membership_id", ""))
@@ -174,7 +210,26 @@ class MembershipExclusionReconciliationHandler(ProjectionAwareHandler):
         if membership is None:
             raise OperationConsistencyError("membership_missing")
         if membership.state != "excluded":
-            return OperationReconciliationOutcome("retry", "pending_history", retryable=True)
+            if membership.revision != payload.get("expected_revision") or membership.etag != payload.get(
+                "expected_etag"
+            ):
+                raise OperationConsistencyError("membership_exclusion_source_diverged")
+            membership = repository.exclude_membership(
+                state.tenant_id,
+                state.environment,
+                state.product_id,
+                membership.membership_id,
+                actor=str(payload.get("actor", "reconciler")),
+                reason=str(payload.get("reason", "reconciliation")),
+                expected_etag=membership.etag,
+            )
+        if (membership.state, membership.revision, membership.etag) != (
+            "excluded",
+            payload.get("target_revision"),
+            payload.get("target_etag"),
+        ):
+            raise OperationConsistencyError("membership_exclusion_target_diverged")
+        context.checkpoint("membership_exclusion", _checksum(membership.model_dump(mode="json")))
         result = self._existing_result(repository, state)
         return OperationReconciliationOutcome(
             "applied",
@@ -186,7 +241,8 @@ class MembershipExclusionReconciliationHandler(ProjectionAwareHandler):
 class DependencyReplacementReconciliationHandler(ProjectionAwareHandler):
     operation_kind = "dependency_replace"
 
-    def reconcile(self, repository, state, claim, history, plan):
+    def reconcile(self, repository, state, history, plan, context):
+        context.assert_owned()
         payload = self._verify(state, plan)
         product = repository.get_product(state.tenant_id, state.environment, state.product_id)
         target_revision = int(payload.get("target_product_revision", -1))
@@ -215,7 +271,8 @@ class DependencyReplacementReconciliationHandler(ProjectionAwareHandler):
 class ProductLifecycleReconciliationHandler(ProjectionAwareHandler):
     operation_kind = "product_lifecycle"
 
-    def reconcile(self, repository, state, claim, history, plan):
+    def reconcile(self, repository, state, history, plan, context):
+        context.assert_owned()
         payload = self._verify(state, plan)
         product = repository.get_product(state.tenant_id, state.environment, state.product_id)
         target_revision = int(payload.get("target_revision", -1))
@@ -271,6 +328,33 @@ class OperationReconciliationRegistry:
 
 def _checksum(payload: Mapping[str, Any]) -> str:
     return sha256(json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str).encode()).hexdigest()
+
+
+def _terminal_semantics(event: DataProductOperationHistoryEvent) -> tuple[Any, ...]:
+    """Canonical immutable terminal evidence (delivery time is deliberately excluded)."""
+    return (
+        event.event_id,
+        event.operation_id,
+        event.tenant_id,
+        event.environment,
+        event.product_id,
+        event.operation_kind,
+        event.action,
+        event.outcome,
+        event.actor,
+        event.reason,
+        event.request_fingerprint,
+        event.expected_revision,
+        event.expected_etag,
+        event.result_revision,
+        event.result_etag,
+        event.plan_checksum,
+        event.result_checksum,
+        event.error_code,
+        event.worker_id,
+        event.applied_at,
+        event.schema_version,
+    )
 
 
 def persist_pending_operation(
@@ -439,9 +523,18 @@ class DataProductOperationService:
             return self._result(operation_id, "failed", final, error_code="operation_plan_missing")
         history = self.repository.get_operation_history(tenant_id, environment, operation_id)
         try:
-            outcome = self.registry.get(claimed.operation_kind).reconcile(
-                self.repository, claimed, claim, history, plan
+            context = OperationReconciliationContext(
+                claim,
+                self.repository.assert_operation_claim,
+                self._renew_if_needed,
+                lambda owned, name, checksum: self.repository.checkpoint_operation(
+                    owned, DataProductOperationCheckpoint(name, checksum, utc_now())
+                ),
             )
+            outcome = self.registry.get(claimed.operation_kind).reconcile(
+                self.repository, claimed, history, plan, context
+            )
+            claim = context.claim
             if outcome.status == "retry":
                 current = self.repository.get_operation_state(tenant_id, environment, operation_id)
                 return self._result(operation_id, "retry", current, retryable=True, error_code=outcome.error_code)
@@ -494,17 +587,15 @@ class DataProductOperationService:
                     result_etag=str(payload.get("etag", "recovered")),
                     plan_checksum=plan.checksum,
                     result_checksum=result.checksum,
-                    worker_id=self.worker_id,
+                    # Worker identity is intentionally redacted from canonical
+                    # immutable evidence so a fenced takeover can reuse it.
+                    worker_id=None,
                     applied_at=result.created_at,
                 )
                 existing_terminal = next((event for event in history if event.event_id == terminal.event_id), None)
                 if existing_terminal is None:
                     self.repository.append_operation_history(terminal)
-                elif (
-                    existing_terminal.outcome != "applied"
-                    or existing_terminal.plan_checksum != plan.checksum
-                    or existing_terminal.result_checksum != result.checksum
-                ):
+                elif _terminal_semantics(existing_terminal) != _terminal_semantics(terminal):
                     raise OperationConsistencyError("terminal_history_mismatch")
                 final_result = DataProductOperationFinalResult(
                     int(payload.get("revision", 0)),
@@ -661,7 +752,7 @@ class DataProductOperationService:
                 utc_now(),
                 plan_checksum=plan.checksum,
                 error_code=error,
-                worker_id=self.worker_id,
+                worker_id=None,
             )
         )
 

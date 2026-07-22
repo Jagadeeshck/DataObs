@@ -1,5 +1,7 @@
 # Data Product reconciliation runtime closure
 
+> PR #136 added an authoritative service, terminal idempotency contracts and coordinator scaffolding only. The mutation services and concrete handlers still did not apply most missing projections, normal success paths still left generic state pending, and real Elasticsearch/security/hosted certification remained absent. This PR implements and proves the repair runtime.
+
 > PR #135 closed terminal-status replay, result reuse, query filtering, and initial Elasticsearch completion-repair defects only. Proposal, exclusion, dependency and lifecycle handlers still did not perform missing mutations; normal success paths still left generic state pending; terminal-state repair, full fault testing, security evidence, hosted artifacts, and review-thread closure remained incomplete. This PR closes the reconciliation runtime.
 
 > PR #134 added typed results, limited renewal, manual membership creation and partial plan wiring, but proposal, exclusion, dependency and lifecycle handlers still did not apply missing projection steps; synchronous workflows left generic state incomplete; terminal replay/history contained P1 defects; production idempotency repair and hosted Elasticsearch evidence remained absent. This PR closes those blockers.
@@ -12,7 +14,7 @@
 
 Release readiness remains **blocked**. Hosted artifact cells remain pending until the draft PR workflow produces downloadable evidence; local tests are not represented as hosted certification.
 
-| Capability | Current main | Required final behaviour | Unit/property | Elasticsearch 9.4.2 | Security | Hosted artifact |
+| Capability | Main behaviour after PR #136 | Required implementation | Unit/property | Elasticsearch 9.4.2 | Security | Hosted artifact |
 |---|---|---|---|---|---|---|
 | terminal outcome replay | PR #135 partial baseline | operation-specific, claim-fenced repair | covered | pending | pending | pending |
 | terminal-state repair | PR #135 partial baseline | operation-specific, claim-fenced repair | pending | pending | pending | pending |
@@ -23,6 +25,9 @@ Release readiness remains **blocked**. Hosted artifact cells remain pending unti
 | idempotency completed repair | PR #135 partial baseline | operation-specific, claim-fenced repair | covered | pending | pending | pending |
 | idempotency failed repair | PR #135 partial baseline | operation-specific, claim-fenced repair | covered | pending | pending | pending |
 | idempotency superseded repair | PR #135 partial baseline | operation-specific, claim-fenced repair | covered | pending | pending | pending |
+| pending idempotency operation binding | rejected an unbound reservation | bind `None` only after fingerprint and scope validation | covered | pending | pending | pending |
+| full canonical terminal comparison | compared outcome and checksums only | compare every deterministic terminal semantic field | covered | pending | pending | pending |
+| handler context usage | handlers received a raw ignored claim | claim assertion, renewal, and phase checkpoint API | covered | pending | pending | pending |
 | manual projection repair | PR #135 partial baseline | operation-specific, claim-fenced repair | pending | pending | pending | pending |
 | manual business terminal repair | PR #135 partial baseline | operation-specific, claim-fenced repair | pending | pending | pending | pending |
 | proposal accept repair | PR #135 partial baseline | operation-specific, claim-fenced repair | pending | pending | pending | pending |
@@ -72,6 +77,7 @@ Release readiness remains **blocked**. Hosted artifact cells remain pending unti
 | stale-worker fencing | scope, owner, generation, current OCC metadata, and expiry validated |
 | checkpointing | deterministic checkpoint follows handler projection verification |
 | terminal history and result persistence | immutable result is written before mutable completion |
+| canonical actor / worker policy | actor and reason are durable plan fields and must match; ephemeral worker identity is redacted from canonical terminal history |
 | idempotency repair | scope-safe record reference on operation state |
 | batch and CLI execution | bounded batch and single-operation commands under `bin/dataobs` |
 | two-worker race | loser receives typed retry without handler mutation |

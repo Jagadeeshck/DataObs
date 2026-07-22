@@ -8,17 +8,19 @@ from hashlib import sha256
 from typing import Any, Literal, Protocol
 
 from packages.domain_model.base import utc_now
-from packages.domain_model.data_product import DataProductRevisionEvent
+from packages.domain_model.data_product import DataProductMembership, DataProductRevisionEvent
 from services.data_products.operation_state import (
     DataProductOperationCheckpoint,
     DataProductOperationClaim,
     DataProductOperationFinalResult,
     DataProductOperationHistoryEvent,
     DataProductOperationPlan,
+    DataProductOperationReconciliationResult,
     DataProductOperationResultEnvelope,
     DataProductOperationState,
     OperationClaimConflict,
     OperationConsistencyError,
+    ReconciliationStatus,
 )
 from services.data_products.repository import DataProductRepository
 
@@ -75,7 +77,18 @@ class ManualMembershipReconciliationHandler(ProjectionAwareHandler):
             state.tenant_id, state.environment, state.product_id, str(payload.get("membership_id", ""))
         )
         if membership is None:
-            return OperationReconciliationOutcome("retry", "pending_history", retryable=True)
+            target = payload.get("membership_target")
+            if not isinstance(target, Mapping):
+                raise OperationConsistencyError("manual_membership_plan_incomplete")
+            candidate = DataProductMembership.model_validate(target)
+            if (
+                candidate.tenant_id,
+                candidate.environment,
+                candidate.product_id,
+                candidate.membership_id,
+            ) != (state.tenant_id, state.environment, state.product_id, payload.get("membership_id")):
+                raise OperationConsistencyError("manual_membership_plan_poisoned")
+            membership = repository.create_membership(state.tenant_id, state.environment, candidate)
         if membership.entity_id != payload.get("entity_id") or membership.entity_type != payload.get("entity_type"):
             raise OperationConsistencyError("membership_projection_diverged")
         result = self._existing_result(repository, state)
@@ -228,7 +241,9 @@ class OperationReconciliationRegistry:
             DependencyReplacementReconciliationHandler(),
             ProductLifecycleReconciliationHandler(),
         )
-        self._handlers = {handler.operation_kind: handler for handler in concrete}
+        self._handlers: dict[str, OperationReconciliationHandler] = {
+            handler.operation_kind: handler for handler in concrete
+        }
         if handlers:
             self._handlers.update(handlers)
 
@@ -288,24 +303,63 @@ class DataProductOperationService:
         *,
         worker_id: str,
         claim_ttl_seconds: int = 30,
+        claim_renewal_window_seconds: int = 10,
         max_attempts: int = 5,
         registry=None,
     ) -> None:
         self.repository = repository
         self.worker_id = worker_id
         self.claim_ttl_seconds = claim_ttl_seconds
+        if claim_renewal_window_seconds < 0 or claim_renewal_window_seconds >= claim_ttl_seconds:
+            raise ValueError("claim renewal window must be non-negative and less than claim TTL")
+        self.claim_renewal_window_seconds = claim_renewal_window_seconds
         self.max_attempts = max_attempts
         self.registry = registry or OperationReconciliationRegistry()
 
     def get_operation_status(self, tenant_id: str, environment: str, operation_id: str):
         return self.repository.get_operation_state(tenant_id, environment, operation_id)
 
-    def reconcile_operation(self, tenant_id: str, environment: str, operation_id: str) -> str:
+    def _result(
+        self,
+        operation_id: str,
+        status: ReconciliationStatus,
+        state: DataProductOperationState | None,
+        *,
+        recovered: bool = False,
+        retryable: bool = False,
+        error_code: str | None = None,
+    ) -> DataProductOperationReconciliationResult:
+        return DataProductOperationReconciliationResult(
+            operation_id=operation_id,
+            operation_kind=state.operation_kind if state else None,
+            status=status,
+            replayed=bool(state and state.status in {"applied", "superseded", "failed"}),
+            recovered=recovered,
+            retryable=retryable,
+            attempt_count=state.attempt_count if state else 0,
+            claim_generation=state.claim_generation if state else 0,
+            last_checkpoint=state.last_checkpoint.name if state and state.last_checkpoint else None,
+            result_reference=state.result_reference if state else None,
+            error_code=error_code or (state.last_error_code if state else None),
+            retry_after_seconds=self.claim_ttl_seconds if retryable else None,
+        )
+
+    def _renew_if_needed(self, claim: DataProductOperationClaim) -> DataProductOperationClaim:
+        now = utc_now()
+        if claim.expires_at - now <= timedelta(seconds=self.claim_renewal_window_seconds):
+            return self.repository.renew_operation_claim(
+                claim, expires_at=now + timedelta(seconds=self.claim_ttl_seconds)
+            )
+        return claim
+
+    def reconcile_operation(
+        self, tenant_id: str, environment: str, operation_id: str
+    ) -> DataProductOperationReconciliationResult:
         state = self.repository.get_operation_state(tenant_id, environment, operation_id)
         if state is None:
-            return "missing"
+            return self._result(operation_id, "missing", None)
         if state.status in {"applied", "superseded", "failed"}:
-            return state.status
+            return self._result(operation_id, "already_terminal", state)
         now = utc_now()
         try:
             claim = self.repository.claim_operation(
@@ -319,24 +373,30 @@ class DataProductOperationService:
                 expected_primary_term=state.primary_term,
             )
         except OperationClaimConflict:
-            return "retry"
-        if state.attempt_count >= self.max_attempts:
-            self.repository.fail_operation(claim, error_code="reconciliation_attempts_exhausted")
-            return "failed"
+            return self._result(operation_id, "retry", state, retryable=True)
         claimed = self.repository.get_operation_state(tenant_id, environment, operation_id)
         if claimed is None:
-            return "missing"
+            return self._result(operation_id, "missing", None)
+        # Claiming increments the attempt. Check the claimed generation, not the
+        # stale pre-claim document; this prevents an off-by-one extra attempt.
+        if claimed.attempt_count >= self.max_attempts:
+            self.repository.fail_operation(claim, error_code="reconciliation_attempts_exhausted")
+            final = self.repository.get_operation_state(tenant_id, environment, operation_id)
+            return self._result(operation_id, "failed", final, error_code="reconciliation_attempts_exhausted")
         plan = self.repository.load_operation_plan(tenant_id, environment, claimed.product_id, operation_id)
         if plan is None:
             self.repository.fail_operation(claim, error_code="operation_plan_missing")
-            return "failed"
+            final = self.repository.get_operation_state(tenant_id, environment, operation_id)
+            return self._result(operation_id, "failed", final, error_code="operation_plan_missing")
         history = self.repository.get_operation_history(tenant_id, environment, operation_id)
         try:
             outcome = self.registry.get(claimed.operation_kind).reconcile(
                 self.repository, claimed, claim, history, plan
             )
             if outcome.status == "retry":
-                return "retry"
+                current = self.repository.get_operation_state(tenant_id, environment, operation_id)
+                return self._result(operation_id, "retry", current, retryable=True, error_code=outcome.error_code)
+            claim = self._renew_if_needed(claim)
             checkpoint_name = outcome.checkpoint or "projections_verified"
             checkpoint = DataProductOperationCheckpoint(checkpoint_name, plan.checksum, utc_now())
             self.repository.checkpoint_operation(claim, checkpoint)
@@ -352,6 +412,13 @@ class DataProductOperationService:
                     checksum,
                     payload,
                     utc_now(),
+                )
+                # Ownership is checked immediately before each owner-sensitive
+                # terminal boundary. An immutable result may be replayed, but a
+                # stale generation can never author terminal evidence or state.
+                claim = self._renew_if_needed(claim)
+                self.repository.checkpoint_operation(
+                    claim, DataProductOperationCheckpoint("result_ready", result.checksum, utc_now())
                 )
                 self.repository.save_operation_result(result)
                 terminal = DataProductOperationHistoryEvent(
@@ -396,20 +463,62 @@ class DataProductOperationService:
                             result.created_at,
                         ),
                     )
-                return "applied"
+                final = self.repository.get_operation_state(tenant_id, environment, operation_id)
+                return self._result(operation_id, "applied", final, recovered=True)
             if outcome.status == "superseded":
+                self._append_terminal_history(claimed, plan, outcome, "superseded")
                 self.repository.supersede_operation(claim, error_code=outcome.error_code or "newer_operation")
-                return "superseded"
+                final = self.repository.get_operation_state(tenant_id, environment, operation_id)
+                return self._result(operation_id, "superseded", final, recovered=True)
+            self._append_terminal_history(claimed, plan, outcome, "failed")
             self.repository.fail_operation(claim, error_code=outcome.error_code or "reconciliation_failed")
-            return "failed"
+            final = self.repository.get_operation_state(tenant_id, environment, operation_id)
+            return self._result(operation_id, "failed", final, recovered=True)
         except OperationClaimConflict:
-            return "retry"
+            current = self.repository.get_operation_state(tenant_id, environment, operation_id)
+            return self._result(operation_id, "retry", current, retryable=True)
         except OperationConsistencyError as exc:
             try:
+                self._append_terminal_history(
+                    claimed,
+                    plan,
+                    OperationReconciliationOutcome("failed", error_code=exc.code),
+                    "failed",
+                )
                 self.repository.fail_operation(claim, error_code=exc.code)
             except OperationClaimConflict:
-                return "retry"
-            return "failed"
+                current = self.repository.get_operation_state(tenant_id, environment, operation_id)
+                return self._result(operation_id, "retry", current, retryable=True)
+            final = self.repository.get_operation_state(tenant_id, environment, operation_id)
+            return self._result(operation_id, "failed", final, error_code=exc.code)
+
+    def _append_terminal_history(
+        self,
+        state: DataProductOperationState,
+        plan: DataProductOperationPlan,
+        outcome: OperationReconciliationOutcome,
+        status: Literal["superseded", "failed"],
+    ) -> None:
+        error = outcome.error_code or f"reconciliation_{status}"
+        self.repository.append_operation_history(
+            DataProductOperationHistoryEvent(
+                f"terminal:{state.operation_id}:{status}:{plan.checksum}",
+                state.operation_id,
+                state.tenant_id,
+                state.environment,
+                state.product_id,
+                state.operation_kind,
+                str(plan.payload.get("action", state.operation_kind)),
+                status,
+                str(plan.payload.get("actor", "reconciler")),
+                str(plan.payload.get("reason", "reconciliation")),
+                str(plan.payload["request_fingerprint"]),
+                utc_now(),
+                plan_checksum=plan.checksum,
+                error_code=error,
+                worker_id=self.worker_id,
+            )
+        )
 
     def reconcile_batch(
         self, tenant_id: str, environment: str, *, limit: int = 100, operation_kind: str | None = None
@@ -421,7 +530,7 @@ class DataProductOperationService:
             if operation_kind is not None and state.operation_kind != operation_kind:
                 continue
             outcome = self.reconcile_operation(tenant_id, environment, state.operation_id)
-            outcomes[outcome] += 1
+            outcomes[outcome.status] += 1
         return outcomes
 
 

@@ -4,18 +4,20 @@
 
 > PR #132 introduced generic reconciliation envelopes and dispatch scaffolding, but all operation kinds still used one non-repairing DurablePlanHandler and mutation services did not create the new operation state. This PR implements concrete projection-aware handlers and wires every scoped mutation into the runtime.
 
+> PR #133 introduced named projection-aware handlers and partial mutation bootstrapping, but missing projection steps still returned retry rather than being repaired; proposal and exclusion workflows were not wired; synchronous paths left generic state incomplete; and real Elasticsearch fault certification remained absent. This PR closes those runtime gaps.
+
 Release readiness remains **blocked**. Hosted artifact cells remain pending until the draft PR workflow produces downloadable evidence; local tests are not represented as hosted certification.
 
-| Operation kind | Mutation creates state? | Concrete handler? | Projection repair? | Terminal-history repair? | Idempotency repair? | Real ES test? | Hosted artifact? |
+| Operation kind | Plan created before mutation? | State created before mutation? | Handler can create missing projection? | Handler can repair terminal evidence? | Handler can repair result/state/idempotency? | Real ES fault matrix | Hosted artifact |
 |---|---|---|---|---|---|---|---|
-| `manual_membership` | partial | yes | inspect/repair | yes | yes | pending | pending |
-| `proposal_accept` | partial | yes | inspect/repair | yes | yes | pending | pending |
-| `proposal_reject` | partial | yes | inspect/repair | yes | yes | pending | pending |
-| `proposal_expire` | partial | yes | inspect/repair | yes | yes | pending | pending |
-| `proposal_supersede` | partial | yes | inspect/repair | yes | yes | pending | pending |
-| `membership_exclude` | partial | yes | inspect/repair | yes | yes | pending | pending |
-| `dependency_replace` | partial | yes | inspect/repair | yes | yes | pending | pending |
-| `product_lifecycle` | partial | yes | inspect/repair | yes | yes | pending | pending |
+| `manual_membership` | yes | yes | yes | generic only | yes | pending | pending |
+| `proposal_accept` | yes | yes | pending | generic only | yes | pending | pending |
+| `proposal_reject` | yes | yes | pending | generic only | yes | pending | pending |
+| `proposal_expire` | yes | yes | pending | generic only | yes | pending | pending |
+| `proposal_supersede` | yes | yes | pending | generic only | yes | pending | pending |
+| `membership_exclude` | yes | yes | pending | generic only | yes | pending | pending |
+| `dependency_replace` | yes | yes | pending detailed-plan application | generic only | yes | pending | pending |
+| `product_lifecycle` | **no** | **no** | pending | generic only | yes | pending | pending |
 
 
 ## Runtime control audit
@@ -33,6 +35,20 @@ Release readiness remains **blocked**. Hosted artifact cells remain pending unti
 | two-worker race | loser receives typed retry without handler mutation |
 | tenant isolation | deterministic scoped IDs and scope-bound claims/plans/results |
 | secret leakage | CLI summary contains identifiers/status only; raw idempotency keys are not persisted |
+
+## Fail-closed gate tracker
+
+| Gate | Status |
+|---|---|
+| typed plan completeness | partial; manual and proposal targets are complete, dependency/lifecycle remain gated |
+| synchronous checkpoints/result/history/state completion | pending coordinator wiring |
+| pending retry delegation | pending for mutation entry points |
+| claim renewal | implemented at bounded terminal phases; dependency phase renewal pending |
+| attempt counting / retry backoff | claimed-generation counting implemented; durable retry scheduling pending |
+| stale-worker fencing | repository claim ownership is checked before checkpoint and terminal state writes |
+| terminal applied/superseded/failed history | implemented for reconciliation outcomes |
+| two-worker recovery / tenant isolation | unit coverage present; full Elasticsearch matrix pending |
+| CLI execution / secret leakage | typed redacted output and documented exit codes implemented; hosted proof pending |
 
 The next milestone is Data Product APIs, Product 360, browser/security, and final hosted core certification.
 

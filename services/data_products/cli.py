@@ -23,6 +23,7 @@ def parser() -> argparse.ArgumentParser:
         command.add_argument("--worker-id", required=True)
         command.add_argument("--json", action="store_true")
         command.add_argument("--claim-ttl-seconds", type=int, default=30)
+        command.add_argument("--claim-renewal-window-seconds", type=int, default=10)
         command.add_argument("--max-attempts", type=int, default=5)
         if name == "reconcile":
             command.add_argument("--limit", type=int, default=100)
@@ -49,6 +50,7 @@ def main(argv: list[str] | None = None) -> int:
         repository,
         worker_id=args.worker_id,
         claim_ttl_seconds=args.claim_ttl_seconds,
+        claim_renewal_window_seconds=args.claim_renewal_window_seconds,
         max_attempts=args.max_attempts,
     )
     if interrupted:
@@ -61,12 +63,22 @@ def main(argv: list[str] | None = None) -> int:
         retry = result["retry"]
     else:
         outcome = service.reconcile_operation(args.tenant, args.environment, args.operation_id)
-        result = {"operation_id": args.operation_id, "outcome": outcome}
-        failed = int(outcome == "failed")
-        retry = int(outcome == "retry")
+        result = {
+            "operation_id": outcome.operation_id,
+            "operation_kind": outcome.operation_kind,
+            "status": outcome.status,
+            "recovered": outcome.recovered,
+            "retryable": outcome.retryable,
+            "attempt_count": outcome.attempt_count,
+            "claim_generation": outcome.claim_generation,
+            "last_checkpoint": outcome.last_checkpoint,
+            "error_code": outcome.error_code,
+            "retry_after_seconds": outcome.retry_after_seconds,
+        }
+        failed = int(outcome.status in {"failed", "superseded"})
+        retry = int(outcome.status == "retry")
     print(json.dumps(result, sort_keys=True) if args.json else result)
-    # 0 terminal success, 2 retry-only/interrupted, 1 unrecoverable failure.
-    return 1 if failed else 2 if retry else 0
+    return 4 if failed else 3 if retry else 0
 
 
 if __name__ == "__main__":

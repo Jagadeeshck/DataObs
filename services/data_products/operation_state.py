@@ -7,6 +7,34 @@ from datetime import datetime
 from typing import Any, Literal, Mapping
 
 OperationOutcome = Literal["pending", "claimed", "checkpoint", "applied", "superseded", "failed"]
+ReconciliationStatus = Literal["applied", "superseded", "failed", "retry", "missing", "already_terminal"]
+
+
+@dataclass(frozen=True)
+class DataProductOperationReconciliationResult:
+    """Stable, redaction-safe result returned by the reconciliation runtime."""
+
+    operation_id: str
+    operation_kind: str | None
+    status: ReconciliationStatus
+    replayed: bool
+    recovered: bool
+    retryable: bool
+    attempt_count: int
+    claim_generation: int
+    last_checkpoint: str | None = None
+    result_reference: str | None = None
+    error_code: str | None = None
+    retry_after_seconds: int | None = None
+
+    # Preserve compatibility for callers that historically compared the service
+    # result with a status string, while making new callers consume typed fields.
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, str):
+            return self.status == other
+        if not isinstance(other, DataProductOperationReconciliationResult):
+            return NotImplemented
+        return self.__dict__ == other.__dict__
 
 
 @dataclass(frozen=True)

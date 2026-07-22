@@ -30,6 +30,7 @@ def main() -> int:
         "commit_sha": os.getenv("GITHUB_SHA")
         or subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
         "workflow_run_id": run_id,
+        "workflow_name": os.getenv("GITHUB_WORKFLOW", "Data Product reconciliation certification"),
         "workflow_run_url": (
             f"{os.getenv('GITHUB_SERVER_URL', 'https://github.com')}/"
             f"{os.getenv('GITHUB_REPOSITORY', 'Jagadeeshck/DataObs')}/actions/runs/{run_id}"
@@ -37,6 +38,8 @@ def main() -> int:
             else None
         ),
         "jobs": json.loads(os.getenv("CERTIFICATION_JOB_RESULTS", "{}")),
+        "retention_days": int(os.getenv("CERTIFICATION_RETENTION_DAYS", "30")),
+        "review_threads": ["PR-127-P1", "PR-125-P1", "PR-118-P1"],
         "started_at": os.getenv("CERTIFICATION_STARTED_AT", now),
         "completed_at": now,
         "versions": {

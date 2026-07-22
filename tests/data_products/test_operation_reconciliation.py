@@ -122,11 +122,33 @@ def test_plan_result_payload_is_not_false_projection_evidence() -> None:
 
     assert (
         DataProductOperationService(repository, worker_id="worker").reconcile_operation("tenant", "prod", "recover-me")
-        == "retry"
+        == "failed"
     )
     completed = repository.get_operation_state("tenant", "prod", "recover-me")
-    assert completed.status == "claimed"
+    assert completed.status == "failed"
     assert repository.load_operation_result("tenant", "prod", "product", "recover-me") is None
+
+
+def test_typed_missing_result_does_not_disclose_worker() -> None:
+    result = DataProductOperationService(MemoryDataProductRepository(), worker_id="secret-worker").reconcile_operation(
+        "tenant", "prod", "missing"
+    )
+    assert result.status == "missing"
+    assert result.operation_kind is None
+    assert "secret-worker" not in repr(result)
+
+
+def test_attempt_limit_uses_claimed_attempt_without_off_by_one() -> None:
+    repository = MemoryDataProductRepository()
+    initial = state("exhausted")
+    initial = initial.__class__(**{**initial.__dict__, "attempt_count": 0})
+    repository.add_operation_state(initial)
+    result = DataProductOperationService(repository, worker_id="worker", max_attempts=1).reconcile_operation(
+        "tenant", "prod", "exhausted"
+    )
+    assert result.status == "failed"
+    assert result.attempt_count == 1
+    assert result.error_code == "reconciliation_attempts_exhausted"
 
 
 def test_registry_has_distinct_concrete_handlers() -> None:

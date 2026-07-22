@@ -151,6 +151,7 @@ class DataProductMembershipService:
                 "expected_revision": None,
                 "expected_etag": None,
                 "pending_event_id": pending.decision_id,
+                "membership_target": member.model_dump(mode="json"),
             },
         )
         created = self.repository.create_membership(tenant_id, environment, member)
@@ -416,11 +417,64 @@ class DataProductMembershipService:
         membership_id = None
         pending = mutation.event(outcome="pending", proposal_id=proposal_id)
         self.repository.append_membership_decision(tenant_id, environment, product_id, pending)
+        planned_at = utc_now()
+        membership_id = (
+            self._identity(product_id, proposal.entity_type, proposal.entity_id) if action == "accept" else None
+        )
+        membership_target = None
+        if membership_id is not None:
+            membership_target = {
+                "membership_id": membership_id,
+                "product_id": product_id,
+                "tenant_id": tenant_id,
+                "environment": environment,
+                "entity_id": proposal.entity_id,
+                "entity_type": proposal.entity_type,
+                "source": "proposal",
+                "proposal_id": proposal_id,
+                "evidence_refs": tuple(proposal.evidence_refs),
+                "confidence": proposal.confidence,
+                "source_coverage": proposal.source_coverage,
+                "observed_at": proposal.observed_at,
+                "created_at": planned_at,
+                "updated_at": planned_at,
+                "created_by": actor,
+                "revision": 1,
+                "etag": sha256(f"{membership_id}:1".encode()).hexdigest(),
+                "state": "active",
+            }
+        persist_pending_operation(
+            self.repository,
+            tenant_id=tenant_id,
+            environment=environment,
+            product_id=product_id,
+            operation_id=mutation.operation_id,
+            operation_kind=f"proposal_{action}",
+            idempotency_record_id=record_id,
+            created_at=pending.occurred_at,
+            payload={
+                "request_fingerprint": mutation.fingerprint,
+                "actor": actor,
+                "reason": reason,
+                "action": action,
+                "proposal_id": proposal_id,
+                "proposal_revision": expected_revision,
+                "expected_revision": expected_revision,
+                "expected_source_state": "proposed",
+                "target_proposal_state": {
+                    "accept": "accepted",
+                    "reject": "rejected",
+                    "expire": "expired",
+                    "supersede": "superseded",
+                }[action],
+                "membership_id": membership_id,
+                "membership_target": membership_target,
+                "pending_event_id": pending.decision_id,
+            },
+        )
         if action == "accept":
-            membership_id = self._identity(product_id, proposal.entity_type, proposal.entity_id)
             membership = self.repository.get_membership(tenant_id, environment, product_id, membership_id)
             if membership is None:
-                now = utc_now()
                 membership = self.repository.create_membership(
                     tenant_id,
                     environment,
@@ -437,8 +491,8 @@ class DataProductMembershipService:
                         confidence=proposal.confidence,
                         source_coverage=proposal.source_coverage,
                         observed_at=proposal.observed_at,
-                        created_at=now,
-                        updated_at=now,
+                        created_at=planned_at,
+                        updated_at=planned_at,
                         created_by=actor,
                         etag=sha256(f"{membership_id}:1".encode()).hexdigest(),
                     ),
@@ -529,6 +583,34 @@ class DataProductMembershipService:
             )
         pending = mutation.event(outcome="pending", membership_id=membership_id)
         self.repository.append_membership_decision(tenant_id, environment, product_id, pending)
+        current = self.repository.get_membership(tenant_id, environment, product_id, membership_id)
+        if current is None:
+            raise KeyError(membership_id)
+        target_revision = current.revision + 1
+        target_etag = sha256(f"{current.etag}:excluded".encode()).hexdigest()
+        persist_pending_operation(
+            self.repository,
+            tenant_id=tenant_id,
+            environment=environment,
+            product_id=product_id,
+            operation_id=mutation.operation_id,
+            operation_kind="membership_exclude",
+            idempotency_record_id=record_id,
+            created_at=pending.occurred_at,
+            payload={
+                "request_fingerprint": mutation.fingerprint,
+                "actor": actor,
+                "reason": reason,
+                "action": "exclude",
+                "membership_id": membership_id,
+                "expected_revision": current.revision,
+                "expected_etag": expected_etag,
+                "target_state": "excluded",
+                "target_revision": target_revision,
+                "target_etag": target_etag,
+                "pending_event_id": pending.decision_id,
+            },
+        )
         result = self.repository.exclude_membership(
             tenant_id, environment, product_id, membership_id, actor=actor, reason=reason, expected_etag=expected_etag
         )

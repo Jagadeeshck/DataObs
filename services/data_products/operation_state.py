@@ -1,0 +1,98 @@
+"""Immutable operation history and OCC-controlled reconciliation state."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, replace
+from datetime import datetime
+from typing import Literal
+
+OperationOutcome = Literal["pending", "claimed", "checkpoint", "applied", "superseded", "failed"]
+
+
+@dataclass(frozen=True)
+class DataProductOperationHistoryEvent:
+    event_id: str
+    operation_id: str
+    tenant_id: str
+    environment: str
+    product_id: str
+    operation_kind: str
+    action: str
+    outcome: OperationOutcome
+    actor: str
+    reason: str
+    request_fingerprint: str
+    occurred_at: datetime
+    expected_revision: int | None = None
+    expected_etag: str | None = None
+    result_revision: int | None = None
+    result_etag: str | None = None
+    plan_checksum: str | None = None
+    result_checksum: str | None = None
+    error_code: str | None = None
+    worker_id: str | None = None
+    applied_at: datetime | None = None
+    schema_version: str = "v1"
+
+
+@dataclass(frozen=True)
+class DataProductOperationCheckpoint:
+    name: str
+    checksum: str
+    occurred_at: datetime
+
+
+@dataclass(frozen=True)
+class DataProductOperationClaim:
+    operation_id: str
+    owner: str
+    generation: int
+    claimed_at: datetime
+    expires_at: datetime
+
+
+@dataclass(frozen=True)
+class DataProductOperationFinalResult:
+    revision: int
+    etag: str
+    checksum: str
+    applied_at: datetime
+
+
+@dataclass(frozen=True)
+class DataProductOperationState:
+    operation_id: str
+    tenant_id: str
+    environment: str
+    product_id: str
+    operation_kind: str
+    status: Literal["pending", "claimed", "applied", "superseded", "failed"]
+    attempt_count: int
+    updated_at: datetime
+    claim_owner: str | None = None
+    claim_generation: int = 0
+    claimed_at: datetime | None = None
+    claim_expires_at: datetime | None = None
+    last_checkpoint: DataProductOperationCheckpoint | None = None
+    last_error_code: str | None = None
+    plan_reference: str | None = None
+    result_reference: str | None = None
+    seq_no: int = 0
+    primary_term: int = 1
+
+    def claimed(self, claim: DataProductOperationClaim, *, now: datetime) -> "DataProductOperationState":
+        return replace(
+            self,
+            status="claimed",
+            attempt_count=self.attempt_count + 1,
+            claim_owner=claim.owner,
+            claim_generation=claim.generation,
+            claimed_at=claim.claimed_at,
+            claim_expires_at=claim.expires_at,
+            updated_at=now,
+            seq_no=self.seq_no + 1,
+        )
+
+
+class OperationClaimConflict(RuntimeError):
+    """The caller does not own the current claim generation/CAS token."""

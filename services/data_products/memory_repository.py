@@ -26,6 +26,14 @@ from services.data_products.idempotency import (
     IdempotencyReservationResult,
     IdempotencyReservationStatus,
 )
+from services.data_products.operation_state import (
+    DataProductOperationCheckpoint,
+    DataProductOperationClaim,
+    DataProductOperationFinalResult,
+    DataProductOperationHistoryEvent,
+    DataProductOperationState,
+    OperationClaimConflict,
+)
 from services.data_products.repository import ProductVersionConflict
 
 
@@ -43,6 +51,115 @@ class MemoryDataProductRepository:
         self.dependencies: dict[tuple[str, str, str, str], DataProductDependencyProjection] = {}
         self.dependency_plans: dict[str, DataProductDependencyMutationPlan] = {}
         self.dependency_results: dict[str, DataProductDependencyOperationResult] = {}
+        self.operation_states: dict[str, DataProductOperationState] = {}
+        self.operation_history: dict[str, DataProductOperationHistoryEvent] = {}
+
+    def add_operation_state(self, state: DataProductOperationState) -> None:
+        self.operation_states[state.operation_id] = state
+
+    def get_operation_state(self, tenant_id, environment, operation_id):
+        state = self.operation_states.get(operation_id)
+        return state if state and (state.tenant_id, state.environment) == (tenant_id, environment) else None
+
+    def list_reconcilable_operations(self, tenant_id, environment, *, limit=100):
+        values = [
+            s
+            for s in self.operation_states.values()
+            if (s.tenant_id, s.environment) == (tenant_id, environment) and s.status in {"pending", "claimed"}
+        ]
+        return sorted(values, key=lambda s: (s.updated_at, s.operation_id))[:limit]
+
+    def claim_operation(
+        self,
+        tenant_id,
+        environment,
+        operation_id,
+        *,
+        worker_id,
+        now,
+        expires_at,
+        expected_seq_no,
+        expected_primary_term,
+    ):
+        state = self.get_operation_state(tenant_id, environment, operation_id)
+        if state is None:
+            raise KeyError(operation_id)
+        if (state.seq_no, state.primary_term) != (expected_seq_no, expected_primary_term):
+            raise OperationClaimConflict("operation_claim_conflict")
+        if state.claim_expires_at and state.claim_expires_at > now and state.claim_owner != worker_id:
+            raise OperationClaimConflict("operation_already_claimed")
+        claim = DataProductOperationClaim(operation_id, worker_id, state.claim_generation + 1, now, expires_at)
+        self.operation_states[operation_id] = state.claimed(claim, now=now)
+        return claim
+
+    def _owned_state(self, claim):
+        state = self.operation_states.get(claim.operation_id)
+        if state is None or (state.claim_owner, state.claim_generation) != (claim.owner, claim.generation):
+            raise OperationClaimConflict("stale_operation_claim")
+        return state
+
+    def renew_operation_claim(self, claim, *, expires_at):
+        from dataclasses import replace
+
+        state = self._owned_state(claim)
+        renewed = replace(claim, expires_at=expires_at)
+        self.operation_states[claim.operation_id] = replace(state, claim_expires_at=expires_at, seq_no=state.seq_no + 1)
+        return renewed
+
+    def checkpoint_operation(self, claim, checkpoint: DataProductOperationCheckpoint):
+        from dataclasses import replace
+
+        state = self._owned_state(claim)
+        self.operation_states[claim.operation_id] = replace(
+            state, last_checkpoint=checkpoint, updated_at=checkpoint.occurred_at, seq_no=state.seq_no + 1
+        )
+
+    def _finalize_state(self, claim, status, *, result=None, error_code=None):
+        from dataclasses import replace
+
+        state = self._owned_state(claim)
+        when = result.applied_at if result else state.updated_at
+        self.operation_states[claim.operation_id] = replace(
+            state,
+            status=status,
+            result_reference=result.checksum if result else state.result_reference,
+            last_error_code=error_code,
+            claim_owner=None,
+            claim_expires_at=None,
+            updated_at=when,
+            seq_no=state.seq_no + 1,
+        )
+
+    def complete_operation(self, claim, result: DataProductOperationFinalResult):
+        self._finalize_state(claim, "applied", result=result)
+
+    def supersede_operation(self, claim, *, error_code):
+        self._finalize_state(claim, "superseded", error_code=error_code)
+
+    def fail_operation(self, claim, *, error_code):
+        self._finalize_state(claim, "failed", error_code=error_code)
+
+    def append_operation_history(self, event: DataProductOperationHistoryEvent):
+        existing = self.operation_history.get(event.event_id)
+        if existing is not None and existing != event:
+            raise ProductConsistencyError("divergent immutable operation history")
+        self.operation_history[event.event_id] = event
+
+    def get_operation_history(self, tenant_id, environment, operation_id, *, limit=100):
+        values = [
+            e
+            for e in self.operation_history.values()
+            if (e.tenant_id, e.environment, e.operation_id) == (tenant_id, environment, operation_id)
+        ]
+        return sorted(values, key=lambda e: (e.occurred_at, e.event_id))[:limit]
+
+    def repair_idempotency_completion(self, record_id, result):
+        self.complete_idempotency(
+            record_id,
+            operation_id=self.idempotency[record_id].operation_id or "",
+            revision=result.revision,
+            etag=result.etag,
+        )
 
     def reserve_idempotency(self, record_id: str, record: DataProductIdempotencyRecord) -> IdempotencyReservationResult:
         existing = self.idempotency.get(record_id)

@@ -179,13 +179,23 @@ class ProposalDecisionReconciliationHandler(ProjectionAwareHandler):
             # Proposals expose proposal_revision and state, not a generic
             # revision or ETag.  The decision identifier is deterministic so
             # this result remains stable through crash recovery and takeover.
+            pending = repository.get_membership_decision(
+                state.tenant_id,
+                state.environment,
+                state.product_id,
+                str(payload.get("pending_event_id", "")),
+            )
+            if pending is None or pending.operation_id != state.operation_id or pending.outcome != "pending":
+                raise OperationConsistencyError("proposal_pending_evidence_missing")
             final = {
                 "proposal_id": proposal.proposal_id,
                 "proposal_revision": proposal.proposal_revision,
                 "proposal_state": proposal.state,
                 "decision_id": sha256(f"{state.operation_id}:applied".encode()).hexdigest(),
                 "operation_id": state.operation_id,
-                "applied_at": utc_now().isoformat(),
+                # Reconstruction must never sample the clock.  The pending
+                # decision is immutable durable intent shared by every worker.
+                "applied_at": pending.occurred_at.isoformat(),
             }
         return OperationReconciliationOutcome("applied", "proposal_projection_verified", final)
 
@@ -336,6 +346,34 @@ class OperationReconciliationRegistry:
 
 def _checksum(payload: Mapping[str, Any]) -> str:
     return sha256(json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str).encode()).hexdigest()
+
+
+_NON_ACCEPT_PROPOSAL_KINDS = frozenset({"proposal_reject", "proposal_expire", "proposal_supersede"})
+
+
+def decode_final_result(
+    operation_kind: str, result: DataProductOperationResultEnvelope
+) -> DataProductOperationFinalResult:
+    """Decode immutable operation evidence using its operation-specific schema.
+
+    Non-accept proposal results intentionally have no membership ETag.  Their
+    canonical result checksum is the decision evidence token, which also makes
+    terminal replay validate the exact immutable payload rather than mutable
+    proposal state.
+    """
+    if _checksum(result.payload) != result.checksum:
+        raise OperationConsistencyError("operation_result_mismatch")
+    if operation_kind in _NON_ACCEPT_PROPOSAL_KINDS:
+        revision = result.payload.get("proposal_revision")
+        etag = result.payload.get("decision_token", result.checksum)
+    else:
+        revision = result.payload.get("revision")
+        etag = result.payload.get("etag")
+    if not isinstance(revision, int) or isinstance(revision, bool) or revision < 0:
+        raise OperationConsistencyError("operation_result_schema_mismatch")
+    if not isinstance(etag, str) or not etag:
+        raise OperationConsistencyError("operation_result_schema_mismatch")
+    return DataProductOperationFinalResult(revision, etag, result.reference, result.created_at)
 
 
 def _terminal_semantics(event: DataProductOperationHistoryEvent) -> tuple[Any, ...]:
@@ -555,10 +593,6 @@ class DataProductOperationService:
             if outcome.status == "applied":
                 payload = outcome.final_result or {}
                 checksum = _checksum(payload)
-                result_revision = int(payload.get("revision", payload.get("proposal_revision", 0)))
-                # Non-accept proposal results have no ETag.  Bind generic
-                # evidence to their canonical result checksum instead.
-                result_etag = str(payload.get("etag", checksum))
                 result = self.repository.load_operation_result(tenant_id, environment, claimed.product_id, operation_id)
                 if result is not None:
                     if result.checksum != checksum or dict(result.payload) != dict(payload):
@@ -574,6 +608,9 @@ class DataProductOperationService:
                         payload,
                         utc_now(),
                     )
+                decoded = decode_final_result(claimed.operation_kind, result)
+                result_revision = decoded.revision
+                result_etag = decoded.etag
                 # Ownership is checked immediately before each owner-sensitive
                 # terminal boundary. An immutable result may be replayed, but a
                 # stale generation can never author terminal evidence or state.
@@ -611,12 +648,7 @@ class DataProductOperationService:
                     self.repository.append_operation_history(terminal)
                 elif _terminal_semantics(existing_terminal) != _terminal_semantics(terminal):
                     raise OperationConsistencyError("terminal_history_mismatch")
-                final_result = DataProductOperationFinalResult(
-                    result_revision,
-                    result_etag,
-                    result.reference,
-                    result.created_at,
-                )
+                final_result = decoded
                 if claimed.idempotency_record_id:
                     self.repository.repair_idempotency_terminal(
                         claimed.idempotency_record_id,
@@ -709,12 +741,7 @@ class DataProductOperationService:
             )
             if result is None or result.reference != state.result_reference or result.checksum != event.result_checksum:
                 raise OperationConsistencyError("operation_result_mismatch")
-            evidence: DataProductOperationFinalResult | str = DataProductOperationFinalResult(
-                int(result.payload.get("revision", 0)),
-                str(result.payload.get("etag", "")),
-                result.reference,
-                result.created_at,
-            )
+            evidence: DataProductOperationFinalResult | str = decode_final_result(state.operation_kind, result)
             outcome = "completed"
         else:
             evidence = event.error_code or state.last_error_code or f"reconciliation_{state.status}"

@@ -10,6 +10,7 @@ from services.data_products.operation_state import (
     DataProductOperationFinalResult,
     DataProductOperationHistoryEvent,
     DataProductOperationPlan,
+    DataProductOperationResultEnvelope,
     DataProductOperationState,
     OperationClaimConflict,
 )
@@ -19,6 +20,7 @@ from services.data_products.reconciliation import (
     OperationReconciliationRegistry,
     _checksum,
     _terminal_semantics,
+    decode_final_result,
 )
 
 
@@ -294,3 +296,50 @@ def test_legacy_worker_id_is_not_canonical_business_evidence() -> None:
     )
     assert _terminal_semantics(event) == _terminal_semantics(replace(event, worker_id=None))
     assert _terminal_semantics(event) != _terminal_semantics(replace(event, reason="poisoned"))
+
+
+@pytest.mark.parametrize("operation_kind", ["proposal_reject", "proposal_expire", "proposal_supersede"])
+def test_non_accept_proposal_result_decoder_uses_typed_schema(operation_kind: str) -> None:
+    created_at = utc_now()
+    payload = {
+        "proposal_id": "proposal",
+        "proposal_revision": 7,
+        "proposal_state": operation_kind.removeprefix("proposal_") + "d",
+        "decision_id": "decision",
+        "operation_id": "operation",
+        "applied_at": created_at.isoformat(),
+    }
+    checksum = _checksum(payload)
+    envelope = DataProductOperationResultEnvelope(
+        f"result:operation:{checksum}",
+        "tenant",
+        "prod",
+        "product",
+        "operation",
+        checksum,
+        payload,
+        created_at,
+    )
+
+    decoded = decode_final_result(operation_kind, envelope)
+
+    assert decoded.revision == 7
+    assert decoded.etag == checksum
+    assert decoded.applied_at == created_at
+
+
+def test_final_result_decoder_rejects_divergent_immutable_payload() -> None:
+    created_at = utc_now()
+    envelope = DataProductOperationResultEnvelope(
+        "result:operation:poisoned",
+        "tenant",
+        "prod",
+        "product",
+        "operation",
+        "not-the-payload-checksum",
+        {"proposal_revision": 1},
+        created_at,
+    )
+
+    with pytest.raises(RuntimeError, match="operation_result_mismatch"):
+        decode_final_result("proposal_reject", envelope)

@@ -1,5 +1,7 @@
 # Data Product reconciliation runtime closure
 
+> PR #138 fixed proposal field access, legacy-worker comparison and idempotency binding only. It did not wire mutation services to the shared coordinator, complete dependency/lifecycle repair, implement the real Elasticsearch/security fault matrix, or produce hosted evidence. This PR closes the runtime and certification gate.
+
 > PR #137 added claim-fenced handler mechanics and partial proposal/exclusion repair, but mutation services were not wired to the coordinator, dependency and lifecycle recovery remained incomplete, two P1 defects were introduced, and real Elasticsearch/security/hosted certification remained absent. This PR closes the reconciliation runtime and evidence gate.
 
 > PR #136 added an authoritative service, terminal idempotency contracts and coordinator scaffolding only. The mutation services and concrete handlers still did not apply most missing projections, normal success paths still left generic state pending, and real Elasticsearch/security/hosted certification remained absent. This PR implements and proves the repair runtime.
@@ -62,6 +64,8 @@ Release readiness remains **blocked**. Hosted artifact cells remain pending unti
 | dependency >1,000 edge completeness | one bounded page can truncate evidence | verify complete durable snapshot | pending | pending | pending | pending |
 | state/history/plan/result discrimination | envelope post-filtering can starve results | discriminate in Elasticsearch before size/limit | partial | pending | pending | pending |
 | hosted manifest and review-thread closure | no retained hosted proof | resolve only from successful retained workflow evidence | n/a | pending | pending | pending |
+| deterministic proposal result | recovery sampled a new clock value | derive `applied_at` from immutable pending decision evidence | covered | pending | pending | pending |
+| proposal terminal revisit decoding | replay assumed generic revision/ETag fields | decode by operation kind and bind non-accept decisions to the result checksum | covered | pending | pending | pending |
 
 | Operation kind | Plan created before mutation? | State created before mutation? | Handler can create missing projection? | Handler can repair terminal evidence? | Handler can repair result/state/idempotency? | Real ES fault matrix | Hosted artifact |
 |---|---|---|---|---|---|---|---|

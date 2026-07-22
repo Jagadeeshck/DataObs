@@ -419,6 +419,25 @@ class DataProductMembershipService:
             return DataProductProposalDecisionResult(
                 proposal, membership, reserved.operation_id or mutation.operation_id, True, (terminal.decision_id,)
             )
+        # A retry belongs to the already durable operation.  Reconcile it
+        # before consulting mutable proposal state, which may already reflect
+        # the transition whose response/finalization was lost.
+        if reserved.state == "pending" and reserved.operation_id:
+            outcome = self.coordinator.reconcile_pending(tenant_id, environment, reserved.operation_id)
+            if outcome.status != "applied":
+                raise ProductConsistencyError(outcome.error_code or f"operation_{outcome.status}")
+            proposal = self.repository.get_membership_proposal(tenant_id, environment, product_id, proposal_id)
+            if proposal is None:
+                raise ProductConsistencyError("proposal_result_inconsistent")
+            membership = None
+            if action == "accept":
+                membership = self.repository.get_membership(
+                    tenant_id,
+                    environment,
+                    product_id,
+                    self._identity(product_id, proposal.entity_type, proposal.entity_id),
+                )
+            return DataProductProposalDecisionResult(proposal, membership, reserved.operation_id, True)
         proposal = self.repository.get_membership_proposal(tenant_id, environment, product_id, proposal_id)
         if proposal is None:
             raise KeyError(proposal_id)

@@ -32,7 +32,7 @@ def _product(tenant: str = "tenant-a") -> DataProduct:
 
 
 def test_0015_is_forward_only_and_writer_mappings_are_explicit():
-    migration = migrations()[-2]
+    migration = next(value for value in migrations() if value.migration_id == "0015_data_product_360_productization")
     assert migration.migration_id == "0015_data_product_360_productization"
     assert migration.dependencies == ["0014_data_product_360_completion"]
     assert not migration.operations.get("mutable_indices")

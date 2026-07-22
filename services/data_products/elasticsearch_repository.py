@@ -101,6 +101,10 @@ class ElasticsearchDataProductRepository:
             "action": state.operation_kind,
             "outcome": state.status,
             "occurred_at": state.updated_at.isoformat(),
+            # `document` is flattened and therefore cannot provide date range
+            # semantics.  Keep the compatibility copy in the envelope while
+            # querying this strictly mapped value.
+            "next_attempt_at": state.next_attempt_at.isoformat() if state.next_attempt_at else None,
             "document": document,
         }
 
@@ -150,6 +154,8 @@ class ElasticsearchDataProductRepository:
     ):
         if not 1 <= limit <= 200:
             raise ValueError("limit outside bounds")
+        now = datetime.now(timezone.utc)
+        query_instant = now.isoformat()
         filters: list[dict[str, Any]] = [
             {"term": {"tenant_id": tenant_id}},
             {"term": {"environment": environment}},
@@ -158,7 +164,7 @@ class ElasticsearchDataProductRepository:
                 "bool": {
                     "should": [
                         {"term": {"outcome": "pending"}},
-                        {"range": {"document.claim_expires_at": {"lte": "now"}}},
+                        {"range": {"document.claim_expires_at": {"lte": query_instant}}},
                     ],
                     "minimum_should_match": 1,
                 }
@@ -167,8 +173,8 @@ class ElasticsearchDataProductRepository:
             {
                 "bool": {
                     "should": [
-                        {"bool": {"must_not": {"exists": {"field": "document.next_attempt_at"}}}},
-                        {"range": {"document.next_attempt_at": {"lte": "now"}}},
+                        {"bool": {"must_not": {"exists": {"field": "next_attempt_at"}}}},
+                        {"range": {"next_attempt_at": {"lte": query_instant}}},
                     ],
                     "minimum_should_match": 1,
                 }

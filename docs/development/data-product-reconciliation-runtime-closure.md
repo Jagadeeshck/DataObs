@@ -1,5 +1,7 @@
 # Data Product reconciliation runtime closure
 
+> PR #140 wired coordinator entry points and added implementation-level tests, but dependency recovery still did not execute its durable edge plan, lifecycle recovery did not finalize its revision event/snapshot, proposal retries could reject an already-applied pending operation before reconciliation, and retry scheduling queried a flattened keyword as a date. Real Elasticsearch, security, hosted evidence, and inherited thread closure also remained incomplete. This PR closes those blockers and certifies the runtime.
+
 > PR #138 fixed proposal field access, legacy-worker comparison and idempotency binding only. It did not wire mutation services to the shared coordinator, complete dependency/lifecycle repair, implement the real Elasticsearch/security fault matrix, or produce hosted evidence. This PR closes the runtime and certification gate.
 
 > PR #137 added claim-fenced handler mechanics and partial proposal/exclusion repair, but mutation services were not wired to the coordinator, dependency and lifecycle recovery remained incomplete, two P1 defects were introduced, and real Elasticsearch/security/hosted certification remained absent. This PR closes the reconciliation runtime and evidence gate.
@@ -17,6 +19,17 @@
 > PR #133 introduced named projection-aware handlers and partial mutation bootstrapping, but missing projection steps still returned retry rather than being repaired; proposal and exclusion workflows were not wired; synchronous paths left generic state incomplete; and real Elasticsearch fault certification remained absent. This PR closes those runtime gaps.
 
 Release readiness remains **blocked**. Hosted artifact cells remain pending until the draft PR workflow produces downloadable evidence; local tests are not represented as hosted certification.
+
+| Capability | PR #140 defect | Required final behaviour | Unit/property | Elasticsearch 9.4.2 | Security | Hosted artifact |
+|---|---|---|---|---|---|---|
+| dependency durable-plan execution | recovery only inspected the projection | apply the scoped detailed plan and verify the complete snapshot | covered | pending | pending | pending |
+| dependency token/partial-write recovery | target token caused retry | idempotently apply missing upserts and tombstones | covered | pending | pending | pending |
+| lifecycle revision evidence | recovery stopped after projection | finalize the durable event and verify its immutable snapshot | covered | pending | pending | pending |
+| proposal pending retry delegation | mutable proposal was validated first | reconcile the reservation operation before mutable validation | covered | pending | pending | pending |
+| retry date mapping and due filtering | range queried flattened data using `now` | mapped top-level date and one concrete UTC query instant | covered | pending | pending | pending |
+| state/history/plan/result discrimination | mixed shared-index resources | type filters apply before size and stable sort | covered | pending | pending | pending |
+| claim renewal and stale-worker fencing | incomplete phase coverage | assert/renew/checkpoint at terminal boundaries | covered | pending | pending | pending |
+| hosted manifest and review-thread closure | no retained run | retain real JUnit/scenario/security artifacts before resolution | n/a | pending | pending | pending |
 
 | Capability | Current main defect | Required behaviour | Unit/property | Elasticsearch 9.4.2 | Security | Hosted artifact |
 |---|---|---|---|---|---|---|

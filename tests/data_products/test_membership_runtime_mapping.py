@@ -18,9 +18,9 @@ from packages.elastic_store.manifest import (
 )
 
 
-def test_0016_is_forward_only_resource_specific_and_last():
+def test_0016_is_forward_only_resource_specific():
     migration = DATA_PRODUCT_MEMBERSHIP_DEPENDENCY_RUNTIME_MIGRATION
-    assert migrations()[-1] is migration
+    assert migration in migrations()
     assert migration.migration_id == "0016_data_product_membership_dependency_runtime"
     assert migration.dependencies == ["0015_data_product_360_productization"]
     assert not migration.operations.get("mutable_indices")

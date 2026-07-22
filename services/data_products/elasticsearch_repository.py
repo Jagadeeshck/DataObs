@@ -1417,6 +1417,19 @@ class ElasticsearchDataProductRepository:
                     raise ProductVersionConflict("concurrent dependency update") from exc
         return self.list_dependencies(tenant_id, environment, product_id, limit=max(1, min(200, len(targets))))
 
+    def apply_dependency_upsert_chunk(self, tenant_id, environment, product_id, edges):
+        self._apply_dependency_chunk(tenant_id, environment, product_id, edges)
+
+    def apply_dependency_tombstone_chunk(self, tenant_id, environment, product_id, edges):
+        self._apply_dependency_chunk(tenant_id, environment, product_id, edges)
+
+    def _apply_dependency_chunk(self, tenant_id, environment, product_id, edges):
+        from types import SimpleNamespace
+
+        self.apply_dependency_mutation_plan(
+            tenant_id, environment, product_id, SimpleNamespace(upserts=tuple(edges), tombstones=())
+        )
+
     def list_dependencies(
         self,
         tenant_id: str,

@@ -259,55 +259,16 @@ class DataProductDependencyService:
                 "target_product_etag": next_product.etag,
                 "graph_version": graph_version,
                 "upstream_product_ids": canonical,
+                "before_checksum": self._snapshot_checksum(snapshot.dependencies),
             },
-        )
-        self.repository.update_product(next_product, expected_etag=expected_etag)  # serialization token
-        self.repository.apply_dependency_mutation_plan(tenant_id, environment, product_id, plan)
-        self.repository.finish_operation(event.model_copy(update={"outcome": "applied", "applied_at": utc_now()}))
-        active = self.read_and_verify_complete_dependency_result(tenant_id, environment, product_id, plan)
-        applied_at = utc_now()
-        operation = DataProductDependencyOperation(
-            operation_id=operation_id,
-            tenant_id=tenant_id,
-            environment=environment,
-            product_id=product_id,
-            actor=actor.strip(),
-            reason=reason.strip(),
-            request_fingerprint=fingerprint,
-            idempotency_key_hash=sha256(idempotency_key.encode()).hexdigest(),
-            expected_product_revision=product.revision,
-            expected_product_etag=expected_etag,
-            before_graph_version=plan.before_graph_version,
-            after_graph_version=graph_version,
-            before_checksum=self._snapshot_checksum(snapshot.dependencies),
-            after_checksum=self._snapshot_checksum((*active, *tombstones)),
-            outcome="applied",
-            occurred_at=now,
-        )
-        self.repository.save_dependency_operation_result(
-            DataProductDependencyOperationResult(
-                operation=operation,
-                operation_result_product=next_product.model_copy(deep=True),
-                result_product_revision=next_product.revision,
-                result_product_etag=next_product.etag,
-                applied_at=applied_at,
-                result_definition_checksum=definition_checksum(next_product),
-                result_graph_version=graph_version,
-                active_dependencies=active,
-                active_dependency_checksums=tuple(self._edge_checksum(edge) for edge in active),
-                removed_dependency_ids=tuple(edge.upstream_product_id for edge in tombstones),
-                upserted_count=len(upserts),
-                removed_count=len(tombstones),
-                warnings=warnings,
-                request_fingerprint=fingerprint,
-            )
         )
         outcome = self.coordinator.reconcile_pending(tenant_id, environment, operation_id)
         if outcome.status != "applied":
             raise DependencyOperationPending(operation_id)
+        immutable = self.repository.get_dependency_operation_result(tenant_id, environment, product_id, operation_id)
         return DataProductDependencyMutationResult(
-            next_product,
-            active,
+            immutable.operation_result_product,
+            immutable.active_dependencies,
             operation_id,
             False,
             warnings,
@@ -325,74 +286,3 @@ class DataProductDependencyService:
         return sha256(
             "\0".join(cls._edge_checksum(edge) for edge in sorted(edges, key=lambda e: e.upstream_product_id)).encode()
         ).hexdigest()
-
-    def recover_dependency_operation(
-        self, tenant_id: str, environment: str, product_id: str, operation_id: str, *, record_id: str
-    ) -> DataProductDependencyMutationResult:
-        loaded = self.repository.load_dependency_operation_plan(tenant_id, environment, operation_id)
-        if loaded is None:
-            raise DependencyOperationPending(operation_id)
-        event, target_product, plan = loaded
-        current = self.repository.get_product(tenant_id, environment, product_id)
-        if current is None:
-            raise DependencyOperationPending(operation_id)
-        if current.etag == plan.expected_product_etag:
-            self.repository.update_product(target_product, expected_etag=plan.expected_product_etag)
-        elif current.etag != plan.new_product_etag or current.revision != plan.next_product_revision:
-            self.repository.supersede_idempotency(record_id, error_code="product_advanced")
-            raise DependencyResultInconsistent("dependency_result_inconsistent")
-        page = self.repository.apply_dependency_mutation_plan(tenant_id, environment, product_id, plan)
-        terminal = event.model_copy(update={"outcome": "applied", "applied_at": utc_now()})
-        self.repository.finish_operation(terminal)
-        active = tuple(
-            sorted((edge for edge in page.items if not edge.removed), key=lambda edge: edge.upstream_product_id)
-        )
-        operation = DataProductDependencyOperation(
-            operation_id=operation_id,
-            tenant_id=tenant_id,
-            environment=environment,
-            product_id=product_id,
-            actor=event.actor,
-            reason=event.reason,
-            request_fingerprint=plan.request_fingerprint,
-            idempotency_key_hash="redacted",
-            expected_product_revision=plan.current_product_revision,
-            expected_product_etag=plan.expected_product_etag,
-            before_graph_version=plan.before_graph_version,
-            after_graph_version=plan.after_graph_version,
-            before_checksum="",
-            after_checksum=self._snapshot_checksum(active),
-            outcome="applied",
-            occurred_at=event.occurred_at,
-        )
-        result = DataProductDependencyOperationResult(
-            operation=operation,
-            operation_result_product=target_product,
-            result_product_revision=target_product.revision,
-            result_product_etag=target_product.etag,
-            applied_at=terminal.applied_at or utc_now(),
-            result_definition_checksum=definition_checksum(target_product),
-            result_graph_version=plan.after_graph_version,
-            active_dependencies=active,
-            active_dependency_checksums=tuple(self._edge_checksum(edge) for edge in active),
-            removed_dependency_ids=tuple(edge.upstream_product_id for edge in plan.tombstones),
-            upserted_count=len(plan.upserts),
-            removed_count=len(plan.tombstones),
-            warnings=plan.warnings,
-            request_fingerprint=plan.request_fingerprint,
-        )
-        self.repository.save_dependency_operation_result(result)
-        self.repository.complete_idempotency(
-            record_id, operation_id=operation_id, revision=target_product.revision, etag=target_product.etag
-        )
-        return DataProductDependencyMutationResult(
-            target_product,
-            active,
-            operation_id,
-            False,
-            plan.warnings,
-            len(plan.tombstones),
-            len(plan.upserts),
-            plan.after_graph_version,
-            recovered=True,
-        )

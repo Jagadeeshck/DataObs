@@ -753,6 +753,22 @@ class MemoryDataProductRepository:
             self.dependencies[key] = edge.model_copy(deep=True)
         return self.list_dependencies(tenant_id, environment, product_id, limit=max(1, len(self.dependencies)))
 
+    def apply_dependency_upsert_chunk(self, tenant_id, environment, product_id, edges):
+        self._apply_dependency_chunk(tenant_id, environment, product_id, edges)
+
+    def apply_dependency_tombstone_chunk(self, tenant_id, environment, product_id, edges):
+        self._apply_dependency_chunk(tenant_id, environment, product_id, edges)
+
+    def _apply_dependency_chunk(self, tenant_id, environment, product_id, edges):
+        for edge in edges:
+            if (edge.tenant_id, edge.environment, edge.product_id) != (tenant_id, environment, product_id):
+                raise ValueError("dependency scope mismatch")
+            key = (tenant_id, environment, product_id, edge.upstream_product_id)
+            current = self.dependencies.get(key)
+            if current is not None and current != edge and current.product_revision >= edge.product_revision:
+                raise ValueError("dependency edge diverged")
+            self.dependencies[key] = edge.model_copy(deep=True)
+
     def list_dependencies(
         self, tenant_id: str, environment: str, product_id: str, *, limit: int = 50, search_after=None
     ) -> DataProductDependencyPage:

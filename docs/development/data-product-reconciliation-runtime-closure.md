@@ -1,5 +1,37 @@
 # Data Product reconciliation runtime closure
 
+> PR #141 added initial durable-plan execution, lifecycle revision finalization, pending-proposal delegation, and a mapped retry date. It did not create the detailed dependency result during reconciliation, remove the duplicate dependency recovery implementation, prove canonical terminal evidence, certify migration 0017 against Elasticsearch, expand the real fault matrix or security suite, or produce retained hosted evidence. This PR closes the reconciliation certification gate.
+
+The authoritative dependency path is now `DependencyReplacementReconciliationHandler` →
+`DataProductOperationService` → `RecoverableDataProductOperationCoordinator`. The endpoint
+does not contain a second recovery implementation. Repairs use 200-edge claim-fenced chunks,
+verify the complete edge and tombstone snapshot, and persist the detailed immutable result
+before generic completion. Pending event time is the canonical takeover timestamp.
+
+| Capability | Current main after PR #141 | Required final behaviour | Unit/property | Elasticsearch 9.4.2 | Security | Hosted artifact |
+|---|---|---|---|---|---|---|
+| dependency authoritative recovery | duplicate direct recovery | coordinator only | covered | pending | pending | pending |
+| dependency product token recovery | partial | OCC target or fail closed | covered | pending | pending | pending |
+| dependency partial upsert/tombstone recovery | unbounded | claim-fenced chunks | covered | pending | pending | pending |
+| dependency detailed/generic immutable result | detailed result missing | exact create-or-verify | covered | pending | pending | pending |
+| dependency terminal revision event | sampled takeover clock | immutable pending-event time | covered | pending | pending | pending |
+| dependency complete active/tombstone evidence | IDs only | checksums, counts and graph version | covered | pending | pending | pending |
+| dependency >200 / >1,000 completeness | unproved | complete bounded snapshot | covered | pending | pending | pending |
+| dependency claim renewal / stale-worker fencing | one unbounded call | renew per chunk; fence terminal writes | covered | pending | pending | pending |
+| lifecycle canonical event/revision/replay/crashes | sampled takeover clock | immutable event and revision | covered | pending | pending | pending |
+| proposal immutable replay / reservation-only recovery | mutable reconstruction | typed immutable replay | partial | pending | pending | pending |
+| manual/exclusion/dependency/lifecycle reservation-only recovery | inconsistent | deterministic bind or expiry | partial | pending | pending | pending |
+| retry migration clean/upgrade/repeat/legacy/boundaries | query-shape tests | real date-safe migration matrix | covered | pending | pending | pending |
+| operation resource discrimination | unit contract | filter kind before limit | covered | pending | pending | pending |
+| terminal result/history/idempotency/state | partial repair | create-or-canonical-verify | covered | pending | pending | pending |
+| real persistence security | memory-focused | hosted Elasticsearch matrix | partial | pending | pending | pending |
+| hosted manifest / review-thread closure | absent | retained successful evidence | n/a | pending | pending | pending |
+
+No Elasticsearch, security, or hosted cell is marked complete before a successful retained
+workflow artifact. Migrations `0001`–`0017` are released history and remain unchanged. Rollback
+means stopping reconciliation workers while retaining operation and certification evidence;
+it never deletes mapped fields or reindexes data.
+
 > PR #140 wired coordinator entry points and added implementation-level tests, but dependency recovery still did not execute its durable edge plan, lifecycle recovery did not finalize its revision event/snapshot, proposal retries could reject an already-applied pending operation before reconciliation, and retry scheduling queried a flattened keyword as a date. Real Elasticsearch, security, hosted evidence, and inherited thread closure also remained incomplete. This PR closes those blockers and certifies the runtime.
 
 > PR #138 fixed proposal field access, legacy-worker comparison and idempotency binding only. It did not wire mutation services to the shared coordinator, complete dependency/lifecycle repair, implement the real Elasticsearch/security fault matrix, or produce hosted evidence. This PR closes the runtime and certification gate.

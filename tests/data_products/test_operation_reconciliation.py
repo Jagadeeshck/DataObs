@@ -3,6 +3,7 @@ from datetime import timedelta
 import pytest
 
 from packages.domain_model.base import utc_now
+from services.data_products.idempotency import new_record
 from services.data_products.memory_repository import MemoryDataProductRepository
 from services.data_products.operation_state import (
     DataProductOperationFinalResult,
@@ -184,3 +185,33 @@ def test_operation_kind_filter_is_applied_before_limit() -> None:
     selected = repository.list_reconcilable_operations("tenant", "prod", limit=1, operation_kind="manual_membership")
 
     assert [item.operation_id for item in selected] == ["manual"]
+
+
+@pytest.mark.parametrize(
+    ("outcome", "evidence", "expected_state"),
+    [
+        ("completed", DataProductOperationFinalResult(2, "etag-2", "result", utc_now()), "completed"),
+        ("failed", "repair_failed", "failed"),
+        ("superseded", "newer_operation", "superseded"),
+    ],
+)
+def test_idempotency_terminal_repair_is_bound_and_idempotent(outcome, evidence, expected_state) -> None:
+    repository = MemoryDataProductRepository()
+    record = new_record(
+        tenant_id="tenant",
+        environment="prod",
+        product_id="product",
+        action="repair",
+        key="never-persist-this-raw-key",
+        fingerprint="fingerprint",
+    ).model_copy(update={"operation_id": "operation"})
+    repository.reserve_idempotency("record", record)
+
+    repository.repair_idempotency_terminal("record", "operation", "fingerprint", outcome, evidence)
+    repository.repair_idempotency_terminal("record", "operation", "fingerprint", outcome, evidence)
+
+    repaired = repository.get_idempotency("record")
+    assert repaired and repaired.state == expected_state
+    assert "never-persist-this-raw-key" not in repaired.model_dump_json()
+    with pytest.raises(RuntimeError, match="binding mismatch"):
+        repository.repair_idempotency_terminal("record", "substituted", "fingerprint", outcome, evidence)

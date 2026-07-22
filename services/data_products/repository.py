@@ -158,7 +158,14 @@ class DataProductRepository(Protocol):
     def load_operation_result(
         self, tenant_id: str, environment: str, product_id: str, operation_id: str
     ) -> DataProductOperationResultEnvelope | None: ...
-    def repair_idempotency_completion(self, record_id: str, result: DataProductOperationFinalResult) -> None: ...
+    def repair_idempotency_terminal(
+        self,
+        record_id: str,
+        expected_operation_id: str,
+        expected_request_fingerprint: str,
+        outcome: str,
+        final_result_or_error: DataProductOperationFinalResult | str,
+    ) -> None: ...
     def reserve_idempotency(
         self, record_id: str, record: DataProductIdempotencyRecord
     ) -> IdempotencyReservationResult: ...

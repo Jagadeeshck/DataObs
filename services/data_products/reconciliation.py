@@ -25,10 +25,25 @@ from services.data_products.operation_state import (
 from services.data_products.repository import DataProductRepository
 
 
-@dataclass(frozen=True)
+@dataclass
 class OperationReconciliationContext:
-    worker_id: str
-    now: Any
+    """Claim-fenced capabilities exposed to concrete repair handlers."""
+
+    claim: DataProductOperationClaim
+    assert_owned_callback: Callable[[DataProductOperationClaim], None]
+    renew_callback: Callable[[DataProductOperationClaim], DataProductOperationClaim]
+    checkpoint_callback: Callable[[DataProductOperationClaim, str, str], None]
+
+    def assert_owned(self) -> None:
+        self.assert_owned_callback(self.claim)
+
+    def renew_if_needed(self) -> DataProductOperationClaim:
+        self.claim = self.renew_callback(self.claim)
+        return self.claim
+
+    def checkpoint(self, name: str, checksum: str) -> None:
+        self.assert_owned()
+        self.checkpoint_callback(self.claim, name, checksum)
 
 
 @dataclass(frozen=True)
@@ -294,6 +309,39 @@ def persist_pending_operation(
     return repository.get_operation_state(tenant_id, environment, operation_id) or state
 
 
+class RecoverableDataProductOperationCoordinator:
+    """Shared entry point for durable operation creation and recovery.
+
+    Mutation services use ``begin`` before touching a projection and delegate an
+    existing pending reservation to ``reconcile_pending``. Terminal methods are
+    intentionally claim-fenced by ``DataProductOperationService``.
+    """
+
+    def __init__(self, repository: DataProductRepository, operation_service: "DataProductOperationService") -> None:
+        self.repository = repository
+        self.operation_service = operation_service
+
+    def begin(self, **operation: Any) -> DataProductOperationState:
+        return persist_pending_operation(self.repository, **operation)
+
+    def checkpoint(self, claim: DataProductOperationClaim, name: str, checksum: str) -> None:
+        self.repository.checkpoint_operation(claim, DataProductOperationCheckpoint(name, checksum, utc_now()))
+
+    def complete(self, claim: DataProductOperationClaim, result: DataProductOperationFinalResult) -> None:
+        self.repository.complete_operation(claim, result)
+
+    def fail(self, claim: DataProductOperationClaim, error_code: str) -> None:
+        self.repository.fail_operation(claim, error_code=error_code)
+
+    def supersede(self, claim: DataProductOperationClaim, error_code: str) -> None:
+        self.repository.supersede_operation(claim, error_code=error_code)
+
+    def reconcile_pending(
+        self, tenant_id: str, environment: str, operation_id: str
+    ) -> DataProductOperationReconciliationResult:
+        return self.operation_service.reconcile_operation(tenant_id, environment, operation_id)
+
+
 class DataProductOperationService:
     """Independently runnable, CAS-fenced operation reconciliation service."""
 
@@ -359,8 +407,7 @@ class DataProductOperationService:
         if state is None:
             return self._result(operation_id, "missing", None)
         if state.status in {"applied", "superseded", "failed"}:
-            # Replays preserve the durable outcome. This keeps failed and
-            # superseded exit semantics intact and makes batch accounting total.
+            self._repair_terminal_revisit(state)
             return self._result(operation_id, state.status, state)
         now = utc_now()
         try:
@@ -466,7 +513,13 @@ class DataProductOperationService:
                     result.created_at,
                 )
                 if claimed.idempotency_record_id:
-                    self.repository.repair_idempotency_completion(claimed.idempotency_record_id, final_result)
+                    self.repository.repair_idempotency_terminal(
+                        claimed.idempotency_record_id,
+                        claimed.operation_id,
+                        str(plan.payload["request_fingerprint"]),
+                        "completed",
+                        final_result,
+                    )
                 # Mutable state is deliberately last: a takeover can repair all
                 # earlier immutable/idempotency boundaries after a lost response.
                 self.repository.complete_operation(claim, final_result)
@@ -474,10 +527,26 @@ class DataProductOperationService:
                 return self._result(operation_id, "applied", final, recovered=True)
             if outcome.status == "superseded":
                 self._append_terminal_history(claimed, plan, outcome, "superseded")
+                if claimed.idempotency_record_id:
+                    self.repository.repair_idempotency_terminal(
+                        claimed.idempotency_record_id,
+                        claimed.operation_id,
+                        str(plan.payload["request_fingerprint"]),
+                        "superseded",
+                        outcome.error_code or "newer_operation",
+                    )
                 self.repository.supersede_operation(claim, error_code=outcome.error_code or "newer_operation")
                 final = self.repository.get_operation_state(tenant_id, environment, operation_id)
                 return self._result(operation_id, "superseded", final, recovered=True)
             self._append_terminal_history(claimed, plan, outcome, "failed")
+            if claimed.idempotency_record_id:
+                self.repository.repair_idempotency_terminal(
+                    claimed.idempotency_record_id,
+                    claimed.operation_id,
+                    str(plan.payload["request_fingerprint"]),
+                    "failed",
+                    outcome.error_code or "reconciliation_failed",
+                )
             self.repository.fail_operation(claim, error_code=outcome.error_code or "reconciliation_failed")
             final = self.repository.get_operation_state(tenant_id, environment, operation_id)
             return self._result(operation_id, "failed", final, recovered=True)
@@ -492,12 +561,66 @@ class DataProductOperationService:
                     OperationReconciliationOutcome("failed", error_code=exc.code),
                     "failed",
                 )
+                if claimed.idempotency_record_id:
+                    self.repository.repair_idempotency_terminal(
+                        claimed.idempotency_record_id,
+                        claimed.operation_id,
+                        str(plan.payload["request_fingerprint"]),
+                        "failed",
+                        exc.code,
+                    )
                 self.repository.fail_operation(claim, error_code=exc.code)
             except OperationClaimConflict:
                 current = self.repository.get_operation_state(tenant_id, environment, operation_id)
                 return self._result(operation_id, "retry", current, retryable=True)
             final = self.repository.get_operation_state(tenant_id, environment, operation_id)
             return self._result(operation_id, "failed", final, error_code=exc.code)
+
+    def _repair_terminal_revisit(self, state: DataProductOperationState) -> None:
+        """Validate immutable terminal evidence and repair its scoped reservation."""
+        if not state.idempotency_record_id:
+            return
+        plan = self.repository.load_operation_plan(
+            state.tenant_id, state.environment, state.product_id, state.operation_id
+        )
+        if plan is None or plan.reference != state.plan_reference or _checksum(plan.payload) != plan.checksum:
+            raise OperationConsistencyError("operation_plan_mismatch")
+        fingerprint = str(plan.payload.get("request_fingerprint", ""))
+        if not fingerprint:
+            raise OperationConsistencyError("operation_fingerprint_missing")
+        terminal = [
+            event
+            for event in self.repository.get_operation_history(state.tenant_id, state.environment, state.operation_id)
+            if event.outcome == state.status
+        ]
+        if not terminal:
+            raise OperationConsistencyError("terminal_history_missing")
+        event = terminal[-1]
+        if event.operation_kind != state.operation_kind or event.plan_checksum != plan.checksum:
+            raise OperationConsistencyError("terminal_history_mismatch")
+        if state.status == "applied":
+            result = self.repository.load_operation_result(
+                state.tenant_id, state.environment, state.product_id, state.operation_id
+            )
+            if result is None or result.reference != state.result_reference or result.checksum != event.result_checksum:
+                raise OperationConsistencyError("operation_result_mismatch")
+            evidence: DataProductOperationFinalResult | str = DataProductOperationFinalResult(
+                int(result.payload.get("revision", 0)),
+                str(result.payload.get("etag", "")),
+                result.reference,
+                result.created_at,
+            )
+            outcome = "completed"
+        else:
+            evidence = event.error_code or state.last_error_code or f"reconciliation_{state.status}"
+            outcome = state.status
+        self.repository.repair_idempotency_terminal(
+            state.idempotency_record_id,
+            state.operation_id,
+            fingerprint,
+            outcome,
+            evidence,
+        )
 
     def _append_terminal_history(
         self,
@@ -556,69 +679,7 @@ class DataProductOperationService:
         return outcomes
 
 
-class DataProductReconciler:
-    """Bounded reconciliation facade. Claiming and fencing remain repository-owned."""
-
-    def __init__(self, repository: DataProductRepository) -> None:
-        self.repository = repository
-
-    def reconcile_operation(self, tenant_id: str, environment: str, operation_id: str) -> str:
-        event = self.repository.get_operation(tenant_id, environment, operation_id)
-        if event is None:
-            return "missing"
-        current = self.repository.get_product(tenant_id, environment, event.product_id)
-        if current and current.revision == event.revision and current.etag == event.etag:
-            if event.outcome == "pending":
-                self.repository.finish_operation(
-                    event.model_copy(update={"outcome": "applied", "applied_at": current.updated_at})
-                )
-            return "applied"
-        if current and current.revision > event.revision:
-            self.repository.finish_operation(event.model_copy(update={"outcome": "superseded"}))
-            return "superseded"
-        return "retry"
-
-    def reconcile_proposal_decision(self, tenant_id: str, environment: str, product_id: str, proposal_id: str) -> str:
-        """Inspect immutable evidence and projection without inventing a cross-index transaction."""
-        proposal = self.repository.get_membership_proposal(tenant_id, environment, product_id, proposal_id)
-        if proposal is None:
-            return "missing"
-        decisions = self.repository.list_membership_decisions(tenant_id, environment, product_id, limit=200).items
-        terminal = [event for event in decisions if event.proposal_id == proposal_id and event.outcome == "applied"]
-        if terminal and proposal.state != "proposed":
-            return "applied"
-        if proposal.state != "proposed":
-            return "terminal_evidence_missing"
-        return "retry"
-
-    def reconcile_membership_exclusion(
-        self, tenant_id: str, environment: str, product_id: str, membership_id: str
-    ) -> str:
-        membership = self.repository.get_membership(tenant_id, environment, product_id, membership_id)
-        if membership is None:
-            return "missing"
-        decisions = self.repository.list_membership_decisions(tenant_id, environment, product_id, limit=200).items
-        terminal = [
-            event
-            for event in decisions
-            if event.membership_id == membership_id and event.decision == "exclude" and event.outcome == "applied"
-        ]
-        if membership.state == "excluded" and terminal:
-            return "applied"
-        if membership.state == "excluded":
-            return "terminal_evidence_missing"
-        return "retry"
-
-    def run(self, tenant_id: str, environment: str, *, limit: int = 100) -> dict[str, int]:
-        events = self.repository.list_pending_operations(tenant_id, environment, limit=limit)
-        outcomes = {"applied": 0, "superseded": 0, "retry": 0, "missing": 0}
-        for event in events:
-            outcome = self.reconcile_operation(tenant_id, environment, event.operation_id)
-            outcomes[outcome] += 1
-        return outcomes
-
-
-OperationReconciler = DataProductReconciler
+OperationReconciler = DataProductOperationService
 
 
 def reconcile_pending(

@@ -214,13 +214,38 @@ class MemoryDataProductRepository:
     def load_operation_result(self, tenant_id, environment, product_id, operation_id):
         return self.operation_results.get((tenant_id, environment, product_id, operation_id))
 
-    def repair_idempotency_completion(self, record_id, result):
-        self.complete_idempotency(
-            record_id,
-            operation_id=self.idempotency[record_id].operation_id or "",
-            revision=result.revision,
-            etag=result.etag,
-        )
+    def repair_idempotency_terminal(
+        self, record_id, expected_operation_id, expected_request_fingerprint, outcome, final_result_or_error
+    ):
+        record = self.idempotency.get(record_id)
+        if record is None:
+            raise ProductConsistencyError("idempotency reservation missing")
+        if (record.operation_id, record.request_fingerprint) != (
+            expected_operation_id,
+            expected_request_fingerprint,
+        ):
+            raise ProductConsistencyError("idempotency operation binding mismatch")
+        if outcome == "completed":
+            result = final_result_or_error
+            desired = ("completed", result.revision, result.etag, None)
+        elif outcome in {"failed", "superseded"} and isinstance(final_result_or_error, str):
+            desired = (outcome, None, None, final_result_or_error)
+        else:
+            raise ValueError("unsupported idempotency terminal outcome")
+        current = (record.state, record.result_revision, record.result_etag, record.error_code)
+        if record.state != "pending":
+            if current == desired:
+                return
+            raise ProductConsistencyError("terminal idempotency state cannot diverge")
+        if outcome == "completed":
+            self.complete_idempotency(
+                record_id,
+                operation_id=expected_operation_id,
+                revision=result.revision,
+                etag=result.etag,
+            )
+        else:
+            self._terminal_idempotency(record_id, outcome, final_result_or_error)
 
     def reserve_idempotency(self, record_id: str, record: DataProductIdempotencyRecord) -> IdempotencyReservationResult:
         existing = self.idempotency.get(record_id)

@@ -1,5 +1,7 @@
 # Data Product reconciliation runtime closure
 
+> PR #135 closed terminal-status replay, result reuse, query filtering, and initial Elasticsearch completion-repair defects only. Proposal, exclusion, dependency and lifecycle handlers still did not perform missing mutations; normal success paths still left generic state pending; terminal-state repair, full fault testing, security evidence, hosted artifacts, and review-thread closure remained incomplete. This PR closes the reconciliation runtime.
+
 > PR #134 added typed results, limited renewal, manual membership creation and partial plan wiring, but proposal, exclusion, dependency and lifecycle handlers still did not apply missing projection steps; synchronous workflows left generic state incomplete; terminal replay/history contained P1 defects; production idempotency repair and hosted Elasticsearch evidence remained absent. This PR closes those blockers.
 
 > PR #131 implemented Elasticsearch operation-state and immutable-history persistence primitives only. This PR wires every scoped mutation to those primitives, implements operation-specific repair handlers, and certifies crash recovery and stale-worker fencing against Elasticsearch 9.4.2.
@@ -10,28 +12,43 @@
 
 Release readiness remains **blocked**. Hosted artifact cells remain pending until the draft PR workflow produces downloadable evidence; local tests are not represented as hosted certification.
 
-| Capability | Current main defect | Final behavior | Unit/property | Elasticsearch 9.4.2 | Security | Hosted artifact |
+| Capability | Current main | Required final behaviour | Unit/property | Elasticsearch 9.4.2 | Security | Hosted artifact |
 |---|---|---|---|---|---|---|
-| terminal status replay | terminal status collapsed | preserves applied/failed/superseded | covered | pending | n/a | pending |
-| canonical terminal history | retry used fresh claim timestamps | deterministic event is loaded and verified | covered | pending | poisoning pending | pending |
-| immutable result reuse | result could be reconstructed | exact payload/checksum and original timestamp reused | covered | pending | poisoning pending | pending |
-| Elasticsearch idempotency repair | production method absent | realtime OCC repair with identical-race reread | covered | pending | substitution pending | pending |
-| terminal-state idempotency repair | terminal revisit stopped early | terminal outcome is preserved; full evidence repair pending | partial | pending | pending | pending |
-| manual membership and terminal evidence repair | partial projection-only repair | full target validation remains gated | partial | pending | pending | pending |
-| proposal accept/reject/expire/supersede repair | missing transition returned retry | concrete projection application remains gated | pending | pending | pending | pending |
-| membership exclusion repair | active membership returned retry | concrete exclusion remains gated | pending | pending | pending | pending |
-| dependency product-token/upsert/tombstone/terminal/result repair | inspect-only | detailed plan execution remains gated | pending | pending | pending | pending |
-| lifecycle pre-transition bootstrapping and projection repair | state created too late | remains gated | pending | pending | pending | pending |
-| synchronous generic completion | generic state remained pending | coordinator remains gated | pending | pending | pending | pending |
-| pending retry delegation | legacy reconciler called | membership delegates to authoritative CAS service | covered | pending | n/a | pending |
-| claim renewal and attempts | long phases unprotected | terminal boundaries fenced; chunk renewal pending | partial | pending | stale claim pending | pending |
-| operation-kind filtering | filter followed repository limit | query/repository filters before limit | covered | pending | n/a | pending |
-| old reconciler removal/delegation | membership called inspect-only facade | production membership caller delegates | covered | pending | n/a | pending |
-| two-worker takeover / stale-worker fencing | limited proof | claim generation fencing retained | covered | pending | pending | pending |
-| CLI exit codes | collapsed replay broke exits | applied=0, failed/superseded=4, retry=3 | covered | pending | redaction covered | pending |
-| real Elasticsearch fault matrix | readiness plus claim conflict | required matrix | pending | pending | pending | pending |
-| security/leakage | memory-only | persistence matrix required | partial | pending | pending | pending |
-| dynamic manifest / review threads | no hosted run | resolve only after exact hosted proof | n/a | pending | pending | pending |
+| terminal outcome replay | PR #135 partial baseline | operation-specific, claim-fenced repair | covered | pending | pending | pending |
+| terminal-state repair | PR #135 partial baseline | operation-specific, claim-fenced repair | pending | pending | pending | pending |
+| canonical applied history | PR #135 partial baseline | operation-specific, claim-fenced repair | pending | pending | pending | pending |
+| canonical failed history | PR #135 partial baseline | operation-specific, claim-fenced repair | pending | pending | pending | pending |
+| canonical superseded history | PR #135 partial baseline | operation-specific, claim-fenced repair | pending | pending | pending | pending |
+| immutable result reuse | PR #135 partial baseline | operation-specific, claim-fenced repair | covered | pending | pending | pending |
+| idempotency completed repair | PR #135 partial baseline | operation-specific, claim-fenced repair | covered | pending | pending | pending |
+| idempotency failed repair | PR #135 partial baseline | operation-specific, claim-fenced repair | covered | pending | pending | pending |
+| idempotency superseded repair | PR #135 partial baseline | operation-specific, claim-fenced repair | covered | pending | pending | pending |
+| manual projection repair | PR #135 partial baseline | operation-specific, claim-fenced repair | pending | pending | pending | pending |
+| manual business terminal repair | PR #135 partial baseline | operation-specific, claim-fenced repair | pending | pending | pending | pending |
+| proposal accept repair | PR #135 partial baseline | operation-specific, claim-fenced repair | pending | pending | pending | pending |
+| proposal reject repair | PR #135 partial baseline | operation-specific, claim-fenced repair | pending | pending | pending | pending |
+| proposal expire repair | PR #135 partial baseline | operation-specific, claim-fenced repair | pending | pending | pending | pending |
+| proposal supersede repair | PR #135 partial baseline | operation-specific, claim-fenced repair | pending | pending | pending | pending |
+| membership exclusion repair | PR #135 partial baseline | operation-specific, claim-fenced repair | pending | pending | pending | pending |
+| dependency product token | PR #135 partial baseline | operation-specific, claim-fenced repair | pending | pending | pending | pending |
+| dependency upserts | PR #135 partial baseline | operation-specific, claim-fenced repair | pending | pending | pending | pending |
+| dependency tombstones | PR #135 partial baseline | operation-specific, claim-fenced repair | pending | pending | pending | pending |
+| dependency complete immutable result | PR #135 partial baseline | operation-specific, claim-fenced repair | pending | pending | pending | pending |
+| dependency >200 upstream result | PR #135 partial baseline | operation-specific, claim-fenced repair | pending | pending | pending | pending |
+| dependency claim renewal | PR #135 partial baseline | operation-specific, claim-fenced repair | pending | pending | pending | pending |
+| lifecycle pre-transition plan/state | PR #135 partial baseline | operation-specific, claim-fenced repair | pending | pending | pending | pending |
+| lifecycle transition repair | PR #135 partial baseline | operation-specific, claim-fenced repair | pending | pending | pending | pending |
+| synchronous generic result/history/state | PR #135 partial baseline | operation-specific, claim-fenced repair | pending | pending | pending | pending |
+| pending retry delegation | PR #135 partial baseline | operation-specific, claim-fenced repair | pending | pending | pending | pending |
+| authoritative reconciler | PR #135 partial baseline | operation-specific, claim-fenced repair | covered | pending | pending | pending |
+| retry scheduling | PR #135 partial baseline | operation-specific, claim-fenced repair | pending | pending | pending | pending |
+| attempt exhaustion | PR #135 partial baseline | operation-specific, claim-fenced repair | covered | pending | pending | pending |
+| two-worker takeover | PR #135 partial baseline | operation-specific, claim-fenced repair | pending | pending | pending | pending |
+| stale-worker fencing | PR #135 partial baseline | operation-specific, claim-fenced repair | covered | pending | pending | pending |
+| real Elasticsearch matrix | PR #135 partial baseline | operation-specific, claim-fenced repair | pending | pending | pending | pending |
+| real security matrix | PR #135 partial baseline | operation-specific, claim-fenced repair | pending | pending | pending | pending |
+| hosted manifest | PR #135 partial baseline | operation-specific, claim-fenced repair | pending | pending | pending | pending |
+| review threads | PR #135 partial baseline | operation-specific, claim-fenced repair | pending | pending | pending | pending |
 
 | Operation kind | Plan created before mutation? | State created before mutation? | Handler can create missing projection? | Handler can repair terminal evidence? | Handler can repair result/state/idempotency? | Real ES fault matrix | Hosted artifact |
 |---|---|---|---|---|---|---|---|

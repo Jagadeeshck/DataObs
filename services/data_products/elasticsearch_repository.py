@@ -111,7 +111,7 @@ class ElasticsearchDataProductRepository:
         if checkpoint:
             checkpoint["occurred_at"] = datetime.fromisoformat(checkpoint["occurred_at"])
             value["last_checkpoint"] = DataProductOperationCheckpoint(**checkpoint)
-        for key in ("updated_at", "claimed_at", "claim_expires_at"):
+        for key in ("updated_at", "claimed_at", "claim_expires_at", "next_attempt_at"):
             if value.get(key):
                 value[key] = datetime.fromisoformat(value[key])
         value["seq_no"] = hit["_seq_no"]
@@ -164,6 +164,15 @@ class ElasticsearchDataProductRepository:
                 }
             },
             {"exists": {"field": "document.status"}},
+            {
+                "bool": {
+                    "should": [
+                        {"bool": {"must_not": {"exists": {"field": "document.next_attempt_at"}}}},
+                        {"range": {"document.next_attempt_at": {"lte": "now"}}},
+                    ],
+                    "minimum_should_match": 1,
+                }
+            },
         ]
         if operation_kind is not None:
             # Filtering belongs in the query: applying it after `size` silently
@@ -287,6 +296,30 @@ class ElasticsearchDataProductRepository:
 
     def fail_operation(self, claim, *, error_code):
         self._finalize_operation(claim, "failed", error_code=error_code)
+
+    def schedule_operation_retry(self, claim, *, error_code, next_attempt_at, retry_after_seconds):
+        state = self._owned_state(claim)
+        pending = replace(
+            state,
+            status="pending",
+            claim_owner=None,
+            claimed_at=None,
+            claim_expires_at=None,
+            last_retryable_error=error_code,
+            last_error_code=error_code,
+            next_attempt_at=next_attempt_at,
+            retry_after_seconds=retry_after_seconds,
+            updated_at=datetime.now(timezone.utc),
+        )
+        self._replace_state(pending, state.seq_no, state.primary_term)
+
+    def release_operation_claim(self, claim):
+        state = self._owned_state(claim)
+        self._replace_state(
+            replace(state, status="pending", claim_owner=None, claimed_at=None, claim_expires_at=None),
+            state.seq_no,
+            state.primary_term,
+        )
 
     def append_operation_history(self, event: DataProductOperationHistoryEvent) -> None:
         event_id = scoped_id(

@@ -3,12 +3,12 @@ from __future__ import annotations
 import json
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from hashlib import sha256
 from typing import Any, Literal, Protocol
 
 from packages.domain_model.base import utc_now
-from packages.domain_model.data_product import DataProductMembership, DataProductRevisionEvent
+from packages.domain_model.data_product import DataProduct, DataProductMembership, DataProductRevisionEvent
 from services.data_products.operation_state import (
     DataProductOperationCheckpoint,
     DataProductOperationClaim,
@@ -294,8 +294,23 @@ class ProductLifecycleReconciliationHandler(ProjectionAwareHandler):
         payload = self._verify(state, plan)
         product = repository.get_product(state.tenant_id, state.environment, state.product_id)
         target_revision = int(payload.get("target_revision", -1))
-        if product is None or product.revision < target_revision:
-            return OperationReconciliationOutcome("retry", "lifecycle_transition_pending", retryable=True)
+        if product is None:
+            raise OperationConsistencyError("lifecycle_product_missing")
+        if product.revision < target_revision:
+            if product.revision != payload.get("expected_revision") or product.etag != payload.get("expected_etag"):
+                raise OperationConsistencyError("lifecycle_projection_diverged")
+            raw_target = payload.get("target_product")
+            if not isinstance(raw_target, Mapping):
+                raise OperationConsistencyError("lifecycle_plan_incomplete")
+            target = DataProduct.model_validate(raw_target)
+            if (
+                target.revision != target_revision
+                or target.etag != payload.get("target_etag")
+                or target.lifecycle_state != payload.get("target_lifecycle")
+            ):
+                raise OperationConsistencyError("lifecycle_plan_poisoned")
+            product = repository.update_product(target, expected_etag=product.etag)
+            context.checkpoint("lifecycle_transition", _checksum(target.model_dump(mode="json")))
         if product.revision > target_revision:
             return OperationReconciliationOutcome("superseded", error_code="newer_lifecycle_revision")
         if product.lifecycle_state != payload.get("target_lifecycle") or product.etag != payload.get("target_etag"):
@@ -366,14 +381,25 @@ def decode_final_result(
     if operation_kind in _NON_ACCEPT_PROPOSAL_KINDS:
         revision = result.payload.get("proposal_revision")
         etag = result.payload.get("decision_token", result.checksum)
+        raw_applied_at = result.payload.get("applied_at")
+        if not isinstance(raw_applied_at, str) or not raw_applied_at.strip():
+            raise OperationConsistencyError("operation_result_schema_mismatch")
+        try:
+            applied_at = datetime.fromisoformat(raw_applied_at.replace("Z", "+00:00"))
+        except ValueError as exc:
+            raise OperationConsistencyError("operation_result_schema_mismatch") from exc
+        if applied_at.tzinfo is None or applied_at.utcoffset() is None:
+            raise OperationConsistencyError("operation_result_schema_mismatch")
+        applied_at = applied_at.astimezone(timezone.utc)
     else:
         revision = result.payload.get("revision")
         etag = result.payload.get("etag")
+        applied_at = result.created_at
     if not isinstance(revision, int) or isinstance(revision, bool) or revision < 0:
         raise OperationConsistencyError("operation_result_schema_mismatch")
     if not isinstance(etag, str) or not etag:
         raise OperationConsistencyError("operation_result_schema_mismatch")
-    return DataProductOperationFinalResult(revision, etag, result.reference, result.created_at)
+    return DataProductOperationFinalResult(revision, etag, result.reference, applied_at)
 
 
 def _terminal_semantics(event: DataProductOperationHistoryEvent) -> tuple[Any, ...]:
@@ -472,6 +498,18 @@ class RecoverableDataProductOperationCoordinator:
         self, tenant_id: str, environment: str, operation_id: str
     ) -> DataProductOperationReconciliationResult:
         return self.operation_service.reconcile_operation(tenant_id, environment, operation_id)
+
+    def replay_completed(
+        self, tenant_id: str, environment: str, product_id: str, operation_id: str
+    ) -> DataProductOperationFinalResult:
+        """Return immutable evidence without consulting or mutating projections."""
+        state = self.repository.get_operation_state(tenant_id, environment, operation_id)
+        if state is None or state.status != "applied":
+            raise OperationConsistencyError("operation_not_completed")
+        result = self.repository.load_operation_result(tenant_id, environment, product_id, operation_id)
+        if result is None or result.reference != state.result_reference:
+            raise OperationConsistencyError("operation_result_mismatch")
+        return decode_final_result(state.operation_kind, result)
 
 
 class DataProductOperationService:
@@ -584,6 +622,14 @@ class DataProductOperationService:
             )
             claim = context.claim
             if outcome.status == "retry":
+                error = outcome.error_code or outcome.checkpoint or "reconciliation_retry"
+                retry_after = self.claim_ttl_seconds
+                self.repository.schedule_operation_retry(
+                    context.claim,
+                    error_code=error,
+                    next_attempt_at=utc_now() + timedelta(seconds=retry_after),
+                    retry_after_seconds=retry_after,
+                )
                 current = self.repository.get_operation_state(tenant_id, environment, operation_id)
                 return self._result(operation_id, "retry", current, retryable=True, error_code=outcome.error_code)
             claim = self._renew_if_needed(claim)
@@ -641,7 +687,7 @@ class DataProductOperationService:
                     # Worker identity is intentionally redacted from canonical
                     # immutable evidence so a fenced takeover can reuse it.
                     worker_id=None,
-                    applied_at=result.created_at,
+                    applied_at=decoded.applied_at,
                 )
                 existing_terminal = next((event for event in history if event.event_id == terminal.event_id), None)
                 if existing_terminal is None:

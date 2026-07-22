@@ -12,7 +12,10 @@ from services.data_products.idempotency import (
     request_fingerprint,
     scoped_record_id,
 )
-from services.data_products.reconciliation import persist_pending_operation
+from services.data_products.reconciliation import (
+    DataProductOperationService,
+    RecoverableDataProductOperationCoordinator,
+)
 from services.data_products.repository import DataProductRepository, ProductVersionConflict
 
 
@@ -23,6 +26,8 @@ def product_etag(product: DataProduct) -> str:
 class DataProductService:
     def __init__(self, repository: DataProductRepository) -> None:
         self.repository = repository
+        runtime = DataProductOperationService(repository, worker_id="lifecycle-runtime")
+        self.coordinator = RecoverableDataProductOperationCoordinator(repository, runtime)
 
     def create(
         self,
@@ -158,6 +163,18 @@ class DataProductService:
                 raise IdempotencyPending("completed result is not yet visible")
             return replay
         if reserved_record.state == "pending" and reserved_record.operation_id:
+            state = self.repository.get_operation_state(tenant_id, environment, reserved_record.operation_id)
+            if state is not None:
+                recovered = self.coordinator.reconcile_pending(tenant_id, environment, reserved_record.operation_id)
+                if recovered.status == "applied":
+                    repaired = self.repository.get_idempotency(record_id)
+                    if repaired and repaired.result_revision is not None:
+                        replay = self.repository.get_product_revision(
+                            tenant_id, environment, product_id, repaired.result_revision
+                        )
+                        if replay is not None and replay.etag == repaired.result_etag:
+                            return replay
+                raise IdempotencyPending(recovered.error_code or f"operation_{recovered.status}")
             operation = self.repository.get_operation(tenant_id, environment, reserved_record.operation_id)
             if operation and operation.outcome == "applied":
                 replay = self.repository.get_product_revision(tenant_id, environment, product_id, operation.revision)
@@ -180,23 +197,14 @@ class DataProductService:
             raise ValueError("activation requires owner, criticality, and at least one output")
         changed = current.model_copy(deep=True)
         changed.lifecycle_state = target
-        saved = self.update(
-            changed,
-            if_match=if_match,
-            actor=actor,
-            reason=reason,
-            idempotency_key=idempotency_key,
-            action=canonical_action,
-        )
-        operation = self._pending(
-            saved,
-            actor,
-            reason,
-            canonical_action,
-            idempotency_key,
-        )
-        persist_pending_operation(
-            self.repository,
+        changed.revision = current.revision + 1
+        changed.updated_at = datetime.now(timezone.utc)
+        changed.etag = product_etag(changed)
+        operation = self._pending(changed, actor, reason, canonical_action, idempotency_key)
+        # Persist a complete executable target before the OCC update.  Recovery
+        # therefore never needs to reconstruct lifecycle intent from mutable
+        # current state.
+        self.coordinator.begin(
             tenant_id=tenant_id,
             environment=environment,
             product_id=product_id,
@@ -213,14 +221,24 @@ class DataProductService:
                 "expected_etag": if_match,
                 "source_lifecycle": current.lifecycle_state,
                 "target_lifecycle": target,
-                "target_revision": saved.revision,
-                "target_etag": saved.etag,
+                "target_revision": changed.revision,
+                "target_etag": changed.etag,
+                "target_definition_checksum": definition_checksum(changed),
+                "target_product": changed.model_dump(mode="json"),
                 "pending_event_id": operation.operation_id,
             },
         )
-        self.repository.complete_idempotency(
-            record_id, operation_id=operation.operation_id, revision=saved.revision, etag=saved.etag
+        saved = self.update(
+            changed,
+            if_match=if_match,
+            actor=actor,
+            reason=reason,
+            idempotency_key=idempotency_key,
+            action=canonical_action,
         )
+        outcome = self.coordinator.reconcile_pending(tenant_id, environment, operation.operation_id)
+        if outcome.status != "applied":
+            raise IdempotencyPending(outcome.error_code or f"operation_{outcome.status}")
         return saved
 
     def activate(

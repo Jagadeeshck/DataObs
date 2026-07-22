@@ -73,11 +73,13 @@ class MemoryDataProductRepository:
         return state if state and (state.tenant_id, state.environment) == (tenant_id, environment) else None
 
     def list_reconcilable_operations(self, tenant_id, environment, *, limit=100, operation_kind=None):
+        now = utc_now()
         values = [
             s
             for s in self.operation_states.values()
             if (s.tenant_id, s.environment) == (tenant_id, environment)
             and (operation_kind is None or s.operation_kind == operation_kind)
+            and (s.next_attempt_at is None or s.next_attempt_at <= now)
             and (
                 s.status == "pending"
                 or (s.status == "claimed" and s.claim_expires_at and s.claim_expires_at <= utc_now())
@@ -182,6 +184,38 @@ class MemoryDataProductRepository:
 
     def fail_operation(self, claim, *, error_code):
         self._finalize_state(claim, "failed", error_code=error_code)
+
+    def schedule_operation_retry(self, claim, *, error_code, next_attempt_at, retry_after_seconds):
+        """Persist backoff and release ownership in one claim-fenced write."""
+        from dataclasses import replace
+
+        state = self._owned_state(claim)
+        self.operation_states[(claim.tenant_id, claim.environment, claim.operation_id)] = replace(
+            state,
+            status="pending",
+            claim_owner=None,
+            claimed_at=None,
+            claim_expires_at=None,
+            last_retryable_error=error_code,
+            last_error_code=error_code,
+            next_attempt_at=next_attempt_at,
+            retry_after_seconds=retry_after_seconds,
+            updated_at=utc_now(),
+            seq_no=state.seq_no + 1,
+        )
+
+    def release_operation_claim(self, claim):
+        from dataclasses import replace
+
+        state = self._owned_state(claim)
+        self.operation_states[(claim.tenant_id, claim.environment, claim.operation_id)] = replace(
+            state,
+            status="pending",
+            claim_owner=None,
+            claimed_at=None,
+            claim_expires_at=None,
+            seq_no=state.seq_no + 1,
+        )
 
     def append_operation_history(self, event: DataProductOperationHistoryEvent):
         existing = self.operation_history.get(event.event_id)

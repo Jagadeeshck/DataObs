@@ -16,7 +16,10 @@ from packages.domain_model.data_product import (
 from services.data_products.events import ProductConsistencyError
 from services.data_products.idempotency import hash_key, new_record, request_fingerprint, scoped_record_id
 from services.data_products.membership_events import MembershipMutation
-from services.data_products.reconciliation import persist_pending_operation
+from services.data_products.reconciliation import (
+    DataProductOperationService,
+    RecoverableDataProductOperationCoordinator,
+)
 from services.data_products.repository import (
     DataProductMembershipExclusionResult,
     DataProductMembershipMutationResult,
@@ -31,6 +34,13 @@ class DataProductMembershipService:
 
     def __init__(self, repository: DataProductRepository) -> None:
         self.repository = repository
+        operation_service = DataProductOperationService(repository, worker_id="membership-runtime")
+        self.coordinator = RecoverableDataProductOperationCoordinator(repository, operation_service)
+
+    def _complete_runtime(self, tenant_id: str, environment: str, operation_id: str) -> None:
+        outcome = self.coordinator.reconcile_pending(tenant_id, environment, operation_id)
+        if outcome.status != "applied":
+            raise ProductConsistencyError(outcome.error_code or f"operation_{outcome.status}")
 
     @staticmethod
     def _identity(product_id: str, entity_type: str, entity_id: str) -> str:
@@ -131,8 +141,7 @@ class DataProductMembershipService:
         )
         pending = mutation.event(outcome="pending", membership_id=membership_id)
         self.repository.append_membership_decision(tenant_id, environment, product_id, pending)
-        persist_pending_operation(
-            self.repository,
+        self.coordinator.begin(
             tenant_id=tenant_id,
             environment=environment,
             product_id=product_id,
@@ -167,9 +176,10 @@ class DataProductMembershipService:
             product_id,
             terminal,
         )
-        self.repository.complete_idempotency(
-            record_id, operation_id=mutation.operation_id, revision=created.revision, etag=created.etag
-        )
+        # Generic result/history and the reservation are finalized together by
+        # the shared recoverable coordinator; projection success is not itself
+        # idempotency completion.
+        self._complete_runtime(tenant_id, environment, mutation.operation_id)
         return DataProductMembershipMutationResult(
             membership=created,
             operation_id=mutation.operation_id,
@@ -380,7 +390,6 @@ class DataProductMembershipService:
             proposal = self.repository.get_membership_proposal(tenant_id, environment, product_id, proposal_id)
             if (
                 not proposal
-                or reserved.result_revision != expected_revision
                 or proposal.proposal_revision != expected_revision
                 or proposal.state
                 != (
@@ -398,6 +407,10 @@ class DataProductMembershipService:
                 )
                 if membership is None or membership.proposal_id != proposal_id:
                     raise ProductConsistencyError("proposal_result_inconsistent")
+                if membership.revision != reserved.result_revision or membership.etag != reserved.result_etag:
+                    raise ProductConsistencyError("proposal_result_inconsistent")
+            elif reserved.result_revision != expected_revision:
+                raise ProductConsistencyError("proposal_result_inconsistent")
             terminal = mutation.event(
                 outcome="applied",
                 proposal_id=proposal_id,
@@ -443,8 +456,7 @@ class DataProductMembershipService:
                 "etag": sha256(f"{membership_id}:1".encode()).hexdigest(),
                 "state": "active",
             }
-        persist_pending_operation(
-            self.repository,
+        self.coordinator.begin(
             tenant_id=tenant_id,
             environment=environment,
             product_id=product_id,
@@ -516,9 +528,7 @@ class DataProductMembershipService:
             result_etag=decided.state,
         )
         self.repository.append_membership_decision(tenant_id, environment, product_id, terminal)
-        self.repository.complete_idempotency(
-            record_id, operation_id=mutation.operation_id, revision=expected_revision, etag=decided.state
-        )
+        self._complete_runtime(tenant_id, environment, mutation.operation_id)
         return DataProductProposalDecisionResult(
             decided, membership, mutation.operation_id, False, (pending.decision_id, terminal.decision_id)
         )
@@ -595,8 +605,7 @@ class DataProductMembershipService:
             raise KeyError(membership_id)
         target_revision = current.revision + 1
         target_etag = sha256(f"{current.etag}:excluded".encode()).hexdigest()
-        persist_pending_operation(
-            self.repository,
+        self.coordinator.begin(
             tenant_id=tenant_id,
             environment=environment,
             product_id=product_id,
@@ -625,9 +634,7 @@ class DataProductMembershipService:
             outcome="applied", membership_id=membership_id, result_revision=result.revision, result_etag=result.etag
         )
         self.repository.append_membership_decision(tenant_id, environment, product_id, terminal)
-        self.repository.complete_idempotency(
-            record_id, operation_id=mutation.operation_id, revision=result.revision, etag=result.etag
-        )
+        self._complete_runtime(tenant_id, environment, mutation.operation_id)
         return DataProductMembershipExclusionResult(
             result, mutation.operation_id, (pending.decision_id, terminal.decision_id), False
         )

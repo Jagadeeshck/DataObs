@@ -474,28 +474,40 @@ class ElasticsearchDataProductRepository:
             completed_at=datetime.now(timezone.utc),
         )
 
-    def repair_idempotency_completion(self, record_id: str, result: DataProductOperationFinalResult) -> None:
-        """CAS-complete a persisted reservation from immutable result evidence.
-
-        The operation id is taken from the reservation, never reconstructed from
-        a client key.  `_transition_idempotency` performs a realtime read,
-        terminal equality check, and seq-no/primary-term fenced update.
-        """
+    def repair_idempotency_terminal(
+        self,
+        record_id: str,
+        expected_operation_id: str,
+        expected_request_fingerprint: str,
+        outcome: str,
+        final_result_or_error: DataProductOperationFinalResult | str,
+    ) -> None:
+        """Repair an OCC-fenced reservation only after verifying its durable binding."""
         record = self.get_idempotency(record_id)
-        if record is None or not record.operation_id:
+        if record is None:
             raise ProductConsistencyError("idempotency reservation missing operation")
+        if (record.operation_id, record.request_fingerprint) != (
+            expected_operation_id,
+            expected_request_fingerprint,
+        ):
+            raise ProductConsistencyError("idempotency operation binding mismatch")
+        if outcome == "completed" and isinstance(final_result_or_error, DataProductOperationFinalResult):
+            changes = {
+                "state": "completed",
+                "operation_id": expected_operation_id,
+                "result_revision": final_result_or_error.revision,
+                "result_etag": final_result_or_error.etag,
+                "completed_at": final_result_or_error.applied_at,
+            }
+        elif outcome in {"failed", "superseded"} and isinstance(final_result_or_error, str):
+            changes = {"state": outcome, "error_code": final_result_or_error}
+        else:
+            raise ValueError("unsupported idempotency terminal outcome")
         try:
-            self.complete_idempotency(
-                record_id, operation_id=record.operation_id, revision=result.revision, etag=result.etag
-            )
+            self._transition_idempotency(record_id, **changes)
         except ProductVersionConflict:
             current = self.get_idempotency(record_id)
-            if not current or (
-                current.state,
-                current.operation_id,
-                current.result_revision,
-                current.result_etag,
-            ) != ("completed", record.operation_id, result.revision, result.etag):
+            if not current or any(getattr(current, key) != value for key, value in changes.items()):
                 raise
 
     def fail_idempotency(self, record_id: str, *, error_code: str) -> None:

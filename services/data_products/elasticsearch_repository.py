@@ -443,6 +443,65 @@ class ElasticsearchDataProductRepository:
         except NotFoundError:
             return None
 
+    def bind_or_verify_idempotency_operation(
+        self,
+        record_id: str,
+        *,
+        tenant_id: str,
+        environment: str,
+        product_id: str,
+        action: str,
+        request_fingerprint: str,
+        expected_operation_id: str,
+    ) -> DataProductIdempotencyRecord:
+        """OCC-bind an operation id after verifying every request dimension."""
+        try:
+            hit = self.client.get(index=IDEMPOTENCY, id=record_id, seq_no_primary_term=True)
+        except NotFoundError as exc:
+            raise ProductConsistencyError("idempotency reservation missing") from exc
+        record = DataProductIdempotencyRecord.model_validate(hit["_source"])
+        binding = (
+            record.tenant_id,
+            record.environment,
+            record.resource_id,
+            record.action,
+            record.request_fingerprint,
+        )
+        if binding != (tenant_id, environment, product_id, action, request_fingerprint) or record.operation_id not in (
+            None,
+            expected_operation_id,
+        ):
+            raise ProductConsistencyError("idempotency operation binding mismatch")
+        if record.operation_id == expected_operation_id:
+            return record
+        bound = record.model_copy(update={"operation_id": expected_operation_id})
+        try:
+            self.client.index(
+                index=IDEMPOTENCY,
+                id=record_id,
+                document=bound.model_dump(mode="json"),
+                if_seq_no=hit["_seq_no"],
+                if_primary_term=hit["_primary_term"],
+            )
+            return bound
+        except ConflictError:
+            # Identical concurrent bind is success after a realtime reread.
+            current = self.get_idempotency(record_id)
+            if (
+                current is None
+                or current.operation_id != expected_operation_id
+                or (
+                    current.tenant_id,
+                    current.environment,
+                    current.resource_id,
+                    current.action,
+                    current.request_fingerprint,
+                )
+                != binding
+            ):
+                raise ProductVersionConflict("concurrent idempotency binding")
+            return current
+
     def _transition_idempotency(self, record_id: str, **changes: Any) -> None:
         try:
             hit = self.client.get(index=IDEMPOTENCY, id=record_id, seq_no_primary_term=True)

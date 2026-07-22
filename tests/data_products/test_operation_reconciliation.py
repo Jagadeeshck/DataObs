@@ -1,3 +1,4 @@
+from dataclasses import replace
 from datetime import timedelta
 
 import pytest
@@ -7,6 +8,7 @@ from services.data_products.idempotency import new_record
 from services.data_products.memory_repository import MemoryDataProductRepository
 from services.data_products.operation_state import (
     DataProductOperationFinalResult,
+    DataProductOperationHistoryEvent,
     DataProductOperationPlan,
     DataProductOperationState,
     OperationClaimConflict,
@@ -16,6 +18,7 @@ from services.data_products.reconciliation import (
     ManualMembershipReconciliationHandler,
     OperationReconciliationRegistry,
     _checksum,
+    _terminal_semantics,
 )
 
 
@@ -238,3 +241,56 @@ def test_pending_idempotency_without_operation_id_is_atomically_bound() -> None:
     assert repaired.completed_at == evidence.applied_at
     with pytest.raises(RuntimeError, match="binding mismatch"):
         repository.repair_idempotency_terminal("record", "different", "fingerprint", "completed", evidence)
+
+
+def test_idempotency_binding_verifies_complete_scope_and_action() -> None:
+    repository = MemoryDataProductRepository()
+    record = new_record(
+        tenant_id="tenant",
+        environment="prod",
+        product_id="product",
+        action="proposal_reject",
+        key="raw-key",
+        fingerprint="fingerprint",
+    )
+    repository.reserve_idempotency("record", record)
+    bound = repository.bind_or_verify_idempotency_operation(
+        "record",
+        tenant_id="tenant",
+        environment="prod",
+        product_id="product",
+        action="proposal_reject",
+        request_fingerprint="fingerprint",
+        expected_operation_id="operation",
+    )
+    assert bound.operation_id == "operation"
+    with pytest.raises(RuntimeError, match="binding mismatch"):
+        repository.bind_or_verify_idempotency_operation(
+            "record",
+            tenant_id="tenant",
+            environment="prod",
+            product_id="product",
+            action="proposal_accept",
+            request_fingerprint="fingerprint",
+            expected_operation_id="operation",
+        )
+
+
+def test_legacy_worker_id_is_not_canonical_business_evidence() -> None:
+    event = DataProductOperationHistoryEvent(
+        "event",
+        "operation",
+        "tenant",
+        "prod",
+        "product",
+        "manual_membership",
+        "add",
+        "applied",
+        "actor",
+        "reason",
+        "fingerprint",
+        utc_now(),
+        worker_id="legacy-worker",
+    )
+    assert _terminal_semantics(event) == _terminal_semantics(replace(event, worker_id=None))
+    assert _terminal_semantics(event) != _terminal_semantics(replace(event, reason="poisoned"))

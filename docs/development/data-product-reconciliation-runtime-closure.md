@@ -1,5 +1,7 @@
 # Data Product reconciliation runtime closure
 
+> PR #137 added claim-fenced handler mechanics and partial proposal/exclusion repair, but mutation services were not wired to the coordinator, dependency and lifecycle recovery remained incomplete, two P1 defects were introduced, and real Elasticsearch/security/hosted certification remained absent. This PR closes the reconciliation runtime and evidence gate.
+
 > PR #136 added an authoritative service, terminal idempotency contracts and coordinator scaffolding only. The mutation services and concrete handlers still did not apply most missing projections, normal success paths still left generic state pending, and real Elasticsearch/security/hosted certification remained absent. This PR implements and proves the repair runtime.
 
 > PR #135 closed terminal-status replay, result reuse, query filtering, and initial Elasticsearch completion-repair defects only. Proposal, exclusion, dependency and lifecycle handlers still did not perform missing mutations; normal success paths still left generic state pending; terminal-state repair, full fault testing, security evidence, hosted artifacts, and review-thread closure remained incomplete. This PR closes the reconciliation runtime.
@@ -14,7 +16,7 @@
 
 Release readiness remains **blocked**. Hosted artifact cells remain pending until the draft PR workflow produces downloadable evidence; local tests are not represented as hosted certification.
 
-| Capability | Main behaviour after PR #136 | Required implementation | Unit/property | Elasticsearch 9.4.2 | Security | Hosted artifact |
+| Capability | Current main defect | Required behaviour | Unit/property | Elasticsearch 9.4.2 | Security | Hosted artifact |
 |---|---|---|---|---|---|---|
 | terminal outcome replay | PR #135 partial baseline | operation-specific, claim-fenced repair | covered | pending | pending | pending |
 | terminal-state repair | PR #135 partial baseline | operation-specific, claim-fenced repair | pending | pending | pending | pending |
@@ -54,6 +56,12 @@ Release readiness remains **blocked**. Hosted artifact cells remain pending unti
 | real security matrix | PR #135 partial baseline | operation-specific, claim-fenced repair | pending | pending | pending | pending |
 | hosted manifest | PR #135 partial baseline | operation-specific, claim-fenced repair | pending | pending | pending | pending |
 | review threads | PR #135 partial baseline | operation-specific, claim-fenced repair | pending | pending | pending | pending |
+| proposal non-accept result construction | read nonexistent proposal `revision` / `etag` | typed proposal revision/state and canonical result checksum | covered | pending | pending | pending |
+| legacy worker identity compatibility | worker delivery id participated in business equality | ignore worker id while preserving immutable legacy event | covered | pending | pending | pending |
+| idempotency scope/action/fingerprint binding | repair checked only fingerprint and operation id | OCC bind/verify tenant, environment, product, action, fingerprint, operation | covered | pending | partial | pending |
+| dependency >1,000 edge completeness | one bounded page can truncate evidence | verify complete durable snapshot | pending | pending | pending | pending |
+| state/history/plan/result discrimination | envelope post-filtering can starve results | discriminate in Elasticsearch before size/limit | partial | pending | pending | pending |
+| hosted manifest and review-thread closure | no retained hosted proof | resolve only from successful retained workflow evidence | n/a | pending | pending | pending |
 
 | Operation kind | Plan created before mutation? | State created before mutation? | Handler can create missing projection? | Handler can repair terminal evidence? | Handler can repair result/state/idempotency? | Real ES fault matrix | Hosted artifact |
 |---|---|---|---|---|---|---|---|

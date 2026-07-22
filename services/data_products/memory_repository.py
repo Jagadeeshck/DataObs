@@ -97,6 +97,15 @@ class MemoryDataProductRepository:
         value = self.revisions.get((tenant_id, environment, product_id, revision))
         return value[0].model_copy(deep=True) if value else None
 
+    def get_products_by_ids(self, tenant_id: str, environment: str, product_ids):
+        if len(set(product_ids)) > 10_000:
+            raise ValueError("product_id_count_exceeded")
+        return [
+            self.items[(tenant_id, environment, product_id)].model_copy(deep=True)
+            for product_id in sorted(set(product_ids))
+            if (tenant_id, environment, product_id) in self.items
+        ]
+
     def get_operation(self, tenant_id: str, environment: str, operation_id: str):
         found = self.operations.get(operation_id)
         if found and (found[0].tenant_id, found[0].environment) == (tenant_id, environment):

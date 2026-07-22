@@ -174,6 +174,28 @@ class ElasticsearchDataProductRepository:
             return None
         return DataProduct.model_validate(source)
 
+    def get_products_by_ids(self, tenant_id: str, environment: str, product_ids: Sequence[str]) -> list[DataProduct]:
+        ids = sorted(set(product_ids))
+        if len(ids) > 10_000:
+            raise ValueError("product_id_count_exceeded")
+        if not ids:
+            return []
+        response = self.client.search(
+            index=PRODUCTS,
+            size=len(ids),
+            query={
+                "bool": {
+                    "filter": [
+                        {"term": {"tenant_id": tenant_id}},
+                        {"term": {"environment": environment}},
+                        {"terms": {"id": ids}},
+                    ]
+                }
+            },
+            sort=[{"id": "asc"}, {"_id": "asc"}],
+        )
+        return [DataProduct.model_validate(hit["_source"]) for hit in response["hits"]["hits"]]
+
     def list_products(
         self,
         tenant_id: str,
@@ -633,20 +655,59 @@ class ElasticsearchDataProductRepository:
     def save_dependencies(
         self, tenant_id: str, environment: str, product_id: str, dependencies: Sequence[DataProductDependencyProjection]
     ) -> DataProductDependencyPage:
-        current = self.list_dependencies(tenant_id, environment, product_id, limit=200).items
+        current: list[DataProductDependencyProjection] = []
+        after = None
+        while True:
+            page = self.list_dependencies(tenant_id, environment, product_id, limit=200, search_after=after)
+            current.extend(page.items)
+            if len(current) > 10_000:
+                raise ValueError("dependency_count_exceeded")
+            if not page.has_more:
+                break
+            if not page.search_after:
+                raise ProductConsistencyError("dependency page missing continuation")
+            after = page.search_after
         proposed = {edge.upstream_product_id: edge for edge in dependencies}
         now = datetime.now(timezone.utc)
         for edge in current:
             if not edge.removed and edge.upstream_product_id not in proposed:
-                proposed[edge.upstream_product_id] = edge.model_copy(update={"removed": True, "updated_at": now})
+                proposed[edge.upstream_product_id] = edge.model_copy(
+                    update={
+                        "removed": True,
+                        "removed_at": now,
+                        "removed_by_revision": max(
+                            (item.product_revision for item in dependencies),
+                            default=edge.product_revision + 1,
+                        ),
+                        "updated_at": now,
+                    }
+                )
         for edge in proposed.values():
             if (edge.tenant_id, edge.environment, edge.product_id) != (tenant_id, environment, product_id):
                 raise ValueError("dependency scope mismatch")
-            self.client.index(
-                index=DEPENDENCIES,
-                id=scoped_id(tenant_id, environment, f"{product_id}:{edge.upstream_product_id}"),
-                document=edge.model_dump(mode="json"),
-            )
+            edge_id = scoped_id(tenant_id, environment, f"{product_id}:{edge.upstream_product_id}")
+            document = edge.model_dump(mode="json")
+            try:
+                hit = self.client.get(index=DEPENDENCIES, id=edge_id, seq_no_primary_term=True)
+            except NotFoundError:
+                try:
+                    self.client.create(index=DEPENDENCIES, id=edge_id, document=document)
+                except ConflictError as exc:
+                    raise ProductVersionConflict("concurrent dependency create") from exc
+            else:
+                existing = DataProductDependencyProjection.model_validate(hit["_source"])
+                if existing == edge:
+                    continue
+                try:
+                    self.client.index(
+                        index=DEPENDENCIES,
+                        id=edge_id,
+                        document=document,
+                        if_seq_no=hit["_seq_no"],
+                        if_primary_term=hit["_primary_term"],
+                    )
+                except ConflictError as exc:
+                    raise ProductVersionConflict("concurrent dependency update") from exc
         return DataProductDependencyPage(items=sorted(proposed.values(), key=lambda x: x.upstream_product_id))
 
     def list_dependencies(
@@ -687,21 +748,53 @@ class ElasticsearchDataProductRepository:
     ) -> DataProductDependencyGraph:
         if not 1 <= max_depth <= 32 or not 1 <= max_nodes <= 1000:
             raise ValueError("dependency traversal bounds invalid")
-        response = self.client.search(
-            index=DEPENDENCIES,
-            size=1000,
-            query={
-                "bool": {
-                    "filter": [
-                        {"term": {"tenant_id": tenant_id}},
-                        {"term": {"environment": environment}},
-                        {"term": {"removed": False}},
-                    ]
-                }
-            },
-            sort=[{"product_id": "asc"}, {"upstream_product_id": "asc"}, {"_id": "asc"}],
+        from services.data_products.dependencies import (
+            DataProductDependencyTraversalBudget,
+            traverse_frontiers,
         )
-        edges = [DataProductDependencyProjection.model_validate(h["_source"]) for h in response["hits"]["hits"]]
+
+        edge_models: dict[tuple[str, str], DataProductDependencyProjection] = {}
+
+        def load(frontier: Sequence[str], requested_direction: str):
+            field = "product_id" if requested_direction == "upstream" else "upstream_product_id"
+            after = None
+            values: list[tuple[str, str]] = []
+            while True:
+                response = self.client.search(
+                    index=DEPENDENCIES,
+                    size=200,
+                    query={
+                        "bool": {
+                            "filter": [
+                                {"term": {"tenant_id": tenant_id}},
+                                {"term": {"environment": environment}},
+                                {"term": {"removed": False}},
+                                {"terms": {field: list(frontier)}},
+                            ]
+                        }
+                    },
+                    sort=[{"product_id": "asc"}, {"upstream_product_id": "asc"}, {"_id": "asc"}],
+                    search_after=after,
+                )
+                hits = response["hits"]["hits"]
+                for hit in hits:
+                    edge = DataProductDependencyProjection.model_validate(hit["_source"])
+                    key = (edge.product_id, edge.upstream_product_id)
+                    edge_models[key] = edge
+                    values.append(key)
+                if len(hits) < 200:
+                    return values, True
+                after = hits[-1].get("sort")
+                if not after:
+                    return values, False
+
+        traversal = traverse_frontiers(
+            product_id,
+            direction,  # type: ignore[arg-type]
+            DataProductDependencyTraversalBudget(max_depth=max_depth, max_nodes=max_nodes),
+            load,  # type: ignore[arg-type]
+        )
+        edges = [edge_models[key] for key in traversal.edges]
         adjacency: dict[str, list[tuple[str, DataProductDependencyProjection]]] = {}
         for edge in edges:
             source, target = (

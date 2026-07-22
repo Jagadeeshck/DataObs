@@ -147,6 +147,9 @@ class MemoryDataProductRepository:
         )
         return renewed
 
+    def assert_operation_claim(self, claim):
+        self._owned_state(claim)
+
     def checkpoint_operation(self, claim, checkpoint: DataProductOperationCheckpoint):
         from dataclasses import replace
 
@@ -220,11 +223,14 @@ class MemoryDataProductRepository:
         record = self.idempotency.get(record_id)
         if record is None:
             raise ProductConsistencyError("idempotency reservation missing")
-        if (record.operation_id, record.request_fingerprint) != (
+        if record.request_fingerprint != expected_request_fingerprint or record.operation_id not in (
+            None,
             expected_operation_id,
-            expected_request_fingerprint,
         ):
             raise ProductConsistencyError("idempotency operation binding mismatch")
+        if record.operation_id is None:
+            record = record.model_copy(update={"operation_id": expected_operation_id})
+            self.idempotency[record_id] = record
         if outcome == "completed":
             result = final_result_or_error
             desired = ("completed", result.revision, result.etag, None)
@@ -238,11 +244,15 @@ class MemoryDataProductRepository:
                 return
             raise ProductConsistencyError("terminal idempotency state cannot diverge")
         if outcome == "completed":
-            self.complete_idempotency(
-                record_id,
-                operation_id=expected_operation_id,
-                revision=result.revision,
-                etag=result.etag,
+            self.idempotency[record_id] = record.model_copy(
+                update={
+                    "state": "completed",
+                    "operation_id": expected_operation_id,
+                    "result_revision": result.revision,
+                    "result_etag": result.etag,
+                    "completed_at": result.applied_at,
+                    "updated_at": result.applied_at,
+                }
             )
         else:
             self._terminal_idempotency(record_id, outcome, final_result_or_error)

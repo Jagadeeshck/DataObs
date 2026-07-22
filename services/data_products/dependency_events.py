@@ -61,6 +61,9 @@ class DataProductDependencyReadSnapshot:
     dependencies: tuple[DataProductDependencyProjection, ...]
     count: int
     complete: bool
+    snapshot_checksum: str = ""
+    graph_versions: tuple[str, ...] = ()
+    observed_at: datetime | None = None
     truncation_reason: str | None = None
 
 
@@ -88,6 +91,8 @@ class DataProductDependencyMutationResult:
     removed_count: int
     upserted_count: int
     graph_version: str
+    recovered: bool = False
+    operation_status: str = "completed"
 
 
 @dataclass(frozen=True)
@@ -114,6 +119,28 @@ class DataProductDependencyOperation:
 @dataclass(frozen=True)
 class DataProductDependencyOperationResult:
     operation: DataProductDependencyOperation
+    operation_result_product: DataProduct
     result_product_revision: int
     result_product_etag: str
     applied_at: datetime
+    result_definition_checksum: str
+    result_graph_version: str
+    active_dependencies: tuple[DataProductDependencyProjection, ...]
+    active_dependency_checksums: tuple[str, ...]
+    removed_dependency_ids: tuple[str, ...]
+    upserted_count: int
+    removed_count: int
+    warnings: tuple[str, ...]
+    request_fingerprint: str
+
+
+class DependencyResultInconsistent(RuntimeError):
+    """Immutable result evidence is missing, out of scope, or corrupt."""
+
+
+class DependencyOperationPending(RuntimeError):
+    """A durable operation exists but could not be repaired in the request budget."""
+
+    def __init__(self, operation_id: str) -> None:
+        self.operation_id = operation_id
+        super().__init__("dependency_operation_pending")

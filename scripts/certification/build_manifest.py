@@ -18,7 +18,7 @@ def main() -> int:
     for path in sorted(root.rglob("*")):
         if path.is_symlink():
             raise ValueError(f"symlinks are not retained evidence: {path.relative_to(root)}")
-        if path.is_file() and path.name not in {"certification-evidence.json", ".gitkeep"}:
+        if path.is_file() and path.name not in {"certification-evidence.json", "manifest.json", ".gitkeep"}:
             artifacts.append(
                 {"path": path.relative_to(root).as_posix(), "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
             )
@@ -26,11 +26,17 @@ def main() -> int:
     now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     doc = {
         "schema_version": "1.0",
-        "repository": "Jagadeeshck/DataObs",
+        "repository": os.getenv("GITHUB_REPOSITORY", "Jagadeeshck/DataObs"),
         "commit_sha": os.getenv("GITHUB_SHA")
         or subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
         "workflow_run_id": run_id,
-        "workflow_run_url": f"https://github.com/Jagadeeshck/DataObs/actions/runs/{run_id}" if run_id else None,
+        "workflow_run_url": (
+            f"{os.getenv('GITHUB_SERVER_URL', 'https://github.com')}/"
+            f"{os.getenv('GITHUB_REPOSITORY', 'Jagadeeshck/DataObs')}/actions/runs/{run_id}"
+            if run_id
+            else None
+        ),
+        "jobs": json.loads(os.getenv("CERTIFICATION_JOB_RESULTS", "{}")),
         "started_at": os.getenv("CERTIFICATION_STARTED_AT", now),
         "completed_at": now,
         "versions": {
@@ -49,7 +55,11 @@ def main() -> int:
         "redaction": {"status": "complete"},
         "artifacts": artifacts,
     }
-    (root / "certification-evidence.json").write_text(json.dumps(doc, indent=2) + "\n")
+    encoded = json.dumps(doc, indent=2) + "\n"
+    # Keep the historical generic filename while the Data Product workflow
+    # publishes the required resource-specific manifest.
+    (root / "certification-evidence.json").write_text(encoded)
+    (root / "manifest.json").write_text(encoded)
     return 0
 
 

@@ -54,22 +54,22 @@ class MemoryDataProductRepository:
         self.dependencies: dict[tuple[str, str, str, str], DataProductDependencyProjection] = {}
         self.dependency_plans: dict[str, DataProductDependencyMutationPlan] = {}
         self.dependency_results: dict[str, DataProductDependencyOperationResult] = {}
-        self.operation_states: dict[str, DataProductOperationState] = {}
+        self.operation_states: dict[tuple[str, str, str], DataProductOperationState] = {}
         self.operation_history: dict[str, DataProductOperationHistoryEvent] = {}
         self.operation_plans: dict[tuple[str, str, str, str], DataProductOperationPlan] = {}
         self.operation_results: dict[tuple[str, str, str, str], DataProductOperationResultEnvelope] = {}
 
     def add_operation_state(self, state: DataProductOperationState) -> None:
-        self.operation_states[state.operation_id] = state
+        self.operation_states[(state.tenant_id, state.environment, state.operation_id)] = state
 
     def create_operation_state(self, state: DataProductOperationState) -> None:
-        existing = self.operation_states.get(state.operation_id)
+        existing = self.operation_states.get((state.tenant_id, state.environment, state.operation_id))
         if existing is not None and existing != state:
             raise ProductConsistencyError("divergent operation state")
-        self.operation_states[state.operation_id] = state
+        self.operation_states[(state.tenant_id, state.environment, state.operation_id)] = state
 
     def get_operation_state(self, tenant_id, environment, operation_id):
-        state = self.operation_states.get(operation_id)
+        state = self.operation_states.get((tenant_id, environment, operation_id))
         return state if state and (state.tenant_id, state.environment) == (tenant_id, environment) else None
 
     def list_reconcilable_operations(self, tenant_id, environment, *, limit=100):
@@ -117,11 +117,11 @@ class MemoryDataProductRepository:
             environment,
             state.product_id,
         )
-        self.operation_states[operation_id] = state.claimed(claim, now=now)
+        self.operation_states[(tenant_id, environment, operation_id)] = state.claimed(claim, now=now)
         return claim
 
     def _owned_state(self, claim):
-        state = self.operation_states.get(claim.operation_id)
+        state = self.operation_states.get((claim.tenant_id, claim.environment, claim.operation_id))
         if (
             state is None
             or (
@@ -141,14 +141,16 @@ class MemoryDataProductRepository:
 
         state = self._owned_state(claim)
         renewed = replace(claim, expires_at=expires_at)
-        self.operation_states[claim.operation_id] = replace(state, claim_expires_at=expires_at, seq_no=state.seq_no + 1)
+        self.operation_states[(claim.tenant_id, claim.environment, claim.operation_id)] = replace(
+            state, claim_expires_at=expires_at, seq_no=state.seq_no + 1
+        )
         return renewed
 
     def checkpoint_operation(self, claim, checkpoint: DataProductOperationCheckpoint):
         from dataclasses import replace
 
         state = self._owned_state(claim)
-        self.operation_states[claim.operation_id] = replace(
+        self.operation_states[(claim.tenant_id, claim.environment, claim.operation_id)] = replace(
             state, last_checkpoint=checkpoint, updated_at=checkpoint.occurred_at, seq_no=state.seq_no + 1
         )
 
@@ -157,7 +159,7 @@ class MemoryDataProductRepository:
 
         state = self._owned_state(claim)
         when = result.applied_at if result else state.updated_at
-        self.operation_states[claim.operation_id] = replace(
+        self.operation_states[(claim.tenant_id, claim.environment, claim.operation_id)] = replace(
             state,
             status=status,
             result_reference=result.checksum if result else state.result_reference,

@@ -12,6 +12,7 @@ from services.data_products.idempotency import (
     request_fingerprint,
     scoped_record_id,
 )
+from services.data_products.reconciliation import persist_pending_operation
 from services.data_products.repository import DataProductRepository, ProductVersionConflict
 
 
@@ -193,6 +194,29 @@ class DataProductService:
             reason,
             canonical_action,
             idempotency_key,
+        )
+        persist_pending_operation(
+            self.repository,
+            tenant_id=tenant_id,
+            environment=environment,
+            product_id=product_id,
+            operation_id=operation.operation_id,
+            operation_kind="product_lifecycle",
+            idempotency_record_id=record_id,
+            created_at=operation.occurred_at,
+            payload={
+                "request_fingerprint": fingerprint,
+                "actor": actor,
+                "reason": reason,
+                "action": canonical_action,
+                "expected_revision": current.revision,
+                "expected_etag": if_match,
+                "source_lifecycle": current.lifecycle_state,
+                "target_lifecycle": target,
+                "target_revision": saved.revision,
+                "target_etag": saved.etag,
+                "pending_event_id": operation.operation_id,
+            },
         )
         self.repository.complete_idempotency(
             record_id, operation_id=operation.operation_id, revision=saved.revision, etag=saved.etag

@@ -10,7 +10,12 @@ from services.data_products.operation_state import (
     DataProductOperationState,
     OperationClaimConflict,
 )
-from services.data_products.reconciliation import DataProductOperationService, OperationReconciliationRegistry
+from services.data_products.reconciliation import (
+    DataProductOperationService,
+    ManualMembershipReconciliationHandler,
+    OperationReconciliationRegistry,
+    _checksum,
+)
 
 
 def state(operation_id: str = "op-1") -> DataProductOperationState:
@@ -81,7 +86,7 @@ def test_registry_rejects_unknown_operation_kind() -> None:
         OperationReconciliationRegistry().get("poisoned")
 
 
-def test_durable_plan_is_recovered_before_state_completion() -> None:
+def test_plan_result_payload_is_not_false_projection_evidence() -> None:
     repository = MemoryDataProductRepository()
     initial = state("recover-me")
     initial = initial.__class__(
@@ -96,15 +101,36 @@ def test_durable_plan_is_recovered_before_state_completion() -> None:
             "product",
             "recover-me",
             "manual_membership",
-            "plan-checksum",
-            {"result": {"revision": 4, "etag": "etag-4"}},
+            _checksum(
+                {
+                    "request_fingerprint": "fingerprint",
+                    "membership_id": "missing",
+                    "entity_id": "e",
+                    "entity_type": "table",
+                    "result": {"revision": 4, "etag": "etag-4"},
+                }
+            ),
+            {
+                "request_fingerprint": "fingerprint",
+                "membership_id": "missing",
+                "entity_id": "e",
+                "entity_type": "table",
+                "result": {"revision": 4, "etag": "etag-4"},
+            },
         )
     )
 
     assert (
         DataProductOperationService(repository, worker_id="worker").reconcile_operation("tenant", "prod", "recover-me")
-        == "applied"
+        == "retry"
     )
     completed = repository.get_operation_state("tenant", "prod", "recover-me")
-    assert completed.status == "applied"
-    assert repository.load_operation_result("tenant", "prod", "product", "recover-me") is not None
+    assert completed.status == "claimed"
+    assert repository.load_operation_result("tenant", "prod", "product", "recover-me") is None
+
+
+def test_registry_has_distinct_concrete_handlers() -> None:
+    registry = OperationReconciliationRegistry()
+    handlers = [registry.get(kind) for kind in registry.REQUIRED_KINDS]
+    assert isinstance(registry.get("manual_membership"), ManualMembershipReconciliationHandler)
+    assert len({type(handler) for handler in handlers}) == len(handlers)

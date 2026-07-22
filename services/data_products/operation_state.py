@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, replace
+from dataclasses import asdict, dataclass, replace
 from datetime import datetime
 from typing import Any, Literal, Mapping
 
@@ -114,6 +114,70 @@ class DataProductOperationPlan:
     operation_kind: str
     checksum: str
     payload: Mapping[str, Any]
+
+
+@dataclass(frozen=True, kw_only=True)
+class TypedDataProductOperationPlan:
+    """Common immutable input for projection-aware mutation recovery."""
+
+    tenant_id: str
+    environment: str
+    product_id: str
+    operation_id: str
+    operation_kind: str
+    request_fingerprint: str
+    idempotency_record_id: str
+    actor: str
+    reason: str
+    expected_revision: int | None
+    expected_etag: str | None
+    target_checksum: str
+    created_at: datetime
+
+    def payload(self) -> Mapping[str, Any]:
+        return asdict(self)
+
+
+@dataclass(frozen=True, kw_only=True)
+class ManualMembershipOperationPlan(TypedDataProductOperationPlan):
+    membership_id: str
+    entity_id: str
+    entity_type: str
+    pending_event_id: str
+
+
+@dataclass(frozen=True, kw_only=True)
+class ProposalDecisionOperationPlan(TypedDataProductOperationPlan):
+    proposal_id: str
+    proposal_action: Literal["accept", "reject", "expire", "supersede"]
+    proposal_revision: int
+    membership_id: str | None
+    pending_event_id: str
+
+
+@dataclass(frozen=True, kw_only=True)
+class MembershipExclusionOperationPlan(TypedDataProductOperationPlan):
+    membership_id: str
+    pending_event_id: str
+
+
+@dataclass(frozen=True, kw_only=True)
+class DependencyReplacementOperationPlan(TypedDataProductOperationPlan):
+    target_product_revision: int
+    target_product_etag: str
+    graph_version: str
+    edge_checksums: tuple[str, ...]
+    tombstone_checksums: tuple[str, ...]
+    pending_event_id: str
+
+
+@dataclass(frozen=True, kw_only=True)
+class ProductLifecycleOperationPlan(TypedDataProductOperationPlan):
+    source_lifecycle: str
+    target_lifecycle: Literal["active", "deprecated", "archived"]
+    target_revision: int
+    target_etag: str
+    pending_event_id: str
 
 
 @dataclass(frozen=True)

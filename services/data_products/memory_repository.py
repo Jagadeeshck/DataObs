@@ -57,6 +57,12 @@ class MemoryDataProductRepository:
     def add_operation_state(self, state: DataProductOperationState) -> None:
         self.operation_states[state.operation_id] = state
 
+    def create_operation_state(self, state: DataProductOperationState) -> None:
+        existing = self.operation_states.get(state.operation_id)
+        if existing is not None and existing != state:
+            raise ProductConsistencyError("divergent operation state")
+        self.operation_states[state.operation_id] = state
+
     def get_operation_state(self, tenant_id, environment, operation_id):
         state = self.operation_states.get(operation_id)
         return state if state and (state.tenant_id, state.environment) == (tenant_id, environment) else None

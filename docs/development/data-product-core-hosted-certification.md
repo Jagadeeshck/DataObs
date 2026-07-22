@@ -1,12 +1,12 @@
 # Data Product core hosted certification
 
-> PR #129 completed immutable dependency-result replay and synchronous recovery foundations only. This PR completes independent CAS reconciliation, relevant-graph validation, traversal accounting, impact, APIs, Product 360, real-stack certification, hosted evidence, and inherited review-thread resolution.
+> PR #130 added typed operation-state, in-memory CAS, and traversal helper foundations only. This PR implements the production Elasticsearch runtime, integrates real repair handlers and workflows, completes APIs and Product 360, and produces retained hosted certification evidence.
 
 ## Certification matrix
 
 This audit is deliberately fail-closed: a local result is not hosted certification. Release readiness remains **blocked** and the next milestone is **Data Product SLOs, reliability, and coverage**.
 
-| Capability | Current main | Blocking defect | Final behavior | Unit/property | Elasticsearch | Browser/axe | Security | Hosted artifact |
+| Capability | PR #130 state | Production gap | Required implementation | Unit/property | Elasticsearch | Browser/axe | Security | Hosted artifact |
 |---|---|---|---|---|---|---|---|---|
 | Manual/proposal/exclusion pending recovery | immutable decisions exist | typed lookup/recovery incomplete | reuse pending evidence; append only terminal evidence | membership suites | recovery scenarios | Members journey | takeover/leakage | recovery evidence |
 | Dependency immutable replay/result snapshot | replay reads current edges | original result can be lost | bounded immutable product and edge snapshot, verified on replay | coordinator immutable-replay test | later-mutation replay | editor replay | poisoning | operation/result evidence |
@@ -20,6 +20,14 @@ This audit is deliberately fail-closed: a local result is not hosted certificati
 | Product 360 workflows | membership components exist | remaining panels pending | actionable Members, Dependencies, graph/table, Impact, revisions | component tests | real API | Playwright/axe | stored XSS | browser evidence |
 | Real stack and dynamic manifest | jobs declared | hosted run not yet available | ES 9.4.2, Chromium/axe, dedicated security, generated run manifest | unit job | Elasticsearch job | browser job | security job | manifest.json |
 | Review threads | inherited threads open | hosted proof required | reply with SHA, test, job, artifact before resolution | n/a | n/a | n/a | n/a | review references |
+| Operation-state mapping and CRUD | dataclasses and memory storage | production repository omitted | create-or-verify state in the released strict envelope | state transitions | writer/query contract | operation details | state poisoning | state evidence |
+| Immutable-history mapping/create-or-verify | memory dictionary | no create-only Elasticsearch evidence | deterministic scoped IDs and canonical conflict verification | canonical equality | immutable create conflict | history panel | history poisoning | history evidence |
+| Claim expiry/reclaim and stale-worker fencing | memory CAS | no Elasticsearch OCC | `_seq_no`/`_primary_term`, generation and owner fencing | monotonic generation | two workers/takeover | recovery state | claim takeover | claim evidence |
+| Workflow state creation and checkpointing | facade only | mutations not integrated | pending history, durable plan, pending state and checkpoints at boundaries | fault matrix | partial-state recovery | pending workflow | reference poisoning | recovery evidence |
+| Manual/proposal/exclusion/dependency/lifecycle recovery | evidence inspection | no typed repair registry | operation-specific idempotent handlers | handler order | crash boundary matrix | manual reconcile | stale mutation | handler evidence |
+| PIT dependency snapshot | bounded current reads | no point-in-time isolation | PIT, `search_after`, hard maximum and checksum | checksum | concurrent write | dependency evidence | PIT failure | snapshot evidence |
+| Relevant-cycle and physical-page accounting | helpers only | loader not connected | shared budget and one charged request per physical page | shared budget | indirect multi-page cycle | graph controls/table | amplification | traversal evidence |
+| Signed pagination | cursor foundation | incomplete resources/bindings | exact `_id` sort tuple bound to route, scope, filters and expiry | cursor binding | concurrent mutation | next-page actions | tamper/replay | pagination evidence |
 
 ## Operation ordering
 

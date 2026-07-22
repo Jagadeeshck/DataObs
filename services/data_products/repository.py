@@ -110,6 +110,7 @@ class DataProductReconciliationResult:
 
 
 class DataProductRepository(Protocol):
+    def create_operation_state(self, state: DataProductOperationState) -> None: ...
     def list_reconcilable_operations(
         self, tenant_id: str, environment: str, *, limit: int = 100
     ) -> Sequence[DataProductOperationState]: ...

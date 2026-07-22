@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import asdict, replace
 from datetime import datetime, timezone
 from hashlib import sha256
 from typing import Any, Sequence
@@ -28,6 +29,14 @@ from services.data_products.idempotency import (
     IdempotencyConflict,
     IdempotencyReservationResult,
     IdempotencyReservationStatus,
+)
+from services.data_products.operation_state import (
+    DataProductOperationCheckpoint,
+    DataProductOperationClaim,
+    DataProductOperationFinalResult,
+    DataProductOperationHistoryEvent,
+    DataProductOperationState,
+    OperationClaimConflict,
 )
 from services.data_products.repository import ProductVersionConflict
 
@@ -65,6 +74,238 @@ def scoped_id(tenant_id: str, environment: str, entity_id: str) -> str:
 class ElasticsearchDataProductRepository:
     def __init__(self, client: Elasticsearch) -> None:
         self.client = client
+
+    @staticmethod
+    def _json_value(value: Any) -> Any:
+        if isinstance(value, datetime):
+            return value.isoformat()
+        if isinstance(value, dict):
+            return {key: ElasticsearchDataProductRepository._json_value(item) for key, item in value.items()}
+        if isinstance(value, (list, tuple)):
+            return [ElasticsearchDataProductRepository._json_value(item) for item in value]
+        return value
+
+    @staticmethod
+    def _state_document(state: DataProductOperationState) -> dict[str, Any]:
+        document = ElasticsearchDataProductRepository._json_value(asdict(replace(state, seq_no=0, primary_term=1)))
+        return {
+            "operation_id": state.operation_id,
+            "product_id": state.product_id,
+            "tenant_id": state.tenant_id,
+            "environment": state.environment,
+            "action": state.operation_kind,
+            "outcome": state.status,
+            "occurred_at": state.updated_at.isoformat(),
+            "document": document,
+        }
+
+    @staticmethod
+    def _state_from_hit(hit: dict[str, Any]) -> DataProductOperationState:
+        value = dict(hit["_source"]["document"])
+        checkpoint = value.get("last_checkpoint")
+        if checkpoint:
+            checkpoint["occurred_at"] = datetime.fromisoformat(checkpoint["occurred_at"])
+            value["last_checkpoint"] = DataProductOperationCheckpoint(**checkpoint)
+        for key in ("updated_at", "claimed_at", "claim_expires_at"):
+            if value.get(key):
+                value[key] = datetime.fromisoformat(value[key])
+        value["seq_no"] = hit["_seq_no"]
+        value["primary_term"] = hit["_primary_term"]
+        return DataProductOperationState(**value)
+
+    def create_operation_state(self, state: DataProductOperationState) -> None:
+        if state.status != "pending" or not state.plan_reference:
+            raise ValueError("operation state must begin pending with a plan reference")
+        document_id = scoped_id(state.tenant_id, state.environment, f"state:{state.operation_id}")
+        document = self._state_document(state)
+        try:
+            self.client.create(index=OPERATIONS, id=document_id, document=document)
+        except ConflictError as exc:
+            existing = self.client.get(index=OPERATIONS, id=document_id)["_source"]
+            if existing != document:
+                raise ProductConsistencyError("divergent operation state") from exc
+
+    def get_operation_state(
+        self, tenant_id: str, environment: str, operation_id: str
+    ) -> DataProductOperationState | None:
+        try:
+            hit = self.client.get(
+                index=OPERATIONS,
+                id=scoped_id(tenant_id, environment, f"state:{operation_id}"),
+                seq_no_primary_term=True,
+            )
+        except NotFoundError:
+            return None
+        if (hit["_source"].get("tenant_id"), hit["_source"].get("environment")) != (tenant_id, environment):
+            return None
+        return self._state_from_hit(hit)
+
+    def list_reconcilable_operations(self, tenant_id: str, environment: str, *, limit: int = 100):
+        if not 1 <= limit <= 200:
+            raise ValueError("limit outside bounds")
+        response = self.client.search(
+            index=OPERATIONS,
+            size=limit,
+            seq_no_primary_term=True,
+            query={
+                "bool": {
+                    "filter": [
+                        {"term": {"tenant_id": tenant_id}},
+                        {"term": {"environment": environment}},
+                        {"terms": {"outcome": ["pending", "claimed"]}},
+                    ]
+                }
+            },
+            sort=[{"occurred_at": "asc"}, {"operation_id": "asc"}, {"_id": "asc"}],
+        )
+        return [
+            self._state_from_hit(hit)
+            for hit in response["hits"]["hits"]
+            if "status" in hit["_source"].get("document", {})
+        ]
+
+    def claim_operation(
+        self,
+        tenant_id,
+        environment,
+        operation_id,
+        *,
+        worker_id,
+        now,
+        expires_at,
+        expected_seq_no,
+        expected_primary_term,
+    ):
+        state = self.get_operation_state(tenant_id, environment, operation_id)
+        if state is None:
+            raise KeyError(operation_id)
+        if (state.seq_no, state.primary_term) != (expected_seq_no, expected_primary_term):
+            raise OperationClaimConflict("operation_claim_conflict")
+        if state.status not in {"pending", "claimed"} or (
+            state.status == "claimed" and state.claim_expires_at and state.claim_expires_at > now
+        ):
+            raise OperationClaimConflict("operation_claim_conflict")
+        claim = DataProductOperationClaim(operation_id, worker_id, state.claim_generation + 1, now, expires_at)
+        self._replace_state(state.claimed(claim, now=now), expected_seq_no, expected_primary_term)
+        return claim
+
+    def _replace_state(self, state, seq_no, primary_term):
+        try:
+            self.client.index(
+                index=OPERATIONS,
+                id=scoped_id(state.tenant_id, state.environment, f"state:{state.operation_id}"),
+                document=self._state_document(state),
+                if_seq_no=seq_no,
+                if_primary_term=primary_term,
+            )
+        except ConflictError as exc:
+            raise OperationClaimConflict("operation_claim_conflict") from exc
+
+    def _owned_state(self, claim: DataProductOperationClaim):
+        response = self.client.search(
+            index=OPERATIONS,
+            size=1,
+            seq_no_primary_term=True,
+            query={
+                "bool": {"filter": [{"term": {"operation_id": claim.operation_id}}, {"term": {"outcome": "claimed"}}]}
+            },
+        )
+        hits = response["hits"]["hits"]
+        if not hits:
+            raise OperationClaimConflict("operation_claim_conflict")
+        state = self._state_from_hit(hits[0])
+        if (state.claim_owner, state.claim_generation) != (claim.owner, claim.generation):
+            raise OperationClaimConflict("operation_claim_conflict")
+        return state
+
+    def renew_operation_claim(self, claim, *, expires_at):
+        state = self._owned_state(claim)
+        self._replace_state(replace(state, claim_expires_at=expires_at), state.seq_no, state.primary_term)
+        return replace(claim, expires_at=expires_at)
+
+    def checkpoint_operation(self, claim, checkpoint):
+        state = self._owned_state(claim)
+        self._replace_state(
+            replace(state, last_checkpoint=checkpoint, updated_at=checkpoint.occurred_at),
+            state.seq_no,
+            state.primary_term,
+        )
+
+    def _finalize_operation(self, claim, status, *, result=None, error_code=None):
+        state = self._owned_state(claim)
+        updated = result.applied_at if result else datetime.now(timezone.utc)
+        final = replace(
+            state,
+            status=status,
+            claim_owner=None,
+            claimed_at=None,
+            claim_expires_at=None,
+            result_reference=result.checksum if result else state.result_reference,
+            last_error_code=error_code,
+            updated_at=updated,
+        )
+        self._replace_state(final, state.seq_no, state.primary_term)
+
+    def complete_operation(self, claim, result):
+        self._finalize_operation(claim, "applied", result=result)
+
+    def supersede_operation(self, claim, *, error_code):
+        self._finalize_operation(claim, "superseded", error_code=error_code)
+
+    def fail_operation(self, claim, *, error_code):
+        self._finalize_operation(claim, "failed", error_code=error_code)
+
+    def append_operation_history(self, event: DataProductOperationHistoryEvent) -> None:
+        event_id = scoped_id(
+            event.tenant_id, event.environment, f"history:{event.product_id}:{event.operation_id}:{event.event_id}"
+        )
+        document = self._json_value(asdict(event))
+        envelope = {
+            "operation_id": event.operation_id,
+            "product_id": event.product_id,
+            "tenant_id": event.tenant_id,
+            "environment": event.environment,
+            "action": event.action,
+            "outcome": event.outcome,
+            "actor": event.actor,
+            "reason": event.reason,
+            "occurred_at": event.occurred_at.isoformat(),
+            "error_code": event.error_code,
+            "document": document,
+        }
+        try:
+            self.client.create(index=OPERATIONS, id=event_id, document=envelope)
+        except ConflictError as exc:
+            if self.client.get(index=OPERATIONS, id=event_id)["_source"] != envelope:
+                raise ProductConsistencyError("divergent immutable operation history") from exc
+
+    def get_operation_history(self, tenant_id, environment, operation_id, *, limit=100):
+        if not 1 <= limit <= 200:
+            raise ValueError("limit outside bounds")
+        response = self.client.search(
+            index=OPERATIONS,
+            size=limit,
+            query={
+                "bool": {
+                    "filter": [
+                        {"term": {"tenant_id": tenant_id}},
+                        {"term": {"environment": environment}},
+                        {"term": {"operation_id": operation_id}},
+                    ]
+                }
+            },
+            sort=[{"occurred_at": "asc"}, {"_id": "asc"}],
+        )
+        events = []
+        for hit in response["hits"]["hits"]:
+            value = dict(hit["_source"].get("document", {}))
+            if "event_id" not in value:
+                continue
+            for key in ("occurred_at", "applied_at"):
+                if value.get(key):
+                    value[key] = datetime.fromisoformat(value[key])
+            events.append(DataProductOperationHistoryEvent(**value))
+        return sorted(events, key=lambda event: (event.occurred_at, event.event_id))
 
     def reserve_idempotency(self, record_id: str, record: DataProductIdempotencyRecord) -> IdempotencyReservationResult:
         try:

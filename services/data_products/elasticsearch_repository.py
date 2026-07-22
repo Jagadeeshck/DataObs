@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import asdict, replace
 from datetime import datetime, timezone
 from hashlib import sha256
@@ -351,6 +352,11 @@ class ElasticsearchDataProductRepository:
                 raise ProductConsistencyError(f"divergent {kind}") from exc
 
     def save_operation_plan(self, plan):
+        canonical = sha256(
+            json.dumps(plan.payload, sort_keys=True, separators=(",", ":"), default=str).encode()
+        ).hexdigest()
+        if canonical != plan.checksum:
+            raise ProductConsistencyError("operation plan checksum mismatch")
         self._save_immutable_envelope(
             "operation_plan", plan.reference, plan.tenant_id, plan.environment, plan.product_id, plan.operation_id, plan
         )
@@ -361,6 +367,11 @@ class ElasticsearchDataProductRepository:
         )
 
     def save_operation_result(self, result):
+        canonical = sha256(
+            json.dumps(result.payload, sort_keys=True, separators=(",", ":"), default=str).encode()
+        ).hexdigest()
+        if canonical != result.checksum:
+            raise ProductConsistencyError("operation result checksum mismatch")
         self._save_immutable_envelope(
             "operation_result",
             result.reference,

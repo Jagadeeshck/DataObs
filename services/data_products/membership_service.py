@@ -16,6 +16,7 @@ from packages.domain_model.data_product import (
 from services.data_products.events import ProductConsistencyError
 from services.data_products.idempotency import hash_key, new_record, request_fingerprint, scoped_record_id
 from services.data_products.membership_events import MembershipMutation
+from services.data_products.reconciliation import persist_pending_operation
 from services.data_products.repository import (
     DataProductMembershipExclusionResult,
     DataProductMembershipMutationResult,
@@ -130,6 +131,28 @@ class DataProductMembershipService:
         )
         pending = mutation.event(outcome="pending", membership_id=membership_id)
         self.repository.append_membership_decision(tenant_id, environment, product_id, pending)
+        persist_pending_operation(
+            self.repository,
+            tenant_id=tenant_id,
+            environment=environment,
+            product_id=product_id,
+            operation_id=mutation.operation_id,
+            operation_kind="manual_membership",
+            idempotency_record_id=record_id,
+            created_at=pending.occurred_at,
+            payload={
+                "request_fingerprint": mutation.fingerprint,
+                "membership_id": membership_id,
+                "entity_id": entity_id,
+                "entity_type": entity_type,
+                "actor": actor,
+                "reason": reason,
+                "action": "membership_add",
+                "expected_revision": None,
+                "expected_etag": None,
+                "pending_event_id": pending.decision_id,
+            },
+        )
         created = self.repository.create_membership(tenant_id, environment, member)
         terminal = mutation.event(
             outcome="applied",

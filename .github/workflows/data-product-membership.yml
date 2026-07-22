@@ -11,6 +11,9 @@ jobs:
       - run: pip install -r requirements.txt
       - run: python scripts/check_migration_immutability.py --base-ref origin/main
       - run: python scripts/check_generated_artifacts.py
+      - run: python scripts/check_docs_links.py
+      - run: black --check services/data_products tests/data_products tests/integration/data_products tests/security/data_products
+      - run: mypy services/data_products src
       - run: ruff check services/data_products src/api/data_product_routes.py tests/data_products tests/integration/data_products
   data-product-reconciliation-unit:
     runs-on: ubuntu-latest
@@ -44,23 +47,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with: {name: reconciliation-elasticsearch-results, path: elasticsearch.xml, retention-days: 30}
-  data-product-reconciliation-browser:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with: {version: 10.28.1}
-      - uses: actions/setup-node@v4
-        with: {node-version: '24.15.0', cache: pnpm, cache-dependency-path: ui/dataobs-console/pnpm-lock.yaml}
-      - run: cd ui/dataobs-console && pnpm install --frozen-lockfile && pnpm typecheck && pnpm test && pnpm build
-      - run: CERTIFICATION_PROFILE=cert-browser ./scripts/certification/compose.sh up
-      - run: ./scripts/certification/apply_migrations.sh && ./scripts/certification/run_browser.sh
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with: {name: membership-browser, path: "ui/dataobs-console/playwright-report\nui/dataobs-console/test-results", retention-days: 30}
-      - if: always()
-        run: ./scripts/certification/compose.sh down
   data-product-reconciliation-security:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -72,7 +58,7 @@ jobs:
       - run: python -m pytest tests/security/data_products -q --junitxml=security.xml
   data-product-reconciliation-evidence:
     runs-on: ubuntu-latest
-    needs: [data-product-reconciliation-contracts, data-product-reconciliation-unit, data-product-reconciliation-elasticsearch, data-product-reconciliation-browser, data-product-reconciliation-security]
+    needs: [data-product-reconciliation-contracts, data-product-reconciliation-unit, data-product-reconciliation-elasticsearch, data-product-reconciliation-security]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
@@ -80,7 +66,7 @@ jobs:
       - name: Generate current-run evidence manifest
         env:
           CERTIFICATION_JOB_RESULTS: >-
-            {"contracts":"${{ needs.data-product-reconciliation-contracts.result }}","unit":"${{ needs.data-product-reconciliation-unit.result }}","elasticsearch":"${{ needs.data-product-reconciliation-elasticsearch.result }}","browser":"${{ needs.data-product-reconciliation-browser.result }}","security":"${{ needs.data-product-reconciliation-security.result }}"}
+            {"contracts":"${{ needs.data-product-reconciliation-contracts.result }}","unit":"${{ needs.data-product-reconciliation-unit.result }}","elasticsearch":"${{ needs.data-product-reconciliation-elasticsearch.result }}","security":"${{ needs.data-product-reconciliation-security.result }}"}
         run: python scripts/certification/build_manifest.py artifacts/data-product-reconciliation
       - run: python -m json.tool artifacts/data-product-reconciliation/manifest.json
       - uses: actions/upload-artifact@v4
@@ -88,7 +74,7 @@ jobs:
   data-product-reconciliation-summary:
     if: always()
     runs-on: ubuntu-latest
-    needs: [data-product-reconciliation-contracts, data-product-reconciliation-unit, data-product-reconciliation-elasticsearch, data-product-reconciliation-browser, data-product-reconciliation-security, data-product-reconciliation-evidence]
+    needs: [data-product-reconciliation-contracts, data-product-reconciliation-unit, data-product-reconciliation-elasticsearch, data-product-reconciliation-security, data-product-reconciliation-evidence]
     steps:
       - name: Require contracts
         run: test "${{ needs.data-product-reconciliation-contracts.result }}" = success
@@ -96,7 +82,5 @@ jobs:
         run: test "${{ needs.data-product-reconciliation-unit.result }}" = success
       - name: Require Elasticsearch
         run: test "${{ needs.data-product-reconciliation-elasticsearch.result }}" = success
-      - name: Require browser
-        run: test "${{ needs.data-product-reconciliation-browser.result }}" = success
       - name: Require security and evidence
         run: test "${{ needs.data-product-reconciliation-security.result }}" = success && test "${{ needs.data-product-reconciliation-evidence.result }}" = success

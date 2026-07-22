@@ -112,6 +112,12 @@ class DataProductReconciliationResult:
 
 
 class DataProductRepository(Protocol):
+    """Scoped recovery persistence.
+
+    Immutable writers are create-or-canonical-verify; all claim-owned mutations
+    must reject an expired or superseded claim generation.
+    """
+
     def create_operation_state(self, state: DataProductOperationState) -> None: ...
     def list_reconcilable_operations(
         self, tenant_id: str, environment: str, *, limit: int = 100

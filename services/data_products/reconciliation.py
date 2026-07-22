@@ -13,6 +13,7 @@ from services.data_products.operation_state import (
     DataProductOperationCheckpoint,
     DataProductOperationClaim,
     DataProductOperationFinalResult,
+    DataProductOperationHistoryEvent,
     DataProductOperationPlan,
     DataProductOperationResultEnvelope,
     DataProductOperationState,
@@ -41,25 +42,167 @@ class OperationReconciliationHandler(Protocol):
     def reconcile(self, repository, state, claim, history, plan) -> OperationReconciliationOutcome: ...
 
 
-class DurablePlanHandler:
-    """Common recovery handler; operation services may supply projection-specific callbacks in the plan."""
+class ProjectionAwareHandler:
+    """Fail-closed base class: durable intent is never treated as projection evidence."""
 
-    def reconcile(self, repository, state, claim, history, plan):
-        if plan.operation_kind != state.operation_kind or plan.reference != state.plan_reference:
+    operation_kind: str
+
+    def _verify(self, state, plan) -> Mapping[str, Any]:
+        if plan.operation_kind != self.operation_kind or state.operation_kind != self.operation_kind:
+            raise OperationConsistencyError("handler_operation_kind_mismatch")
+        if plan.reference != state.plan_reference or _checksum(plan.payload) != plan.checksum:
             raise OperationConsistencyError("operation_plan_mismatch")
+        fingerprint = plan.payload.get("request_fingerprint")
+        if not isinstance(fingerprint, str) or not fingerprint:
+            raise OperationConsistencyError("operation_fingerprint_missing")
+        return plan.payload
+
+    def _existing_result(self, repository, state):
         result = repository.load_operation_result(
             state.tenant_id, state.environment, state.product_id, state.operation_id
         )
-        if result:
-            if result.reference != state.result_reference and state.result_reference is not None:
-                raise OperationConsistencyError("operation_result_mismatch")
-            return OperationReconciliationOutcome("applied", "result_persisted", result.payload)
-        payload = plan.payload.get("result")
-        if not isinstance(payload, Mapping):
-            return OperationReconciliationOutcome(
-                "retry", state.last_checkpoint.name if state.last_checkpoint else None, retryable=True
+        if result is not None and _checksum(result.payload) != result.checksum:
+            raise OperationConsistencyError("operation_result_mismatch")
+        return result
+
+
+class ManualMembershipReconciliationHandler(ProjectionAwareHandler):
+    operation_kind = "manual_membership"
+
+    def reconcile(self, repository, state, claim, history, plan):
+        payload = self._verify(state, plan)
+        membership = repository.get_membership(
+            state.tenant_id, state.environment, state.product_id, str(payload.get("membership_id", ""))
+        )
+        if membership is None:
+            return OperationReconciliationOutcome("retry", "pending_history", retryable=True)
+        if membership.entity_id != payload.get("entity_id") or membership.entity_type != payload.get("entity_type"):
+            raise OperationConsistencyError("membership_projection_diverged")
+        result = self._existing_result(repository, state)
+        final = result.payload if result else {"revision": membership.revision, "etag": membership.etag}
+        return OperationReconciliationOutcome("applied", "membership_verified", final)
+
+
+class ProposalDecisionReconciliationHandler(ProjectionAwareHandler):
+    action: str
+
+    def reconcile(self, repository, state, claim, history, plan):
+        payload = self._verify(state, plan)
+        proposal = repository.get_membership_proposal(
+            state.tenant_id, state.environment, state.product_id, str(payload.get("proposal_id", ""))
+        )
+        if proposal is None:
+            raise OperationConsistencyError("proposal_missing")
+        expected_state = {"accept": "accepted", "reject": "rejected", "expire": "expired", "supersede": "superseded"}[
+            self.action
+        ]
+        if proposal.state == "proposed":
+            return OperationReconciliationOutcome("retry", "pending_history", retryable=True)
+        if proposal.state != expected_state:
+            raise OperationConsistencyError("newer_proposal_decision")
+        membership = None
+        if self.action == "accept":
+            membership = repository.get_membership(
+                state.tenant_id, state.environment, state.product_id, str(payload.get("membership_id", ""))
             )
-        return OperationReconciliationOutcome("applied", "projections_verified", payload)
+            if membership is None or membership.state != "active":
+                return OperationReconciliationOutcome("retry", "proposal_transition_verified", retryable=True)
+        result = self._existing_result(repository, state)
+        final = (
+            result.payload
+            if result
+            else {
+                "revision": membership.revision if membership else proposal.revision,
+                "etag": membership.etag if membership else proposal.etag,
+            }
+        )
+        return OperationReconciliationOutcome("applied", "proposal_projection_verified", final)
+
+
+class ProposalAcceptReconciliationHandler(ProposalDecisionReconciliationHandler):
+    operation_kind, action = "proposal_accept", "accept"
+
+
+class ProposalRejectReconciliationHandler(ProposalDecisionReconciliationHandler):
+    operation_kind, action = "proposal_reject", "reject"
+
+
+class ProposalExpireReconciliationHandler(ProposalDecisionReconciliationHandler):
+    operation_kind, action = "proposal_expire", "expire"
+
+
+class ProposalSupersedeReconciliationHandler(ProposalDecisionReconciliationHandler):
+    operation_kind, action = "proposal_supersede", "supersede"
+
+
+class MembershipExclusionReconciliationHandler(ProjectionAwareHandler):
+    operation_kind = "membership_exclude"
+
+    def reconcile(self, repository, state, claim, history, plan):
+        payload = self._verify(state, plan)
+        membership = repository.get_membership(
+            state.tenant_id, state.environment, state.product_id, str(payload.get("membership_id", ""))
+        )
+        if membership is None:
+            raise OperationConsistencyError("membership_missing")
+        if membership.state != "excluded":
+            return OperationReconciliationOutcome("retry", "pending_history", retryable=True)
+        result = self._existing_result(repository, state)
+        return OperationReconciliationOutcome(
+            "applied",
+            "exclusion_verified",
+            result.payload if result else {"revision": membership.revision, "etag": membership.etag},
+        )
+
+
+class DependencyReplacementReconciliationHandler(ProjectionAwareHandler):
+    operation_kind = "dependency_replace"
+
+    def reconcile(self, repository, state, claim, history, plan):
+        payload = self._verify(state, plan)
+        product = repository.get_product(state.tenant_id, state.environment, state.product_id)
+        target_revision = int(payload.get("target_product_revision", -1))
+        if product is None or product.revision < target_revision:
+            return OperationReconciliationOutcome("retry", "product_pending", retryable=True)
+        if product.revision > target_revision:
+            return OperationReconciliationOutcome(
+                "superseded", "newer_product_revision", error_code="newer_product_revision"
+            )
+        if product.etag != payload.get("target_product_etag"):
+            raise OperationConsistencyError("dependency_product_diverged")
+        snapshot = repository.read_complete_dependency_snapshot(
+            state.tenant_id, state.environment, state.product_id, maximum=10_000
+        )
+        active = tuple(sorted(edge.upstream_product_id for edge in snapshot.dependencies if not edge.removed))
+        if active != tuple(payload.get("upstream_product_ids", ())):
+            return OperationReconciliationOutcome("retry", "dependency_edges_pending", retryable=True)
+        result = self._existing_result(repository, state)
+        return OperationReconciliationOutcome(
+            "applied",
+            "dependency_projection_verified",
+            result.payload if result else {"revision": product.revision, "etag": product.etag},
+        )
+
+
+class ProductLifecycleReconciliationHandler(ProjectionAwareHandler):
+    operation_kind = "product_lifecycle"
+
+    def reconcile(self, repository, state, claim, history, plan):
+        payload = self._verify(state, plan)
+        product = repository.get_product(state.tenant_id, state.environment, state.product_id)
+        target_revision = int(payload.get("target_revision", -1))
+        if product is None or product.revision < target_revision:
+            return OperationReconciliationOutcome("retry", "lifecycle_transition_pending", retryable=True)
+        if product.revision > target_revision:
+            return OperationReconciliationOutcome("superseded", error_code="newer_lifecycle_revision")
+        if product.lifecycle_state != payload.get("target_lifecycle") or product.etag != payload.get("target_etag"):
+            raise OperationConsistencyError("lifecycle_projection_diverged")
+        result = self._existing_result(repository, state)
+        return OperationReconciliationOutcome(
+            "applied",
+            "lifecycle_projection_verified",
+            result.payload if result else {"revision": product.revision, "etag": product.etag},
+        )
 
 
 class OperationReconciliationRegistry:
@@ -75,8 +218,17 @@ class OperationReconciliationRegistry:
     )
 
     def __init__(self, handlers: Mapping[str, OperationReconciliationHandler] | None = None) -> None:
-        default = DurablePlanHandler()
-        self._handlers: dict[str, OperationReconciliationHandler] = {kind: default for kind in self.REQUIRED_KINDS}
+        concrete = (
+            ManualMembershipReconciliationHandler(),
+            ProposalAcceptReconciliationHandler(),
+            ProposalRejectReconciliationHandler(),
+            ProposalExpireReconciliationHandler(),
+            ProposalSupersedeReconciliationHandler(),
+            MembershipExclusionReconciliationHandler(),
+            DependencyReplacementReconciliationHandler(),
+            ProductLifecycleReconciliationHandler(),
+        )
+        self._handlers = {handler.operation_kind: handler for handler in concrete}
         if handlers:
             self._handlers.update(handlers)
 
@@ -91,15 +243,58 @@ def _checksum(payload: Mapping[str, Any]) -> str:
     return sha256(json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str).encode()).hexdigest()
 
 
+def persist_pending_operation(
+    repository: DataProductRepository,
+    *,
+    tenant_id: str,
+    environment: str,
+    product_id: str,
+    operation_id: str,
+    operation_kind: str,
+    idempotency_record_id: str,
+    payload: Mapping[str, Any],
+    created_at: Any,
+) -> DataProductOperationState:
+    """Persist immutable intent before creating its OCC-controlled pending state."""
+    checksum = _checksum(payload)
+    reference = f"plan:{operation_id}:{checksum}"
+    repository.save_operation_plan(
+        DataProductOperationPlan(
+            reference, tenant_id, environment, product_id, operation_id, operation_kind, checksum, payload
+        )
+    )
+    state = DataProductOperationState(
+        operation_id,
+        tenant_id,
+        environment,
+        product_id,
+        operation_kind,
+        "pending",
+        0,
+        created_at,
+        plan_reference=reference,
+        idempotency_record_id=idempotency_record_id,
+    )
+    repository.create_operation_state(state)
+    return repository.get_operation_state(tenant_id, environment, operation_id) or state
+
+
 class DataProductOperationService:
     """Independently runnable, CAS-fenced operation reconciliation service."""
 
     def __init__(
-        self, repository: DataProductRepository, *, worker_id: str, claim_ttl_seconds: int = 30, registry=None
+        self,
+        repository: DataProductRepository,
+        *,
+        worker_id: str,
+        claim_ttl_seconds: int = 30,
+        max_attempts: int = 5,
+        registry=None,
     ) -> None:
         self.repository = repository
         self.worker_id = worker_id
         self.claim_ttl_seconds = claim_ttl_seconds
+        self.max_attempts = max_attempts
         self.registry = registry or OperationReconciliationRegistry()
 
     def get_operation_status(self, tenant_id: str, environment: str, operation_id: str):
@@ -125,6 +320,9 @@ class DataProductOperationService:
             )
         except OperationClaimConflict:
             return "retry"
+        if state.attempt_count >= self.max_attempts:
+            self.repository.fail_operation(claim, error_code="reconciliation_attempts_exhausted")
+            return "failed"
         claimed = self.repository.get_operation_state(tenant_id, environment, operation_id)
         if claimed is None:
             return "missing"
@@ -156,6 +354,29 @@ class DataProductOperationService:
                     utc_now(),
                 )
                 self.repository.save_operation_result(result)
+                terminal = DataProductOperationHistoryEvent(
+                    f"terminal:{operation_id}:{checksum}",
+                    operation_id,
+                    tenant_id,
+                    environment,
+                    claimed.product_id,
+                    claimed.operation_kind,
+                    str(plan.payload.get("action", claimed.operation_kind)),
+                    "applied",
+                    str(plan.payload.get("actor", "reconciler")),
+                    str(plan.payload.get("reason", "reconciliation")),
+                    str(plan.payload["request_fingerprint"]),
+                    utc_now(),
+                    expected_revision=plan.payload.get("expected_revision"),
+                    expected_etag=plan.payload.get("expected_etag"),
+                    result_revision=int(payload.get("revision", 0)),
+                    result_etag=str(payload.get("etag", "recovered")),
+                    plan_checksum=plan.checksum,
+                    result_checksum=result.checksum,
+                    worker_id=self.worker_id,
+                    applied_at=result.created_at,
+                )
+                self.repository.append_operation_history(terminal)
                 self.repository.complete_operation(
                     claim,
                     DataProductOperationFinalResult(
@@ -190,11 +411,15 @@ class DataProductOperationService:
                 return "retry"
             return "failed"
 
-    def reconcile_batch(self, tenant_id: str, environment: str, *, limit: int = 100) -> dict[str, int]:
+    def reconcile_batch(
+        self, tenant_id: str, environment: str, *, limit: int = 100, operation_kind: str | None = None
+    ) -> dict[str, int]:
         if not 1 <= limit <= 1000:
             raise ValueError("reconciliation limit outside bounds")
         outcomes = {"applied": 0, "superseded": 0, "failed": 0, "retry": 0, "missing": 0}
         for state in self.repository.list_reconcilable_operations(tenant_id, environment, limit=limit):
+            if operation_kind is not None and state.operation_kind != operation_kind:
+                continue
             outcome = self.reconcile_operation(tenant_id, environment, state.operation_id)
             outcomes[outcome] += 1
         return outcomes

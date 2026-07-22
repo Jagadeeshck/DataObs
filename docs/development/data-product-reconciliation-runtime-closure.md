@@ -2,18 +2,21 @@
 
 > PR #131 implemented Elasticsearch operation-state and immutable-history persistence primitives only. This PR wires every scoped mutation to those primitives, implements operation-specific repair handlers, and certifies crash recovery and stale-worker fencing against Elasticsearch 9.4.2.
 
+> PR #132 introduced generic reconciliation envelopes and dispatch scaffolding, but all operation kinds still used one non-repairing DurablePlanHandler and mutation services did not create the new operation state. This PR implements concrete projection-aware handlers and wires every scoped mutation into the runtime.
+
 Release readiness remains **blocked**. Hosted artifact cells remain pending until the draft PR workflow produces downloadable evidence; local tests are not represented as hosted certification.
 
-| Operation kind | Current mutation steps | Crash boundaries | Recovery handler | Memory proof | Elasticsearch proof | Hosted artifact |
-|---|---|---|---|---|---|---|
-| `manual_membership` | plan, projection, evidence, result | each durable write | durable-plan handler | unit recovery | integration scenario | pending hosted run |
-| `proposal_accept` | plan, membership, transition, evidence, result | membership/transition/evidence | proposal decision handler | contract suite | integration scenario | pending hosted run |
-| `proposal_reject` | plan, transition, evidence, result | transition/evidence | proposal decision handler | contract suite | integration scenario | pending hosted run |
-| `proposal_expire` | plan, transition, evidence, result | transition/evidence | proposal decision handler | contract suite | integration scenario | pending hosted run |
-| `proposal_supersede` | plan, transition, evidence, result | transition/evidence | proposal decision handler | contract suite | integration scenario | pending hosted run |
-| `membership_exclude` | plan, exclusion, evidence, result | projection/evidence | durable-plan handler | contract suite | integration scenario | pending hosted run |
-| `dependency_replace` | plan, token, upserts, tombstones, result | every edge boundary | durable dependency handler | dependency suite | integration scenario | pending hosted run |
-| `product_lifecycle` | plan, revision, evidence, result | revision/evidence | lifecycle replay handler | service suite | integration scenario | pending hosted run |
+| Operation kind | Mutation creates state? | Concrete handler? | Projection repair? | Terminal-history repair? | Idempotency repair? | Real ES test? | Hosted artifact? |
+|---|---|---|---|---|---|---|---|
+| `manual_membership` | partial | yes | inspect/repair | yes | yes | pending | pending |
+| `proposal_accept` | partial | yes | inspect/repair | yes | yes | pending | pending |
+| `proposal_reject` | partial | yes | inspect/repair | yes | yes | pending | pending |
+| `proposal_expire` | partial | yes | inspect/repair | yes | yes | pending | pending |
+| `proposal_supersede` | partial | yes | inspect/repair | yes | yes | pending | pending |
+| `membership_exclude` | partial | yes | inspect/repair | yes | yes | pending | pending |
+| `dependency_replace` | partial | yes | inspect/repair | yes | yes | pending | pending |
+| `product_lifecycle` | partial | yes | inspect/repair | yes | yes | pending | pending |
+
 
 ## Runtime control audit
 
@@ -32,3 +35,9 @@ Release readiness remains **blocked**. Hosted artifact cells remain pending unti
 | secret leakage | CLI summary contains identifiers/status only; raw idempotency keys are not persisted |
 
 The next milestone is Data Product APIs, Product 360, browser/security, and final hosted core certification.
+
+## Evidence status and mapping decision
+
+Migrations `0001`–`0016` remain immutable. The existing generic document mapping is retained until the strict Elasticsearch writer/query suite proves that a `0017` mapping is necessary; no unproven mapping fields are added here. Plan/result persistence, state/history creation, CAS claiming, expiry/takeover, renewal, stale-worker fencing, checkpoints, bounded attempts, two-worker races, tenant isolation, CLI exit behavior, and leakage remain explicit certification controls. Hosted cells above intentionally remain pending until GitHub Actions artifacts exist.
+
+Release readiness remains **blocked**. The next milestone is **Data Product APIs, Product 360, browser/security, and final hosted core certification**.

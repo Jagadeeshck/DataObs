@@ -1,6 +1,8 @@
 import importlib.util
 from pathlib import Path
 
+from scripts.certification.redact_artifacts import SENTINELS, redact
+
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -32,3 +34,12 @@ def test_live_invalid_token_and_backing_store(live_stack):
     # The current development auth mode is explicitly not production IAM evidence.
     assert api.request("/health")["status"] in {"ok", "healthy"}
     assert es.request("/_cluster/health")["status"] in {"green", "yellow"}
+
+
+# Positive redaction is part of the foundation, rather than a manufactured
+# zero-sentinel scan.
+def test_redactor_counts_every_injected_occurrence(tmp_path):
+    target = tmp_path / "controlled.log"
+    target.write_bytes(SENTINELS[0] + b"\n" + SENTINELS[0] + b"\n" + SENTINELS[1])
+    assert redact(tmp_path) == 3
+    assert all(value not in target.read_bytes() for value in SENTINELS)

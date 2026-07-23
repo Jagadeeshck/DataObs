@@ -4,7 +4,11 @@ import pytest
 
 from packages.elastic_store.manifest import (
     DATA_PRODUCT_EVIDENCE_OWNERS,
+    DATA_PRODUCT_EVIDENCE_PROFILES,
+    DATA_PRODUCT_FOUNDATION_EVIDENCE_OWNERS,
     DATA_PRODUCT_RECONCILIATION_EVIDENCE,
+    DATA_PRODUCT_RUNTIME_FOUNDATION_EVIDENCE,
+    data_product_evidence_inventory,
 )
 from scripts.certification.data_product_evidence import write_scenario
 
@@ -48,3 +52,47 @@ def test_evidence_ownership_is_explicit_complete_and_unique():
     assert set(owned) == set(DATA_PRODUCT_RECONCILIATION_EVIDENCE)
     assert DATA_PRODUCT_EVIDENCE_OWNERS["contracts"] == ("contracts.xml",)
     assert DATA_PRODUCT_EVIDENCE_OWNERS["unit"] == ("unit.xml",)
+
+
+def test_foundation_and_full_profiles_have_explicit_unique_ownership():
+    assert set(DATA_PRODUCT_EVIDENCE_PROFILES) == {
+        "data-product-runtime-foundation",
+        "data-product-reconciliation-full",
+    }
+    owned = [name for values in DATA_PRODUCT_FOUNDATION_EVIDENCE_OWNERS.values() for name in values]
+    assert len(owned) == len(set(owned))
+    assert set(owned) == set(DATA_PRODUCT_RUNTIME_FOUNDATION_EVIDENCE)
+    assert set(DATA_PRODUCT_RUNTIME_FOUNDATION_EVIDENCE) < set(DATA_PRODUCT_RECONCILIATION_EVIDENCE)
+    with pytest.raises(ValueError, match="unknown"):
+        data_product_evidence_inventory("inferred-from-files")
+
+
+def test_scenario_writer_rejects_naive_time_and_unowned_filename(tmp_path):
+    with pytest.raises(ValueError, match="timezone-aware"):
+        write_scenario(
+            tmp_path,
+            filename="mapping-contract.json",
+            scenario="mapping",
+            elasticsearch_version="9.4.2",
+            test_names=["test"],
+            assertion_summary=["mapped"],
+            redacted_references=[],
+            started_at="2026-01-01T00:00:00",
+            completed_at="2026-01-01T00:00:01",
+            result="passed",
+        )
+    now = datetime.now(timezone.utc)
+    with pytest.raises(ValueError, match="undeclared"):
+        write_scenario(
+            tmp_path,
+            filename="reservation-only-matrix.json",
+            scenario="full only",
+            elasticsearch_version="9.4.2",
+            test_names=["test"],
+            assertion_summary=["no promotion"],
+            redacted_references=[],
+            started_at=now,
+            completed_at=now,
+            result="passed",
+            profile="data-product-runtime-foundation",
+        )

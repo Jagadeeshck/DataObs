@@ -79,6 +79,7 @@ def test_verifier_rejects_artifact_mutated_after_manifest(tmp_path):
             path.write_text("redacted certification log\n")
     env = {
         **os.environ,
+        "DATA_PRODUCT_CERTIFICATION_PROFILE": "data-product-reconciliation-full",
         "CERTIFICATION_JOB_RESULTS": json.dumps(
             {
                 "data-product-reconciliation-contracts": "success",
@@ -136,3 +137,26 @@ def test_verifier_rejects_manifest_self_listing(tmp_path):
     )
     assert result.returncode == 1
     assert "manifest must not list itself" in result.stdout
+
+
+def test_nested_manifest_named_files_are_ordinary_hashed_artifacts(tmp_path):
+    nested = tmp_path / "nested"
+    nested.mkdir()
+    (nested / "manifest.json").write_text("nested manifest payload\n")
+    (nested / "certification-evidence.json").write_text("nested evidence payload\n")
+    artifacts = []
+    import hashlib
+
+    for path in nested.iterdir():
+        artifacts.append(
+            {"path": path.relative_to(tmp_path).as_posix(), "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
+        )
+    encoded = json.dumps({"artifacts": artifacts})
+    (tmp_path / "certification-evidence.json").write_text(encoded)
+    (tmp_path / "manifest.json").write_text(encoded)
+    verify = ROOT / "scripts/certification/verify_artifacts.py"
+    assert subprocess.run([sys.executable, str(verify), str(tmp_path)]).returncode == 0
+    (nested / "manifest.json").write_text("tampered")
+    result = subprocess.run([sys.executable, str(verify), str(tmp_path)], text=True, capture_output=True)
+    assert result.returncode == 1
+    assert "sha256 mismatch: nested/manifest.json" in result.stdout

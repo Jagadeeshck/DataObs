@@ -3,9 +3,15 @@ on:
   pull_request:
     paths:
       - 'services/data_products/**'
-      - 'tests/data_products/**'
       - 'packages/domain_model/data_product.py'
+      - 'packages/elastic_store/**'
+      - 'tests/data_products/**'
+      - 'tests/integration/data_products/**'
+      - 'tests/security/data_products/**'
+      - 'tests/certification/**'
+      - 'scripts/certification/**'
       - 'docs/development/data-product-reconciliation-runtime-closure.md'
+      - 'docs/product/capability-ledger.yaml'
       - '.github/workflows/data-product-runtime.yml'
 jobs:
   data-product-reconciliation-contracts:
@@ -16,12 +22,15 @@ jobs:
       - uses: actions/setup-python@v5
         with: {python-version: '3.12'}
       - run: pip install -e '.[dev]'
+      - run: mkdir -p artifacts/data-product-reconciliation
       - run: python scripts/check_migration_immutability.py --base-ref origin/main
       - run: python scripts/check_docs_links.py
       - run: ruff check services/data_products tests/data_products
       - run: black --check services/data_products tests/data_products
       - run: mypy services/data_products/reconciliation.py services/data_products/membership_service.py services/data_products/dependency_service.py services/data_products/service.py services/data_products/repository.py services/data_products/memory_repository.py
-      - run: python -m pytest tests/data_products/test_membership_service.py tests/data_products/test_dependency_service.py tests/data_products/test_data_product_service.py tests/data_products/test_operation_reconciliation.py -q
+      - run: python -m pytest tests/certification/test_data_product_runtime_workflow.py tests/certification/test_evidence_manifest.py tests/data_products/test_membership_service.py tests/data_products/test_dependency_service.py tests/data_products/test_data_product_service.py tests/data_products/test_operation_reconciliation.py -q --junitxml=artifacts/data-product-reconciliation/contracts.xml
+      - uses: actions/upload-artifact@v4
+        with: {name: data-product-reconciliation-contracts, path: artifacts/data-product-reconciliation}
   data-product-reconciliation-unit:
     runs-on: ubuntu-latest
     steps:
@@ -29,7 +38,10 @@ jobs:
       - uses: actions/setup-python@v5
         with: {python-version: '3.12'}
       - run: pip install -e '.[dev]'
-      - run: python -m pytest tests/data_products -q
+      - run: mkdir -p artifacts/data-product-reconciliation
+      - run: python -m pytest tests/data_products -q --junitxml=artifacts/data-product-reconciliation/unit.xml
+      - uses: actions/upload-artifact@v4
+        with: {name: data-product-reconciliation-unit, path: artifacts/data-product-reconciliation}
   data-product-reconciliation-elasticsearch:
     runs-on: ubuntu-latest
     services:
@@ -48,6 +60,8 @@ jobs:
         with: {python-version: '3.12'}
       - run: pip install -e '.[dev]'
       - run: mkdir -p artifacts/data-product-reconciliation
+      - run: ELASTICSEARCH_URL=http://127.0.0.1:9200 ./bin/dataobs elastic migrate
+      - run: RUN_INTEGRATION_TESTS=1 ELASTICSEARCH_URL=http://127.0.0.1:9200 python -m pytest tests/integration/data_products/test_membership_dependency_elasticsearch.py::test_real_elasticsearch_membership_dependency_profile_is_selected -q
       - run: RUN_INTEGRATION_TESTS=1 ELASTICSEARCH_URL=http://127.0.0.1:9200 python -m pytest tests/integration/data_products -q --junitxml=artifacts/data-product-reconciliation/elasticsearch.xml
       - uses: actions/upload-artifact@v4
         with: {name: data-product-reconciliation-elasticsearch, path: artifacts/data-product-reconciliation}
@@ -69,16 +83,23 @@ jobs:
         with: {python-version: '3.12'}
       - run: pip install -e '.[dev]'
       - run: mkdir -p artifacts/data-product-reconciliation
+      - run: ELASTICSEARCH_URL=http://127.0.0.1:9200 ./bin/dataobs elastic migrate
+      - run: RUN_INTEGRATION_TESTS=1 ELASTICSEARCH_URL=http://127.0.0.1:9200 python -m pytest tests/integration/data_products/test_membership_dependency_elasticsearch.py::test_real_elasticsearch_membership_dependency_profile_is_selected -q
       - run: RUN_INTEGRATION_TESTS=1 ELASTICSEARCH_URL=http://127.0.0.1:9200 python -m pytest tests/security/data_products -q --junitxml=artifacts/data-product-reconciliation/security.xml
       - uses: actions/upload-artifact@v4
         with: {name: data-product-reconciliation-security, path: artifacts/data-product-reconciliation}
   data-product-reconciliation-evidence:
     runs-on: ubuntu-latest
-    needs: [data-product-reconciliation-elasticsearch, data-product-reconciliation-security]
+    needs: [data-product-reconciliation-contracts, data-product-reconciliation-unit, data-product-reconciliation-elasticsearch, data-product-reconciliation-security]
+    env:
+      CERTIFICATION_JOB_RESULTS: >-
+        {"data-product-reconciliation-contracts":"${{ needs.data-product-reconciliation-contracts.result }}","data-product-reconciliation-unit":"${{ needs.data-product-reconciliation-unit.result }}","data-product-reconciliation-elasticsearch":"${{ needs.data-product-reconciliation-elasticsearch.result }}","data-product-reconciliation-security":"${{ needs.data-product-reconciliation-security.result }}"}
+      CERTIFICATION_RETENTION_DAYS: '30'
+      CERTIFICATION_STARTED_AT: ${{ github.event.pull_request.created_at }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
-        with: {path: artifacts/downloaded}
+        with: {path: artifacts/downloaded, merge-multiple: true}
       - run: python scripts/certification/build_manifest.py artifacts/downloaded
       - uses: actions/upload-artifact@v4
         with: {name: data-product-reconciliation-evidence, path: artifacts/downloaded}

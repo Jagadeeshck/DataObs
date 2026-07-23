@@ -13,6 +13,7 @@ from packages.domain_model.data_product import (
 )
 from services.data_products.dependencies import build_adjacency, find_cycle_path
 from services.data_products.dependency_events import (
+    MAX_DEPENDENCIES_PER_PRODUCT,
     DataProductDependencyMutationPlan,
     DataProductDependencyMutationResult,
     DataProductDependencyOperation,
@@ -46,7 +47,9 @@ class DataProductDependencyService:
         plan: DataProductDependencyMutationPlan,
     ) -> tuple[DataProductDependencyProjection, ...]:
         """Read the complete scope and verify every planned edge deterministically."""
-        snapshot = self.repository.read_complete_dependency_snapshot(tenant_id, environment, product_id, maximum=10_000)
+        snapshot = self.repository.read_complete_dependency_snapshot(
+            tenant_id, environment, product_id, maximum=MAX_DEPENDENCIES_PER_PRODUCT
+        )
         if not snapshot.complete or snapshot.count != len(snapshot.dependencies):
             raise DependencyResultInconsistent("dependency_snapshot_incomplete")
         by_upstream: dict[str, DataProductDependencyProjection] = {}
@@ -153,7 +156,9 @@ class DataProductDependencyService:
         if product.etag != expected_etag:
             self.repository.fail_idempotency(record_id, error_code="stale_etag")
             raise ProductVersionConflict("stale data product ETag")
-        snapshot = self.repository.read_complete_dependency_snapshot(tenant_id, environment, product_id, maximum=10_000)
+        snapshot = self.repository.read_complete_dependency_snapshot(
+            tenant_id, environment, product_id, maximum=MAX_DEPENDENCIES_PER_PRODUCT
+        )
         upstream = {value.id: value for value in self.repository.get_products_by_ids(tenant_id, environment, canonical)}
         missing = sorted(set(canonical) - set(upstream))
         archived = sorted(key for key, value in upstream.items() if value.lifecycle_state == "archived")

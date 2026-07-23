@@ -321,8 +321,13 @@ class DependencyReplacementReconciliationHandler(ProjectionAwareHandler):
                 apply(state.tenant_id, state.environment, state.product_id, chunk)
                 completed = min(offset + len(chunk), len(edges))
                 context.checkpoint(f"{name}:{completed}/{len(edges)}", mutation_plan.after_graph_version)
+        from services.data_products.dependency_events import MAX_DEPENDENCIES_PER_PRODUCT
+
         snapshot = repository.read_complete_dependency_snapshot(
-            state.tenant_id, state.environment, state.product_id, maximum=10_000
+            state.tenant_id,
+            state.environment,
+            state.product_id,
+            maximum=MAX_DEPENDENCIES_PER_PRODUCT,
         )
         if not snapshot.complete or snapshot.count != len(snapshot.dependencies):
             raise OperationConsistencyError("dependency_snapshot_incomplete")
@@ -338,7 +343,16 @@ class DependencyReplacementReconciliationHandler(ProjectionAwareHandler):
         )
         if tuple(e.upstream_product_id for e in active_edges) != tuple(payload.get("upstream_product_ids", ())):
             raise OperationConsistencyError("dependency_snapshot_diverged")
-        if any(e.graph_version != mutation_plan.after_graph_version for e in snapshot.dependencies):
+        current_mutation_ids = {
+            edge.upstream_product_id for edge in (*mutation_plan.upserts, *mutation_plan.tombstones)
+        }
+        # Removed edges from older operations are immutable historical evidence.
+        # Only active targets and tombstones written by this plan use the new graph version.
+        if any(
+            edge.graph_version != mutation_plan.after_graph_version
+            for edge in snapshot.dependencies
+            if not edge.removed or edge.upstream_product_id in current_mutation_ids
+        ):
             raise OperationConsistencyError("dependency_graph_version_diverged")
         context.checkpoint("projection_verified", self._snapshot_checksum(snapshot.dependencies))
 

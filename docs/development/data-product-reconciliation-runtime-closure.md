@@ -1,5 +1,35 @@
 # Data Product reconciliation runtime closure
 
+> PR #142 removed duplicate dependency recovery and added chunked repair and workflow scaffolding, but it did not add or run the real fault matrix, did not migrate indices in the new workflow, did not enforce retained evidence, and left edge-ordering, historical-tombstone, immutable-replay, reservation-only, migration, security, and hosted-proof gaps. This PR closes and proves the runtime.
+
+Latest main baseline: `68e21f0` (merge of PR #142). Migrations `0001`–`0017` are immutable released history; this change does not edit them. Release readiness remains **blocked** until the draft pull request has a successful pull-request-triggered Elasticsearch 9.4.2, security, evidence, and thread-resolution run.
+
+| Capability | Current main after PR #142 | Required final behaviour | Unit/property | Elasticsearch 9.4.2 | Security | Hosted artifact |
+|---|---|---|---|---|---|---|
+| dependency edge OCC ordering | blind OCC replacement | revision-order classification and realtime conflict reread | covered | pending | pending | pending |
+| historical tombstone handling | all documents required current graph | only current mutation documents require current graph | covered | pending | pending | pending |
+| dependency token-only recovery | partial | repair from durable plan | covered | pending | pending | pending |
+| partial upserts and tombstones | chunked but untyped | typed, validated 200-edge chunks | covered | pending | pending | pending |
+| detailed and generic result completion | partial | immutable create-or-verify before completion | covered | pending | pending | pending |
+| 201 and 1,001 dependencies | unit only | complete bounded result | covered | pending | pending | pending |
+| maximum graph policy | literal 10,000 | one public maximum; maximum+1 before writes | covered | pending | pending | pending |
+| claim renewal and stale-worker fencing | partial | fence every chunk and terminal boundary | covered | pending | pending | pending |
+| canonical dependency/lifecycle terminal times | pending event fallback | one durable terminal instant | covered | pending | pending | pending |
+| lifecycle immutable revision replay | partial | exact historical revision | covered | pending | pending | pending |
+| proposal immutable replay | mutable projection fallback | typed immutable result | partial | pending | pending | pending |
+| reservation-only recovery | undefined | deterministic bind-and-continue | partial | pending | pending | pending |
+| migration 0017 clean/upgrade/repeat | not hosted | real clean, upgrade and repeat | pending | pending | pending | pending |
+| retry and claim-expiry date boundaries | query-shape only | real deterministic UTC boundaries | pending | pending | pending | pending |
+| resource discrimination | unit only | resource filters precede size | covered | pending | pending | pending |
+| terminal revisit | partial | canonical immutable chain | covered | pending | pending | pending |
+| persistence security | memory focused | real Elasticsearch matrix | pending | pending | pending | pending |
+| evidence inventory | declared only | executable required inventory | covered | pending | pending | pending |
+| hosted manifest | jobs incomplete | four successful inputs and hashed artifacts | pending | pending | pending | pending |
+| review-thread closure | unresolved | resolve only with hosted proof | pending | pending | pending | pending |
+
+No hosted cell is promoted by local execution. Scenario JSON must identify the commit and Elasticsearch version, name the tests and assertions, carry redacted references, and report `passed`; JUnit failures, duplicate basenames, absent security/redaction evidence, or failed job conclusions reject the manifest. The next milestone is **Data Product APIs, Product 360, browser/security, and final hosted core certification**.
+
+
 > PR #141 added initial durable-plan execution, lifecycle revision finalization, pending-proposal delegation, and a mapped retry date. It did not create the detailed dependency result during reconciliation, remove the duplicate dependency recovery implementation, prove canonical terminal evidence, certify migration 0017 against Elasticsearch, expand the real fault matrix or security suite, or produce retained hosted evidence. This PR closes the reconciliation certification gate.
 
 The authoritative dependency path is now `DependencyReplacementReconciliationHandler` →

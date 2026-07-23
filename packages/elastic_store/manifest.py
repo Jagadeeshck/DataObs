@@ -6,6 +6,8 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List
 
 DATA_PRODUCT_RECONCILIATION_EVIDENCE = (
+    "contracts.xml",
+    "unit.xml",
     "migration-clean-install.json",
     "migration-upgrade.json",
     "migration-repeat-apply.json",

@@ -180,3 +180,29 @@ def test_verifier_rejects_unexecuted_foundation_security_controls(tmp_path):
     assert "required foundation security control set is incomplete" in errors
     assert "security control has zero assertions" in errors
     assert "security control count mismatch" in errors
+
+
+def test_verifier_rejects_wrong_scope_control_without_claim_mutation_evidence(tmp_path):
+    from scripts.certification.verify_artifacts import REQUIRED_FOUNDATION_CONTROLS, _security_errors
+
+    controls = [
+        {
+            "control_id": control_id,
+            "assertion_count": 1,
+            "assertion_evidence": ["read_only_assertion"],
+            "passed": True,
+        }
+        for control_id in REQUIRED_FOUNDATION_CONTROLS
+    ]
+    (tmp_path / "security-report.json").write_text(
+        json.dumps(
+            {
+                "controls": controls,
+                "scenario_count": len(controls),
+                "passed_count": len(controls),
+                "failed_count": 0,
+                "result": "passed",
+            }
+        )
+    )
+    assert "wrong-scope claim control lacks claim-mutation assertion evidence" in _security_errors(tmp_path)

@@ -43,6 +43,22 @@ def _security_errors(root: Path) -> list[str]:
         errors.append("required foundation security control set is incomplete")
     if any(control.get("assertion_count", 0) <= 0 for control in controls if isinstance(control, dict)):
         errors.append("security control has zero assertions")
+    for control in controls:
+        if not isinstance(control, dict):
+            errors.append("security control is not structured")
+            continue
+        evidence = control.get("assertion_evidence", [])
+        if len(evidence) != control.get("assertion_count") or not all(
+            isinstance(item, str) and item for item in evidence
+        ):
+            errors.append(f"security control lacks named assertion evidence: {control.get('control_id')}")
+        if control.get("control_id") == "wrong_scope_claim_denial" and not {
+            "wrong_tenant_claim_operation_denied",
+            "wrong_environment_claim_operation_denied",
+            "wrong_scope_claim_did_not_mutate_state",
+            "correct_scope_claim_operation_succeeded",
+        } <= set(evidence):
+            errors.append("wrong-scope claim control lacks claim-mutation assertion evidence")
     passed = sum(control.get("passed") is True for control in controls if isinstance(control, dict))
     if report.get("scenario_count") != len(controls) or report.get("passed_count") != passed:
         errors.append("security control count mismatch")

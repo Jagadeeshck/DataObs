@@ -7,7 +7,7 @@ import argparse
 import shutil
 from pathlib import Path
 
-from packages.elastic_store.manifest import data_product_evidence_owners
+from packages.elastic_store.manifest import data_product_evidence_inventory, data_product_evidence_owners
 
 
 def assemble(downloaded: Path, retained: Path, *, profile: str) -> None:
@@ -15,7 +15,14 @@ def assemble(downloaded: Path, retained: Path, *, profile: str) -> None:
     if any(retained.iterdir()):
         raise ValueError("retained evidence directory must begin empty")
     seen: set[str] = set()
-    for owner, expected in data_product_evidence_owners(profile).items():
+    owners = data_product_evidence_owners(profile)
+    owned = {name for expected in owners.values() for name in expected}
+    inventory = set(data_product_evidence_inventory(profile))
+    if owned != inventory:
+        raise ValueError(
+            f"profile ownership differs from inventory: missing={sorted(inventory-owned)}, extra={sorted(owned-inventory)}"
+        )
+    for owner, expected in owners.items():
         source = downloaded / owner
         actual = {p.name for p in source.iterdir() if p.is_file()} if source.is_dir() else set()
         missing, unowned = set(expected) - actual, actual - set(expected)
@@ -26,6 +33,8 @@ def assemble(downloaded: Path, retained: Path, *, profile: str) -> None:
                 raise ValueError(f"duplicate final basename: {name}")
             shutil.copy2(source / name, retained / name)
             seen.add(name)
+    if seen != inventory:
+        raise ValueError("assembled evidence does not exactly match the profile inventory")
 
 
 if __name__ == "__main__":

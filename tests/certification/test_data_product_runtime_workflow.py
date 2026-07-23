@@ -3,6 +3,11 @@ from pathlib import Path
 
 import yaml
 
+from packages.elastic_store.manifest import (
+    DATA_PRODUCT_FOUNDATION_EVIDENCE_OWNERS,
+    DATA_PRODUCT_FOUNDATION_JUNIT_EVIDENCE,
+)
+
 REQUIRED_PATHS = {
     "services/data_products/**",
     "packages/domain_model/data_product.py",
@@ -61,3 +66,23 @@ def test_foundation_jobs_execute_truthful_suites_and_migration_order():
     assert "DATA_PRODUCT_ALLOW_DESTRUCTIVE_TEST_RESET=1" in elastic
     assert "DATA_PRODUCT_ALLOW_DESTRUCTIVE_TEST_RESET" not in security
     assert "./bin/dataobs elastic apply" in security
+    assert "wrong-scope claim mutation denial" in security
+    assert "--sentinels-only artifacts/foundation" in security
+
+
+def test_producer_junit_inventory_and_dependencies_are_exact():
+    workflow = yaml.safe_load(Path(".github/workflows/data-product-runtime.yml").read_text())
+    jobs = workflow["jobs"]
+    emitted = set(re.findall(r"--junitxml=artifacts/foundation/([\w.-]+)", str(jobs)))
+    owned_junit = {
+        name for values in DATA_PRODUCT_FOUNDATION_EVIDENCE_OWNERS.values() for name in values if name.endswith(".xml")
+    }
+    assert emitted == owned_junit == set(DATA_PRODUCT_FOUNDATION_JUNIT_EVIDENCE)
+    producers = {
+        "data-product-reconciliation-contracts",
+        "data-product-reconciliation-unit",
+        "data-product-foundation-elasticsearch",
+        "data-product-foundation-security",
+    }
+    assert set(jobs["data-product-foundation-evidence"]["needs"]) == producers
+    assert set(jobs["data-product-foundation-summary"]["needs"]) == producers | {"data-product-foundation-evidence"}

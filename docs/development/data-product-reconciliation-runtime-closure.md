@@ -1,10 +1,34 @@
 # Data Product reconciliation runtime closure
 
+## PR #153 verifier blocker closure and hosted-proof gate
+
+- status: **blocked pending a final-head hosted pull-request execution**
+- baseline `main`: `bf8b6712ef285a10ac7c23183393bb09b5390485` (PR #153 merge)
+- repository access: available through the installed GitHub App; this checkout has no configured Git
+  remote or GitHub API/Actions-settings tool, so the missing-run cause cannot be inspected or corrected
+  from this execution environment. The precise missing capability is read/write access to repository and
+  organization Actions settings plus workflow-run, artifact, and review-thread APIs.
+- correction prepared: the evidence job supplies a distinct `EXPECTED_HOSTED_SHA`, checks it equals the
+  producer SHA, and invokes independent verification in mandatory hosted-provenance mode. The verifier
+  rejects self-consistent wrong-SHA bundles and requires non-empty, structured, asserted full-profile
+  security controls without imposing the foundation exact-eight set on that profile.
+- workflow event / run ID / URL / six job conclusions: pending a real `pull_request` run
+- artifact ID/name/retention: pending / `data-product-foundation-evidence` / 30 days
+- Elasticsearch version: `9.4.2` required; hosted result pending
+- independent final-head verification and manifest SHA-256: pending retained artifact download
+- full reconciliation certified: false
+- release readiness: blocked
+- capabilities promoted: none
+- next task: complete the Data Product mutation fault matrix
+
+This local contract work is not hosted proof. The draft must remain unmerged and review threads must
+remain unresolved until the exact-final-head retained ZIP passes independent verification.
+
 ## PR #152 SHA/profile blocker closure and hosted-proof gate
 
 - status: **blocked pending hosted pull-request execution**
 - baseline `main`: `c9f4ceb66975e77376a9acac0e483052658c9e46` (PR #152 merge)
-- diagnosed missing-run cause: this checkout has no configured Git remote, GitHub CLI, or GitHub credential. It cannot push the draft branch, inspect repository or organization Actions settings, observe a `pull_request` event, download an artifact, or resolve review threads. The inaccessible settings are Actions enablement and allowed-actions policy, organization/enterprise restrictions, workflow registration/YAML status, billing/minutes, approval state, and branch/fork execution policy.
+- diagnosed missing-run limitation: repository access is available through the installed GitHub App, but this checkout exposed no Git remote or Actions settings/run API. It therefore could not inspect Actions enablement, policy, registration, billing/minutes, approval, or branch/fork settings.
 - correction prepared: producer and evidence jobs share `DATA_PRODUCT_CERTIFICATION_SHA`; GitHub's synthetic pull-request `GITHUB_SHA` remains untouched. Verification dispatches foundation and full-profile requirements explicitly and fails closed for unknown profiles.
 - final head SHA / synthetic merge SHA: pending hosted branch / `bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb` (local regression contrast)
 - workflow event / run ID / URL / six job conclusions: pending a real `pull_request` run

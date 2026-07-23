@@ -3,6 +3,7 @@ from pathlib import Path
 
 from scripts.certification.provenance import certification_commit_sha
 from scripts.certification.redact_artifacts import SENTINELS, redact
+from scripts.certification.verify_artifacts import FULL_PROFILE, VERIFICATION_POLICIES
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -50,3 +51,9 @@ def test_security_writers_share_canonical_sha(monkeypatch):
     monkeypatch.setenv("GITHUB_SHA", "b" * 40)
     monkeypatch.setenv("DATA_PRODUCT_CERTIFICATION_SHA", "a" * 40)
     assert certification_commit_sha() == "a" * 40
+
+
+def test_full_profile_requires_executed_security_evidence():
+    policy = VERIFICATION_POLICIES[FULL_PROFILE]
+    assert policy.minimum_security_controls >= 1
+    assert policy.allow_additional_security_controls is True

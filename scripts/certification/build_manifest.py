@@ -223,7 +223,11 @@ def _validate_inventory(root: Path, inventory: tuple[str, ...]) -> tuple[list[Pa
                 for control in controls:
                     evidence = control.get("assertion_evidence")
                     if (
-                        control.get("assertion_count", 0) <= 0
+                        not isinstance(control.get("control_id"), str)
+                        or not control["control_id"].strip()
+                        or not isinstance(control.get("test_node_id"), str)
+                        or not control["test_node_id"].strip()
+                        or control.get("assertion_count", 0) <= 0
                         or not isinstance(evidence, list)
                         or len(evidence) != control["assertion_count"]
                         or not all(isinstance(item, str) and item for item in evidence)

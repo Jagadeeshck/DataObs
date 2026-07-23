@@ -1,5 +1,29 @@
 # Data Product reconciliation runtime closure
 
+## PR #151 dispatch defect closure and hosted-proof gate
+
+- status: **blocked pending hosted pull-request execution**
+- PR #151 merge commit / latest available `main` snapshot: `bf29ef9126cd73978d04bbe7a063a1656a2d79d7`
+- diagnosed missing-run cause: the supplied execution environment has no Git remote, GitHub CLI, or GitHub credential, and the repository is not accessible through the unauthenticated GitHub API. Consequently it cannot inspect repository or organization Actions settings, register/push this branch, or observe a pull-request event. This is an external hosted-execution access blocker, not evidence of a runtime failure; it must not be masked by dispatch evidence.
+- correction prepared: `workflow_dispatch` now terminates in a diagnostic-only summary. The retained evidence and certification summary jobs are guarded to `pull_request`, and the evidence builder/verifier require explicit pull-request event, head SHA, run ID/URL, and ordered timezone-aware timestamps.
+- workflow event / run ID / URL: pending a real `pull_request` run
+- six job conclusions: pending
+- artifact ID/name/retention: pending / `data-product-foundation-evidence` / 30 days
+- Elasticsearch version: `9.4.2` required; hosted result pending
+- JUnit summaries, seven scenario results, eight security controls, sentinel counts: hosted result pending
+- manifest SHA-256 and independent verifier result: pending artifact download
+- migrations `0001`–`0017`: checksum-identical at `bf29ef9`; no migration source or ledger entry is changed by this patch
+- full reconciliation certified: false
+- release readiness: blocked
+- capabilities promoted: none
+- next task after hosted foundation proof: complete Data Product mutation fault matrix
+
+Manual dispatch is registration/runtime diagnosis only. It cannot invoke `build_manifest.py`,
+upload `data-product-foundation-evidence`, claim retained certification proof, or justify review-thread
+closure. PR thread `PRRT_kwDOR7DqAc6TO-q8` remains unresolved until a final-head pull-request artifact
+is downloaded and independently verified. No mutation, proposal, dependency, lifecycle, traversal,
+API, Product 360, SLO, RCA, or AI-agent thread is eligible for resolution from this local result.
+
 ## Hosted foundation execution attempt after PR #149
 
 - status: pending

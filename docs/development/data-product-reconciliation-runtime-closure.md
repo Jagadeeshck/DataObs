@@ -256,3 +256,18 @@ This remains an implementation-only gate. Release readiness is **blocked** and
 the next gate is **real Elasticsearch 9.4.2 reconciliation, security, and hosted
 artifact certification**; no Product 360, Impact, SLO, reliability, coverage,
 RCA, or production-readiness capability is promoted here.
+# Hosted certification foundation
+
+The pull-request gate uses the explicit `data-product-runtime-foundation`
+profile on Elasticsearch 9.4.2. Its retained scenarios prove migration,
+mapping, operation-state query, discriminator, baseline persistence isolation,
+and positive sentinel redaction infrastructure. The profile promotes no
+product capability: `capabilities` remains empty, release readiness remains
+`blocked`, and full reconciliation certification is false.
+
+The separate `data-product-reconciliation-full` profile retains the complete
+membership, proposal, dependency, lifecycle, takeover, terminal-revisit, CLI,
+and security inventory. Foundation evidence cannot satisfy that inventory.
+The next certification task is the complete Data Product mutation fault
+matrix; Product 360 and the other production-readiness tracks remain out of
+scope.

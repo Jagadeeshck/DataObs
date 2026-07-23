@@ -15,13 +15,16 @@ from xml.etree import ElementTree
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from packages.elastic_store.manifest import DATA_PRODUCT_RECONCILIATION_EVIDENCE  # noqa: E402
+from packages.elastic_store.manifest import (  # noqa: E402
+    DATA_PRODUCT_RUNTIME_FOUNDATION_PROFILE,
+    data_product_evidence_inventory,
+)
 
-REQUIRED_JOBS = {
+FOUNDATION_JOBS = {
     "data-product-reconciliation-contracts",
     "data-product-reconciliation-unit",
-    "data-product-reconciliation-elasticsearch",
-    "data-product-reconciliation-security",
+    "data-product-foundation-elasticsearch",
+    "data-product-foundation-security",
 }
 SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 SUPPORTED_REPORT_SCHEMAS = {"1.0"}
@@ -99,7 +102,7 @@ def _validate_report_provenance(name: str, value: dict, *, require_elasticsearch
         raise ValueError(f"report is not passed: {name}")
 
 
-def _validate_inventory(root: Path) -> tuple[list[Path], dict[str, dict], dict[str, dict]]:
+def _validate_inventory(root: Path, inventory: tuple[str, ...]) -> tuple[list[Path], dict[str, dict], dict[str, dict]]:
     files = [path for path in root.rglob("*") if path.is_file()]
     by_name: dict[str, list[Path]] = {}
     for path in files:
@@ -107,16 +110,16 @@ def _validate_inventory(root: Path) -> tuple[list[Path], dict[str, dict], dict[s
     duplicates = sorted(name for name, paths in by_name.items() if len(paths) > 1)
     if duplicates:
         raise ValueError(f"duplicate ambiguous artifact names: {', '.join(duplicates)}")
-    missing = [name for name in DATA_PRODUCT_RECONCILIATION_EVIDENCE if name not in by_name]
+    missing = [name for name in inventory if name not in by_name]
     if missing:
         raise ValueError(f"missing required artifacts: {', '.join(missing)}")
-    empty = [name for name in DATA_PRODUCT_RECONCILIATION_EVIDENCE if by_name[name][0].stat().st_size == 0]
+    empty = [name for name in inventory if by_name[name][0].stat().st_size == 0]
     if empty:
         raise ValueError(f"empty required artifacts: {', '.join(empty)}")
 
     scenarios: dict[str, dict] = {}
     junit: dict[str, dict] = {}
-    for name in DATA_PRODUCT_RECONCILIATION_EVIDENCE:
+    for name in inventory:
         path = by_name[name][0]
         if name.endswith(".xml"):
             junit[name] = _junit_summary(path)
@@ -180,10 +183,10 @@ def _validate_inventory(root: Path) -> tuple[list[Path], dict[str, dict], dict[s
     return files, scenarios, junit
 
 
-def _job_results() -> dict[str, str]:
+def _job_results(required_jobs: set[str]) -> dict[str, str]:
     jobs = json.loads(os.getenv("CERTIFICATION_JOB_RESULTS", "{}"))
-    missing = REQUIRED_JOBS - jobs.keys()
-    failed = sorted(name for name in REQUIRED_JOBS if jobs.get(name) != "success")
+    missing = required_jobs - jobs.keys()
+    failed = sorted(name for name in required_jobs if jobs.get(name) != "success")
     if missing or failed:
         raise ValueError(f"missing or failed job conclusions: missing={sorted(missing)}, failed={failed}")
     return jobs
@@ -193,13 +196,32 @@ def main() -> int:
     root = Path(sys.argv[1]).resolve()
     if not root.is_dir():
         raise ValueError(f"evidence directory does not exist: {root}")
-    retained, scenarios, junit = _validate_inventory(root)
-    jobs = _job_results()
+    profile = os.getenv("DATA_PRODUCT_CERTIFICATION_PROFILE")
+    if not profile:
+        raise ValueError("DATA_PRODUCT_CERTIFICATION_PROFILE must be explicit")
+    inventory = data_product_evidence_inventory(profile)
+    retained, scenarios, junit = _validate_inventory(root, inventory)
+    required_jobs = (
+        FOUNDATION_JOBS
+        if profile == DATA_PRODUCT_RUNTIME_FOUNDATION_PROFILE
+        else {
+            "data-product-reconciliation-contracts",
+            "data-product-reconciliation-unit",
+            "data-product-reconciliation-elasticsearch",
+            "data-product-reconciliation-security",
+        }
+    )
+    jobs = _job_results(required_jobs)
     artifacts = []
     for path in sorted(retained):
         if path.is_symlink():
             raise ValueError(f"symlinks are not retained evidence: {path.relative_to(root)}")
-        if path.is_file() and path.name not in {"certification-evidence.json", "manifest.json", ".gitkeep"}:
+        relative = path.relative_to(root).as_posix()
+        if (
+            path.is_file()
+            and relative not in {"certification-evidence.json", "manifest.json"}
+            and path.name != ".gitkeep"
+        ):
             artifacts.append(
                 {
                     "name": path.name,
@@ -212,11 +234,15 @@ def main() -> int:
     now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     doc = {
         "schema_version": "1.0",
+        "certification_profile": profile,
+        "certification_statement": "Hosted runtime foundation only; full reconciliation certification is not claimed.",
+        "full_reconciliation_certified": False,
+        "release_readiness": "blocked",
         "repository": os.getenv("GITHUB_REPOSITORY", "Jagadeeshck/DataObs"),
         "commit_sha": os.getenv("GITHUB_SHA")
         or subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
         "workflow_run_id": run_id,
-        "workflow_name": os.getenv("GITHUB_WORKFLOW", "Data Product reconciliation certification"),
+        "workflow_name": os.getenv("GITHUB_WORKFLOW", "Data Product hosted certification foundation"),
         "workflow_run_url": (
             f"{os.getenv('GITHUB_SERVER_URL', 'https://github.com')}/"
             f"{os.getenv('GITHUB_REPOSITORY', 'Jagadeeshck/DataObs')}/actions/runs/{run_id}"
@@ -250,7 +276,7 @@ def main() -> int:
             "confluent": "7.9.0",
             "otel": "0.139.0",
         },
-        "profiles": [os.getenv("CERTIFICATION_PROFILE", "full")],
+        "profiles": [profile],
         "capabilities": {},
         "security": {"status": "complete", "evidence": "security-report.json"},
         "browser": {"status": "not_applicable"},

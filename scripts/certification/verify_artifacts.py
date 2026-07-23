@@ -52,7 +52,7 @@ def verify(root: Path, *, sentinels_only: bool = False) -> list[str]:
         if relative.is_absolute() or ".." in relative.parts:
             errors.append(f"unsafe manifest path: {relative}")
             continue
-        if relative.name in MANIFEST_NAMES:
+        if relative.as_posix() in MANIFEST_NAMES:
             errors.append(f"manifest must not list itself or its alias: {relative}")
             continue
         listed.add(relative.as_posix())
@@ -64,7 +64,7 @@ def verify(root: Path, *, sentinels_only: bool = False) -> list[str]:
     retained = {
         p.relative_to(root).as_posix()
         for p in root.rglob("*")
-        if p.is_file() and p.name not in MANIFEST_NAMES | {".gitkeep"}
+        if p.is_file() and p.relative_to(root).as_posix() not in MANIFEST_NAMES and p.name != ".gitkeep"
     }
     for relative in sorted(retained - listed):
         errors.append(f"retained artifact is not listed: {relative}")

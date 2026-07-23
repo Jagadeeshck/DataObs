@@ -27,6 +27,15 @@ def test_real_elasticsearch_membership_dependency_profile_is_selected():
     assert readiness["ready"], readiness
 
 
+def test_foundation_dependency_resources_are_real(elasticsearch_client, elasticsearch_version, scenario_recorder):
+    recorder = scenario_recorder("resource-discriminator.json", "dependency and operation resources")
+    repository = ElasticsearchDataProductRepository(elasticsearch_client)
+    readiness = repository.readiness()
+    recorder.assert_that(readiness["ready"], "repository readiness checks real migrated resources")
+    # The operation-state module owns the final artifact; this test is retained
+    # as an independently executing guard and intentionally does not finalize it.
+
+
 @pytest.mark.skipif(os.getenv("RUN_INTEGRATION_TESTS") != "1", reason="real Elasticsearch opt-in")
 def test_real_elasticsearch_operation_claim_is_occ_fenced():
     repository = ElasticsearchDataProductRepository(Elasticsearch(os.environ["ELASTICSEARCH_URL"]))

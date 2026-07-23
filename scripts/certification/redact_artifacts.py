@@ -16,6 +16,7 @@ REDACTABLE = {".json", ".xml", ".log", ".txt", ".har", ".html", ".yaml", ".yml"}
 
 
 def redact(root: Path) -> int:
+    """Redact every occurrence (not merely every distinct sentinel)."""
     count = 0
     for path in root.rglob("*"):
         if not path.is_file() or path.name == ".gitkeep":
@@ -25,8 +26,9 @@ def redact(root: Path) -> int:
         if hits and path.suffix.lower() not in REDACTABLE:
             raise ValueError(f"sentinel found in non-redactable artifact: {path.relative_to(root)}")
         for value in hits:
+            occurrences = data.count(value)
             data = data.replace(value, b"[REDACTED]")
-            count += 1
+            count += occurrences
         if hits:
             path.write_bytes(data)
     return count

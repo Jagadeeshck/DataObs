@@ -35,6 +35,25 @@ DATA_PRODUCT_RECONCILIATION_EVIDENCE = (
     "redacted.log",
 )
 
+DATA_PRODUCT_RUNTIME_FOUNDATION_PROFILE = "data-product-runtime-foundation"
+DATA_PRODUCT_RECONCILIATION_FULL_PROFILE = "data-product-reconciliation-full"
+DATA_PRODUCT_RUNTIME_FOUNDATION_EVIDENCE = (
+    "contracts.xml",
+    "unit.xml",
+    "elasticsearch.xml",
+    "security.xml",
+    "migration-clean-install.json",
+    "migration-upgrade.json",
+    "migration-repeat-apply.json",
+    "mapping-contract.json",
+    "retry-date-boundaries.json",
+    "claim-expiry-boundaries.json",
+    "resource-discriminator.json",
+    "security-report.json",
+    "sentinel-report.json",
+    "redacted.log",
+)
+
 DATA_PRODUCT_ELASTICSEARCH_EVIDENCE = (
     "migration-clean-install.json",
     "migration-upgrade.json",
@@ -74,6 +93,42 @@ DATA_PRODUCT_EVIDENCE_OWNERS = {
     "elasticsearch": DATA_PRODUCT_ELASTICSEARCH_EVIDENCE,
     "security": DATA_PRODUCT_SECURITY_EVIDENCE,
 }
+
+DATA_PRODUCT_FOUNDATION_EVIDENCE_OWNERS = {
+    "contracts": ("contracts.xml",),
+    "unit": ("unit.xml",),
+    "elasticsearch": tuple(
+        name
+        for name in DATA_PRODUCT_RUNTIME_FOUNDATION_EVIDENCE
+        if name not in {"contracts.xml", "unit.xml", *DATA_PRODUCT_SECURITY_EVIDENCE}
+    ),
+    "security": DATA_PRODUCT_SECURITY_EVIDENCE,
+}
+
+DATA_PRODUCT_EVIDENCE_PROFILES = {
+    DATA_PRODUCT_RUNTIME_FOUNDATION_PROFILE: DATA_PRODUCT_RUNTIME_FOUNDATION_EVIDENCE,
+    DATA_PRODUCT_RECONCILIATION_FULL_PROFILE: DATA_PRODUCT_RECONCILIATION_EVIDENCE,
+}
+DATA_PRODUCT_EVIDENCE_OWNERS_BY_PROFILE = {
+    DATA_PRODUCT_RUNTIME_FOUNDATION_PROFILE: DATA_PRODUCT_FOUNDATION_EVIDENCE_OWNERS,
+    DATA_PRODUCT_RECONCILIATION_FULL_PROFILE: DATA_PRODUCT_EVIDENCE_OWNERS,
+}
+
+
+def data_product_evidence_inventory(profile: str) -> tuple[str, ...]:
+    """Return an explicit certification inventory; unknown profiles fail closed."""
+    try:
+        return DATA_PRODUCT_EVIDENCE_PROFILES[profile]
+    except KeyError as exc:
+        raise ValueError(f"unknown Data Product certification profile: {profile}") from exc
+
+
+def data_product_evidence_owners(profile: str) -> dict[str, tuple[str, ...]]:
+    try:
+        return DATA_PRODUCT_EVIDENCE_OWNERS_BY_PROFILE[profile]
+    except KeyError as exc:
+        raise ValueError(f"unknown Data Product certification profile: {profile}") from exc
+
 
 MIGRATION_STATE_INDEX = "dataobs-system-migrations-v1"
 MUTABLE_INDICES = [

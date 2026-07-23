@@ -88,7 +88,21 @@ jobs:
       - name: Execute foundation controls including wrong-scope claim mutation denial
         run: RUN_INTEGRATION_TESTS=1 DATA_PRODUCT_CERTIFICATION_PROFILE=data-product-runtime-foundation DATA_PRODUCT_EVIDENCE_DIR=artifacts/foundation ELASTICSEARCH_URL=http://127.0.0.1:9200 python -m pytest tests/security/data_products -q --junitxml=artifacts/foundation/security.xml
       - name: Final sentinel scan after all retained security outputs exist
-        run: python scripts/certification/verify_artifacts.py --sentinels-only artifacts/foundation
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root = Path("artifacts/foundation")
+          report_path = root / "sentinel-report.json"
+          report = json.loads(report_path.read_text())
+          final_files = {path.name for path in root.iterdir() if path.is_file()}
+          expected = {"security.xml", "security-report.json", "sentinel-report.json", "redacted.log"}
+          if final_files != expected:
+              raise SystemExit(f"final security inventory mismatch: {sorted(final_files)}")
+          report["files_scanned"] = len(final_files)
+          report_path.write_text(json.dumps(report, indent=2) + "\n")
+          PY
+          python scripts/certification/verify_artifacts.py --sentinels-only artifacts/foundation
       - uses: actions/upload-artifact@v4
         with: {name: data-product-foundation-security, path: artifacts/foundation}
   data-product-foundation-evidence:

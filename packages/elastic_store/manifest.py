@@ -90,6 +90,23 @@ DATA_PRODUCT_FOUNDATION_JUNIT_EVIDENCE = (
     "security.xml",
 )
 
+# Artifact-specific execution policy.  Unit skips are limited to the two
+# deliberately opt-in fixtures; hosted real-stack evidence must be skip-free.
+DATA_PRODUCT_FOUNDATION_JUNIT_POLICIES = {
+    "contracts.xml": {"allow_skips": False, "allowed_skip_reasons": (), "maximum_skips": 0},
+    "unit.xml": {
+        "allow_skips": True,
+        "allowed_skip_reasons": (
+            "hosted runtime secret only",
+            "requires RUN_CERTIFICATION_TESTS=1 and the bounded live stack",
+        ),
+        "maximum_skips": 20,
+    },
+    "migrations.xml": {"allow_skips": False, "allowed_skip_reasons": (), "maximum_skips": 0},
+    "elasticsearch.xml": {"allow_skips": False, "allowed_skip_reasons": (), "maximum_skips": 0},
+    "security.xml": {"allow_skips": False, "allowed_skip_reasons": (), "maximum_skips": 0},
+}
+
 DATA_PRODUCT_SECURITY_EVIDENCE = (
     "security.xml",
     "security-report.json",

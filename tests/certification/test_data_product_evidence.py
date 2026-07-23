@@ -7,6 +7,7 @@ from packages.elastic_store.manifest import (
     DATA_PRODUCT_EVIDENCE_PROFILES,
     DATA_PRODUCT_FOUNDATION_EVIDENCE_OWNERS,
     DATA_PRODUCT_FOUNDATION_JUNIT_EVIDENCE,
+    DATA_PRODUCT_FOUNDATION_JUNIT_POLICIES,
     DATA_PRODUCT_RECONCILIATION_EVIDENCE,
     DATA_PRODUCT_RUNTIME_FOUNDATION_EVIDENCE,
     data_product_evidence_inventory,
@@ -69,6 +70,13 @@ def test_foundation_and_full_profiles_have_explicit_unique_ownership():
     assert set(DATA_PRODUCT_FOUNDATION_JUNIT_EVIDENCE) == {
         name for values in DATA_PRODUCT_FOUNDATION_EVIDENCE_OWNERS.values() for name in values if name.endswith(".xml")
     }
+    assert set(DATA_PRODUCT_FOUNDATION_JUNIT_POLICIES) == set(DATA_PRODUCT_FOUNDATION_JUNIT_EVIDENCE)
+    assert DATA_PRODUCT_FOUNDATION_JUNIT_POLICIES["unit.xml"]["allow_skips"] is True
+    assert all(
+        not policy["allow_skips"]
+        for name, policy in DATA_PRODUCT_FOUNDATION_JUNIT_POLICIES.items()
+        if name != "unit.xml"
+    )
     with pytest.raises(ValueError, match="unknown"):
         data_product_evidence_inventory("inferred-from-files")
 

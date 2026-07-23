@@ -142,7 +142,9 @@ def test_pull_request_evidence_receives_explicit_hosted_provenance():
     commands = "\n".join(
         str(step.get("run", "")) for step in workflow["jobs"]["data-product-foundation-evidence"]["steps"]
     )
-    assert 'test "$DATA_PRODUCT_CERTIFICATION_SHA" = "$EXPECTED_HOSTED_SHA"' in commands
+    assert "producer = certification_commit_sha()" in commands
+    assert "expected = expected_certification_sha()" in commands
+    assert "producer and independent expected SHA differ" in commands
     assert '--require-hosted-provenance --expected-sha "$EXPECTED_HOSTED_SHA"' in commands
 
 

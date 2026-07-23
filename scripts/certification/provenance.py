@@ -10,16 +10,16 @@ SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 
 
 def expected_certification_sha(explicit: str | None = None) -> str | None:
-    """Return the independent expected SHA without consulting ``GITHUB_SHA``.
+    """Return the independently supplied expected SHA.
 
-    The explicit CLI value wins over the hosted expectation and the producer
-    SHA.  Every value that is actually selected is validated before use.
+    Producer identity cannot satisfy independent expectation: neither
+    ``DATA_PRODUCT_CERTIFICATION_SHA`` nor ``GITHUB_SHA`` is consulted here.
+    An explicit CLI value wins over ``EXPECTED_HOSTED_SHA`` and every selected
+    value is validated before use.
     """
     value = explicit
     if value is None:
         value = os.getenv("EXPECTED_HOSTED_SHA")
-    if value is None:
-        value = os.getenv("DATA_PRODUCT_CERTIFICATION_SHA")
     if value is not None and not SHA_RE.fullmatch(value):
         raise ValueError("expected certification SHA must be a lowercase 40-character hexadecimal SHA")
     return value

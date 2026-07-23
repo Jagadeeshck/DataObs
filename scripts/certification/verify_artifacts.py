@@ -87,7 +87,7 @@ def _manifest_provenance_errors(
     if expected_sha and sha != expected_sha:
         errors.append("manifest commit SHA does not match expected hosted SHA")
     if require_hosted_provenance and expected_sha is None:
-        errors.append("hosted provenance requires an independent expected SHA")
+        errors.append("hosted provenance requires independently supplied expected SHA")
     timestamp_fields = ("started_at", "completed_at") if policy.require_pull_request_provenance else ()
     for field in timestamp_fields:
         value = manifest.get(field)

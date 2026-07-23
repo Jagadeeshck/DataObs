@@ -165,8 +165,19 @@ jobs:
         with: {name: data-product-foundation-security, path: artifacts/downloaded/security}
       - name: Require exact independent pull-request head SHA
         run: |
-          test "$DATA_PRODUCT_CERTIFICATION_SHA" = "$EXPECTED_HOSTED_SHA"
-          test "${#EXPECTED_HOSTED_SHA}" -eq 40
+          python - <<'PY'
+          from scripts.certification.provenance import (
+              certification_commit_sha,
+              expected_certification_sha,
+          )
+
+          producer = certification_commit_sha()
+          expected = expected_certification_sha()
+          if expected is None:
+              raise SystemExit("independent expected SHA is missing")
+          if producer != expected:
+              raise SystemExit("producer and independent expected SHA differ")
+          PY
       - run: python scripts/certification/assemble_data_product_evidence.py --profile data-product-runtime-foundation artifacts/downloaded artifacts/retained
       - run: DATA_PRODUCT_CERTIFICATION_PROFILE=data-product-runtime-foundation python scripts/certification/build_manifest.py artifacts/retained
       - run: python scripts/certification/verify_artifacts.py --require-hosted-provenance --expected-sha "$EXPECTED_HOSTED_SHA" artifacts/retained

@@ -1,17 +1,23 @@
 # Data Product reconciliation runtime closure
 
-## PR #153 verifier blocker closure and hosted-proof gate
+## PR #154 independent-expectation closure and hosted-proof gate
 
 - status: **blocked pending a final-head hosted pull-request execution**
-- baseline `main`: `bf8b6712ef285a10ac7c23183393bb09b5390485` (PR #153 merge)
+- baseline `main`: `5b45f7ff06a42fd009eb5003b5dc50ad0ffe0319` (PR #154 merge)
 - repository access: available through the installed GitHub App; this checkout has no configured Git
   remote or GitHub API/Actions-settings tool, so the missing-run cause cannot be inspected or corrected
   from this execution environment. The precise missing capability is read/write access to repository and
   organization Actions settings plus workflow-run, artifact, and review-thread APIs.
-- correction prepared: the evidence job supplies a distinct `EXPECTED_HOSTED_SHA`, checks it equals the
-  producer SHA, and invokes independent verification in mandatory hosted-provenance mode. The verifier
-  rejects self-consistent wrong-SHA bundles and requires non-empty, structured, asserted full-profile
-  security controls without imposing the foundation exact-eight set on that profile.
+- diagnosed missing-run limitation: repository files are available through the installed GitHub App,
+  but this checkout has no configured Git remote, GitHub CLI, credential, Actions-settings API, or
+  workflow-run API. Therefore Actions enablement, allowed-actions policy, organization restrictions,
+  workflow registration, billing/minutes, approval, and fork policy cannot be distinguished further;
+  owner intervention must grant those exact capabilities before the draft can produce hosted proof.
+- correction prepared: producer identity remains `DATA_PRODUCT_CERTIFICATION_SHA`, while independent
+  expectation accepts only explicit `--expected-sha` or `EXPECTED_HOSTED_SHA`. Producer identity,
+  `GITHUB_SHA`, checkout state, and artifact contents cannot satisfy that trust boundary. Mandatory
+  hosted verification now fails closed when expectation is absent and rejects self-consistent wrong-SHA
+  bundles; full-profile structural verification retains its non-empty profile-aware control policy.
 - workflow event / run ID / URL / six job conclusions: pending a real `pull_request` run
 - artifact ID/name/retention: pending / `data-product-foundation-evidence` / 30 days
 - Elasticsearch version: `9.4.2` required; hosted result pending

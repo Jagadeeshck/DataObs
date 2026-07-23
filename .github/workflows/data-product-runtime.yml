@@ -13,6 +13,15 @@ on:
       - 'docs/development/data-product-reconciliation-runtime-closure.md'
       - 'docs/product/capability-ledger.yaml'
       - '.github/workflows/data-product-runtime.yml'
+  # Keep manual dispatch available strictly for registration/runtime diagnosis.
+  # Hosted certification evidence must still come from a pull_request run.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: read
+
 jobs:
   data-product-reconciliation-contracts:
     runs-on: ubuntu-latest

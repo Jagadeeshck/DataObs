@@ -160,3 +160,23 @@ def test_nested_manifest_named_files_are_ordinary_hashed_artifacts(tmp_path):
     result = subprocess.run([sys.executable, str(verify), str(tmp_path)], text=True, capture_output=True)
     assert result.returncode == 1
     assert "sha256 mismatch: nested/manifest.json" in result.stdout
+
+
+def test_verifier_rejects_unexecuted_foundation_security_controls(tmp_path):
+    from scripts.certification.verify_artifacts import _security_errors
+
+    (tmp_path / "security-report.json").write_text(
+        json.dumps(
+            {
+                "controls": [{"control_id": "manually_appended", "assertion_count": 0, "passed": True}],
+                "scenario_count": 2,
+                "passed_count": 2,
+                "failed_count": 0,
+                "result": "passed",
+            }
+        )
+    )
+    errors = _security_errors(tmp_path)
+    assert "required foundation security control set is incomplete" in errors
+    assert "security control has zero assertions" in errors
+    assert "security control count mismatch" in errors

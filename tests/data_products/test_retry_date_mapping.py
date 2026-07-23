@@ -5,6 +5,7 @@ from packages.elastic_store.manifest import (
     migrations,
 )
 from services.data_products.elasticsearch_repository import ElasticsearchDataProductRepository
+from services.data_products.memory_repository import MemoryDataProductRepository
 
 
 class SearchClient:
@@ -40,3 +41,17 @@ def test_retry_query_uses_top_level_date_and_one_concrete_utc_instant():
                 instants.append(value["lte"])
     assert len(instants) == 2 and instants[0] == instants[1]
     assert datetime.fromisoformat(instants[0]).tzinfo == timezone.utc
+
+
+def test_retry_query_uses_injected_instant_and_rejects_naive_time():
+    client = SearchClient()
+    instant = datetime(2026, 1, 2, 3, 4, tzinfo=timezone.utc)
+    ElasticsearchDataProductRepository(client).list_reconcilable_operations("tenant", "prod", now=instant)
+    assert str(client.request).count(instant.isoformat()) == 2
+    for repository in (ElasticsearchDataProductRepository(client), MemoryDataProductRepository()):
+        try:
+            repository.list_reconcilable_operations("tenant", "prod", now=datetime(2026, 1, 1))
+        except ValueError as exc:
+            assert "timezone-aware" in str(exc)
+        else:
+            raise AssertionError("timezone-naive query time was accepted")

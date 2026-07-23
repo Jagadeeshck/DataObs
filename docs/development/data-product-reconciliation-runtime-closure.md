@@ -271,3 +271,17 @@ and security inventory. Foundation evidence cannot satisfy that inventory.
 The next certification task is the complete Data Product mutation fault
 matrix; Product 360 and the other production-readiness tracks remain out of
 scope.
+# Hosted foundation truth audit after PR #146
+
+PR #146 created the foundation profile and test-owned evidence plumbing, but several scenarios recorded success without executing the claimed behaviour, the workflow invoked an unsupported migration command, security controls were over-reported, and no pull-request-triggered retained proof existed. This PR makes the foundation evidence semantically true and proves it on Elasticsearch 9.4.2.
+
+| Foundation capability | Current main after PR #146 | Required final behaviour | Unit/contract | Elasticsearch 9.4.2 | Security | Hosted artifact |
+|---|---|---|---|---|---|---|
+| Migration CLI and clean/upgrade/repeat paths | Unsupported command and pre-migrated inspection | Supported `apply`; destructive clean install; bounded 0016 upgrade; two repeat applies | Migration selection and workflow parser | Dedicated migration module | N/A | migration JSON and JUnit |
+| Mapping and retry eligibility | Mapping inspected; GET-only retry evidence | Installed strict mapping and injected, timezone-aware query instant | Query construction/parity | Boundary selection before limit | N/A | mapping/retry JSON |
+| Claim expiry and resource discrimination | GET-only evidence | Boundary takeover and mixed-kind filtering before size | Repository contract | Real OCC and shared index | Wrong-scope denial | claim/resource JSON |
+| Scoped state, plan, result, history, and search | Controls appended without assertions | One executed owner and positive assertion count per control | Report verifier negatives | Real persistence | Eight required controls | security report/JUnit |
+| Sentinel, inventory, JUnit, and provenance | Initial fixture count and broad manifest claims | Final retained scan, exact foundation inventory, no required skips, foundation-only threads/versions | Workflow/evidence contracts | Observed Elasticsearch version | Four sentinel classes | retained manifest and hashes |
+| Hosted run, retention, and thread closure | No PR-triggered proof | Successful final-head PR run, downloadable retained evidence, then exact thread replies | N/A | Required | Required | Pending hosted run |
+
+Release readiness remains **blocked**. No product capability is promoted. After this gate, the next task is the complete Data Product mutation fault matrix; this foundation does not claim full reconciliation certification.

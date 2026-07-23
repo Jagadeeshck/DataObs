@@ -72,17 +72,19 @@ class MemoryDataProductRepository:
         state = self.operation_states.get((tenant_id, environment, operation_id))
         return state if state and (state.tenant_id, state.environment) == (tenant_id, environment) else None
 
-    def list_reconcilable_operations(self, tenant_id, environment, *, limit=100, operation_kind=None):
-        now = utc_now()
+    def list_reconcilable_operations(self, tenant_id, environment, *, limit=100, operation_kind=None, now=None):
+        query_now = now or utc_now()
+        if query_now.tzinfo is None or query_now.utcoffset() is None:
+            raise ValueError("now must be timezone-aware")
         values = [
             s
             for s in self.operation_states.values()
             if (s.tenant_id, s.environment) == (tenant_id, environment)
             and (operation_kind is None or s.operation_kind == operation_kind)
-            and (s.next_attempt_at is None or s.next_attempt_at <= now)
+            and (s.next_attempt_at is None or s.next_attempt_at <= query_now)
             and (
                 s.status == "pending"
-                or (s.status == "claimed" and s.claim_expires_at and s.claim_expires_at <= utc_now())
+                or (s.status == "claimed" and s.claim_expires_at and s.claim_expires_at <= query_now)
             )
         ]
         return sorted(values, key=lambda s: (s.updated_at, s.operation_id))[:limit]

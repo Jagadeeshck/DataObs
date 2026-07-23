@@ -1515,3 +1515,14 @@ def migrations() -> List[Migration]:
         DATA_PRODUCT_MEMBERSHIP_DEPENDENCY_RUNTIME_MIGRATION,
         DATA_PRODUCT_RECONCILIATION_RETRY_DATE_MIGRATION,
     ]
+
+
+def registered_mutable_resources() -> tuple[str, ...]:
+    """Exact concrete indices a guarded certification reset may remove."""
+    resources = {MIGRATION_STATE_INDEX}
+    for migration in migrations():
+        resources.update(migration.operations.get("mutable_indices", ()))
+        resources.update(migration.operations.get("mapping_updates", {}))
+    if any("*" in resource or "?" in resource for resource in resources):
+        raise RuntimeError("mutable migration resource registry must contain no wildcards")
+    return tuple(sorted(resources))

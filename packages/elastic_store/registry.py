@@ -245,7 +245,27 @@ def _ensure_transform(es: Elasticsearch, definition: Any) -> None:
             raise
 
 
-def apply(es: Elasticsearch) -> List[Dict[str, Any]]:
+def _selected_migrations(through_migration_id: str | None = None) -> list[Any]:
+    """Return a dependency-complete released prefix, optionally bounded by ID."""
+    released = migrations()
+    if through_migration_id is None:
+        return released
+    ids = [migration.migration_id for migration in released]
+    if through_migration_id not in ids:
+        raise ValueError(f"Unknown migration id: {through_migration_id}")
+    selected = released[: ids.index(through_migration_id) + 1]
+    selected_ids = {migration.migration_id for migration in selected}
+    for migration in selected:
+        missing = set(migration.dependencies) - selected_ids
+        if missing:
+            raise RuntimeError(
+                f"Migration prefix through {through_migration_id} is dependency-invalid: "
+                f"{migration.migration_id} requires {', '.join(sorted(missing))}"
+            )
+    return selected
+
+
+def apply(es: Elasticsearch, *, through_migration_id: str | None = None) -> List[Dict[str, Any]]:
     if not es.indices.exists(index=MIGRATION_STATE_INDEX):
         es.indices.create(
             index=MIGRATION_STATE_INDEX,
@@ -263,7 +283,7 @@ def apply(es: Elasticsearch) -> List[Dict[str, Any]]:
     applied = status(es).get("applied", {})
     out: list[dict[str, Any]] = []
     applied_ids: set[str] = set(applied)
-    for m in migrations():
+    for m in _selected_migrations(through_migration_id):
         for dep in m.dependencies:
             if dep not in applied_ids:
                 raise RuntimeError(f"Migration {m.migration_id} depends on unapplied {dep}")

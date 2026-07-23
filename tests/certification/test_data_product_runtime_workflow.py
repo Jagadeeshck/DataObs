@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 import yaml
@@ -39,3 +40,24 @@ def test_foundation_workflow_has_explicit_profile_and_required_jobs():
     assert "DATA_PRODUCT_CERTIFICATION_PROFILE=data-product-runtime-foundation" in text
     assert "--profile data-product-runtime-foundation" in text
     assert "continue-on-error" not in text and "|| true" not in text
+
+
+def test_every_workflow_elastic_subcommand_is_supported():
+    text = Path(".github/workflows/data-product-runtime.yml").read_text()
+    commands = re.findall(r"(?:\./bin/)?dataobs elastic ([a-z-]+)", text)
+    assert commands
+    assert set(commands) <= {"plan", "apply", "status", "rollback"}
+    assert "migrate" not in commands
+
+
+def test_foundation_jobs_execute_truthful_suites_and_migration_order():
+    workflow = yaml.safe_load(Path(".github/workflows/data-product-runtime.yml").read_text())
+    jobs = workflow["jobs"]
+    unit = str(jobs["data-product-reconciliation-unit"])
+    elastic = str(jobs["data-product-foundation-elasticsearch"])
+    security = str(jobs["data-product-foundation-security"])
+    assert "tests/data_products tests/certification" in unit
+    assert elastic.index("test_migrations_elasticsearch.py") < elastic.index("test_operation_state_elasticsearch.py")
+    assert "DATA_PRODUCT_ALLOW_DESTRUCTIVE_TEST_RESET=1" in elastic
+    assert "DATA_PRODUCT_ALLOW_DESTRUCTIVE_TEST_RESET" not in security
+    assert "./bin/dataobs elastic apply" in security

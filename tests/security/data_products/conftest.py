@@ -1,10 +1,29 @@
 """Real persistence-security certification fixtures."""
 
 import os
+from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
 from elasticsearch import Elasticsearch
+
+
+@dataclass(frozen=True)
+class ExecutedSecurityControl:
+    control_id: str
+    test_node_id: str
+    assertion_count: int
+    passed: bool
+    redacted_references: tuple[str, ...] = ()
+
+
+@pytest.fixture
+def executed_control(request):
+    def record(control_id: str, assertion_count: int) -> ExecutedSecurityControl:
+        assert assertion_count > 0
+        return ExecutedSecurityControl(control_id, request.node.nodeid, assertion_count, True)
+
+    return record
 
 
 @pytest.fixture

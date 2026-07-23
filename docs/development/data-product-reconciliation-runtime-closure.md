@@ -1,5 +1,17 @@
 # Data Product reconciliation runtime closure
 
+## Hosted foundation execution attempt after PR #149
+
+- status: pending
+- baseline main SHA: `5f21ac9d4cc4ffdc728c2c9967468360842eb927`
+- workflow name: `Data Product hosted certification foundation`
+- expected jobs: `data-product-reconciliation-contracts`, `data-product-reconciliation-unit`, `data-product-foundation-elasticsearch`, `data-product-foundation-security`, `data-product-foundation-evidence`, and `data-product-foundation-summary`
+- expected artifact: `data-product-foundation-evidence`
+- execution access limitation: this environment has no configured Git remote, no `gh` client, and no GitHub credential; the unauthenticated GitHub API returns `404 Not Found` for `Jagadeeshck/DataObs`, so it cannot push a branch, open a real draft pull request, inspect Actions or review threads, or download retained evidence
+- full reconciliation certified: false
+- release readiness: blocked
+- capabilities promoted: none
+
 > PR #147 made the foundation scenarios materially executable, but its hosted artifact inventory still rejected `migrations.xml`, one security control was reported without exercising the claim mutation path, stale-worker fencing and complete mixed-resource discrimination were not yet proved, and no pull-request-triggered retained proof existed. This PR closes the hosted foundation gate.
 
 Latest main after PR #147: `5b26bf1`. Migrations `0001`–`0017` remain immutable. Release readiness remains **blocked** and this is foundation evidence, not complete reconciliation certification.

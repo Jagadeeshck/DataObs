@@ -24,6 +24,7 @@ REQUIRED_JOBS = {
     "data-product-reconciliation-security",
 }
 SHA_RE = re.compile(r"^[0-9a-f]{40}$")
+SUPPORTED_REPORT_SCHEMAS = {"1.0"}
 
 
 def _junit_summary(path: Path) -> dict:
@@ -77,6 +78,27 @@ def _validate_scenario(name: str, value: dict) -> None:
         raise ValueError(f"scenario timestamps are reversed: {name}")
 
 
+def _validate_report_provenance(name: str, value: dict, *, require_elasticsearch: bool = True) -> None:
+    """Apply the same fail-closed provenance checks to every special report."""
+    if value.get("schema_version") not in SUPPORTED_REPORT_SCHEMAS:
+        raise ValueError(f"unsupported schema version: {name}")
+    if not SHA_RE.fullmatch(str(value.get("commit_sha", ""))):
+        raise ValueError(f"invalid commit SHA: {name}")
+    if os.getenv("GITHUB_SHA") and value["commit_sha"] != os.environ["GITHUB_SHA"]:
+        raise ValueError(f"hosted commit SHA mismatch: {name}")
+    if require_elasticsearch and value.get("elasticsearch_version") != "9.4.2":
+        raise ValueError(f"wrong Elasticsearch version: {name}")
+    try:
+        start = datetime.fromisoformat(value["started_at"].replace("Z", "+00:00"))
+        complete = datetime.fromisoformat(value["completed_at"].replace("Z", "+00:00"))
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ValueError(f"invalid report timestamps: {name}") from exc
+    if start.tzinfo is None or complete.tzinfo is None or start > complete:
+        raise ValueError(f"report timestamps are reversed or timezone-naive: {name}")
+    if value.get("result") != "passed":
+        raise ValueError(f"report is not passed: {name}")
+
+
 def _validate_inventory(root: Path) -> tuple[list[Path], dict[str, dict], dict[str, dict]]:
     files = [path for path in root.rglob("*") if path.is_file()]
     by_name: dict[str, list[Path]] = {}
@@ -105,10 +127,14 @@ def _validate_inventory(root: Path) -> tuple[list[Path], dict[str, dict], dict[s
                     "schema_version",
                     "commit_sha",
                     "elasticsearch_version",
+                    "started_at",
+                    "completed_at",
                     "scenario_count",
                     "passed_count",
                     "failed_count",
                     "controls",
+                    "test_names",
+                    "redacted_references",
                     "result",
                 }
                 if (
@@ -116,28 +142,38 @@ def _validate_inventory(root: Path) -> tuple[list[Path], dict[str, dict], dict[s
                     or value["failed_count"]
                     or value["passed_count"] != value["scenario_count"]
                     or not value["controls"]
+                    or value["scenario_count"] <= 0
+                    or not value["test_names"]
                     or value["result"] != "passed"
                 ):
                     raise ValueError("invalid security report")
+                _validate_report_provenance(name, value)
                 continue
             if name == "sentinel-report.json":
                 required = {
                     "schema_version",
                     "commit_sha",
+                    "elasticsearch_version",
+                    "started_at",
+                    "completed_at",
                     "files_scanned",
                     "sentinels_injected",
                     "sentinels_redacted",
                     "sentinels_remaining",
+                    "test_names",
                     "result",
                 }
                 if (
                     required - value.keys()
                     or value["sentinels_injected"] <= 0
+                    or value["files_scanned"] <= 0
                     or value["sentinels_remaining"]
                     or value["sentinels_redacted"] != value["sentinels_injected"]
                     or value["result"] != "passed"
+                    or not value["test_names"]
                 ):
                     raise ValueError("invalid sentinel report")
+                _validate_report_provenance(name, value)
                 continue
             _validate_scenario(name, value)
             scenarios[name] = value

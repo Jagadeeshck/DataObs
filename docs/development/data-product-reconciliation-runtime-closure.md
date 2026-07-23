@@ -1,5 +1,25 @@
 # Data Product reconciliation runtime closure
 
+> PR #144 added typed superseded-edge handling and deterministic evidence infrastructure, but its executing tests still did not produce the required scenario artifacts, the verifier rejected its generated alias manifest, special security reports bypassed commit/version validation, and the real fault and security matrices remained almost entirely unimplemented. This PR closes and proves the final reconciliation gate.
+
+Latest main baseline after PR #144: `864b1fa`. Migrations `0001`–`0017` remain immutable released history. The authoritative manifest is `certification-evidence.json`; `manifest.json` is its byte-identical compatibility alias. Neither manifest may list itself, and the verifier excludes both only after validating their presence and equality. Hosted columns remain pending until a retained successful pull-request run exists.
+
+| Capability | Current main after PR #144 | Required final behaviour | Unit/property | Elasticsearch 9.4.2 | Security | Hosted artifact |
+|---|---|---|---|---|---|---|
+| PR144 scenario-producer P1 | environment variable only | each executable suite emits only its own passed evidence | contract pending | pending | pending | pending |
+| PR144 alias-manifest P1 | alias treated as unlisted input | byte-identical alias excluded from artifact inventory | covered | n/a | n/a | pending |
+| PR144 special-report P2 | partial report validation | shared schema, SHA, version, timestamps and result validation | covered | n/a | covered | pending |
+| migration and mapping matrix | not executed | clean, 0016 upgrade, repeat apply, mapping and legacy compatibility | pending | pending | n/a | pending |
+| retry, claim and resource discrimination | unit/query contracts | real UTC boundaries and filters-before-size | partial | pending | pending | pending |
+| reservation, membership, proposal and exclusion | memory/unit focused | complete crash recovery and immutable replay | partial | pending | pending | pending |
+| dependency recovery, scale, terminal and takeover | one fencing scenario | complete token/chunk/tombstone/scale/takeover matrix | partial | pending | pending | pending |
+| lifecycle and terminal revisit | unit focused | all actions, snapshots, immutable replay and repair | partial | pending | pending | pending |
+| CLI result and exit contract | unit focused | real operations, filters, bounds and leak checks | partial | pending | pending | pending |
+| persistence security and sentinel redaction | one tenant-state test | complete attack matrix and positive sentinel accounting | partial | pending | pending | pending |
+| hosted validation and review closure | absent | retained PR-triggered proof before thread resolution | n/a | pending | pending | pending |
+
+Release readiness remains **blocked**. The next milestone remains **Data Product APIs, Product 360, browser/security, and final hosted core certification**.
+
 > PR #143 improved dependency ordering and evidence validation, but no scenario producer generated the required evidence, the real Elasticsearch and security suites remained shallow, a superseded edge race escaped reconciliation, one certification test still failed, and no hosted artifact set existed. This PR executes and proves the complete runtime.
 
 Latest main baseline: `efae25f` (merge of PR #143). Migrations `0001`–`0017` remain immutable released history. Scenario producers, real-stack execution, and hosted proof are tracked separately: local tests never promote a hosted cell. Release readiness remains **blocked**.

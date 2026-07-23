@@ -2,8 +2,18 @@
 
 from datetime import datetime, timedelta, timezone
 
-from services.data_products.elasticsearch_repository import ElasticsearchDataProductRepository
-from services.data_products.operation_state import DataProductOperationPlan, DataProductOperationState
+import pytest
+
+from services.data_products.elasticsearch_repository import OPERATIONS, ElasticsearchDataProductRepository
+from services.data_products.operation_state import (
+    DataProductOperationCheckpoint,
+    DataProductOperationFinalResult,
+    DataProductOperationHistoryEvent,
+    DataProductOperationPlan,
+    DataProductOperationResultEnvelope,
+    DataProductOperationState,
+    OperationClaimConflict,
+)
 from services.data_products.reconciliation import _checksum
 
 
@@ -98,9 +108,45 @@ def test_claim_expiry_boundaries_drive_selection_and_takeover(
         expected_primary_term=state.primary_term,
     )
     assert claim.owner == "worker-b" and claim.generation == 2
+    # Reconstruct worker A's generation-one capability; every mutating and
+    # asserting path must reject it after worker B's exact-boundary takeover.
+    from services.data_products.operation_state import DataProductOperationClaim
+
+    worker_a = DataProductOperationClaim(
+        state.operation_id,
+        "worker-a",
+        1,
+        instant,
+        instant,
+        unique_scope["tenant"],
+        unique_scope["environment"],
+        unique_scope["product"],
+    )
+    fenced = {
+        "assert_operation_claim": lambda: repository.assert_operation_claim(worker_a),
+        "checkpoint_operation": lambda: repository.checkpoint_operation(
+            worker_a, DataProductOperationCheckpoint("stale", "checksum", instant)
+        ),
+        "renew_operation_claim": lambda: repository.renew_operation_claim(
+            worker_a, expires_at=instant + timedelta(minutes=2)
+        ),
+        "complete_operation": lambda: repository.complete_operation(
+            worker_a, DataProductOperationFinalResult(1, "etag", "checksum", instant)
+        ),
+        "fail_operation": lambda: repository.fail_operation(worker_a, error_code="stale"),
+        "supersede_operation": lambda: repository.supersede_operation(worker_a, error_code="stale"),
+    }
+    for name, operation in fenced.items():
+        with pytest.raises(OperationClaimConflict):
+            operation()
+    current = repository.get_operation_state(unique_scope["tenant"], unique_scope["environment"], state.operation_id)
+    assert (current.claim_owner, current.claim_generation) == ("worker-b", 2)
     recorder = scenario_recorder("claim-expiry-boundaries.json", "claim expiry drives takeover")
     recorder.assert_that(True, "future claim excluded while exact and past claims are eligible")
     recorder.assert_that(claim.generation == 2, "boundary takeover increments claim generation")
+    for name in fenced:
+        recorder.assert_that(True, f"worker A {name} is fenced after takeover")
+    recorder.assert_that(current.claim_owner == "worker-b", "worker B remains owner at generation 2")
     recorder.passed(elasticsearch_version)
 
 
@@ -109,11 +155,60 @@ def test_shared_operation_index_filters_resource_kind_before_limit(
 ):
     repository = ElasticsearchDataProductRepository(elasticsearch_client)
     instant = datetime(2026, 1, 3, tzinfo=timezone.utc)
+    limit = 2
     for number in range(3):
-        _state(repository, unique_scope, f"{unique_scope['product']}-state-{number}", instant)
-    # Every state also writes a plan into the same index; plans must not consume size.
+        _state(
+            repository, unique_scope, f"{unique_scope['product']}-state-{number}", instant + timedelta(seconds=number)
+        )
+    # Seed every co-located resource above size, plus an untyped legacy record.
+    for number in range(limit + 2):
+        operation_id = f"{unique_scope['product']}-noise-{number}"
+        repository.append_operation_history(
+            DataProductOperationHistoryEvent(
+                f"history-{number}",
+                operation_id,
+                unique_scope["tenant"],
+                unique_scope["environment"],
+                unique_scope["product"],
+                "manual_membership",
+                "create",
+                "pending",
+                "certifier",
+                "discriminator",
+                f"fingerprint-{number}",
+                instant - timedelta(days=1, seconds=number),
+            )
+        )
+        repository.save_operation_result(
+            DataProductOperationResultEnvelope(
+                f"result-{number}",
+                unique_scope["tenant"],
+                unique_scope["environment"],
+                unique_scope["product"],
+                operation_id,
+                f"checksum-{number}",
+                {"number": number},
+                instant - timedelta(days=1, seconds=number),
+            )
+        )
+    legacy_id = f"legacy-{unique_scope['product']}"
+    elasticsearch_client.index(
+        index=OPERATIONS,
+        id=legacy_id,
+        document={
+            "tenant_id": unique_scope["tenant"],
+            "environment": unique_scope["environment"],
+            "operation_id": legacy_id,
+            "product_id": unique_scope["product"],
+            "action": "manual_membership",
+            "outcome": "pending",
+            "occurred_at": (instant - timedelta(days=2)).isoformat(),
+            "document": {"legacy": True},
+        },
+        refresh="wait_for",
+    )
     selected = repository.list_reconcilable_operations(
-        unique_scope["tenant"], unique_scope["environment"], now=instant, limit=2
+        unique_scope["tenant"], unique_scope["environment"], now=instant + timedelta(minutes=1), limit=limit
     )
     assert len(selected) == 2
     assert all(state.status == "pending" for state in selected)
@@ -125,7 +220,25 @@ def test_shared_operation_index_filters_resource_kind_before_limit(
         )
         is not None
     )
+    assert (
+        repository.get_operation_history(
+            unique_scope["tenant"], unique_scope["environment"], f"{unique_scope['product']}-noise-0"
+        )[0].event_id
+        == "history-0"
+    )
+    assert (
+        repository.load_operation_result(
+            unique_scope["tenant"],
+            unique_scope["environment"],
+            unique_scope["product"],
+            f"{unique_scope['product']}-noise-0",
+        ).reference
+        == "result-0"
+    )
     recorder = scenario_recorder("resource-discriminator.json", "shared operation resource discriminator")
     recorder.assert_that(True, "plan envelopes do not consume the state limit")
     recorder.assert_that(True, "state ordering is deterministic and scoped")
+    recorder.assert_that(
+        True, f"{limit + 2} history and result documents plus legacy cannot consume requested state limit {limit}"
+    )
     recorder.passed(elasticsearch_version)

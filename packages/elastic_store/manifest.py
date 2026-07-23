@@ -8,6 +8,7 @@ from typing import Any, Dict, List
 DATA_PRODUCT_RECONCILIATION_EVIDENCE = (
     "contracts.xml",
     "unit.xml",
+    "migrations.xml",
     "migration-clean-install.json",
     "migration-upgrade.json",
     "migration-repeat-apply.json",
@@ -40,6 +41,7 @@ DATA_PRODUCT_RECONCILIATION_FULL_PROFILE = "data-product-reconciliation-full"
 DATA_PRODUCT_RUNTIME_FOUNDATION_EVIDENCE = (
     "contracts.xml",
     "unit.xml",
+    "migrations.xml",
     "elasticsearch.xml",
     "security.xml",
     "migration-clean-install.json",
@@ -55,6 +57,7 @@ DATA_PRODUCT_RUNTIME_FOUNDATION_EVIDENCE = (
 )
 
 DATA_PRODUCT_ELASTICSEARCH_EVIDENCE = (
+    "migrations.xml",
     "migration-clean-install.json",
     "migration-upgrade.json",
     "migration-repeat-apply.json",
@@ -76,6 +79,15 @@ DATA_PRODUCT_ELASTICSEARCH_EVIDENCE = (
     "terminal-revisit.json",
     "cli-results.json",
     "elasticsearch.xml",
+)
+
+# Every JUnit emitted by a foundation producer is a required, validated artifact.
+DATA_PRODUCT_FOUNDATION_JUNIT_EVIDENCE = (
+    "contracts.xml",
+    "unit.xml",
+    "migrations.xml",
+    "elasticsearch.xml",
+    "security.xml",
 )
 
 DATA_PRODUCT_SECURITY_EVIDENCE = (

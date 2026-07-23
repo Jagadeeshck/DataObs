@@ -13,15 +13,18 @@ class ExecutedSecurityControl:
     control_id: str
     test_node_id: str
     assertion_count: int
+    assertion_evidence: tuple[str, ...]
     passed: bool
     redacted_references: tuple[str, ...] = ()
 
 
 @pytest.fixture
 def executed_control(request):
-    def record(control_id: str, assertion_count: int) -> ExecutedSecurityControl:
-        assert assertion_count > 0
-        return ExecutedSecurityControl(control_id, request.node.nodeid, assertion_count, True)
+    def record(control_id: str, *assertion_evidence: str) -> ExecutedSecurityControl:
+        assert assertion_evidence and all(assertion_evidence)
+        return ExecutedSecurityControl(
+            control_id, request.node.nodeid, len(assertion_evidence), tuple(assertion_evidence), True
+        )
 
     return record
 

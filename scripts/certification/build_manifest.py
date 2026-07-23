@@ -16,6 +16,7 @@ from xml.etree import ElementTree
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from packages.elastic_store.manifest import (  # noqa: E402
+    DATA_PRODUCT_FOUNDATION_JUNIT_EVIDENCE,
     DATA_PRODUCT_RUNTIME_FOUNDATION_PROFILE,
     data_product_evidence_inventory,
 )
@@ -39,7 +40,7 @@ def _junit_summary(path: Path) -> dict:
     skipped = sum(int(s.attrib.get("skipped", 0)) for s in suites)
     if tests == 0 or failures or errors:
         raise ValueError(f"JUnit is empty or contains failures/errors: {path.name}")
-    if path.name in {"elasticsearch.xml", "security.xml"} and skipped:
+    if path.name in DATA_PRODUCT_FOUNDATION_JUNIT_EVIDENCE and skipped:
         raise ValueError(f"required real-stack JUnit contains skips: {path.name}")
     return {
         "suite": root.attrib.get("name", path.stem),
@@ -201,6 +202,13 @@ def main() -> int:
         raise ValueError("DATA_PRODUCT_CERTIFICATION_PROFILE must be explicit")
     inventory = data_product_evidence_inventory(profile)
     retained, scenarios, junit = _validate_inventory(root, inventory)
+    expected_junit = (
+        set(DATA_PRODUCT_FOUNDATION_JUNIT_EVIDENCE)
+        if profile == DATA_PRODUCT_RUNTIME_FOUNDATION_PROFILE
+        else {name for name in inventory if name.endswith(".xml")}
+    )
+    if set(junit) != expected_junit:
+        raise ValueError(f"JUnit inventory mismatch: expected={sorted(expected_junit)}, actual={sorted(junit)}")
     required_jobs = (
         FOUNDATION_JOBS
         if profile == DATA_PRODUCT_RUNTIME_FOUNDATION_PROFILE

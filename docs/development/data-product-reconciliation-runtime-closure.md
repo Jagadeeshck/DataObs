@@ -1,5 +1,30 @@
 # Data Product reconciliation runtime closure
 
+> PR #147 made the foundation scenarios materially executable, but its hosted artifact inventory still rejected `migrations.xml`, one security control was reported without exercising the claim mutation path, stale-worker fencing and complete mixed-resource discrimination were not yet proved, and no pull-request-triggered retained proof existed. This PR closes the hosted foundation gate.
+
+Latest main after PR #147: `5b26bf1`. Migrations `0001`–`0017` remain immutable. Release readiness remains **blocked** and this is foundation evidence, not complete reconciliation certification.
+
+| Foundation capability | Current main after PR #147 | Required final behaviour | Unit/contract | Elasticsearch 9.4.2 | Security | Hosted artifact |
+|---|---|---|---|---|---|---|
+| migration JUnit ownership | produced but unowned | separately owned `migrations.xml` | covered | required | n/a | pending |
+| migration JUnit validation | ignored | nonempty, zero failure/error/skip | covered | required | n/a | pending |
+| wrong-scope claim mutation denial | reported without mutation | wrong tenant/environment call `claim_operation`; correct scope succeeds | covered | required | required | pending |
+| claim takeover | generation only | exact-boundary generation-two takeover | covered | required | n/a | pending |
+| stale-worker fencing after takeover | absent | assert/checkpoint/renew/all terminal paths fenced | covered | required | n/a | pending |
+| state resource discrimination | states/plans only | filters precede size and stable order | covered | required | n/a | pending |
+| plan resource discrimination | partial | plans cannot consume state limit and load by scope | covered | required | n/a | pending |
+| result resource discrimination | absent | results cannot consume state limit and load by scope | covered | required | n/a | pending |
+| history resource discrimination | absent | history cannot consume state limit and history reads only events | covered | required | n/a | pending |
+| legacy-record starvation prevention | absent | legacy envelopes cannot deserialize or consume size | covered | required | n/a | pending |
+| realtime claim/checkpoint visibility | partial | realtime GET observes OCC writes without refresh | covered | required | n/a | pending |
+| foundation artifact assembly | rejected producer output | empty exact-owned assembly | covered | required | required | pending |
+| manifest/hash verification | one JUnit absent | all JUnits, aliases, paths and hashes fail closed | covered | required | required | pending |
+| pull-request-triggered run | absent | success on final head SHA | n/a | pending | pending | pending |
+| artifact download verification | absent | retained ZIP downloaded and independently verified | n/a | pending | pending | pending |
+| review-thread closure | unresolved | only eligible evidence threads receive exact hosted proof | n/a | pending | pending | pending |
+
+After this gate, the next task is the complete Data Product mutation fault matrix (manual membership, proposals, exclusion, dependency, lifecycle, takeover, immutable replay, terminal revisit, CLI, and remaining security). Product capabilities are not promoted.
+
 > PR #144 added typed superseded-edge handling and deterministic evidence infrastructure, but its executing tests still did not produce the required scenario artifacts, the verifier rejected its generated alias manifest, special security reports bypassed commit/version validation, and the real fault and security matrices remained almost entirely unimplemented. This PR closes and proves the final reconciliation gate.
 
 Latest main baseline after PR #144: `864b1fa`. Migrations `0001`–`0017` remain immutable released history. The authoritative manifest is `certification-evidence.json`; `manifest.json` is its byte-identical compatibility alias. Neither manifest may list itself, and the verifier excludes both only after validating their presence and equality. Hosted columns remain pending until a retained successful pull-request run exists.

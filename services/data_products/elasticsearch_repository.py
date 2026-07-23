@@ -150,12 +150,20 @@ class ElasticsearchDataProductRepository:
         return self._state_from_hit(hit)
 
     def list_reconcilable_operations(
-        self, tenant_id: str, environment: str, *, limit: int = 100, operation_kind: str | None = None
+        self,
+        tenant_id: str,
+        environment: str,
+        *,
+        limit: int = 100,
+        operation_kind: str | None = None,
+        now: datetime | None = None,
     ):
         if not 1 <= limit <= 200:
             raise ValueError("limit outside bounds")
-        now = datetime.now(timezone.utc)
-        query_instant = now.isoformat()
+        query_now = now or datetime.now(timezone.utc)
+        if query_now.tzinfo is None or query_now.utcoffset() is None:
+            raise ValueError("now must be timezone-aware")
+        query_instant = query_now.astimezone(timezone.utc).isoformat()
         filters: list[dict[str, Any]] = [
             {"term": {"tenant_id": tenant_id}},
             {"term": {"environment": environment}},

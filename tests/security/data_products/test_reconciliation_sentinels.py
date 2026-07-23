@@ -19,7 +19,9 @@ def test_foundation_sentinels_are_actually_redacted(security_client, security_ev
     redacted = redact(security_evidence_dir)
     remaining = sum(path.read_bytes().count(sentinel) for path in fixtures for sentinel in SENTINELS)
     assert injected > 0 and redacted == injected and remaining == 0
+    captured_source_bytes = fixtures[1].stat().st_size
     fixtures[1].unlink()  # controlled source is not retained; redacted.log is.
+    assert captured_source_bytes > 0 and not fixtures[1].exists()
     completed = datetime.now(timezone.utc)
     report = {
         "schema_version": "1.0",
@@ -28,7 +30,7 @@ def test_foundation_sentinels_are_actually_redacted(security_client, security_ev
         "elasticsearch_version": security_client.info()["version"]["number"],
         "started_at": started.isoformat(),
         "completed_at": completed.isoformat(),
-        "files_scanned": len(fixtures),
+        "files_scanned": len([path for path in security_evidence_dir.iterdir() if path.is_file()]),
         "sentinels_injected": injected,
         "sentinels_redacted": redacted,
         "sentinels_remaining": remaining,

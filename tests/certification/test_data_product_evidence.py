@@ -10,6 +10,7 @@ from packages.elastic_store.manifest import (
     DATA_PRODUCT_RUNTIME_FOUNDATION_EVIDENCE,
     data_product_evidence_inventory,
 )
+from scripts.certification.assemble_data_product_evidence import assemble
 from scripts.certification.data_product_evidence import write_scenario
 
 
@@ -81,6 +82,15 @@ def test_scenario_writer_rejects_naive_time_and_unowned_filename(tmp_path):
             completed_at="2026-01-01T00:00:01",
             result="passed",
         )
+
+
+def test_assembler_rejects_a_nonempty_retained_directory(tmp_path):
+    downloaded, retained = tmp_path / "downloaded", tmp_path / "retained"
+    downloaded.mkdir()
+    retained.mkdir()
+    (retained / "stale.json").write_text("{}")
+    with pytest.raises(ValueError, match="begin empty"):
+        assemble(downloaded, retained, profile="data-product-runtime-foundation")
     now = datetime.now(timezone.utc)
     with pytest.raises(ValueError, match="undeclared"):
         write_scenario(

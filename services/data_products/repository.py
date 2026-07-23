@@ -129,7 +129,13 @@ class DataProductRepository(Protocol):
 
     def create_operation_state(self, state: DataProductOperationState) -> None: ...
     def list_reconcilable_operations(
-        self, tenant_id: str, environment: str, *, limit: int = 100, operation_kind: str | None = None
+        self,
+        tenant_id: str,
+        environment: str,
+        *,
+        limit: int = 100,
+        operation_kind: str | None = None,
+        now: datetime | None = None,
     ) -> Sequence[DataProductOperationState]: ...
     def get_operation_state(
         self, tenant_id: str, environment: str, operation_id: str

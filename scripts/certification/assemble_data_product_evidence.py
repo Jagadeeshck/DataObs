@@ -12,6 +12,8 @@ from packages.elastic_store.manifest import data_product_evidence_owners
 
 def assemble(downloaded: Path, retained: Path, *, profile: str) -> None:
     retained.mkdir(parents=True, exist_ok=True)
+    if any(retained.iterdir()):
+        raise ValueError("retained evidence directory must begin empty")
     seen: set[str] = set()
     for owner, expected in data_product_evidence_owners(profile).items():
         source = downloaded / owner

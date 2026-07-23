@@ -1002,8 +1002,9 @@ class DataProductOperationService:
         if not 1 <= limit <= 1000:
             raise ValueError("reconciliation limit outside bounds")
         outcomes = {"applied": 0, "superseded": 0, "failed": 0, "retry": 0, "missing": 0}
+        query_now = utc_now()
         for state in self.repository.list_reconcilable_operations(
-            tenant_id, environment, limit=limit, operation_kind=operation_kind
+            tenant_id, environment, limit=limit, operation_kind=operation_kind, now=query_now
         ):
             outcome = self.reconcile_operation(tenant_id, environment, state.operation_id)
             outcomes[outcome.status] = outcomes.get(outcome.status, 0) + 1

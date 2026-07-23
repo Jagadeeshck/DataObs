@@ -49,6 +49,22 @@ def _state(repository, scope, operation_id, instant, *, due=None, status="pendin
     )
 
 
+def _canonical_result(scope, operation_id, number, instant):
+    payload = {"number": number}
+    result = DataProductOperationResultEnvelope(
+        f"result-{number}",
+        scope["tenant"],
+        scope["environment"],
+        scope["product"],
+        operation_id,
+        _checksum(payload),
+        payload,
+        instant,
+    )
+    assert result.checksum == _checksum(result.payload)
+    return result
+
+
 def test_retry_date_boundaries_drive_reconcilable_selection(
     elasticsearch_client, elasticsearch_version, unique_scope, scenario_recorder
 ):
@@ -97,17 +113,24 @@ def test_claim_expiry_boundaries_drive_selection_and_takeover(
     state = repository.get_operation_state(
         unique_scope["tenant"], unique_scope["environment"], f"{unique_scope['product']}-claim-exact"
     )
+    live_expiry = datetime.now(timezone.utc) + timedelta(minutes=10)
     claim = repository.claim_operation(
         unique_scope["tenant"],
         unique_scope["environment"],
         state.operation_id,
         worker_id="worker-b",
         now=instant,
-        expires_at=instant + timedelta(minutes=1),
+        expires_at=live_expiry,
         expected_seq_no=state.seq_no,
         expected_primary_term=state.primary_term,
     )
     assert claim.owner == "worker-b" and claim.generation == 2
+    repository.assert_operation_claim(claim)
+    checkpoint = DataProductOperationCheckpoint("worker-b-live", "checksum", datetime.now(timezone.utc))
+    repository.checkpoint_operation(claim, checkpoint)
+    renewed_expiry = datetime.now(timezone.utc) + timedelta(minutes=15)
+    claim = repository.renew_operation_claim(claim, expires_at=renewed_expiry)
+    repository.assert_operation_claim(claim)
     # Reconstruct worker A's generation-one capability; every mutating and
     # asserting path must reject it after worker B's exact-boundary takeover.
     from services.data_products.operation_state import DataProductOperationClaim
@@ -141,9 +164,14 @@ def test_claim_expiry_boundaries_drive_selection_and_takeover(
             operation()
     current = repository.get_operation_state(unique_scope["tenant"], unique_scope["environment"], state.operation_id)
     assert (current.claim_owner, current.claim_generation) == ("worker-b", 2)
+    assert current.claim_expires_at > datetime.now(timezone.utc)
+    assert current.last_checkpoint.name == "worker-b-live"
     recorder = scenario_recorder("claim-expiry-boundaries.json", "claim expiry drives takeover")
     recorder.assert_that(True, "future claim excluded while exact and past claims are eligible")
     recorder.assert_that(claim.generation == 2, "boundary takeover increments claim generation")
+    recorder.assert_that(True, "worker B positive assert succeeded")
+    recorder.assert_that(True, "worker B positive checkpoint succeeded")
+    recorder.assert_that(True, "worker B positive renewal succeeded")
     for name in fenced:
         recorder.assert_that(True, f"worker A {name} is fenced after takeover")
     recorder.assert_that(current.claim_owner == "worker-b", "worker B remains owner at generation 2")
@@ -180,16 +208,7 @@ def test_shared_operation_index_filters_resource_kind_before_limit(
             )
         )
         repository.save_operation_result(
-            DataProductOperationResultEnvelope(
-                f"result-{number}",
-                unique_scope["tenant"],
-                unique_scope["environment"],
-                unique_scope["product"],
-                operation_id,
-                f"checksum-{number}",
-                {"number": number},
-                instant - timedelta(days=1, seconds=number),
-            )
+            _canonical_result(unique_scope, operation_id, number, instant - timedelta(days=1, seconds=number))
         )
     legacy_id = f"legacy-{unique_scope['product']}"
     elasticsearch_client.index(
@@ -241,4 +260,5 @@ def test_shared_operation_index_filters_resource_kind_before_limit(
     recorder.assert_that(
         True, f"{limit + 2} history and result documents plus legacy cannot consume requested state limit {limit}"
     )
+    recorder.assert_that(True, f"seeded_states=3 seeded_non_states={2 * (limit + 2) + 4} query_limit={limit}")
     recorder.passed(elasticsearch_version)

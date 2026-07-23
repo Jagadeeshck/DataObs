@@ -39,6 +39,7 @@ def test_clean_install_executes_all_released_migrations(elasticsearch_client, el
     applied = apply(elasticsearch_client)
     migration_status = status(elasticsearch_client)
     expected = migrations()
+    assert [item.migration_id[:4] for item in expected] == [f"{number:04d}" for number in range(1, 18)]
     assert expected[-1].migration_id == "0017_data_product_reconciliation_retry_date"
     assert len(applied) == len(expected)
     assert migration_status["ready"]

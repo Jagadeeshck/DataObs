@@ -7,6 +7,8 @@ from pathlib import Path
 import pytest
 from elasticsearch import Elasticsearch
 
+FOUNDATION_SECURITY_FILES = frozenset({"security.xml", "security-report.json", "sentinel-report.json", "redacted.log"})
+
 
 @dataclass(frozen=True)
 class ExecutedSecurityControl:
@@ -43,3 +45,9 @@ def security_client():
 @pytest.fixture
 def security_evidence_dir():
     return Path(os.environ["DATA_PRODUCT_EVIDENCE_DIR"])
+
+
+@pytest.fixture
+def foundation_security_files():
+    """Make the final retained sentinel-scan inventory explicit to tests."""
+    return FOUNDATION_SECURITY_FILES

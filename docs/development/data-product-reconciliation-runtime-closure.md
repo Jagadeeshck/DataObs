@@ -310,3 +310,26 @@ PR #146 created the foundation profile and test-owned evidence plumbing, but sev
 | Hosted run, retention, and thread closure | No PR-triggered proof | Successful final-head PR run, downloadable retained evidence, then exact thread replies | N/A | Required | Required | Pending hosted run |
 
 Release readiness remains **blocked**. No product capability is promoted. After this gate, the next task is the complete Data Product mutation fault matrix; this foundation does not claim full reconciliation certification.
+
+## PR #148 foundation-gate truth audit
+
+PR #148 completed most foundation implementation, but its manifest rejected intentional unit-suite skips, its mixed-resource test failed before execution because of a noncanonical result checksum, its stale-worker test could pass because the replacement claim was already expired, and no hosted retained proof existed. This PR closes those blockers and completes the foundation gate.
+
+| Foundation capability | PR #148 state | Correct final behaviour | Local contract | Elasticsearch 9.4.2 | Hosted artifact |
+|---|---|---|---|---|---|
+| JUnit skip policy by suite | One zero-skip rule | Explicit policy for every owned XML | Exact inventory/policy equality | Real-stack XML requires zero skips | Manifest policy and summaries |
+| Unit opt-in skip accounting | Intentional skips rejected | Only two named opt-in reasons, non-empty and bounded | Positive and unknown-reason negatives | N/A | `unit.xml` summary |
+| Migration JUnit validation | Retained separately | Non-empty, failure-free, zero skips | Manifest negative | Clean/0016 upgrade/repeat/mapping execute | `migrations.xml` |
+| Operation-state JUnit validation | Retained separately | Non-empty, failure-free, zero skips | Manifest negative | Boundary and discriminator scenarios execute | `elasticsearch.xml` |
+| Security JUnit validation | Retained | Non-empty, failure-free, zero skips | Manifest negative | Scoped mutation controls execute | `security.xml` |
+| Canonical operation-result checksum fixture | Fake `checksum-N` | Checksum is derived from each payload and asserted | Canonical helper contract | Save reaches discrimination assertions | `resource-discriminator.json` |
+| Mixed-resource discrimination execution | Failed during result save | State/kind/retry filters precede size; typed reads remain isolated | Seed-count evidence contract | States, plans, results, history, and legacy coexist | Actual seed counts and limit |
+| Live worker-B claim | Fixed January 2026 expiry | Expiry is safely beyond wall clock | Expired replacement is not acceptable proof | Positive assert/checkpoint/renew | `claim-expiry-boundaries.json` |
+| Stale worker-A owner/generation fencing | Could share expiry failure | All six paths reject stale owner/generation | Named fencing assertions | OCC generation two remains owned by B | Claim scenario assertions |
+| Worker-B positive ownership proof | Missing | Assert, checkpoint, renew, and post-stale assert succeed | Named positive assertions | Live expiry/checkpoint re-read | Claim scenario assertions |
+| Pull-request workflow | No run | Final-head `pull_request` run; all six jobs succeed | Workflow job contract | Service image is 9.4.2 | Run URL and job conclusions |
+| Retained ZIP download | Not done | Download named retained artifact to a clean directory | Exact inventory verifier | N/A | Artifact ID/name/retention |
+| Hash and manifest verification | Not independently done | Byte-identical aliases and every artifact hash verified | Fail-closed verifier tests | Version/provenance checked | Manifest SHA-256 |
+| Review-thread closure | Hosted proof absent | Resolve only eligible foundation threads after proof | Exact references retained | Test/job evidence cited | Thread replies include run/artifact |
+
+Release readiness remains **blocked**, `full_reconciliation_certified` remains false, and no capability is promoted. The next task remains the complete Data Product mutation fault matrix: manual membership, proposals, exclusions, dependencies, lifecycle, takeover, immutable replay, terminal revisit, CLI, and remaining security.

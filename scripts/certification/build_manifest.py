@@ -17,6 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from packages.elastic_store.manifest import (  # noqa: E402
     DATA_PRODUCT_FOUNDATION_JUNIT_EVIDENCE,
+    DATA_PRODUCT_FOUNDATION_JUNIT_POLICIES,
     DATA_PRODUCT_RUNTIME_FOUNDATION_PROFILE,
     data_product_evidence_inventory,
 )
@@ -40,8 +41,25 @@ def _junit_summary(path: Path) -> dict:
     skipped = sum(int(s.attrib.get("skipped", 0)) for s in suites)
     if tests == 0 or failures or errors:
         raise ValueError(f"JUnit is empty or contains failures/errors: {path.name}")
-    if path.name in DATA_PRODUCT_FOUNDATION_JUNIT_EVIDENCE and skipped:
-        raise ValueError(f"required real-stack JUnit contains skips: {path.name}")
+    policy = DATA_PRODUCT_FOUNDATION_JUNIT_POLICIES.get(
+        path.name, {"allow_skips": False, "allowed_skip_reasons": (), "maximum_skips": 0}
+    )
+    skip_reasons = []
+    for case in root.iter("testcase"):
+        for skip in case.findall("skipped"):
+            reason = (skip.attrib.get("message") or skip.text or "").strip()
+            if not reason:
+                raise ValueError(f"skipped JUnit case has no reason: {path.name}")
+            skip_reasons.append(reason)
+    if len(skip_reasons) != skipped:
+        raise ValueError(f"JUnit skip count does not match skipped cases: {path.name}")
+    if skipped and not policy["allow_skips"]:
+        raise ValueError(f"JUnit policy forbids skips: {path.name}")
+    if skipped > policy["maximum_skips"]:
+        raise ValueError(f"JUnit skip count exceeds policy: {path.name}")
+    unknown = sorted({reason for reason in skip_reasons if reason not in policy["allowed_skip_reasons"]})
+    if unknown:
+        raise ValueError(f"JUnit contains unapproved skip reasons: {path.name}: {unknown}")
     return {
         "suite": root.attrib.get("name", path.stem),
         "tests": tests,
@@ -49,6 +67,8 @@ def _junit_summary(path: Path) -> dict:
         "failed": failures,
         "errors": errors,
         "skipped": skipped,
+        "skip_reasons": sorted(set(skip_reasons)),
+        "policy": policy,
     }
 
 

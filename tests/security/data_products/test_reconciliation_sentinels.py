@@ -8,7 +8,9 @@ from datetime import datetime, timezone
 from scripts.certification.redact_artifacts import SENTINELS, redact
 
 
-def test_foundation_sentinels_are_actually_redacted(security_client, security_evidence_dir, request):
+def test_foundation_sentinels_are_actually_redacted(
+    security_client, security_evidence_dir, foundation_security_files, request
+):
     started = datetime.now(timezone.utc)
     raw = b"\n".join(SENTINELS)
     fixtures = [security_evidence_dir / "redacted.log", security_evidence_dir / "sentinel-input.json"]
@@ -30,7 +32,8 @@ def test_foundation_sentinels_are_actually_redacted(security_client, security_ev
         "elasticsearch_version": security_client.info()["version"]["number"],
         "started_at": started.isoformat(),
         "completed_at": completed.isoformat(),
-        "files_scanned": len([path for path in security_evidence_dir.iterdir() if path.is_file()]),
+        # The workflow performs the final scan after pytest has written JUnit.
+        "files_scanned": len(foundation_security_files),
         "sentinels_injected": injected,
         "sentinels_redacted": redacted,
         "sentinels_remaining": remaining,

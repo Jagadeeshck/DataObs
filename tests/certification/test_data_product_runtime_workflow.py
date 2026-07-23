@@ -6,6 +6,7 @@ import yaml
 from packages.elastic_store.manifest import (
     DATA_PRODUCT_FOUNDATION_EVIDENCE_OWNERS,
     DATA_PRODUCT_FOUNDATION_JUNIT_EVIDENCE,
+    DATA_PRODUCT_FOUNDATION_JUNIT_POLICIES,
 )
 
 REQUIRED_PATHS = {
@@ -78,6 +79,7 @@ def test_producer_junit_inventory_and_dependencies_are_exact():
         name for values in DATA_PRODUCT_FOUNDATION_EVIDENCE_OWNERS.values() for name in values if name.endswith(".xml")
     }
     assert emitted == owned_junit == set(DATA_PRODUCT_FOUNDATION_JUNIT_EVIDENCE)
+    assert emitted == set(DATA_PRODUCT_FOUNDATION_JUNIT_POLICIES)
     producers = {
         "data-product-reconciliation-contracts",
         "data-product-reconciliation-unit",

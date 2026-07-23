@@ -111,7 +111,14 @@ def test_foundation_persistence_isolation_controls(security_client, security_evi
                 expected_primary_term=scoped.primary_term,
             )
     unchanged = repository.get_operation_state(tenant_a, "prod", operation_id)
-    assert (unchanged.claim_owner, unchanged.claim_generation, unchanged.last_checkpoint) == (None, 0, None)
+    assert (
+        unchanged.claim_owner,
+        unchanged.claim_generation,
+        unchanged.claimed_at,
+        unchanged.claim_expires_at,
+        unchanged.last_checkpoint,
+    ) == (None, 0, None, None, None)
+    assert (unchanged.seq_no, unchanged.primary_term) == (scoped.seq_no, scoped.primary_term)
     assert repository.get_operation_history(tenant_a, "prod", operation_id) == before_history
     claim = repository.claim_operation(
         tenant_a,
@@ -124,6 +131,8 @@ def test_foundation_persistence_isolation_controls(security_client, security_evi
         expected_primary_term=unchanged.primary_term,
     )
     assert claim.owner == "correct-scope-worker" and claim.generation == 1
+    claimed = repository.get_operation_state(tenant_a, "prod", operation_id)
+    assert claimed.seq_no > unchanged.seq_no
     controls = [
         executed_control(
             "cross_tenant_state_isolation", "tenant_a_state_read", "tenant_b_state_read", "wrong_tenant_state_absent"
@@ -138,7 +147,9 @@ def test_foundation_persistence_isolation_controls(security_client, security_evi
             "wrong_tenant_claim_operation_denied",
             "wrong_environment_claim_operation_denied",
             "wrong_scope_claim_did_not_mutate_state",
+            "wrong_scope_claim_did_not_consume_occ_token",
             "correct_scope_claim_operation_succeeded",
+            "correct_scope_claim_advanced_occ_metadata",
         ),
         executed_control("wrong_scope_search_isolation", "correct_scope_search", "wrong_scope_search_empty"),
     ]

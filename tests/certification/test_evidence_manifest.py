@@ -5,10 +5,54 @@ import sys
 from pathlib import Path
 
 import jsonschema
+import pytest
 
 from packages.elastic_store.manifest import DATA_PRODUCT_RECONCILIATION_EVIDENCE
+from scripts.certification.build_manifest import _junit_summary
 
 ROOT = Path(__file__).resolve().parents[2]
+
+
+def _write_junit(path, *, tests=1, failures=0, errors=0, reasons=()):
+    cases = "".join(
+        f'<testcase name="skip-{number}"><skipped message="{reason}"/></testcase>'
+        for number, reason in enumerate(reasons)
+    )
+    path.write_text(
+        f'<testsuite tests="{tests}" failures="{failures}" errors="{errors}" skipped="{len(reasons)}">'
+        f"{cases}</testsuite>"
+    )
+
+
+def test_unit_junit_approved_skips_are_accounted(tmp_path):
+    path = tmp_path / "unit.xml"
+    reason = "hosted runtime secret only"
+    _write_junit(path, tests=2, reasons=(reason,))
+    summary = _junit_summary(path)
+    assert summary["skipped"] == 1
+    assert summary["skip_reasons"] == [reason]
+    assert summary["policy"]["allow_skips"] is True
+
+
+@pytest.mark.parametrize("name", ["contracts.xml", "migrations.xml", "elasticsearch.xml", "security.xml"])
+def test_required_junit_rejects_skips(tmp_path, name):
+    path = tmp_path / name
+    _write_junit(path, reasons=("hosted runtime secret only",))
+    with pytest.raises(ValueError, match="forbids skips"):
+        _junit_summary(path)
+
+
+def test_unit_junit_rejects_unknown_skip_failures_and_zero_tests(tmp_path):
+    path = tmp_path / "unit.xml"
+    _write_junit(path, reasons=("new unexpected skip",))
+    with pytest.raises(ValueError, match="unapproved"):
+        _junit_summary(path)
+    _write_junit(path, failures=1)
+    with pytest.raises(ValueError, match="failures/errors"):
+        _junit_summary(path)
+    _write_junit(path, tests=0)
+    with pytest.raises(ValueError, match="empty"):
+        _junit_summary(path)
 
 
 def test_local_evidence_matches_schema_and_is_not_hosted():

@@ -745,28 +745,34 @@ class MemoryDataProductRepository:
     def apply_dependency_mutation_plan(self, tenant_id, environment, product_id, plan):
         # The product OCC token has already been acquired. Each target comparison is
         # idempotent, making a retry safe after any edge boundary.
-        for edge in (*plan.upserts, *plan.tombstones):
+        self.apply_dependency_upsert_chunk(tenant_id, environment, product_id, plan.upserts)
+        self.apply_dependency_tombstone_chunk(tenant_id, environment, product_id, plan.tombstones)
+        return self.list_dependencies(tenant_id, environment, product_id, limit=max(1, len(self.dependencies)))
+
+    def apply_dependency_upsert_chunk(self, tenant_id, environment, product_id, edges):
+        self._apply_dependency_chunk(tenant_id, environment, product_id, edges, tombstone=False)
+
+    def apply_dependency_tombstone_chunk(self, tenant_id, environment, product_id, edges):
+        self._apply_dependency_chunk(tenant_id, environment, product_id, edges, tombstone=True)
+
+    def _apply_dependency_chunk(self, tenant_id, environment, product_id, edges, *, tombstone):
+        for edge in edges:
+            if (edge.tenant_id, edge.environment, edge.product_id) != (tenant_id, environment, product_id):
+                raise ProductConsistencyError("dependency_edge_scope_mismatch")
+            if edge.removed is not tombstone:
+                raise ProductConsistencyError("dependency_edge_removed_semantics_invalid")
+            if tombstone and (edge.removed_at is None or edge.removed_by_revision != edge.product_revision):
+                raise ProductConsistencyError("dependency_tombstone_metadata_invalid")
+            if not edge.graph_version or edge.product_revision < 1:
+                raise ProductConsistencyError("dependency_edge_version_invalid")
             key = (tenant_id, environment, product_id, edge.upstream_product_id)
             current = self.dependencies.get(key)
             if current == edge:
                 continue
-            self.dependencies[key] = edge.model_copy(deep=True)
-        return self.list_dependencies(tenant_id, environment, product_id, limit=max(1, len(self.dependencies)))
-
-    def apply_dependency_upsert_chunk(self, tenant_id, environment, product_id, edges):
-        self._apply_dependency_chunk(tenant_id, environment, product_id, edges)
-
-    def apply_dependency_tombstone_chunk(self, tenant_id, environment, product_id, edges):
-        self._apply_dependency_chunk(tenant_id, environment, product_id, edges)
-
-    def _apply_dependency_chunk(self, tenant_id, environment, product_id, edges):
-        for edge in edges:
-            if (edge.tenant_id, edge.environment, edge.product_id) != (tenant_id, environment, product_id):
-                raise ValueError("dependency scope mismatch")
-            key = (tenant_id, environment, product_id, edge.upstream_product_id)
-            current = self.dependencies.get(key)
-            if current is not None and current != edge and current.product_revision >= edge.product_revision:
-                raise ValueError("dependency edge diverged")
+            if current is not None and current.product_revision == edge.product_revision:
+                raise ProductConsistencyError("dependency_edge_same_revision_diverged")
+            if current is not None and current.product_revision > edge.product_revision:
+                raise ProductConsistencyError("dependency_edge_superseded")
             self.dependencies[key] = edge.model_copy(deep=True)
 
     def list_dependencies(

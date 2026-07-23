@@ -13,8 +13,15 @@ from packages.domain_model.data_product import (
     DataProductDependencyProjection,
 )
 
+MAX_DEPENDENCIES_PER_PRODUCT = 10_000
 
-def canonical_upstream_ids(product_id: str, values: Sequence[str], *, maximum: int = 10_000) -> tuple[str, ...]:
+
+def canonical_upstream_ids(
+    product_id: str,
+    values: Sequence[str],
+    *,
+    maximum: int = MAX_DEPENDENCIES_PER_PRODUCT,
+) -> tuple[str, ...]:
     stripped = tuple(value.strip() for value in values)
     if any(not value for value in stripped):
         raise ValueError("upstream product IDs must not be whitespace-only")

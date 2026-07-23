@@ -1383,10 +1383,27 @@ class ElasticsearchDataProductRepository:
         return DataProductDependencyReadSnapshot(ordered, len(ordered), True)
 
     def apply_dependency_mutation_plan(self, tenant_id, environment, product_id, plan):
+        self.apply_dependency_upsert_chunk(tenant_id, environment, product_id, plan.upserts)
+        self.apply_dependency_tombstone_chunk(tenant_id, environment, product_id, plan.tombstones)
         targets = (*plan.upserts, *plan.tombstones)
-        for edge in targets:
+        return self.list_dependencies(tenant_id, environment, product_id, limit=max(1, min(200, len(targets))))
+
+    def apply_dependency_upsert_chunk(self, tenant_id, environment, product_id, edges):
+        self._apply_dependency_chunk(tenant_id, environment, product_id, edges, tombstone=False)
+
+    def apply_dependency_tombstone_chunk(self, tenant_id, environment, product_id, edges):
+        self._apply_dependency_chunk(tenant_id, environment, product_id, edges, tombstone=True)
+
+    def _apply_dependency_chunk(self, tenant_id, environment, product_id, edges, *, tombstone):
+        for edge in edges:
             if (edge.tenant_id, edge.environment, edge.product_id) != (tenant_id, environment, product_id):
-                raise ValueError("dependency scope mismatch")
+                raise ProductConsistencyError("dependency_edge_scope_mismatch")
+            if edge.removed is not tombstone:
+                raise ProductConsistencyError("dependency_edge_removed_semantics_invalid")
+            if tombstone and (edge.removed_at is None or edge.removed_by_revision != edge.product_revision):
+                raise ProductConsistencyError("dependency_tombstone_metadata_invalid")
+            if not edge.graph_version or edge.product_revision < 1:
+                raise ProductConsistencyError("dependency_edge_version_invalid")
             edge_id = scoped_id(tenant_id, environment, f"{product_id}:{edge.upstream_product_id}")
             document = edge.model_dump(mode="json")
             try:
@@ -1395,16 +1412,15 @@ class ElasticsearchDataProductRepository:
                 try:
                     self.client.create(index=DEPENDENCIES, id=edge_id, document=document)
                 except ConflictError as exc:
-                    # A racing create may be an exact already-applied plan step.
                     current = DataProductDependencyProjection.model_validate(
-                        self.client.get(index=DEPENDENCIES, id=edge_id)["_source"]
+                        self.client.get(index=DEPENDENCIES, id=edge_id, realtime=True)["_source"]
                     )
-                    if current != edge:
-                        raise ProductVersionConflict("concurrent dependency create") from exc
+                    self._classify_dependency_edge(current, edge, exc)
             else:
                 current = DataProductDependencyProjection.model_validate(hit["_source"])
                 if current == edge:
                     continue
+                self._classify_dependency_edge(current, edge)
                 try:
                     self.client.index(
                         index=DEPENDENCIES,
@@ -1414,21 +1430,22 @@ class ElasticsearchDataProductRepository:
                         if_primary_term=hit["_primary_term"],
                     )
                 except ConflictError as exc:
-                    raise ProductVersionConflict("concurrent dependency update") from exc
-        return self.list_dependencies(tenant_id, environment, product_id, limit=max(1, min(200, len(targets))))
+                    latest = DataProductDependencyProjection.model_validate(
+                        self.client.get(index=DEPENDENCIES, id=edge_id, realtime=True)["_source"]
+                    )
+                    self._classify_dependency_edge(latest, edge, exc)
 
-    def apply_dependency_upsert_chunk(self, tenant_id, environment, product_id, edges):
-        self._apply_dependency_chunk(tenant_id, environment, product_id, edges)
-
-    def apply_dependency_tombstone_chunk(self, tenant_id, environment, product_id, edges):
-        self._apply_dependency_chunk(tenant_id, environment, product_id, edges)
-
-    def _apply_dependency_chunk(self, tenant_id, environment, product_id, edges):
-        from types import SimpleNamespace
-
-        self.apply_dependency_mutation_plan(
-            tenant_id, environment, product_id, SimpleNamespace(upserts=tuple(edges), tombstones=())
-        )
+    @staticmethod
+    def _classify_dependency_edge(current, target, conflict=None):
+        """Classify a realtime edge before/after OCC; only an older edge is writable."""
+        if current == target:
+            return
+        if current.product_revision == target.product_revision:
+            raise ProductConsistencyError("dependency_edge_same_revision_diverged") from conflict
+        if current.product_revision > target.product_revision:
+            raise ProductConsistencyError("dependency_edge_superseded") from conflict
+        if conflict is not None:
+            raise ProductVersionConflict("concurrent dependency update") from conflict
 
     def list_dependencies(
         self,

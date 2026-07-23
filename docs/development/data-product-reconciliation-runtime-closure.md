@@ -1,5 +1,27 @@
 # Data Product reconciliation runtime closure
 
+> PR #143 improved dependency ordering and evidence validation, but no scenario producer generated the required evidence, the real Elasticsearch and security suites remained shallow, a superseded edge race escaped reconciliation, one certification test still failed, and no hosted artifact set existed. This PR executes and proves the complete runtime.
+
+Latest main baseline: `efae25f` (merge of PR #143). Migrations `0001`–`0017` remain immutable released history. Scenario producers, real-stack execution, and hosted proof are tracked separately: local tests never promote a hosted cell. Release readiness remains **blocked**.
+
+| Capability | Current main after PR #143 | Required final behaviour | Unit/property | Elasticsearch 9.4.2 | Security | Hosted artifact |
+|---|---|---|---|---|---|---|
+| PR143 evidence-producer P1 | inventory without producers | executing tests own every artifact; deterministic assembly | covered | pending | pending | pending |
+| PR143 superseded-edge P2 | domain exception escaped with claim running | typed race, authenticated newer revision, terminal superseded outcome | covered | pending | pending | pending |
+| migration clean/upgrade/repeat and mapping | migration invocation only | clean 0017, upgrade 0016, repeat apply, wrong-type rejection | partial | pending | pending | pending |
+| retry and claim-expiry boundaries | query contracts | injected UTC instant and sub-second boundary proof | covered | pending | pending | pending |
+| state/history/plan/result discrimination | unit query contracts | filters before size and realtime state reads | covered | pending | pending | pending |
+| reservation/manual/proposal/exclusion recovery | memory-focused | complete crash matrix and immutable replay | partial | pending | pending | pending |
+| dependency token/chunks/tombstones/results | unit-focused | 201, 1,001, maximum policy, detailed and terminal evidence | covered | pending | pending | pending |
+| dependency newer-edge/two-worker fencing | raw consistency error | never overwrite newer edge; terminal superseded; stale-worker denial | covered | pending | pending | pending |
+| lifecycle activate/deprecate/archive | unit-focused | crash recovery and immutable revision replay | covered | pending | pending | pending |
+| terminal revisit / attempt exhaustion / CLI | unit-focused | repair all terminal evidence and prove exit outcomes | covered | pending | pending | pending |
+| persistence security and redaction | memory-focused | real scoped attack matrix and positive sentinel accounting | covered | pending | pending | pending |
+| evidence inventory and schemas | generic JSON validation | owned inventory, distinct schemas, JUnit counts, SHA and hashes | covered | pending | pending | pending |
+| hosted run and review-thread closure | absent | successful pull_request run with retained proof before resolution | n/a | pending | pending | pending |
+
+The next milestone is **Data Product APIs, Product 360, browser/security, and final hosted core certification**. Product 360, Impact, SLO, reliability, coverage, RCA, agents, and production readiness are explicitly out of scope.
+
 > PR #142 removed duplicate dependency recovery and added chunked repair and workflow scaffolding, but it did not add or run the real fault matrix, did not migrate indices in the new workflow, did not enforce retained evidence, and left edge-ordering, historical-tombstone, immutable-replay, reservation-only, migration, security, and hosted-proof gaps. This PR closes and proves the runtime.
 
 Latest main baseline: `68e21f0` (merge of PR #142). Migrations `0001`–`0017` are immutable released history; this change does not edit them. Release readiness remains **blocked** until the draft pull request has a successful pull-request-triggered Elasticsearch 9.4.2, security, evidence, and thread-resolution run.

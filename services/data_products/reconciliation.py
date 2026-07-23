@@ -28,7 +28,7 @@ from services.data_products.operation_state import (
     OperationConsistencyError,
     ReconciliationStatus,
 )
-from services.data_products.repository import DataProductRepository
+from services.data_products.repository import DataProductRepository, DependencyEdgeSuperseded
 
 
 @dataclass
@@ -318,7 +318,16 @@ class DependencyReplacementReconciliationHandler(ProjectionAwareHandler):
                 context.assert_owned()
                 context.renew_if_needed()
                 chunk = edges[offset : offset + self.CHUNK_SIZE]
-                apply(state.tenant_id, state.environment, state.product_id, chunk)
+                try:
+                    apply(state.tenant_id, state.environment, state.product_id, chunk)
+                except DependencyEdgeSuperseded:
+                    # The repository has already performed a realtime reread.
+                    # Authenticate the edge as a later operation by checking the
+                    # authoritative product token before making this terminal.
+                    latest = repository.get_product(state.tenant_id, state.environment, state.product_id)
+                    if latest is not None and latest.revision > target_revision:
+                        return OperationReconciliationOutcome("superseded", error_code="dependency_edge_superseded")
+                    raise OperationConsistencyError("dependency_edge_diverged")
                 completed = min(offset + len(chunk), len(edges))
                 context.checkpoint(f"{name}:{completed}/{len(edges)}", mutation_plan.after_graph_version)
         from services.data_products.dependency_events import MAX_DEPENDENCIES_PER_PRODUCT

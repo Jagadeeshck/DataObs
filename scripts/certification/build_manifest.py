@@ -6,6 +6,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -22,9 +23,61 @@ REQUIRED_JOBS = {
     "data-product-reconciliation-elasticsearch",
     "data-product-reconciliation-security",
 }
+SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 
 
-def _validate_inventory(root: Path) -> tuple[list[Path], dict[str, dict]]:
+def _junit_summary(path: Path) -> dict:
+    root = ElementTree.parse(path).getroot()
+    suites = [root] if root.tag == "testsuite" else list(root.iter("testsuite"))
+    tests = sum(int(s.attrib.get("tests", 0)) for s in suites)
+    failures = sum(int(s.attrib.get("failures", 0)) for s in suites)
+    errors = sum(int(s.attrib.get("errors", 0)) for s in suites)
+    skipped = sum(int(s.attrib.get("skipped", 0)) for s in suites)
+    if tests == 0 or failures or errors:
+        raise ValueError(f"JUnit is empty or contains failures/errors: {path.name}")
+    if path.name in {"elasticsearch.xml", "security.xml"} and skipped:
+        raise ValueError(f"required real-stack JUnit contains skips: {path.name}")
+    return {
+        "suite": root.attrib.get("name", path.stem),
+        "tests": tests,
+        "passed": tests - failures - errors - skipped,
+        "failed": failures,
+        "errors": errors,
+        "skipped": skipped,
+    }
+
+
+def _validate_scenario(name: str, value: dict) -> None:
+    required = {
+        "schema_version",
+        "scenario",
+        "commit_sha",
+        "elasticsearch_version",
+        "started_at",
+        "completed_at",
+        "test_names",
+        "assertion_summary",
+        "redacted_references",
+        "result",
+    }
+    absent = required - value.keys()
+    if absent:
+        raise ValueError(f"scenario fields missing from {name}: {', '.join(sorted(absent))}")
+    if not SHA_RE.fullmatch(value["commit_sha"]):
+        raise ValueError(f"invalid commit SHA: {name}")
+    if os.getenv("GITHUB_SHA") and value["commit_sha"] != os.environ["GITHUB_SHA"]:
+        raise ValueError(f"hosted commit SHA mismatch: {name}")
+    if not value["test_names"] or not value["assertion_summary"] or value["result"] != "passed":
+        raise ValueError(f"scenario is empty or not passed: {name}")
+    if value["elasticsearch_version"] != "9.4.2":
+        raise ValueError(f"wrong Elasticsearch version: {name}")
+    start = datetime.fromisoformat(value["started_at"].replace("Z", "+00:00"))
+    complete = datetime.fromisoformat(value["completed_at"].replace("Z", "+00:00"))
+    if start > complete:
+        raise ValueError(f"scenario timestamps are reversed: {name}")
+
+
+def _validate_inventory(root: Path) -> tuple[list[Path], dict[str, dict], dict[str, dict]]:
     files = [path for path in root.rglob("*") if path.is_file()]
     by_name: dict[str, list[Path]] = {}
     for path in files:
@@ -40,40 +93,55 @@ def _validate_inventory(root: Path) -> tuple[list[Path], dict[str, dict]]:
         raise ValueError(f"empty required artifacts: {', '.join(empty)}")
 
     scenarios: dict[str, dict] = {}
+    junit: dict[str, dict] = {}
     for name in DATA_PRODUCT_RECONCILIATION_EVIDENCE:
         path = by_name[name][0]
         if name.endswith(".xml"):
-            suite = ElementTree.parse(path).getroot()
-            failures = sum(
-                int(node.attrib.get("failures", 0)) for node in suite.iter() if node.tag in {"testsuite", "testsuites"}
-            )
-            errors = sum(
-                int(node.attrib.get("errors", 0)) for node in suite.iter() if node.tag in {"testsuite", "testsuites"}
-            )
-            if failures or errors:
-                raise ValueError(f"JUnit contains failures/errors: {name}")
+            junit[name] = _junit_summary(path)
         elif name.endswith(".json"):
             value = json.loads(path.read_text())
-            required = {
-                "scenario",
-                "commit_sha",
-                "elasticsearch_version",
-                "started_at",
-                "completed_at",
-                "test_names",
-                "assertion_summary",
-                "redacted_references",
-                "result",
-            }
-            absent = required - value.keys()
-            if absent:
-                raise ValueError(f"scenario fields missing from {name}: {', '.join(sorted(absent))}")
-            if value["result"] != "passed":
-                raise ValueError(f"scenario not passed: {name}")
-            if value["elasticsearch_version"] != "9.4.2":
-                raise ValueError(f"wrong Elasticsearch version: {name}")
+            if name == "security-report.json":
+                required = {
+                    "schema_version",
+                    "commit_sha",
+                    "elasticsearch_version",
+                    "scenario_count",
+                    "passed_count",
+                    "failed_count",
+                    "controls",
+                    "result",
+                }
+                if (
+                    required - value.keys()
+                    or value["failed_count"]
+                    or value["passed_count"] != value["scenario_count"]
+                    or not value["controls"]
+                    or value["result"] != "passed"
+                ):
+                    raise ValueError("invalid security report")
+                continue
+            if name == "sentinel-report.json":
+                required = {
+                    "schema_version",
+                    "commit_sha",
+                    "files_scanned",
+                    "sentinels_injected",
+                    "sentinels_redacted",
+                    "sentinels_remaining",
+                    "result",
+                }
+                if (
+                    required - value.keys()
+                    or value["sentinels_injected"] <= 0
+                    or value["sentinels_remaining"]
+                    or value["sentinels_redacted"] != value["sentinels_injected"]
+                    or value["result"] != "passed"
+                ):
+                    raise ValueError("invalid sentinel report")
+                continue
+            _validate_scenario(name, value)
             scenarios[name] = value
-    return files, scenarios
+    return files, scenarios, junit
 
 
 def _job_results() -> dict[str, str]:
@@ -89,7 +157,7 @@ def main() -> int:
     root = Path(sys.argv[1]).resolve()
     if not root.is_dir():
         raise ValueError(f"evidence directory does not exist: {root}")
-    retained, scenarios = _validate_inventory(root)
+    retained, scenarios, junit = _validate_inventory(root)
     jobs = _job_results()
     artifacts = []
     for path in sorted(retained):
@@ -156,6 +224,7 @@ def main() -> int:
         },
         "redaction": {"status": "complete", "evidence": ["sentinel-report.json", "redacted.log"]},
         "scenarios": {name: value["result"] for name, value in sorted(scenarios.items())},
+        "junit": junit,
         "artifacts": artifacts,
     }
     encoded = json.dumps(doc, indent=2) + "\n"

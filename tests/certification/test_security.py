@@ -17,7 +17,7 @@ def test_sentinel_redaction_and_verification(tmp_path):
     artifact = tmp_path / "report.json"
     artifact.write_bytes(b'{"value":"DATAOBS_CERT_SENTINEL_API_KEY"}')
     assert redactor.redact(tmp_path) == 1
-    assert verifier.verify(tmp_path) == []
+    assert verifier.verify(tmp_path, sentinels_only=True) == []
     assert b"REDACTED" in artifact.read_bytes()
 
 

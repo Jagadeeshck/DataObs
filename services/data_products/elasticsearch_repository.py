@@ -41,7 +41,7 @@ from services.data_products.operation_state import (
     DataProductOperationState,
     OperationClaimConflict,
 )
-from services.data_products.repository import ProductVersionConflict
+from services.data_products.repository import DependencyEdgeSuperseded, ProductVersionConflict
 
 PRODUCTS = "dataobs-data-products-v1"
 REVISIONS = "dataobs-data-product-revisions-v1"
@@ -1443,7 +1443,7 @@ class ElasticsearchDataProductRepository:
         if current.product_revision == target.product_revision:
             raise ProductConsistencyError("dependency_edge_same_revision_diverged") from conflict
         if current.product_revision > target.product_revision:
-            raise ProductConsistencyError("dependency_edge_superseded") from conflict
+            raise DependencyEdgeSuperseded("dependency_edge_superseded") from conflict
         if conflict is not None:
             raise ProductVersionConflict("concurrent dependency update") from conflict
 

@@ -14,7 +14,17 @@ from packages.elastic_store.manifest import (
 )
 from scripts.certification.assemble_data_product_evidence import assemble
 from scripts.certification.data_product_evidence import write_scenario
+from scripts.certification.provenance import certification_commit_sha
 from scripts.certification.verify_artifacts import _manifest_provenance_errors
+
+
+def test_certification_sha_is_explicit_and_rejects_malformed(monkeypatch):
+    monkeypatch.setenv("GITHUB_SHA", "b" * 40)
+    monkeypatch.setenv("DATA_PRODUCT_CERTIFICATION_SHA", "a" * 40)
+    assert certification_commit_sha() == "a" * 40
+    monkeypatch.setenv("DATA_PRODUCT_CERTIFICATION_SHA", "A" * 40)
+    with pytest.raises(ValueError, match="lowercase 40-character"):
+        certification_commit_sha()
 
 
 def test_scenario_writer_records_the_executing_test(tmp_path):

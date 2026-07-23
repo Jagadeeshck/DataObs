@@ -6,8 +6,6 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-import re
-import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -21,6 +19,7 @@ from packages.elastic_store.manifest import (  # noqa: E402
     DATA_PRODUCT_RUNTIME_FOUNDATION_PROFILE,
     data_product_evidence_inventory,
 )
+from scripts.certification.provenance import SHA_RE, certification_commit_sha  # noqa: E402
 
 FOUNDATION_JOBS = {
     "data-product-reconciliation-contracts",
@@ -28,7 +27,6 @@ FOUNDATION_JOBS = {
     "data-product-foundation-elasticsearch",
     "data-product-foundation-security",
 }
-SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 SUPPORTED_REPORT_SCHEMAS = {"1.0"}
 
 
@@ -60,10 +58,10 @@ def _foundation_provenance(*, completed_at: str) -> dict[str, object]:
     run_url = os.getenv("CERTIFICATION_RUN_URL")
     if run_url != expected_url:
         raise ValueError("workflow run URL must identify this repository Actions run")
-    github_sha = os.getenv("GITHUB_SHA", "")
     head_sha = os.getenv("CERTIFICATION_HEAD_SHA", "")
-    if not SHA_RE.fullmatch(github_sha) or head_sha != github_sha:
-        raise ValueError("certification head SHA must match GITHUB_SHA")
+    canonical_sha = certification_commit_sha()
+    if head_sha != canonical_sha:
+        raise ValueError("certification head SHA must match DATA_PRODUCT_CERTIFICATION_SHA")
     started_at = os.getenv("CERTIFICATION_STARTED_AT")
     start = _aware_timestamp(started_at, "started_at")
     complete = _aware_timestamp(completed_at, "completed_at")
@@ -137,7 +135,7 @@ def _validate_scenario(name: str, value: dict) -> None:
         raise ValueError(f"scenario fields missing from {name}: {', '.join(sorted(absent))}")
     if not SHA_RE.fullmatch(value["commit_sha"]):
         raise ValueError(f"invalid commit SHA: {name}")
-    if os.getenv("GITHUB_SHA") and value["commit_sha"] != os.environ["GITHUB_SHA"]:
+    if value["commit_sha"] != certification_commit_sha():
         raise ValueError(f"hosted commit SHA mismatch: {name}")
     if not value["test_names"] or not value["assertion_summary"] or value["result"] != "passed":
         raise ValueError(f"scenario is empty or not passed: {name}")
@@ -155,7 +153,7 @@ def _validate_report_provenance(name: str, value: dict, *, require_elasticsearch
         raise ValueError(f"unsupported schema version: {name}")
     if not SHA_RE.fullmatch(str(value.get("commit_sha", ""))):
         raise ValueError(f"invalid commit SHA: {name}")
-    if os.getenv("GITHUB_SHA") and value["commit_sha"] != os.environ["GITHUB_SHA"]:
+    if value["commit_sha"] != certification_commit_sha():
         raise ValueError(f"hosted commit SHA mismatch: {name}")
     if require_elasticsearch and value.get("elasticsearch_version") != "9.4.2":
         raise ValueError(f"wrong Elasticsearch version: {name}")
@@ -218,6 +216,20 @@ def _validate_inventory(root: Path, inventory: tuple[str, ...]) -> tuple[list[Pa
                     or value["result"] != "passed"
                 ):
                     raise ValueError("invalid security report")
+                controls = value["controls"]
+                control_ids = [control.get("control_id") for control in controls if isinstance(control, dict)]
+                if len(control_ids) != len(controls) or len(control_ids) != len(set(control_ids)):
+                    raise ValueError("security controls must be structured and unique")
+                for control in controls:
+                    evidence = control.get("assertion_evidence")
+                    if (
+                        control.get("assertion_count", 0) <= 0
+                        or not isinstance(evidence, list)
+                        or len(evidence) != control["assertion_count"]
+                        or not all(isinstance(item, str) and item for item in evidence)
+                        or control.get("passed") is not True
+                    ):
+                        raise ValueError("security control assertion evidence is invalid")
                 _validate_report_provenance(name, value)
                 continue
             if name == "sentinel-report.json":
@@ -317,8 +329,7 @@ def main() -> int:
         "full_reconciliation_certified": False,
         "release_readiness": "blocked",
         "repository": os.getenv("GITHUB_REPOSITORY", "Jagadeeshck/DataObs"),
-        "commit_sha": os.getenv("GITHUB_SHA")
-        or subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
+        "commit_sha": certification_commit_sha(),
         "workflow_run_id": run_id,
         "workflow_name": os.getenv("GITHUB_WORKFLOW", "Data Product hosted certification foundation"),
         "workflow_run_url": (

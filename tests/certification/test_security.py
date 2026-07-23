@@ -1,6 +1,7 @@
 import importlib.util
 from pathlib import Path
 
+from scripts.certification.provenance import certification_commit_sha
 from scripts.certification.redact_artifacts import SENTINELS, redact
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -43,3 +44,9 @@ def test_redactor_counts_every_injected_occurrence(tmp_path):
     target.write_bytes(SENTINELS[0] + b"\n" + SENTINELS[0] + b"\n" + SENTINELS[1])
     assert redact(tmp_path) == 3
     assert all(value not in target.read_bytes() for value in SENTINELS)
+
+
+def test_security_writers_share_canonical_sha(monkeypatch):
+    monkeypatch.setenv("GITHUB_SHA", "b" * 40)
+    monkeypatch.setenv("DATA_PRODUCT_CERTIFICATION_SHA", "a" * 40)
+    assert certification_commit_sha() == "a" * 40

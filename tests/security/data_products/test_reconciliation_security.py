@@ -1,13 +1,12 @@
 """Executed, scoped persistence controls against the certification cluster."""
 
 import json
-import os
-import subprocess
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 import pytest
 
+from scripts.certification.provenance import certification_commit_sha
 from services.data_products.elasticsearch_repository import ElasticsearchDataProductRepository
 from services.data_products.operation_state import (
     DataProductOperationHistoryEvent,
@@ -17,10 +16,6 @@ from services.data_products.operation_state import (
     OperationClaimConflict,
 )
 from services.data_products.reconciliation import _checksum
-
-
-def _sha():
-    return os.getenv("GITHUB_SHA") or subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
 
 
 def test_foundation_persistence_isolation_controls(security_client, security_evidence_dir, executed_control):
@@ -156,7 +151,7 @@ def test_foundation_persistence_isolation_controls(security_client, security_evi
     completed = datetime.now(timezone.utc)
     report = {
         "schema_version": "1.0",
-        "commit_sha": _sha(),
+        "commit_sha": certification_commit_sha(),
         "elasticsearch_version": security_client.info()["version"]["number"],
         "started_at": started.isoformat(),
         "completed_at": completed.isoformat(),

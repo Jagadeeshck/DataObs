@@ -1,5 +1,24 @@
 # Data Product reconciliation runtime closure
 
+## PR #152 SHA/profile blocker closure and hosted-proof gate
+
+- status: **blocked pending hosted pull-request execution**
+- baseline `main`: `c9f4ceb66975e77376a9acac0e483052658c9e46` (PR #152 merge)
+- diagnosed missing-run cause: this checkout has no configured Git remote, GitHub CLI, or GitHub credential. It cannot push the draft branch, inspect repository or organization Actions settings, observe a `pull_request` event, download an artifact, or resolve review threads. The inaccessible settings are Actions enablement and allowed-actions policy, organization/enterprise restrictions, workflow registration/YAML status, billing/minutes, approval state, and branch/fork execution policy.
+- correction prepared: producer and evidence jobs share `DATA_PRODUCT_CERTIFICATION_SHA`; GitHub's synthetic pull-request `GITHUB_SHA` remains untouched. Verification dispatches foundation and full-profile requirements explicitly and fails closed for unknown profiles.
+- final head SHA / synthetic merge SHA: pending hosted branch / `bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb` (local regression contrast)
+- workflow event / run ID / URL / six job conclusions: pending a real `pull_request` run
+- artifact ID/name/retention: pending / `data-product-foundation-evidence` / 30 days
+- Elasticsearch version: `9.4.2` required; hosted result pending
+- JUnit, seven scenarios, eight controls, sentinel counts, manifest SHA-256, independent verification: pending retained artifact
+- full reconciliation certified: false
+- release readiness: blocked
+- capabilities promoted: none
+- next task after hosted proof: complete Data Product mutation fault matrix
+
+The draft PR must remain unmerged and eligible review threads remain unresolved until an exact-final-head
+pull-request run succeeds and its retained artifact passes independent verification.
+
 ## PR #151 dispatch defect closure and hosted-proof gate
 
 - status: **blocked pending hosted pull-request execution**

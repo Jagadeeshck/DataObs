@@ -136,4 +136,21 @@ def test_pull_request_evidence_receives_explicit_hosted_provenance():
         "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
     )
     assert env["CERTIFICATION_HEAD_SHA"] == "${{ github.event.pull_request.head.sha }}"
-    assert env["GITHUB_SHA"] == env["CERTIFICATION_HEAD_SHA"]
+    assert env["DATA_PRODUCT_CERTIFICATION_SHA"] == env["CERTIFICATION_HEAD_SHA"]
+    assert "GITHUB_SHA" not in env
+
+
+def test_every_producer_checks_out_the_canonical_certification_sha():
+    workflow = yaml.safe_load(Path(".github/workflows/data-product-runtime.yml").read_text())
+    expression = "${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}"
+    producers = (
+        "data-product-reconciliation-contracts",
+        "data-product-reconciliation-unit",
+        "data-product-foundation-elasticsearch",
+        "data-product-foundation-security",
+    )
+    for name in producers:
+        job = workflow["jobs"][name]
+        assert " ".join(job["env"]["DATA_PRODUCT_CERTIFICATION_SHA"].split()) == expression
+        checkout = next(step for step in job["steps"] if step.get("uses") == "actions/checkout@v4")
+        assert checkout["with"] == {"ref": "${{ env.DATA_PRODUCT_CERTIFICATION_SHA }}", "fetch-depth": 0}

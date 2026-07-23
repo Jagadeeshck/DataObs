@@ -2,6 +2,10 @@ from datetime import datetime, timezone
 
 import pytest
 
+from packages.elastic_store.manifest import (
+    DATA_PRODUCT_EVIDENCE_OWNERS,
+    DATA_PRODUCT_RECONCILIATION_EVIDENCE,
+)
 from scripts.certification.data_product_evidence import write_scenario
 
 
@@ -36,3 +40,11 @@ def test_scenario_writer_rejects_placeholder_evidence(tmp_path):
             completed_at="2026-01-01T00:00:00Z",
             result="passed",
         )
+
+
+def test_evidence_ownership_is_explicit_complete_and_unique():
+    owned = [name for artifacts in DATA_PRODUCT_EVIDENCE_OWNERS.values() for name in artifacts]
+    assert len(owned) == len(set(owned))
+    assert set(owned) == set(DATA_PRODUCT_RECONCILIATION_EVIDENCE)
+    assert DATA_PRODUCT_EVIDENCE_OWNERS["contracts"] == ("contracts.xml",)
+    assert DATA_PRODUCT_EVIDENCE_OWNERS["unit"] == ("unit.xml",)

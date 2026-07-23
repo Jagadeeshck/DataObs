@@ -43,10 +43,14 @@ def test_verifier_rejects_artifact_mutated_after_manifest(tmp_path):
                         "schema_version": "1.0",
                         "commit_sha": commit,
                         "elasticsearch_version": "9.4.2",
+                        "started_at": "2026-01-01T00:00:00Z",
+                        "completed_at": "2026-01-01T00:00:01Z",
                         "scenario_count": 1,
                         "passed_count": 1,
                         "failed_count": 0,
                         "controls": ["tenant isolation"],
+                        "test_names": ["test_security"],
+                        "redacted_references": ["tenant:sha256:abc"],
                         "result": "passed",
                     }
                 )
@@ -57,10 +61,14 @@ def test_verifier_rejects_artifact_mutated_after_manifest(tmp_path):
                     {
                         "schema_version": "1.0",
                         "commit_sha": commit,
+                        "elasticsearch_version": "9.4.2",
+                        "started_at": "2026-01-01T00:00:00Z",
+                        "completed_at": "2026-01-01T00:00:01Z",
                         "files_scanned": 1,
                         "sentinels_injected": 1,
                         "sentinels_redacted": 1,
                         "sentinels_remaining": 0,
+                        "test_names": ["test_sentinels"],
                         "result": "passed",
                     }
                 )
@@ -94,3 +102,37 @@ def test_verifier_rejects_artifact_mutated_after_manifest(tmp_path):
     )
     assert result.returncode == 1
     assert "sha256 mismatch: redacted.log" in result.stdout
+
+
+def test_verifier_requires_byte_identical_manifest_alias(tmp_path):
+    authoritative = tmp_path / "certification-evidence.json"
+    authoritative.write_text('{"artifacts": []}\n')
+    (tmp_path / "manifest.json").write_text('{"artifacts": ["different"]}\n')
+    result = subprocess.run(
+        [sys.executable, str(ROOT / "scripts/certification/verify_artifacts.py"), str(tmp_path)],
+        text=True,
+        capture_output=True,
+    )
+    assert result.returncode == 1
+    assert "not byte-identical" in result.stdout
+
+
+def test_verifier_rejects_manifest_self_listing(tmp_path):
+    payload = {
+        "artifacts": [
+            {
+                "path": "manifest.json",
+                "sha256": "0" * 64,
+            }
+        ]
+    }
+    encoded = json.dumps(payload)
+    (tmp_path / "certification-evidence.json").write_text(encoded)
+    (tmp_path / "manifest.json").write_text(encoded)
+    result = subprocess.run(
+        [sys.executable, str(ROOT / "scripts/certification/verify_artifacts.py"), str(tmp_path)],
+        text=True,
+        capture_output=True,
+    )
+    assert result.returncode == 1
+    assert "manifest must not list itself" in result.stdout

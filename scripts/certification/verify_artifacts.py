@@ -16,6 +16,7 @@ SENTINELS = (
 )
 
 MAX_BYTES = 100 * 1024 * 1024
+MANIFEST_NAMES = {"certification-evidence.json", "manifest.json"}
 
 
 def verify(root: Path, *, sentinels_only: bool = False) -> list[str]:
@@ -35,15 +36,24 @@ def verify(root: Path, *, sentinels_only: bool = False) -> list[str]:
     if sentinels_only:
         return errors
     manifest_path = root / "certification-evidence.json"
+    alias_path = root / "manifest.json"
     if not manifest_path.is_file():
         errors.append("certification-evidence.json is missing")
         return errors
+    if not alias_path.is_file():
+        errors.append("manifest.json alias is missing")
+        return errors
+    if alias_path.read_bytes() != manifest_path.read_bytes():
+        errors.append("manifest.json alias is not byte-identical to certification-evidence.json")
     manifest = json.loads(manifest_path.read_text())
     listed = set()
     for artifact in manifest.get("artifacts", []):
         relative = Path(artifact["path"])
         if relative.is_absolute() or ".." in relative.parts:
             errors.append(f"unsafe manifest path: {relative}")
+            continue
+        if relative.name in MANIFEST_NAMES:
+            errors.append(f"manifest must not list itself or its alias: {relative}")
             continue
         listed.add(relative.as_posix())
         target = root / relative
@@ -54,7 +64,7 @@ def verify(root: Path, *, sentinels_only: bool = False) -> list[str]:
     retained = {
         p.relative_to(root).as_posix()
         for p in root.rglob("*")
-        if p.is_file() and p.name not in {"certification-evidence.json", ".gitkeep"}
+        if p.is_file() and p.name not in MANIFEST_NAMES | {".gitkeep"}
     }
     for relative in sorted(retained - listed):
         errors.append(f"retained artifact is not listed: {relative}")

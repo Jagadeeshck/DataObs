@@ -35,11 +35,44 @@ DATA_PRODUCT_RECONCILIATION_EVIDENCE = (
     "redacted.log",
 )
 
+DATA_PRODUCT_ELASTICSEARCH_EVIDENCE = (
+    "migration-clean-install.json",
+    "migration-upgrade.json",
+    "migration-repeat-apply.json",
+    "mapping-contract.json",
+    "retry-date-boundaries.json",
+    "claim-expiry-boundaries.json",
+    "resource-discriminator.json",
+    "reservation-only-matrix.json",
+    "proposal-immutable-replay.json",
+    "dependency-token-recovery.json",
+    "dependency-partial-write-matrix.json",
+    "dependency-large-result.json",
+    "dependency-detailed-result.json",
+    "dependency-terminal-evidence.json",
+    "dependency-two-worker-takeover.json",
+    "lifecycle-crash-matrix.json",
+    "lifecycle-revision-snapshot.json",
+    "lifecycle-immutable-replay.json",
+    "terminal-revisit.json",
+    "cli-results.json",
+    "elasticsearch.xml",
+)
+
+DATA_PRODUCT_SECURITY_EVIDENCE = (
+    "security.xml",
+    "security-report.json",
+    "sentinel-report.json",
+    "redacted.log",
+)
+
+# Explicit groups are intentional: inserting an artifact into the canonical
+# inventory must never silently transfer ownership between producer jobs.
 DATA_PRODUCT_EVIDENCE_OWNERS = {
     "contracts": ("contracts.xml",),
     "unit": ("unit.xml",),
-    "elasticsearch": DATA_PRODUCT_RECONCILIATION_EVIDENCE[2:23],
-    "security": DATA_PRODUCT_RECONCILIATION_EVIDENCE[23:],
+    "elasticsearch": DATA_PRODUCT_ELASTICSEARCH_EVIDENCE,
+    "security": DATA_PRODUCT_SECURITY_EVIDENCE,
 }
 
 MIGRATION_STATE_INDEX = "dataobs-system-migrations-v1"

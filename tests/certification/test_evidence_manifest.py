@@ -178,6 +178,7 @@ def test_verifier_rejects_artifact_mutated_after_manifest(tmp_path):
                         "controls": [
                             {
                                 "control_id": "full_profile_tenant_isolation",
+                                "test_node_id": "tests/security/test_full.py::test_isolation",
                                 "assertion_count": 1,
                                 "assertion_evidence": ["tenant isolation"],
                                 "passed": True,
@@ -323,12 +324,43 @@ def test_verifier_rejects_unexecuted_foundation_security_controls(tmp_path):
     assert "security control count mismatch" in errors
 
 
+def test_full_profile_rejects_empty_controls_and_accepts_one_executed_control(tmp_path):
+    from scripts.certification.verify_artifacts import VERIFICATION_POLICIES, _security_errors
+
+    policy = VERIFICATION_POLICIES["data-product-reconciliation-full"]
+    report = {"controls": [], "scenario_count": 0, "passed_count": 0, "failed_count": 0, "result": "passed"}
+    (tmp_path / "security-report.json").write_text(json.dumps(report))
+    assert "requires at least 1 executed controls" in " ".join(_security_errors(tmp_path, policy))
+    report.update(
+        controls=[
+            {
+                "control_id": "full_profile_scope_isolation",
+                "test_node_id": "tests/security/test_full.py::test_scope_isolation",
+                "assertion_count": 1,
+                "assertion_evidence": ["scope isolation persisted"],
+                "passed": True,
+            }
+        ],
+        scenario_count=1,
+        passed_count=1,
+    )
+    (tmp_path / "security-report.json").write_text(json.dumps(report))
+    assert _security_errors(tmp_path, policy) == []
+
+
+def test_hosted_mode_requires_independent_expected_sha():
+    errors = _manifest_provenance_errors(_hosted_manifest(), require_hosted_provenance=True)
+    assert "hosted provenance requires an independent expected SHA" in errors
+    assert _manifest_provenance_errors(_hosted_manifest(), expected_sha="a" * 40, require_hosted_provenance=True) == []
+
+
 def test_verifier_rejects_wrong_scope_control_without_claim_mutation_evidence(tmp_path):
     from scripts.certification.verify_artifacts import REQUIRED_FOUNDATION_CONTROLS, _security_errors
 
     controls = [
         {
             "control_id": control_id,
+            "test_node_id": f"tests/security/test_foundation.py::test_{control_id}",
             "assertion_count": 1,
             "assertion_evidence": ["read_only_assertion"],
             "passed": True,

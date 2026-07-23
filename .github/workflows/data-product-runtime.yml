@@ -151,6 +151,7 @@ jobs:
       CERTIFICATION_RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
       CERTIFICATION_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
       DATA_PRODUCT_CERTIFICATION_SHA: ${{ github.event.pull_request.head.sha }}
+      EXPECTED_HOSTED_SHA: ${{ github.event.pull_request.head.sha }}
     steps:
       - uses: actions/checkout@v4
         with: {ref: '${{ env.DATA_PRODUCT_CERTIFICATION_SHA }}', fetch-depth: 0}
@@ -162,9 +163,13 @@ jobs:
         with: {name: data-product-foundation-elasticsearch, path: artifacts/downloaded/elasticsearch}
       - uses: actions/download-artifact@v4
         with: {name: data-product-foundation-security, path: artifacts/downloaded/security}
+      - name: Require exact independent pull-request head SHA
+        run: |
+          test "$DATA_PRODUCT_CERTIFICATION_SHA" = "$EXPECTED_HOSTED_SHA"
+          test "${#EXPECTED_HOSTED_SHA}" -eq 40
       - run: python scripts/certification/assemble_data_product_evidence.py --profile data-product-runtime-foundation artifacts/downloaded artifacts/retained
       - run: DATA_PRODUCT_CERTIFICATION_PROFILE=data-product-runtime-foundation python scripts/certification/build_manifest.py artifacts/retained
-      - run: python scripts/certification/verify_artifacts.py artifacts/retained
+      - run: python scripts/certification/verify_artifacts.py --require-hosted-provenance --expected-sha "$EXPECTED_HOSTED_SHA" artifacts/retained
       - uses: actions/upload-artifact@v4
         with: {name: data-product-foundation-evidence, path: artifacts/retained, retention-days: 30}
   data-product-foundation-summary:

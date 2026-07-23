@@ -4,11 +4,15 @@
 import argparse
 import hashlib
 import json
-import os
 import re
+import sys
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
+from scripts.certification.provenance import expected_certification_sha
 
 SENTINELS = (
     b"DATAOBS_CERT_SENTINEL_DB_PASSWORD",
@@ -41,17 +45,20 @@ class VerificationPolicy:
     require_release_blocked: bool
     required_security_controls: frozenset[str] | None
     allow_additional_security_controls: bool
+    minimum_security_controls: int
 
 
 VERIFICATION_POLICIES = {
     FOUNDATION_PROFILE: VerificationPolicy(
-        FOUNDATION_PROFILE, True, True, frozenset(REQUIRED_FOUNDATION_CONTROLS), False
+        FOUNDATION_PROFILE, True, True, frozenset(REQUIRED_FOUNDATION_CONTROLS), False, 8
     ),
-    FULL_PROFILE: VerificationPolicy(FULL_PROFILE, False, False, None, True),
+    FULL_PROFILE: VerificationPolicy(FULL_PROFILE, False, False, None, True, 1),
 }
 
 
-def _manifest_provenance_errors(manifest: dict) -> list[str]:
+def _manifest_provenance_errors(
+    manifest: dict, *, expected_sha: str | None = None, require_hosted_provenance: bool = False
+) -> list[str]:
     errors = []
     profile = manifest.get("certification_profile")
     policy = VERIFICATION_POLICIES.get(profile) if isinstance(profile, str) else None
@@ -77,9 +84,10 @@ def _manifest_provenance_errors(manifest: dict) -> list[str]:
     sha = manifest.get("commit_sha")
     if not isinstance(sha, str) or not SHA_RE.fullmatch(sha):
         errors.append("manifest commit SHA is invalid")
-    expected_sha = os.getenv("EXPECTED_HOSTED_SHA")
     if expected_sha and sha != expected_sha:
         errors.append("manifest commit SHA does not match expected hosted SHA")
+    if require_hosted_provenance and expected_sha is None:
+        errors.append("hosted provenance requires an independent expected SHA")
     timestamp_fields = ("started_at", "completed_at") if policy.require_pull_request_provenance else ()
     for field in timestamp_fields:
         value = manifest.get(field)
@@ -108,22 +116,38 @@ def _security_errors(root: Path, policy: VerificationPolicy = VERIFICATION_POLIC
     if not path.is_file():
         return []
     report = json.loads(path.read_text())
-    controls = report.get("controls", [])
+    controls = report.get("controls")
+    if not isinstance(controls, list):
+        return ["security controls must be a list"]
     ids = [control.get("control_id") for control in controls if isinstance(control, dict)]
     errors = []
+    if len(controls) < policy.minimum_security_controls:
+        errors.append(f"security report requires at least {policy.minimum_security_controls} executed controls")
     if len(ids) != len(set(ids)):
         errors.append("security controls are not unique")
     if policy.required_security_controls is not None and set(ids) != policy.required_security_controls:
         errors.append("required foundation security control set is incomplete")
-    if any(control.get("assertion_count", 0) <= 0 for control in controls if isinstance(control, dict)):
+    if any(
+        isinstance(control.get("assertion_count"), bool)
+        or not isinstance(control.get("assertion_count"), int)
+        or control["assertion_count"] <= 0
+        for control in controls
+        if isinstance(control, dict)
+    ):
         errors.append("security control has zero assertions")
     for control in controls:
         if not isinstance(control, dict):
             errors.append("security control is not structured")
             continue
-        evidence = control.get("assertion_evidence", [])
-        if len(evidence) != control.get("assertion_count") or not all(
-            isinstance(item, str) and item for item in evidence
+        if not isinstance(control.get("control_id"), str) or not control["control_id"].strip():
+            errors.append("security control ID is empty")
+        if not isinstance(control.get("test_node_id"), str) or not control["test_node_id"].strip():
+            errors.append(f"security control test node ID is empty: {control.get('control_id')}")
+        evidence = control.get("assertion_evidence")
+        if (
+            not isinstance(evidence, list)
+            or len(evidence) != control.get("assertion_count")
+            or not all(isinstance(item, str) and item for item in evidence)
         ):
             errors.append(f"security control lacks named assertion evidence: {control.get('control_id')}")
         if control.get("control_id") == "wrong_scope_claim_denial" and not {
@@ -131,17 +155,30 @@ def _security_errors(root: Path, policy: VerificationPolicy = VERIFICATION_POLIC
             "wrong_environment_claim_operation_denied",
             "wrong_scope_claim_did_not_mutate_state",
             "correct_scope_claim_operation_succeeded",
-        } <= set(evidence):
+        } <= set(evidence if isinstance(evidence, list) else []):
             errors.append("wrong-scope claim control lacks claim-mutation assertion evidence")
+        if control.get("passed") is not True:
+            errors.append(f"security control did not pass: {control.get('control_id')}")
     passed = sum(control.get("passed") is True for control in controls if isinstance(control, dict))
-    if report.get("scenario_count") != len(controls) or report.get("passed_count") != passed:
+    failed = sum(control.get("passed") is False for control in controls if isinstance(control, dict))
+    if (
+        report.get("scenario_count") != len(controls)
+        or report.get("passed_count") != passed
+        or report.get("failed_count") != failed
+    ):
         errors.append("security control count mismatch")
     if report.get("failed_count") != 0 or report.get("result") != "passed":
         errors.append("security report did not pass")
     return errors
 
 
-def verify(root: Path, *, sentinels_only: bool = False) -> list[str]:
+def verify(
+    root: Path,
+    *,
+    sentinels_only: bool = False,
+    expected_sha: str | None = None,
+    require_hosted_provenance: bool = False,
+) -> list[str]:
     errors = []
     for path in root.rglob("*"):
         if path.is_symlink():
@@ -170,7 +207,13 @@ def verify(root: Path, *, sentinels_only: bool = False) -> list[str]:
     manifest = json.loads(manifest_path.read_text())
     if manifest.get("schema_version") != "1.0" or not isinstance(manifest.get("artifacts"), list):
         errors.append("manifest schema is invalid")
-    errors.extend(_manifest_provenance_errors(manifest))
+    errors.extend(
+        _manifest_provenance_errors(
+            manifest,
+            expected_sha=expected_sha,
+            require_hosted_provenance=require_hosted_provenance,
+        )
+    )
     profile = manifest.get("certification_profile")
     policy = VERIFICATION_POLICIES.get(profile) if isinstance(profile, str) else None
     if policy is not None:
@@ -197,6 +240,8 @@ def verify(root: Path, *, sentinels_only: bool = False) -> list[str]:
                 artifact_sha = None
             if artifact_sha != manifest.get("commit_sha"):
                 errors.append(f"commit SHA mismatch: {relative}")
+            if expected_sha is not None and artifact_sha != expected_sha:
+                errors.append(f"artifact commit SHA does not match expected hosted SHA: {relative}")
     retained = {
         p.relative_to(root).as_posix()
         for p in root.rglob("*")
@@ -211,8 +256,20 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("root", type=Path)
     parser.add_argument("--sentinels-only", action="store_true")
+    parser.add_argument("--expected-sha")
+    parser.add_argument("--require-hosted-provenance", action="store_true")
     args = parser.parse_args()
-    errors = verify(args.root.resolve(), sentinels_only=args.sentinels_only)
+    try:
+        expected_sha = expected_certification_sha(args.expected_sha)
+    except ValueError as exc:
+        print(f"ERROR: {exc}")
+        return 1
+    errors = verify(
+        args.root.resolve(),
+        sentinels_only=args.sentinels_only,
+        expected_sha=expected_sha,
+        require_hosted_provenance=args.require_hosted_provenance,
+    )
     if errors:
         print("\n".join(f"ERROR: {x}" for x in errors))
         return 1

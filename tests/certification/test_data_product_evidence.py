@@ -14,7 +14,7 @@ from packages.elastic_store.manifest import (
 )
 from scripts.certification.assemble_data_product_evidence import assemble
 from scripts.certification.data_product_evidence import write_scenario
-from scripts.certification.provenance import certification_commit_sha
+from scripts.certification.provenance import certification_commit_sha, expected_certification_sha
 from scripts.certification.verify_artifacts import _manifest_provenance_errors
 
 
@@ -139,7 +139,25 @@ def test_retained_manifest_commit_must_be_a_full_sha(monkeypatch):
         "started_at": "2026-01-01T00:00:00Z",
         "completed_at": "2026-01-01T00:00:01Z",
     }
-    assert "manifest commit SHA does not match expected hosted SHA" in _manifest_provenance_errors(valid)
+    assert "manifest commit SHA does not match expected hosted SHA" in _manifest_provenance_errors(
+        valid, expected_sha=expected_certification_sha()
+    )
+
+
+def test_expected_sha_precedence_and_synthetic_merge_ignored(monkeypatch):
+    monkeypatch.setenv("GITHUB_SHA", "d" * 40)
+    monkeypatch.setenv("DATA_PRODUCT_CERTIFICATION_SHA", "c" * 40)
+    monkeypatch.setenv("EXPECTED_HOSTED_SHA", "b" * 40)
+    assert expected_certification_sha("a" * 40) == "a" * 40
+    assert expected_certification_sha() == "b" * 40
+    monkeypatch.delenv("EXPECTED_HOSTED_SHA")
+    assert expected_certification_sha() == "c" * 40
+
+
+def test_expected_sha_rejects_malformed_value(monkeypatch):
+    monkeypatch.setenv("EXPECTED_HOSTED_SHA", "ABC")
+    with pytest.raises(ValueError, match="lowercase 40-character"):
+        expected_certification_sha()
 
 
 def test_assembler_rejects_a_nonempty_retained_directory(tmp_path):

@@ -137,7 +137,13 @@ def test_pull_request_evidence_receives_explicit_hosted_provenance():
     )
     assert env["CERTIFICATION_HEAD_SHA"] == "${{ github.event.pull_request.head.sha }}"
     assert env["DATA_PRODUCT_CERTIFICATION_SHA"] == env["CERTIFICATION_HEAD_SHA"]
+    assert env["EXPECTED_HOSTED_SHA"] == env["CERTIFICATION_HEAD_SHA"]
     assert "GITHUB_SHA" not in env
+    commands = "\n".join(
+        str(step.get("run", "")) for step in workflow["jobs"]["data-product-foundation-evidence"]["steps"]
+    )
+    assert 'test "$DATA_PRODUCT_CERTIFICATION_SHA" = "$EXPECTED_HOSTED_SHA"' in commands
+    assert '--require-hosted-provenance --expected-sha "$EXPECTED_HOSTED_SHA"' in commands
 
 
 def test_every_producer_checks_out_the_canonical_certification_sha():

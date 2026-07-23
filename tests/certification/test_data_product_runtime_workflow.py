@@ -31,6 +31,18 @@ def test_data_product_runtime_trigger_covers_every_certification_surface():
     assert set(trigger["pull_request"]["paths"]) == REQUIRED_PATHS
 
 
+def test_foundation_workflow_supports_diagnostic_dispatch_with_read_only_permissions():
+    workflow = yaml.safe_load(Path(".github/workflows/data-product-runtime.yml").read_text())
+    # PyYAML 1.1 parses the YAML key `on` as boolean True.
+    trigger = workflow.get("on", workflow.get(True))
+    assert trigger["workflow_dispatch"] is None
+    assert workflow["permissions"] == {
+        "contents": "read",
+        "actions": "read",
+        "pull-requests": "read",
+    }
+
+
 def test_foundation_workflow_has_explicit_profile_and_required_jobs():
     text = Path(".github/workflows/data-product-runtime.yml").read_text()
     workflow = yaml.safe_load(text)

@@ -21,6 +21,7 @@ def test_local_evidence_matches_schema_and_is_not_hosted():
 def test_verifier_rejects_artifact_mutated_after_manifest(tmp_path):
     commit = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
     scenario = {
+        "schema_version": "1.0",
         "scenario": "certification-test",
         "commit_sha": commit,
         "elasticsearch_version": "9.4.2",
@@ -35,6 +36,35 @@ def test_verifier_rejects_artifact_mutated_after_manifest(tmp_path):
         path = tmp_path / name
         if name.endswith(".xml"):
             path.write_text('<testsuite tests="1" failures="0" errors="0"/>\n')
+        elif name == "security-report.json":
+            path.write_text(
+                json.dumps(
+                    {
+                        "schema_version": "1.0",
+                        "commit_sha": commit,
+                        "elasticsearch_version": "9.4.2",
+                        "scenario_count": 1,
+                        "passed_count": 1,
+                        "failed_count": 0,
+                        "controls": ["tenant isolation"],
+                        "result": "passed",
+                    }
+                )
+            )
+        elif name == "sentinel-report.json":
+            path.write_text(
+                json.dumps(
+                    {
+                        "schema_version": "1.0",
+                        "commit_sha": commit,
+                        "files_scanned": 1,
+                        "sentinels_injected": 1,
+                        "sentinels_redacted": 1,
+                        "sentinels_remaining": 0,
+                        "result": "passed",
+                    }
+                )
+            )
         elif name.endswith(".json"):
             path.write_text(json.dumps(scenario))
         else:

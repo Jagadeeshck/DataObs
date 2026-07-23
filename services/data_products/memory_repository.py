@@ -37,7 +37,7 @@ from services.data_products.operation_state import (
     DataProductOperationState,
     OperationClaimConflict,
 )
-from services.data_products.repository import ProductVersionConflict
+from services.data_products.repository import DependencyEdgeSuperseded, ProductVersionConflict
 
 
 class MemoryDataProductRepository:
@@ -772,7 +772,7 @@ class MemoryDataProductRepository:
             if current is not None and current.product_revision == edge.product_revision:
                 raise ProductConsistencyError("dependency_edge_same_revision_diverged")
             if current is not None and current.product_revision > edge.product_revision:
-                raise ProductConsistencyError("dependency_edge_superseded")
+                raise DependencyEdgeSuperseded("dependency_edge_superseded")
             self.dependencies[key] = edge.model_copy(deep=True)
 
     def list_dependencies(

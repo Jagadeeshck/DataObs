@@ -35,6 +35,13 @@ DATA_PRODUCT_RECONCILIATION_EVIDENCE = (
     "redacted.log",
 )
 
+DATA_PRODUCT_EVIDENCE_OWNERS = {
+    "contracts": ("contracts.xml",),
+    "unit": ("unit.xml",),
+    "elasticsearch": DATA_PRODUCT_RECONCILIATION_EVIDENCE[2:23],
+    "security": DATA_PRODUCT_RECONCILIATION_EVIDENCE[23:],
+}
+
 MIGRATION_STATE_INDEX = "dataobs-system-migrations-v1"
 MUTABLE_INDICES = [
     "dataobs-tenants-v1",

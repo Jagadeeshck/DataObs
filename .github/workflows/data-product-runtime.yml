@@ -62,7 +62,7 @@ jobs:
       - run: mkdir -p artifacts/data-product-reconciliation
       - run: ELASTICSEARCH_URL=http://127.0.0.1:9200 ./bin/dataobs elastic migrate
       - run: RUN_INTEGRATION_TESTS=1 ELASTICSEARCH_URL=http://127.0.0.1:9200 python -m pytest tests/integration/data_products/test_membership_dependency_elasticsearch.py::test_real_elasticsearch_membership_dependency_profile_is_selected -q
-      - run: RUN_INTEGRATION_TESTS=1 ELASTICSEARCH_URL=http://127.0.0.1:9200 python -m pytest tests/integration/data_products -q --junitxml=artifacts/data-product-reconciliation/elasticsearch.xml
+      - run: RUN_INTEGRATION_TESTS=1 DATA_PRODUCT_EVIDENCE_DIR=artifacts/data-product-reconciliation ELASTICSEARCH_URL=http://127.0.0.1:9200 python -m pytest tests/integration/data_products -q --junitxml=artifacts/data-product-reconciliation/elasticsearch.xml
       - uses: actions/upload-artifact@v4
         with: {name: data-product-reconciliation-elasticsearch, path: artifacts/data-product-reconciliation}
   data-product-reconciliation-security:
@@ -85,7 +85,7 @@ jobs:
       - run: mkdir -p artifacts/data-product-reconciliation
       - run: ELASTICSEARCH_URL=http://127.0.0.1:9200 ./bin/dataobs elastic migrate
       - run: RUN_INTEGRATION_TESTS=1 ELASTICSEARCH_URL=http://127.0.0.1:9200 python -m pytest tests/integration/data_products/test_membership_dependency_elasticsearch.py::test_real_elasticsearch_membership_dependency_profile_is_selected -q
-      - run: RUN_INTEGRATION_TESTS=1 ELASTICSEARCH_URL=http://127.0.0.1:9200 python -m pytest tests/security/data_products -q --junitxml=artifacts/data-product-reconciliation/security.xml
+      - run: RUN_INTEGRATION_TESTS=1 DATA_PRODUCT_EVIDENCE_DIR=artifacts/data-product-reconciliation ELASTICSEARCH_URL=http://127.0.0.1:9200 python -m pytest tests/security/data_products -q --junitxml=artifacts/data-product-reconciliation/security.xml
       - uses: actions/upload-artifact@v4
         with: {name: data-product-reconciliation-security, path: artifacts/data-product-reconciliation}
   data-product-reconciliation-evidence:
@@ -99,10 +99,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
-        with: {path: artifacts/downloaded, merge-multiple: true}
-      - run: python scripts/certification/build_manifest.py artifacts/downloaded
+        with: {name: data-product-reconciliation-contracts, path: artifacts/downloaded/contracts}
+      - uses: actions/download-artifact@v4
+        with: {name: data-product-reconciliation-unit, path: artifacts/downloaded/unit}
+      - uses: actions/download-artifact@v4
+        with: {name: data-product-reconciliation-elasticsearch, path: artifacts/downloaded/elasticsearch}
+      - uses: actions/download-artifact@v4
+        with: {name: data-product-reconciliation-security, path: artifacts/downloaded/security}
+      - run: python scripts/certification/assemble_data_product_evidence.py artifacts/downloaded artifacts/retained
+      - run: python scripts/certification/build_manifest.py artifacts/retained
+      - run: python scripts/certification/verify_artifacts.py artifacts/retained
       - uses: actions/upload-artifact@v4
-        with: {name: data-product-reconciliation-evidence, path: artifacts/downloaded}
+        with: {name: data-product-reconciliation-evidence, path: artifacts/retained, retention-days: 30}
   data-product-reconciliation-summary:
     if: always()
     runs-on: ubuntu-latest

@@ -26,6 +26,7 @@ from services.data_products.dependency_events import (
     DataProductDependencyOperationResult,
     DataProductDependencyReadSnapshot,
 )
+from services.data_products.events import ProductConsistencyError
 from services.data_products.idempotency import DataProductIdempotencyRecord, IdempotencyReservationResult
 from services.data_products.operation_state import (
     DataProductOperationCheckpoint,
@@ -40,6 +41,14 @@ from services.data_products.operation_state import (
 
 class ProductVersionConflict(RuntimeError):
     pass
+
+
+class DependencyEdgeConflict(ProductConsistencyError):
+    """Base class for an expected dependency-edge reconciliation race."""
+
+
+class DependencyEdgeSuperseded(DependencyEdgeConflict):
+    """A realtime read proved that a newer revision already owns an edge."""
 
 
 SearchAfter: TypeAlias = Sequence[str | int | float]

@@ -151,7 +151,21 @@ def test_expected_sha_precedence_and_synthetic_merge_ignored(monkeypatch):
     assert expected_certification_sha("a" * 40) == "a" * 40
     assert expected_certification_sha() == "b" * 40
     monkeypatch.delenv("EXPECTED_HOSTED_SHA")
-    assert expected_certification_sha() == "c" * 40
+    assert expected_certification_sha() is None
+
+
+def test_producer_identity_cannot_supply_independent_expectation(monkeypatch):
+    monkeypatch.delenv("EXPECTED_HOSTED_SHA", raising=False)
+    monkeypatch.setenv("DATA_PRODUCT_CERTIFICATION_SHA", "a" * 40)
+    monkeypatch.setenv("GITHUB_SHA", "b" * 40)
+    assert certification_commit_sha() == "a" * 40
+    assert expected_certification_sha() is None
+
+
+def test_malformed_explicit_expectation_does_not_fall_back_to_env(monkeypatch):
+    monkeypatch.setenv("EXPECTED_HOSTED_SHA", "a" * 40)
+    with pytest.raises(ValueError, match="lowercase 40-character"):
+        expected_certification_sha("merge-sha")
 
 
 def test_expected_sha_rejects_malformed_value(monkeypatch):

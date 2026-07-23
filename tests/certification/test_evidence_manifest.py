@@ -350,8 +350,79 @@ def test_full_profile_rejects_empty_controls_and_accepts_one_executed_control(tm
 
 def test_hosted_mode_requires_independent_expected_sha():
     errors = _manifest_provenance_errors(_hosted_manifest(), require_hosted_provenance=True)
-    assert "hosted provenance requires an independent expected SHA" in errors
+    assert "hosted provenance requires independently supplied expected SHA" in errors
     assert _manifest_provenance_errors(_hosted_manifest(), expected_sha="a" * 40, require_hosted_provenance=True) == []
+
+
+def test_self_consistent_wrong_sha_bundle_is_rejected_by_hosted_expectation(tmp_path):
+    wrong_sha, head_sha = "b" * 40, "a" * 40
+    encoded = json.dumps(_hosted_manifest(commit_sha=wrong_sha, artifacts=[]))
+    (tmp_path / "certification-evidence.json").write_text(encoded)
+    (tmp_path / "manifest.json").write_text(encoded)
+    from scripts.certification.verify_artifacts import verify
+
+    assert verify(tmp_path, expected_sha=wrong_sha, require_hosted_provenance=True) == []
+    assert "manifest commit SHA does not match expected hosted SHA" in verify(
+        tmp_path, expected_sha=head_sha, require_hosted_provenance=True
+    )
+    assert "hosted provenance requires independently supplied expected SHA" in verify(
+        tmp_path, require_hosted_provenance=True
+    )
+
+
+def test_hosted_cli_requires_external_expectation_even_with_producer_sha(tmp_path):
+    head_sha = "a" * 40
+    encoded = json.dumps(_hosted_manifest(commit_sha=head_sha, artifacts=[]))
+    (tmp_path / "certification-evidence.json").write_text(encoded)
+    (tmp_path / "manifest.json").write_text(encoded)
+    verify_script = ROOT / "scripts/certification/verify_artifacts.py"
+    env = {**os.environ, "DATA_PRODUCT_CERTIFICATION_SHA": head_sha, "GITHUB_SHA": "c" * 40}
+    env.pop("EXPECTED_HOSTED_SHA", None)
+    missing = subprocess.run(
+        [sys.executable, str(verify_script), "--require-hosted-provenance", str(tmp_path)],
+        env=env,
+        text=True,
+        capture_output=True,
+    )
+    assert missing.returncode == 1
+    assert "hosted provenance requires independently supplied expected SHA" in missing.stdout
+    env["EXPECTED_HOSTED_SHA"] = head_sha
+    assert (
+        subprocess.run(
+            [sys.executable, str(verify_script), "--require-hosted-provenance", str(tmp_path)], env=env
+        ).returncode
+        == 0
+    )
+    env["EXPECTED_HOSTED_SHA"] = "b" * 40
+    assert (
+        subprocess.run(
+            [
+                sys.executable,
+                str(verify_script),
+                "--require-hosted-provenance",
+                "--expected-sha",
+                head_sha,
+                str(tmp_path),
+            ],
+            env=env,
+        ).returncode
+        == 0
+    )
+
+
+def test_full_profile_structural_verification_does_not_require_hosted_expectation(tmp_path):
+    manifest = _hosted_manifest(
+        certification_profile="data-product-reconciliation-full",
+        workflow_event=None,
+        workflow_run_id=None,
+        workflow_run_url=None,
+    )
+    encoded = json.dumps(manifest)
+    (tmp_path / "certification-evidence.json").write_text(encoded)
+    (tmp_path / "manifest.json").write_text(encoded)
+    from scripts.certification.verify_artifacts import verify
+
+    assert verify(tmp_path) == []
 
 
 def test_verifier_rejects_wrong_scope_control_without_claim_mutation_evidence(tmp_path):

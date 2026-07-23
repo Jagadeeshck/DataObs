@@ -438,3 +438,19 @@ PR #148 completed most foundation implementation, but its manifest rejected inte
 | Review-thread closure | Hosted proof absent | Resolve only eligible foundation threads after proof | Exact references retained | Test/job evidence cited | Thread replies include run/artifact |
 
 Release readiness remains **blocked**, `full_reconciliation_certified` remains false, and no capability is promoted. The next task remains the complete Data Product mutation fault matrix: manual membership, proposals, exclusions, dependencies, lifecycle, takeover, immutable replay, terminal revisit, CLI, and remaining security.
+
+## Final hosted foundation execution attempt
+
+On 2026-07-23, the final hosted foundation execution was attempted from the
+`certify/final-hosted-foundation` branch. This execution environment has no
+GitHub credentials or configured Git remote, so it cannot inspect or change the
+repository Actions policy, dispatch the diagnostic workflow, push this branch,
+or create and keep open the required draft pull request. The hosted foundation
+therefore remains pending: no diagnostic or pull-request run, Elasticsearch
+9.4.2 result, retained artifact, or independent artifact verification is
+claimed by this attempt.
+
+Release readiness remains **blocked**, `full_reconciliation_certified` remains
+false, and no product capability is promoted. The mutation fault matrix must
+not start until an owner or administrator completes and verifies the final-head
+pull-request gate described above.

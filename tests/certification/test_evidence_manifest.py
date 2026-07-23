@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 def _hosted_manifest(**overrides):
     manifest = {
+        "schema_version": "1.0",
         "certification_profile": "data-product-runtime-foundation",
         "workflow_event": "pull_request",
         "full_reconciliation_certified": False,
@@ -102,6 +103,7 @@ def test_verifier_rejects_invalid_hosted_provenance(override, message):
 def test_manifest_builder_requires_explicit_pull_request_provenance(monkeypatch):
     monkeypatch.setenv("GITHUB_REPOSITORY", "Jagadeeshck/DataObs")
     monkeypatch.setenv("GITHUB_SHA", "a" * 40)
+    monkeypatch.setenv("DATA_PRODUCT_CERTIFICATION_SHA", "a" * 40)
     monkeypatch.setenv("CERTIFICATION_HEAD_SHA", "a" * 40)
     monkeypatch.setenv("CERTIFICATION_RUN_ID", "123")
     monkeypatch.setenv("CERTIFICATION_RUN_URL", "https://github.com/Jagadeeshck/DataObs/actions/runs/123")
@@ -113,6 +115,34 @@ def test_manifest_builder_requires_explicit_pull_request_provenance(monkeypatch)
     provenance = _foundation_provenance(completed_at="2026-01-01T00:00:01Z")
     assert provenance["workflow_run_id"] == 123
     assert provenance["commit_sha"] == "a" * 40
+
+
+def test_foundation_uses_head_sha_when_github_sha_is_merge_sha(monkeypatch):
+    monkeypatch.setenv("GITHUB_SHA", "b" * 40)
+    monkeypatch.setenv("DATA_PRODUCT_CERTIFICATION_SHA", "a" * 40)
+    monkeypatch.setenv("CERTIFICATION_HEAD_SHA", "a" * 40)
+    monkeypatch.setenv("CERTIFICATION_EVENT_NAME", "pull_request")
+    monkeypatch.setenv("CERTIFICATION_RUN_ID", "123")
+    monkeypatch.setenv("CERTIFICATION_RUN_URL", "https://github.com/Jagadeeshck/DataObs/actions/runs/123")
+    monkeypatch.setenv("CERTIFICATION_STARTED_AT", "2026-01-01T00:00:00Z")
+    assert _foundation_provenance(completed_at="2026-01-01T00:00:01Z")["commit_sha"] == "a" * 40
+
+
+def test_full_profile_does_not_receive_foundation_provenance_policy():
+    manifest = _hosted_manifest(
+        certification_profile="data-product-reconciliation-full",
+        workflow_event=None,
+        workflow_run_id=None,
+        workflow_run_url=None,
+    )
+    errors = _manifest_provenance_errors(manifest)
+    assert not any("workflow event" in error or "run ID" in error or "run URL" in error for error in errors)
+
+
+def test_unknown_profile_fails_closed():
+    assert _manifest_provenance_errors(_hosted_manifest(certification_profile="unknown")) == [
+        "unknown certification profile"
+    ]
 
 
 def test_verifier_rejects_artifact_mutated_after_manifest(tmp_path):
@@ -145,7 +175,14 @@ def test_verifier_rejects_artifact_mutated_after_manifest(tmp_path):
                         "scenario_count": 1,
                         "passed_count": 1,
                         "failed_count": 0,
-                        "controls": ["tenant isolation"],
+                        "controls": [
+                            {
+                                "control_id": "full_profile_tenant_isolation",
+                                "assertion_count": 1,
+                                "assertion_evidence": ["tenant isolation"],
+                                "passed": True,
+                            }
+                        ],
                         "test_names": ["test_security"],
                         "redacted_references": ["tenant:sha256:abc"],
                         "result": "passed",
@@ -191,6 +228,12 @@ def test_verifier_rejects_artifact_mutated_after_manifest(tmp_path):
         check=True,
         env=env,
     )
+    clean = subprocess.run(
+        [sys.executable, str(ROOT / "scripts/certification/verify_artifacts.py"), str(tmp_path)],
+        text=True,
+        capture_output=True,
+    )
+    assert clean.returncode == 0, clean.stdout
     artifact = tmp_path / "redacted.log"
     artifact.write_text("tampered\n")
     result = subprocess.run(
@@ -239,8 +282,9 @@ def test_verifier_rejects_manifest_self_listing(tmp_path):
 def test_nested_manifest_named_files_are_ordinary_hashed_artifacts(tmp_path):
     nested = tmp_path / "nested"
     nested.mkdir()
-    (nested / "manifest.json").write_text("nested manifest payload\n")
-    (nested / "certification-evidence.json").write_text("nested evidence payload\n")
+    nested_payload = json.dumps({"commit_sha": "a" * 40})
+    (nested / "manifest.json").write_text(nested_payload)
+    (nested / "certification-evidence.json").write_text(nested_payload)
     artifacts = []
     import hashlib
 

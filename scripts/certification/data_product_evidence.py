@@ -5,16 +5,12 @@ from __future__ import annotations
 
 import json
 import os
-import subprocess
 from datetime import datetime
 from pathlib import Path
 from typing import Sequence
 
 from packages.elastic_store.manifest import data_product_evidence_owners
-
-
-def _commit_sha() -> str:
-    return os.getenv("GITHUB_SHA") or subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+from scripts.certification.provenance import certification_commit_sha
 
 
 def write_scenario(
@@ -54,7 +50,7 @@ def write_scenario(
     document = {
         "schema_version": "1.0",
         "scenario": scenario,
-        "commit_sha": _commit_sha(),
+        "commit_sha": certification_commit_sha(),
         "elasticsearch_version": elasticsearch_version,
         "started_at": start,
         "completed_at": complete,

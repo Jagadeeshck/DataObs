@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 """Verify retained artifacts are bounded, relative and sentinel-free."""
 
-from __future__ import annotations
-
 import argparse
 import hashlib
 import json
 import os
 import re
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
@@ -32,42 +31,69 @@ REQUIRED_FOUNDATION_CONTROLS = {
 }
 SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 FOUNDATION_PROFILE = "data-product-runtime-foundation"
+FULL_PROFILE = "data-product-reconciliation-full"
+
+
+@dataclass(frozen=True)
+class VerificationPolicy:
+    profile: str
+    require_pull_request_provenance: bool
+    require_release_blocked: bool
+    required_security_controls: frozenset[str] | None
+    allow_additional_security_controls: bool
+
+
+VERIFICATION_POLICIES = {
+    FOUNDATION_PROFILE: VerificationPolicy(
+        FOUNDATION_PROFILE, True, True, frozenset(REQUIRED_FOUNDATION_CONTROLS), False
+    ),
+    FULL_PROFILE: VerificationPolicy(FULL_PROFILE, False, False, None, True),
+}
 
 
 def _manifest_provenance_errors(manifest: dict) -> list[str]:
     errors = []
-    if manifest.get("certification_profile") != FOUNDATION_PROFILE:
-        errors.append("certification profile is not the hosted foundation profile")
-    if manifest.get("workflow_event") != "pull_request":
+    profile = manifest.get("certification_profile")
+    policy = VERIFICATION_POLICIES.get(profile) if isinstance(profile, str) else None
+    if policy is None:
+        return ["unknown certification profile"]
+    if policy.require_pull_request_provenance and manifest.get("workflow_event") != "pull_request":
         errors.append("workflow event is not pull_request")
-    if manifest.get("full_reconciliation_certified") is not False:
+    if policy.require_release_blocked and manifest.get("full_reconciliation_certified") is not False:
         errors.append("full reconciliation certification must remain false")
-    if manifest.get("release_readiness") != "blocked":
+    if policy.require_release_blocked and manifest.get("release_readiness") != "blocked":
         errors.append("release readiness must remain blocked")
-    if manifest.get("capabilities") != {}:
+    if policy.require_release_blocked and manifest.get("capabilities") != {}:
         errors.append("foundation evidence must not promote capabilities")
     run_id = manifest.get("workflow_run_id")
-    if isinstance(run_id, bool) or not isinstance(run_id, int) or run_id <= 0:
+    if policy.require_pull_request_provenance and (
+        isinstance(run_id, bool) or not isinstance(run_id, int) or run_id <= 0
+    ):
         errors.append("workflow run ID is not a positive integer")
     repository = manifest.get("repository")
     expected_url = f"https://github.com/{repository}/actions/runs/{run_id}"
-    if manifest.get("workflow_run_url") != expected_url:
+    if policy.require_pull_request_provenance and manifest.get("workflow_run_url") != expected_url:
         errors.append("workflow run URL does not match repository and run ID")
     sha = manifest.get("commit_sha")
     if not isinstance(sha, str) or not SHA_RE.fullmatch(sha):
         errors.append("manifest commit SHA is invalid")
-    expected_sha = os.getenv("EXPECTED_HOSTED_SHA") or os.getenv("GITHUB_SHA")
+    expected_sha = os.getenv("EXPECTED_HOSTED_SHA")
     if expected_sha and sha != expected_sha:
         errors.append("manifest commit SHA does not match expected hosted SHA")
-    for field in ("started_at", "completed_at"):
+    timestamp_fields = ("started_at", "completed_at") if policy.require_pull_request_provenance else ()
+    for field in timestamp_fields:
         value = manifest.get(field)
         try:
+            if not isinstance(value, str):
+                raise TypeError
             parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
             if parsed.tzinfo is None or parsed.utcoffset() is None:
                 raise ValueError
         except (AttributeError, TypeError, ValueError):
             errors.append(f"{field} is not a valid timezone-aware timestamp")
     try:
+        if not policy.require_pull_request_provenance:
+            raise KeyError
         start = datetime.fromisoformat(manifest["started_at"].replace("Z", "+00:00"))
         complete = datetime.fromisoformat(manifest["completed_at"].replace("Z", "+00:00"))
         if start > complete:
@@ -77,7 +103,7 @@ def _manifest_provenance_errors(manifest: dict) -> list[str]:
     return errors
 
 
-def _security_errors(root: Path) -> list[str]:
+def _security_errors(root: Path, policy: VerificationPolicy = VERIFICATION_POLICIES[FOUNDATION_PROFILE]) -> list[str]:
     path = root / "security-report.json"
     if not path.is_file():
         return []
@@ -87,7 +113,7 @@ def _security_errors(root: Path) -> list[str]:
     errors = []
     if len(ids) != len(set(ids)):
         errors.append("security controls are not unique")
-    if set(ids) != REQUIRED_FOUNDATION_CONTROLS:
+    if policy.required_security_controls is not None and set(ids) != policy.required_security_controls:
         errors.append("required foundation security control set is incomplete")
     if any(control.get("assertion_count", 0) <= 0 for control in controls if isinstance(control, dict)):
         errors.append("security control has zero assertions")
@@ -142,8 +168,13 @@ def verify(root: Path, *, sentinels_only: bool = False) -> list[str]:
     if alias_path.read_bytes() != manifest_path.read_bytes():
         errors.append("manifest.json alias is not byte-identical to certification-evidence.json")
     manifest = json.loads(manifest_path.read_text())
+    if manifest.get("schema_version") != "1.0" or not isinstance(manifest.get("artifacts"), list):
+        errors.append("manifest schema is invalid")
     errors.extend(_manifest_provenance_errors(manifest))
-    errors.extend(_security_errors(root))
+    profile = manifest.get("certification_profile")
+    policy = VERIFICATION_POLICIES.get(profile) if isinstance(profile, str) else None
+    if policy is not None:
+        errors.extend(_security_errors(root, policy))
     listed = set()
     for artifact in manifest.get("artifacts", []):
         relative = Path(artifact["path"])
@@ -164,15 +195,15 @@ def verify(root: Path, *, sentinels_only: bool = False) -> list[str]:
                 artifact_sha = json.loads(target.read_text()).get("commit_sha")
             except (json.JSONDecodeError, AttributeError):
                 artifact_sha = None
-            if artifact_sha is not None and artifact_sha != manifest.get("commit_sha"):
+            if artifact_sha != manifest.get("commit_sha"):
                 errors.append(f"commit SHA mismatch: {relative}")
     retained = {
         p.relative_to(root).as_posix()
         for p in root.rglob("*")
         if p.is_file() and p.relative_to(root).as_posix() not in MANIFEST_NAMES and p.name != ".gitkeep"
     }
-    for relative in sorted(retained - listed):
-        errors.append(f"retained artifact is not listed: {relative}")
+    for unlisted in sorted(retained - listed):
+        errors.append(f"retained artifact is not listed: {unlisted}")
     return errors
 
 

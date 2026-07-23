@@ -1,10 +1,9 @@
 """Positive sentinel injection through the production redactor."""
 
 import json
-import os
-import subprocess
 from datetime import datetime, timezone
 
+from scripts.certification.provenance import certification_commit_sha
 from scripts.certification.redact_artifacts import SENTINELS, redact
 
 
@@ -27,8 +26,7 @@ def test_foundation_sentinels_are_actually_redacted(
     completed = datetime.now(timezone.utc)
     report = {
         "schema_version": "1.0",
-        "commit_sha": os.getenv("GITHUB_SHA")
-        or subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
+        "commit_sha": certification_commit_sha(),
         "elasticsearch_version": security_client.info()["version"]["number"],
         "started_at": started.isoformat(),
         "completed_at": completed.isoformat(),

@@ -54,6 +54,7 @@ def test_foundation_workflow_has_explicit_profile_and_required_jobs():
         "data-product-foundation-security",
         "data-product-foundation-evidence",
         "data-product-foundation-summary",
+        "data-product-foundation-diagnostic-summary",
     }
     assert "DATA_PRODUCT_CERTIFICATION_PROFILE=data-product-runtime-foundation" in text
     assert "--profile data-product-runtime-foundation" in text
@@ -100,3 +101,39 @@ def test_producer_junit_inventory_and_dependencies_are_exact():
     }
     assert set(jobs["data-product-foundation-evidence"]["needs"]) == producers
     assert set(jobs["data-product-foundation-summary"]["needs"]) == producers | {"data-product-foundation-evidence"}
+
+
+def test_certification_and_diagnostic_paths_are_event_isolated():
+    workflow = yaml.safe_load(Path(".github/workflows/data-product-runtime.yml").read_text())
+    jobs = workflow["jobs"]
+    producers = {
+        "data-product-reconciliation-contracts",
+        "data-product-reconciliation-unit",
+        "data-product-foundation-elasticsearch",
+        "data-product-foundation-security",
+    }
+    evidence = jobs["data-product-foundation-evidence"]
+    summary = jobs["data-product-foundation-summary"]
+    diagnostic = jobs["data-product-foundation-diagnostic-summary"]
+    assert evidence["if"] == "github.event_name == 'pull_request'"
+    assert summary["if"] == "always() && github.event_name == 'pull_request'"
+    assert diagnostic["if"] == "always() && github.event_name == 'workflow_dispatch'"
+    assert set(diagnostic["needs"]) == producers
+    assert set(summary["needs"]) == producers | {"data-product-foundation-evidence"}
+    diagnostic_commands = "\n".join(str(step.get("run", "")) for step in diagnostic["steps"])
+    assert "build_manifest.py" not in diagnostic_commands
+    assert "data-product-foundation-evidence" not in str(diagnostic.get("steps", []))
+    assert "not certification evidence" in diagnostic_commands
+
+
+def test_pull_request_evidence_receives_explicit_hosted_provenance():
+    workflow = yaml.safe_load(Path(".github/workflows/data-product-runtime.yml").read_text())
+    env = workflow["jobs"]["data-product-foundation-evidence"]["env"]
+    assert env["CERTIFICATION_EVENT_NAME"] == "pull_request"
+    assert env["CERTIFICATION_STARTED_AT"] == "${{ github.event.pull_request.created_at }}"
+    assert env["CERTIFICATION_RUN_ID"] == "${{ github.run_id }}"
+    assert env["CERTIFICATION_RUN_URL"] == (
+        "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+    )
+    assert env["CERTIFICATION_HEAD_SHA"] == "${{ github.event.pull_request.head.sha }}"
+    assert env["GITHUB_SHA"] == env["CERTIFICATION_HEAD_SHA"]

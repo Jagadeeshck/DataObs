@@ -14,6 +14,7 @@ from packages.elastic_store.manifest import (
 )
 from scripts.certification.assemble_data_product_evidence import assemble
 from scripts.certification.data_product_evidence import write_scenario
+from scripts.certification.verify_artifacts import _manifest_provenance_errors
 
 
 def test_scenario_writer_records_the_executing_test(tmp_path):
@@ -95,6 +96,40 @@ def test_scenario_writer_rejects_naive_time_and_unowned_filename(tmp_path):
             completed_at="2026-01-01T00:00:01",
             result="passed",
         )
+
+
+def test_retained_manifest_commit_must_be_a_full_sha(monkeypatch):
+    errors = _manifest_provenance_errors(
+        {
+            "certification_profile": "data-product-runtime-foundation",
+            "workflow_event": "pull_request",
+            "full_reconciliation_certified": False,
+            "release_readiness": "blocked",
+            "capabilities": {},
+            "repository": "Jagadeeshck/DataObs",
+            "commit_sha": "dispatch",
+            "workflow_run_id": 1,
+            "workflow_run_url": "https://github.com/Jagadeeshck/DataObs/actions/runs/1",
+            "started_at": "2026-01-01T00:00:00Z",
+            "completed_at": "2026-01-01T00:00:01Z",
+        }
+    )
+    assert "manifest commit SHA is invalid" in errors
+    monkeypatch.setenv("EXPECTED_HOSTED_SHA", "b" * 40)
+    valid = {
+        "certification_profile": "data-product-runtime-foundation",
+        "workflow_event": "pull_request",
+        "full_reconciliation_certified": False,
+        "release_readiness": "blocked",
+        "capabilities": {},
+        "repository": "Jagadeeshck/DataObs",
+        "commit_sha": "a" * 40,
+        "workflow_run_id": 1,
+        "workflow_run_url": "https://github.com/Jagadeeshck/DataObs/actions/runs/1",
+        "started_at": "2026-01-01T00:00:00Z",
+        "completed_at": "2026-01-01T00:00:01Z",
+    }
+    assert "manifest commit SHA does not match expected hosted SHA" in _manifest_provenance_errors(valid)
 
 
 def test_assembler_rejects_a_nonempty_retained_directory(tmp_path):

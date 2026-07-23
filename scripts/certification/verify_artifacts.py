@@ -6,6 +6,9 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
+import re
+from datetime import datetime
 from pathlib import Path
 
 SENTINELS = (
@@ -27,6 +30,51 @@ REQUIRED_FOUNDATION_CONTROLS = {
     "wrong_scope_claim_denial",
     "wrong_scope_search_isolation",
 }
+SHA_RE = re.compile(r"^[0-9a-f]{40}$")
+FOUNDATION_PROFILE = "data-product-runtime-foundation"
+
+
+def _manifest_provenance_errors(manifest: dict) -> list[str]:
+    errors = []
+    if manifest.get("certification_profile") != FOUNDATION_PROFILE:
+        errors.append("certification profile is not the hosted foundation profile")
+    if manifest.get("workflow_event") != "pull_request":
+        errors.append("workflow event is not pull_request")
+    if manifest.get("full_reconciliation_certified") is not False:
+        errors.append("full reconciliation certification must remain false")
+    if manifest.get("release_readiness") != "blocked":
+        errors.append("release readiness must remain blocked")
+    if manifest.get("capabilities") != {}:
+        errors.append("foundation evidence must not promote capabilities")
+    run_id = manifest.get("workflow_run_id")
+    if isinstance(run_id, bool) or not isinstance(run_id, int) or run_id <= 0:
+        errors.append("workflow run ID is not a positive integer")
+    repository = manifest.get("repository")
+    expected_url = f"https://github.com/{repository}/actions/runs/{run_id}"
+    if manifest.get("workflow_run_url") != expected_url:
+        errors.append("workflow run URL does not match repository and run ID")
+    sha = manifest.get("commit_sha")
+    if not isinstance(sha, str) or not SHA_RE.fullmatch(sha):
+        errors.append("manifest commit SHA is invalid")
+    expected_sha = os.getenv("EXPECTED_HOSTED_SHA") or os.getenv("GITHUB_SHA")
+    if expected_sha and sha != expected_sha:
+        errors.append("manifest commit SHA does not match expected hosted SHA")
+    for field in ("started_at", "completed_at"):
+        value = manifest.get(field)
+        try:
+            parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+            if parsed.tzinfo is None or parsed.utcoffset() is None:
+                raise ValueError
+        except (AttributeError, TypeError, ValueError):
+            errors.append(f"{field} is not a valid timezone-aware timestamp")
+    try:
+        start = datetime.fromisoformat(manifest["started_at"].replace("Z", "+00:00"))
+        complete = datetime.fromisoformat(manifest["completed_at"].replace("Z", "+00:00"))
+        if start > complete:
+            errors.append("manifest timestamps are reversed")
+    except (KeyError, AttributeError, TypeError, ValueError):
+        pass
+    return errors
 
 
 def _security_errors(root: Path) -> list[str]:
@@ -94,6 +142,7 @@ def verify(root: Path, *, sentinels_only: bool = False) -> list[str]:
     if alias_path.read_bytes() != manifest_path.read_bytes():
         errors.append("manifest.json alias is not byte-identical to certification-evidence.json")
     manifest = json.loads(manifest_path.read_text())
+    errors.extend(_manifest_provenance_errors(manifest))
     errors.extend(_security_errors(root))
     listed = set()
     for artifact in manifest.get("artifacts", []):
@@ -110,6 +159,13 @@ def verify(root: Path, *, sentinels_only: bool = False) -> list[str]:
             errors.append(f"listed artifact is missing: {relative}")
         elif hashlib.sha256(target.read_bytes()).hexdigest() != artifact["sha256"]:
             errors.append(f"sha256 mismatch: {relative}")
+        elif target.suffix == ".json" and target.name not in MANIFEST_NAMES:
+            try:
+                artifact_sha = json.loads(target.read_text()).get("commit_sha")
+            except (json.JSONDecodeError, AttributeError):
+                artifact_sha = None
+            if artifact_sha is not None and artifact_sha != manifest.get("commit_sha"):
+                errors.append(f"commit SHA mismatch: {relative}")
     retained = {
         p.relative_to(root).as_posix()
         for p in root.rglob("*")

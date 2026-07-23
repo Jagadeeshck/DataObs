@@ -8,9 +8,29 @@ import jsonschema
 import pytest
 
 from packages.elastic_store.manifest import DATA_PRODUCT_RECONCILIATION_EVIDENCE
-from scripts.certification.build_manifest import _junit_summary
+from scripts.certification.build_manifest import _foundation_provenance, _junit_summary
+from scripts.certification.verify_artifacts import _manifest_provenance_errors
 
 ROOT = Path(__file__).resolve().parents[2]
+
+
+def _hosted_manifest(**overrides):
+    manifest = {
+        "certification_profile": "data-product-runtime-foundation",
+        "workflow_event": "pull_request",
+        "full_reconciliation_certified": False,
+        "release_readiness": "blocked",
+        "capabilities": {},
+        "repository": "Jagadeeshck/DataObs",
+        "commit_sha": "a" * 40,
+        "workflow_run_id": 123,
+        "workflow_run_url": "https://github.com/Jagadeeshck/DataObs/actions/runs/123",
+        "started_at": "2026-01-01T00:00:00Z",
+        "completed_at": "2026-01-01T00:00:01Z",
+        "artifacts": [],
+    }
+    manifest.update(overrides)
+    return manifest
 
 
 def _write_junit(path, *, tests=1, failures=0, errors=0, reasons=()):
@@ -60,6 +80,39 @@ def test_local_evidence_matches_schema_and_is_not_hosted():
     evidence = json.loads((ROOT / "certification/evidence/certification-evidence.json").read_text())
     jsonschema.validate(evidence, schema)
     assert evidence["workflow_run_id"] is None
+
+
+@pytest.mark.parametrize(
+    ("override", "message"),
+    [
+        ({"workflow_event": "workflow_dispatch"}, "workflow event"),
+        ({"workflow_event": None}, "workflow event"),
+        ({"started_at": ""}, "started_at"),
+        ({"started_at": "2026-01-01T00:00:00"}, "started_at"),
+        ({"workflow_run_id": None}, "run ID"),
+        ({"workflow_run_id": 0}, "run ID"),
+        ({"workflow_run_id": "123"}, "run ID"),
+        ({"workflow_run_url": None}, "run URL"),
+    ],
+)
+def test_verifier_rejects_invalid_hosted_provenance(override, message):
+    assert any(message in error for error in _manifest_provenance_errors(_hosted_manifest(**override)))
+
+
+def test_manifest_builder_requires_explicit_pull_request_provenance(monkeypatch):
+    monkeypatch.setenv("GITHUB_REPOSITORY", "Jagadeeshck/DataObs")
+    monkeypatch.setenv("GITHUB_SHA", "a" * 40)
+    monkeypatch.setenv("CERTIFICATION_HEAD_SHA", "a" * 40)
+    monkeypatch.setenv("CERTIFICATION_RUN_ID", "123")
+    monkeypatch.setenv("CERTIFICATION_RUN_URL", "https://github.com/Jagadeeshck/DataObs/actions/runs/123")
+    monkeypatch.setenv("CERTIFICATION_STARTED_AT", "2026-01-01T00:00:00Z")
+    monkeypatch.setenv("CERTIFICATION_EVENT_NAME", "workflow_dispatch")
+    with pytest.raises(ValueError, match="pull_request"):
+        _foundation_provenance(completed_at="2026-01-01T00:00:01Z")
+    monkeypatch.setenv("CERTIFICATION_EVENT_NAME", "pull_request")
+    provenance = _foundation_provenance(completed_at="2026-01-01T00:00:01Z")
+    assert provenance["workflow_run_id"] == 123
+    assert provenance["commit_sha"] == "a" * 40
 
 
 def test_verifier_rejects_artifact_mutated_after_manifest(tmp_path):
@@ -195,7 +248,7 @@ def test_nested_manifest_named_files_are_ordinary_hashed_artifacts(tmp_path):
         artifacts.append(
             {"path": path.relative_to(tmp_path).as_posix(), "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
         )
-    encoded = json.dumps({"artifacts": artifacts})
+    encoded = json.dumps(_hosted_manifest(artifacts=artifacts))
     (tmp_path / "certification-evidence.json").write_text(encoded)
     (tmp_path / "manifest.json").write_text(encoded)
     verify = ROOT / "scripts/certification/verify_artifacts.py"

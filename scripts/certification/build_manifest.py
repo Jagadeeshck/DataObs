@@ -32,6 +32,53 @@ SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 SUPPORTED_REPORT_SCHEMAS = {"1.0"}
 
 
+def _aware_timestamp(value: str | None, field: str) -> datetime:
+    if not value or not isinstance(value, str):
+        raise ValueError(f"{field} must be a non-empty timezone-aware timestamp")
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise ValueError(f"{field} must be a valid timezone-aware timestamp") from exc
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        raise ValueError(f"{field} must be a timezone-aware timestamp")
+    return parsed
+
+
+def _foundation_provenance(*, completed_at: str) -> dict[str, object]:
+    event = os.getenv("CERTIFICATION_EVENT_NAME")
+    if event != "pull_request":
+        raise ValueError("foundation certification requires workflow_event=pull_request")
+    run_id_text = os.getenv("CERTIFICATION_RUN_ID", "")
+    try:
+        run_id = int(run_id_text)
+    except ValueError as exc:
+        raise ValueError("workflow run ID must be a positive integer") from exc
+    if run_id <= 0:
+        raise ValueError("workflow run ID must be a positive integer")
+    repository = os.getenv("GITHUB_REPOSITORY", "Jagadeeshck/DataObs")
+    expected_url = f"https://github.com/{repository}/actions/runs/{run_id}"
+    run_url = os.getenv("CERTIFICATION_RUN_URL")
+    if run_url != expected_url:
+        raise ValueError("workflow run URL must identify this repository Actions run")
+    github_sha = os.getenv("GITHUB_SHA", "")
+    head_sha = os.getenv("CERTIFICATION_HEAD_SHA", "")
+    if not SHA_RE.fullmatch(github_sha) or head_sha != github_sha:
+        raise ValueError("certification head SHA must match GITHUB_SHA")
+    started_at = os.getenv("CERTIFICATION_STARTED_AT")
+    start = _aware_timestamp(started_at, "started_at")
+    complete = _aware_timestamp(completed_at, "completed_at")
+    if start > complete:
+        raise ValueError("certification timestamps are reversed")
+    return {
+        "workflow_event": event,
+        "workflow_run_id": run_id,
+        "workflow_run_url": run_url,
+        "commit_sha": head_sha,
+        "started_at": started_at,
+        "completed_at": completed_at,
+    }
+
+
 def _junit_summary(path: Path) -> dict:
     root = ElementTree.parse(path).getroot()
     suites = [root] if root.tag == "testsuite" else list(root.iter("testsuite"))
@@ -258,8 +305,11 @@ def main() -> int:
                     "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
                 }
             )
-    run_id = os.getenv("GITHUB_RUN_ID")
     now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    foundation_provenance = (
+        _foundation_provenance(completed_at=now) if profile == DATA_PRODUCT_RUNTIME_FOUNDATION_PROFILE else {}
+    )
+    run_id = os.getenv("GITHUB_RUN_ID")
     doc = {
         "schema_version": "1.0",
         "certification_profile": profile,
@@ -308,6 +358,7 @@ def main() -> int:
         "junit": junit,
         "artifacts": artifacts,
     }
+    doc.update(foundation_provenance)
     encoded = json.dumps(doc, indent=2) + "\n"
     # Keep the historical generic filename while the Data Product workflow
     # publishes the required resource-specific manifest.

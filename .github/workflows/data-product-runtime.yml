@@ -115,13 +115,19 @@ jobs:
       - uses: actions/upload-artifact@v4
         with: {name: data-product-foundation-security, path: artifacts/foundation}
   data-product-foundation-evidence:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     needs: [data-product-reconciliation-contracts, data-product-reconciliation-unit, data-product-foundation-elasticsearch, data-product-foundation-security]
     env:
       CERTIFICATION_JOB_RESULTS: >-
         {"data-product-reconciliation-contracts":"${{ needs.data-product-reconciliation-contracts.result }}","data-product-reconciliation-unit":"${{ needs.data-product-reconciliation-unit.result }}","data-product-foundation-elasticsearch":"${{ needs.data-product-foundation-elasticsearch.result }}","data-product-foundation-security":"${{ needs.data-product-foundation-security.result }}"}
       CERTIFICATION_RETENTION_DAYS: '30'
+      CERTIFICATION_EVENT_NAME: pull_request
       CERTIFICATION_STARTED_AT: ${{ github.event.pull_request.created_at }}
+      CERTIFICATION_RUN_ID: ${{ github.run_id }}
+      CERTIFICATION_RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      CERTIFICATION_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      GITHUB_SHA: ${{ github.event.pull_request.head.sha }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
@@ -138,7 +144,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with: {name: data-product-foundation-evidence, path: artifacts/retained, retention-days: 30}
   data-product-foundation-summary:
-    if: always()
+    if: always() && github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     needs: [data-product-reconciliation-contracts, data-product-reconciliation-unit, data-product-foundation-elasticsearch, data-product-foundation-security, data-product-foundation-evidence]
     steps:
@@ -150,3 +156,17 @@ jobs:
           SECURITY: ${{ needs.data-product-foundation-security.result }}
           EVIDENCE: ${{ needs.data-product-foundation-evidence.result }}
         run: test "$CONTRACTS" = success && test "$UNIT" = success && test "$ELASTICSEARCH" = success && test "$SECURITY" = success && test "$EVIDENCE" = success
+  data-product-foundation-diagnostic-summary:
+    if: always() && github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    needs: [data-product-reconciliation-contracts, data-product-reconciliation-unit, data-product-foundation-elasticsearch, data-product-foundation-security]
+    steps:
+      - name: Require diagnostic producer jobs
+        env:
+          CONTRACTS: ${{ needs.data-product-reconciliation-contracts.result }}
+          UNIT: ${{ needs.data-product-reconciliation-unit.result }}
+          ELASTICSEARCH: ${{ needs.data-product-foundation-elasticsearch.result }}
+          SECURITY: ${{ needs.data-product-foundation-security.result }}
+        run: |
+          echo "Diagnostic only: not certification evidence; not valid for release or thread closure."
+          test "$CONTRACTS" = success && test "$UNIT" = success && test "$ELASTICSEARCH" = success && test "$SECURITY" = success

@@ -35,7 +35,7 @@ jobs:
         with: {ref: '${{ env.DATA_PRODUCT_CERTIFICATION_SHA }}', fetch-depth: 0}
       - uses: actions/setup-python@v5
         with: {python-version: '3.12'}
-      - run: pip install -e '.[dev]'
+      - run: pip install -r requirements.txt pytest black mypy ruff
       - run: mkdir -p artifacts/foundation
       - run: python scripts/check_migration_immutability.py --base-ref origin/main
       - run: python scripts/check_docs_links.py
@@ -57,7 +57,7 @@ jobs:
         with: {ref: '${{ env.DATA_PRODUCT_CERTIFICATION_SHA }}', fetch-depth: 0}
       - uses: actions/setup-python@v5
         with: {python-version: '3.12'}
-      - run: pip install -e '.[dev]'
+      - run: pip install -r requirements.txt pytest black mypy ruff
       - run: mkdir -p artifacts/foundation
       - run: python -m pytest tests/data_products tests/certification -q --junitxml=artifacts/foundation/unit.xml
       - uses: actions/upload-artifact@v4
@@ -84,7 +84,7 @@ jobs:
         with: {ref: '${{ env.DATA_PRODUCT_CERTIFICATION_SHA }}', fetch-depth: 0}
       - uses: actions/setup-python@v5
         with: {python-version: '3.12'}
-      - run: pip install -e '.[dev]'
+      - run: pip install -r requirements.txt pytest black mypy ruff
       - run: mkdir -p artifacts/foundation
       - run: RUN_INTEGRATION_TESTS=1 DATA_PRODUCT_ALLOW_DESTRUCTIVE_TEST_RESET=1 DATA_PRODUCT_CERTIFICATION_PROFILE=data-product-runtime-foundation DATA_PRODUCT_EVIDENCE_DIR=artifacts/foundation ELASTICSEARCH_URL=http://127.0.0.1:9200 python -m pytest tests/integration/data_products/test_migrations_elasticsearch.py -q --junitxml=artifacts/foundation/migrations.xml
       - run: RUN_INTEGRATION_TESTS=1 DATA_PRODUCT_CERTIFICATION_PROFILE=data-product-runtime-foundation ELASTICSEARCH_URL=http://127.0.0.1:9200 python -m pytest tests/integration/data_products/test_membership_dependency_elasticsearch.py::test_real_elasticsearch_membership_dependency_profile_is_selected -q
@@ -113,7 +113,7 @@ jobs:
         with: {ref: '${{ env.DATA_PRODUCT_CERTIFICATION_SHA }}', fetch-depth: 0}
       - uses: actions/setup-python@v5
         with: {python-version: '3.12'}
-      - run: pip install -e '.[dev]'
+      - run: pip install -r requirements.txt pytest black mypy ruff
       - run: mkdir -p artifacts/foundation
       - run: ELASTICSEARCH_URL=http://127.0.0.1:9200 ./bin/dataobs elastic apply
       - run: RUN_INTEGRATION_TESTS=1 DATA_PRODUCT_CERTIFICATION_PROFILE=data-product-runtime-foundation ELASTICSEARCH_URL=http://127.0.0.1:9200 python -m pytest tests/integration/data_products/test_membership_dependency_elasticsearch.py::test_real_elasticsearch_membership_dependency_profile_is_selected -q

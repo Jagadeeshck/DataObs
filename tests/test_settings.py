@@ -24,12 +24,12 @@ def test_env_var_override(monkeypatch):
 
 def test_dataobs_config_yaml_loading(monkeypatch, tmp_path):
     cfg = tmp_path / "cfg.yaml"
-    cfg.write_text(textwrap.dedent('''
+    cfg.write_text(textwrap.dedent("""
     api:
       port: 8123
     tenant:
       id: yaml-tenant
-    '''))
+    """))
     monkeypatch.setenv("DATAOBS_CONFIG", str(cfg))
     settings = load_settings()
     assert settings.port == 8123
@@ -71,7 +71,15 @@ def test_poc_mode_compatibility(monkeypatch):
 
 def test_app_can_build_with_injected_settings():
     from src.api.app import create_app
-    from src.config.settings import APISettings, AppSettings, AuthSettings, ElasticsearchSettings, ObservabilitySettings, RuntimeSettings, TenantSettings
+    from src.config.settings import (
+        APISettings,
+        AppSettings,
+        AuthSettings,
+        ElasticsearchSettings,
+        ObservabilitySettings,
+        RuntimeSettings,
+        TenantSettings,
+    )
 
     settings = AppSettings(
         runtime=RuntimeSettings(env="test"),

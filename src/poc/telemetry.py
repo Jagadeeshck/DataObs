@@ -19,6 +19,7 @@ Environment variables
   OTEL_EXPORTER_OTLP_ENDPOINT  Optional override; only honoured when
                                 OTEL_SDK_DISABLED is not "true".
 """
+
 from __future__ import annotations
 
 import logging
@@ -44,6 +45,7 @@ try:
     from opentelemetry.sdk.resources import Resource
     from opentelemetry.sdk.trace import TracerProvider
     from opentelemetry.sdk.trace.export import BatchSpanProcessor
+
     _OTEL_AVAILABLE = True
 except ImportError:
     _OTEL_AVAILABLE = False
@@ -166,5 +168,6 @@ class TelemetryEmitter:
             self.emit_log(stage_name, "stage_failed", error=str(exc), elapsed_ms=elapsed_ms, **attrs)
             if span_ctx:
                 import sys
+
                 span_ctx.__exit__(*sys.exc_info())
             raise

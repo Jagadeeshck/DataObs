@@ -29,20 +29,20 @@ import socket
 import uuid
 
 from opentelemetry import metrics, trace
+
+# ── Logging instrumentation ──────────────────────────────────────────────────
+from opentelemetry._logs import set_logger_provider
+from opentelemetry.exporter.otlp.proto.grpc._log_exporter import OTLPLogExporter
 from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.sdk._logs import LoggerProvider
+from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
 from opentelemetry.sdk.resources import OTELResourceDetector, Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.sdk.trace.sampling import ParentBased, TraceIdRatioBased
-
-# ── Logging instrumentation ──────────────────────────────────────────────────
-from opentelemetry._logs import set_logger_provider
-from opentelemetry.exporter.otlp.proto.grpc._log_exporter import OTLPLogExporter
-from opentelemetry.sdk._logs import LoggerProvider
-from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
 
 
 def _build_resource() -> Resource:
@@ -59,8 +59,7 @@ def _build_resource() -> Resource:
     # with older Kibana/ES dashboards and Grafana data sources.
     deploy_env = os.getenv("DEPLOY_ENV", os.getenv("DEPLOYMENT_ENVIRONMENT", "production"))
     service_instance_id = os.getenv(
-        "POD_NAME",
-        os.getenv("ECS_TASK_ID", f"{os.getenv('OTEL_SERVICE_NAME', 'dataobs')}-{uuid.uuid4().hex[:8]}")
+        "POD_NAME", os.getenv("ECS_TASK_ID", f"{os.getenv('OTEL_SERVICE_NAME', 'dataobs')}-{uuid.uuid4().hex[:8]}")
     )
 
     base_attributes = {
@@ -70,28 +69,23 @@ def _build_resource() -> Resource:
         "service.version": os.getenv("OTEL_SERVICE_VERSION", "0.0.0"),
         "service.namespace": os.getenv("SERVICE_NAMESPACE", "dataobs"),
         "service.instance.id": service_instance_id,
-
         # ── Deployment ────────────────────────────────────────────────────────
         # https://opentelemetry.io/docs/specs/semconv/resource/deployment-environment/
-        "deployment.environment.name": deploy_env,   # canonical (semconv 1.24+)
-        "deployment.environment": deploy_env,        # back-compat alias
-
+        "deployment.environment.name": deploy_env,  # canonical (semconv 1.24+)
+        "deployment.environment": deploy_env,  # back-compat alias
         # ── Process / runtime ─────────────────────────────────────────────────
         # https://opentelemetry.io/docs/specs/semconv/resource/process/
         "process.pid": os.getpid(),
         "process.runtime.name": "CPython",
         "process.runtime.version": f"{os.sys.version_info.major}.{os.sys.version_info.minor}.{os.sys.version_info.micro}",
-
         # ── Host ─────────────────────────────────────────────────────────────
         # https://opentelemetry.io/docs/specs/semconv/resource/host/
         "host.name": socket.gethostname(),
-
         # ── Telemetry SDK ─────────────────────────────────────────────────────
         # (automatically set by the SDK — listed here for documentation)
         # "telemetry.sdk.name": "opentelemetry",
         # "telemetry.sdk.language": "python",
         # "telemetry.sdk.version": <SDK version>,
-
         # ── DataObs custom attributes (dataobs.* namespace) ───────────────────
         "dataobs.product": "dataobs",
         "dataobs.version": os.getenv("DATAOBS_VERSION", "1.0.0"),

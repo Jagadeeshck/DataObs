@@ -5,6 +5,7 @@ DataObs API can receive OpenLineage events without coupling ingestion to a
 specific OpenLineage client release. Unknown facets are preserved verbatim and
 stored using Elasticsearch ``flattened`` mappings.
 """
+
 from __future__ import annotations
 
 import hashlib

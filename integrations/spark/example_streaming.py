@@ -19,6 +19,7 @@ Usage::
 
 Resolves: https://github.com/Jagadeeshck/DataObs/issues/27
 """
+
 from __future__ import annotations
 
 import os
@@ -28,12 +29,12 @@ import time
 # Allow running directly without installing as a package.
 sys.path.insert(0, os.path.dirname(__file__))
 
+from opentelemetry import metrics, trace
 from otel_spark import (
     OTelSparkListener,
     instrument_quality_check,
     setup_spark_otel_provider,
 )
-from opentelemetry import metrics, trace
 
 _tracer = trace.get_tracer("dataobs.spark.streaming")
 _meter = metrics.get_meter("dataobs.spark.streaming")
@@ -76,15 +77,11 @@ def _make_batch_processor(max_null_pct: float = 5.0):
             _batch_records.add(row_count, {"batch.id": str(batch_id)})
 
             # Quality gate ─────────────────────────────────────────────────
-            with instrument_quality_check(
-                "null_check", "orders_stream", column="amount"
-            ) as qspan:
+            with instrument_quality_check("null_check", "orders_stream", column="amount") as qspan:
                 if row_count > 0:
-                    null_count: int = (
-                        batch_df.filter(  # type: ignore[attr-defined]
-                            batch_df.amount.isNull()  # type: ignore[attr-defined]
-                        ).count()
-                    )
+                    null_count: int = batch_df.filter(  # type: ignore[attr-defined]
+                        batch_df.amount.isNull()  # type: ignore[attr-defined]
+                    ).count()
                     null_pct = round(null_count / row_count * 100, 2)
                 else:
                     null_pct = 0.0
@@ -93,11 +90,7 @@ def _make_batch_processor(max_null_pct: float = 5.0):
                 qspan.set_attribute("quality.check.status", status)
 
             # Write to sink ─────────────────────────────────────────────────
-            (
-                batch_df.write.mode("append").parquet(  # type: ignore[attr-defined]
-                    "/tmp/dataobs-streaming-output"
-                )
-            )
+            (batch_df.write.mode("append").parquet("/tmp/dataobs-streaming-output"))  # type: ignore[attr-defined]
 
             elapsed_ms = int((time.monotonic() - t0) * 1000)
             span.set_attribute("spark.streaming.batch.duration_ms", elapsed_ms)
@@ -117,7 +110,8 @@ def run_streaming(spark: object, await_termination: bool = True) -> object:
     Returns:
         The active ``StreamingQuery`` (useful in tests).
     """
-    from pyspark.sql import functions as F, types as T  # type: ignore[import]
+    from pyspark.sql import functions as F  # type: ignore[import]
+    from pyspark.sql import types as T
 
     bootstrap = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
     topic = os.getenv("KAFKA_TOPIC", "orders")
@@ -136,9 +130,7 @@ def run_streaming(spark: object, await_termination: bool = True) -> object:
         .option("subscribe", topic)
         .option("startingOffsets", "latest")
         .load()
-        .select(
-            F.from_json(F.col("value").cast("string"), schema).alias("data")
-        )
+        .select(F.from_json(F.col("value").cast("string"), schema).alias("data"))
         .select("data.*")
     )
 
@@ -168,9 +160,7 @@ def main() -> None:
     )
 
     sc = spark.sparkContext
-    sc._jvm.SparkContext.getOrCreate().addSparkListener(  # type: ignore[attr-defined]
-        OTelSparkListener()
-    )
+    sc._jvm.SparkContext.getOrCreate().addSparkListener(OTelSparkListener())  # type: ignore[attr-defined]
 
     try:
         run_streaming(spark)

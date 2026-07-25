@@ -18,7 +18,7 @@ import sqlalchemy
 from elasticsearch import Elasticsearch
 from opentelemetry import metrics, trace
 from opentelemetry.trace import Status, StatusCode
-from tenacity import retry, stop_after_attempt, wait_exponential, before_sleep_log
+from tenacity import before_sleep_log, retry, stop_after_attempt, wait_exponential
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +39,7 @@ freshness_breach_counter = meter.create_counter(
 # ── SQL identifier validation ──────────────────────────────────────────────────
 # Allows only alphanumeric, underscore, and dot (for schema.table notation).
 # This prevents SQL injection via config-supplied table/column names.
-_IDENTIFIER_RE = re.compile(r'^[A-Za-z_][A-Za-z0-9_.]*$')
+_IDENTIFIER_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_.]*$")
 
 
 def _validate_sql_identifier(value: str, label: str) -> str:
@@ -55,9 +55,9 @@ def _validate_sql_identifier(value: str, label: str) -> str:
 @dataclass
 class FreshnessConfig:
     dataset_name: str
-    source_type: str                    # rds | s3 | glue | athena
+    source_type: str  # rds | s3 | glue | athena
     max_age_minutes: int
-    severity: str = "high"             # critical | high | medium | low
+    severity: str = "high"  # critical | high | medium | low
     partition_column: Optional[str] = None
     timestamp_column: Optional[str] = None
     connection_string: Optional[str] = None
@@ -170,12 +170,14 @@ class FreshnessMonitor:
                 if is_stale:
                     freshness_breach_counter.add(1, attrs)
                     span.set_status(
-                        Status(StatusCode.ERROR,
-                               f"Freshness SLA breached: {age_seconds:.0f}s > {max_age_seconds:.0f}s")
+                        Status(StatusCode.ERROR, f"Freshness SLA breached: {age_seconds:.0f}s > {max_age_seconds:.0f}s")
                     )
                     logger.error(
                         "FRESHNESS BREACH: %s | age=%.1fm | max=%.1fm | severity=%s",
-                        config.dataset_name, age_seconds / 60, config.max_age_minutes, config.severity,
+                        config.dataset_name,
+                        age_seconds / 60,
+                        config.max_age_minutes,
+                        config.severity,
                     )
                 else:
                     logger.info("Freshness OK: %s | age=%.1fm", config.dataset_name, age_seconds / 60)
@@ -254,20 +256,16 @@ class FreshnessMonitor:
             # --- Security: validate identifiers before string interpolation ---
             raw_table = config.dataset_name.split(".")[-1]
             table_name = _validate_sql_identifier(raw_table, "table_name")
-            ts_col = _validate_sql_identifier(
-                config.timestamp_column or "updated_at", "timestamp_column"
-            )
+            ts_col = _validate_sql_identifier(config.timestamp_column or "updated_at", "timestamp_column")
             # -------------------------------------------------------------------
 
             engine = sqlalchemy.create_engine(config.connection_string)
             with engine.connect() as conn:
-                result = conn.execute(
-                    sqlalchemy.text(f"SELECT MAX({ts_col}) FROM {table_name}")
-                )
+                result = conn.execute(sqlalchemy.text(f"SELECT MAX({ts_col}) FROM {table_name}"))
                 row = result.fetchone()
                 if row and row[0]:
                     dt = row[0]
-                    if hasattr(dt, 'tzinfo') and dt.tzinfo is None:
+                    if hasattr(dt, "tzinfo") and dt.tzinfo is None:
                         dt = dt.replace(tzinfo=timezone.utc)
                     return dt
         except ValueError:

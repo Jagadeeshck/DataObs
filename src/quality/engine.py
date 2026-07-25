@@ -16,6 +16,7 @@ OTEL_EXPORTER_OTLP_ENDPOINT  OTLP gRPC endpoint (default: http://localhost:4317)
 OTEL_SERVICE_NAME       OTel service name (default: dataobs-quality)
 LOG_LEVEL               Python log level (default: INFO)
 """
+
 from __future__ import annotations
 
 import logging
@@ -54,15 +55,14 @@ logger = logging.getLogger("dataobs.engine")
 # OTel bootstrap
 # ---------------------------------------------------------------------------
 
+
 def _setup_otel(service_name: str, otlp_endpoint: str) -> None:
     """Initialise SDK-level TracerProvider and MeterProvider."""
     resource = Resource.create({"service.name": service_name})
 
     # Traces
     tracer_provider = TracerProvider(resource=resource)
-    tracer_provider.add_span_processor(
-        BatchSpanProcessor(OTLPSpanExporter(endpoint=otlp_endpoint, insecure=True))
-    )
+    tracer_provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter(endpoint=otlp_endpoint, insecure=True)))
     trace.set_tracer_provider(tracer_provider)
 
     # Metrics
@@ -78,6 +78,7 @@ def _setup_otel(service_name: str, otlp_endpoint: str) -> None:
 # Config loader
 # ---------------------------------------------------------------------------
 
+
 def _load_config(path: str) -> Dict[str, Any]:
     config_path = Path(path)
     if not config_path.exists():
@@ -90,6 +91,7 @@ def _load_config(path: str) -> Dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Elasticsearch client factory
 # ---------------------------------------------------------------------------
+
 
 def _make_es_client(cfg: Dict[str, Any]) -> Elasticsearch:
     es_cfg = cfg.get("elasticsearch", {})
@@ -111,6 +113,7 @@ def _make_es_client(cfg: Dict[str, Any]) -> Elasticsearch:
 # ---------------------------------------------------------------------------
 # Job runner — called by APScheduler for each dataset rule set
 # ---------------------------------------------------------------------------
+
 
 def _run_checks_for_dataset(
     dataset: str,
@@ -152,7 +155,10 @@ def _run_checks_for_dataset(
                     failure_counter.add(1, {"dataset": dataset, "check_type": check_type, "severity": result.severity})
                     logger.warning(
                         "FAIL — dataset: %s  check: %s  severity: %s  details: %s",
-                        dataset, check_type, result.severity, result.details,
+                        dataset,
+                        check_type,
+                        result.severity,
+                        result.details,
                     )
 
                 # Index result to Elasticsearch
@@ -168,6 +174,7 @@ def _run_checks_for_dataset(
 # ---------------------------------------------------------------------------
 # Scheduler setup
 # ---------------------------------------------------------------------------
+
 
 def _register_jobs(
     scheduler: BlockingScheduler,
@@ -206,6 +213,7 @@ def _register_jobs(
 # Graceful shutdown
 # ---------------------------------------------------------------------------
 
+
 def _install_signal_handlers(scheduler: BlockingScheduler) -> None:
     def _shutdown(signum, frame):
         logger.info("Received signal %s — shutting down scheduler …", signum)
@@ -219,6 +227,7 @@ def _install_signal_handlers(scheduler: BlockingScheduler) -> None:
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
+
 
 def main() -> None:
     config_path = os.getenv("DATAOBS_CONFIG", "config/dataobs.yaml")

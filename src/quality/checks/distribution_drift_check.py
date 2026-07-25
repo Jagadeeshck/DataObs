@@ -3,6 +3,7 @@ Distribution drift detection with dynamic, self-calibrating thresholds.
 
 Resolves: https://github.com/Jagadeeshck/DataObs/issues/24
 """
+
 from __future__ import annotations
 
 import math
@@ -173,9 +174,7 @@ class DistributionDriftCheck(BaseCheck):
             )
 
     # ------------------------------------------------------------------
-    def _load_or_build_baseline(
-        self, values: list[float], null_rate: float
-    ) -> DriftBaseline:
+    def _load_or_build_baseline(self, values: list[float], null_rate: float) -> DriftBaseline:
         if self.baseline_store:
             stored = self.baseline_store.get(self.table, self.column)
             if stored:
@@ -202,15 +201,12 @@ class DistributionDriftCheck(BaseCheck):
             return 0.0 if math.isclose(current, baseline_mean) else float("inf")
         return abs(current - baseline_mean) / baseline_std
 
-    def _update_baseline(
-        self, baseline: DriftBaseline, values: list[float], null_rate: float
-    ) -> None:
+    def _update_baseline(self, baseline: DriftBaseline, values: list[float], null_rate: float) -> None:
         if self.baseline_store:
             alpha = 0.1  # exponential moving average smoothing
             baseline.mean = (1 - alpha) * baseline.mean + alpha * statistics.mean(values)
             baseline.std = max(
-                (1 - alpha) * baseline.std
-                + alpha * (statistics.stdev(values) if len(values) > 1 else 0.0),
+                (1 - alpha) * baseline.std + alpha * (statistics.stdev(values) if len(values) > 1 else 0.0),
                 1e-9,
             )
             baseline.null_rate = (1 - alpha) * baseline.null_rate + alpha * null_rate

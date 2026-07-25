@@ -3,6 +3,7 @@ S3 event-driven Lambda — instrumented with @otel_lambda.
 
 Resolves: https://github.com/Jagadeeshck/DataObs/issues/28
 """
+
 from __future__ import annotations
 
 from opentelemetry import trace

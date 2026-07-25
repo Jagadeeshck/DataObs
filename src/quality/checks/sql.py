@@ -27,8 +27,7 @@ def validate_sql_identifier(value: str, label: str = "identifier") -> str:
 
     if not isinstance(value, str) or not _IDENTIFIER_RE.fullmatch(value):
         raise ValueError(
-            f"Invalid SQL identifier for {label!r}: {value!r}. "
-            "Use only letters, digits, underscores, and dots."
+            f"Invalid SQL identifier for {label!r}: {value!r}. " "Use only letters, digits, underscores, and dots."
         )
     return value
 

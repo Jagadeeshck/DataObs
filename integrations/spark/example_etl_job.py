@@ -16,6 +16,7 @@ Usage::
 
 Resolves: https://github.com/Jagadeeshck/DataObs/issues/27
 """
+
 from __future__ import annotations
 
 import os
@@ -24,13 +25,13 @@ import sys
 # Allow running directly without installing as a package.
 sys.path.insert(0, os.path.dirname(__file__))
 
+from opentelemetry import trace
 from otel_spark import (
     OTelSparkListener,
     instrument_dataframe,
     instrument_quality_check,
     setup_spark_otel_provider,
 )
-from opentelemetry import trace
 
 
 def _null_pct(df: object, column: str) -> float:
@@ -46,9 +47,7 @@ def _null_pct(df: object, column: str) -> float:
 
 def _run_quality_checks(df: object, max_null_pct: float = 5.0) -> None:
     """Run quality gate checks on *df* and record results as OTel spans."""
-    with instrument_quality_check(
-        "null_check", "orders", column="customer_id"
-    ) as qspan:
+    with instrument_quality_check("null_check", "orders", column="customer_id") as qspan:
         null_pct = _null_pct(df, "customer_id")
         status = "PASS" if null_pct < max_null_pct else "FAIL"
         qspan.set_attribute("quality.check.status", status)
@@ -82,9 +81,7 @@ def run_pipeline(spark: object) -> None:
             result = raw_df.filter("id % 2 == 0").filter("amount > 50")
 
         # ── Write ───────────────────────────────────────────────────────────
-        with tracer.start_as_current_span(
-            "etl.write", attributes={"etl.output.format": "parquet"}
-        ):
+        with tracer.start_as_current_span("etl.write", attributes={"etl.output.format": "parquet"}):
             result = instrument_dataframe(result, "write", "orders_clean")
             result.write.mode("overwrite").parquet("/tmp/dataobs-etl-output")
 
@@ -105,9 +102,7 @@ def main() -> None:
 
     # Register SparkListener on the driver.
     sc = spark.sparkContext
-    sc._jvm.SparkContext.getOrCreate().addSparkListener(  # type: ignore[attr-defined]
-        OTelSparkListener()
-    )
+    sc._jvm.SparkContext.getOrCreate().addSparkListener(OTelSparkListener())  # type: ignore[attr-defined]
 
     try:
         run_pipeline(spark)
@@ -117,4 +112,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

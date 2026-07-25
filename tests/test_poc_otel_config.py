@@ -11,6 +11,7 @@ These tests exist to prevent regressions where:
 All tests are designed to run without a running Docker environment,
 without an OTel collector, and without PySpark installed.
 """
+
 from __future__ import annotations
 
 import importlib
@@ -140,6 +141,7 @@ def test_no_otel_bootstrap_log_message_in_default_mode(monkeypatch, caplog) -> N
 
     with caplog.at_level(logging.DEBUG, logger="src.poc.telemetry"):
         from src.poc.telemetry import TelemetryEmitter
+
         TelemetryEmitter(service_name="test", otlp_endpoint=None)
 
     combined = " ".join(caplog.messages).lower()

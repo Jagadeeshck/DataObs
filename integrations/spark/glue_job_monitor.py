@@ -1,6 +1,7 @@
 """
 AWS Glue job-run monitor with OpenTelemetry spans/metrics and failure alert routing.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -29,17 +30,19 @@ from src.alerting.slack import SlackClient, SlackConfig, SlackEvent
 logger = logging.getLogger(__name__)
 
 _CRITICAL_PD_CATEGORIES = frozenset({"OUT_OF_MEMORY_ERROR", "UNCLASSIFIED_SPARK_ERROR"})
-_VALID_GLUE_ERROR_CATEGORIES = frozenset({
-    "OUT_OF_MEMORY_ERROR",
-    "PERMISSION_ERROR",
-    "CONNECTION_ERROR",
-    "RESOURCE_NOT_FOUND_ERROR",
-    "THROTTLING_ERROR",
-    "SYNTAX_ERROR",
-    "GLUE_OPERATION_TIMEOUT_ERROR",
-    "S3_ERROR",
-    "UNCLASSIFIED_SPARK_ERROR",
-})
+_VALID_GLUE_ERROR_CATEGORIES = frozenset(
+    {
+        "OUT_OF_MEMORY_ERROR",
+        "PERMISSION_ERROR",
+        "CONNECTION_ERROR",
+        "RESOURCE_NOT_FOUND_ERROR",
+        "THROTTLING_ERROR",
+        "SYNTAX_ERROR",
+        "GLUE_OPERATION_TIMEOUT_ERROR",
+        "S3_ERROR",
+        "UNCLASSIFIED_SPARK_ERROR",
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -280,7 +283,9 @@ class GlueJobMonitor:
                 span.set_status(Status(StatusCode.ERROR))
                 span.set_attribute("error.code", error_category)
                 self._failure_count.add(1, {"aws.glue.job.name": job_name, "aws.glue.error_category": error_category})
-                self._dispatch_failed_alert(job_name=job_name, run_id=run_id, error_category=error_category, attrs=attrs)
+                self._dispatch_failed_alert(
+                    job_name=job_name, run_id=run_id, error_category=error_category, attrs=attrs
+                )
 
     def _emit_metrics(self, run: dict[str, Any], attrs: dict[str, Any], elapsed_time_ms: float) -> None:
         labels = {"aws.glue.job.name": attrs["aws.glue.job.name"], "aws.glue.job.run_id": attrs["aws.glue.job.run_id"]}
@@ -301,18 +306,36 @@ class GlueJobMonitor:
 
     def _emit_threshold_events(self, span: Any, run: dict[str, Any], attrs: dict[str, Any]) -> None:
         values = {
-            "glue.driver.memory.heap.used_percentage": _extract_number(run, "glue.driver.memory.heap.used_percentage", default=0.0),
+            "glue.driver.memory.heap.used_percentage": _extract_number(
+                run, "glue.driver.memory.heap.used_percentage", default=0.0
+            ),
             "glue.driver.system.cpuSystemLoad": _extract_number(run, "glue.driver.system.cpuSystemLoad", default=0.0),
             "glue.driver.skewness.job": _extract_number(run, "glue.driver.skewness.job", default=0.0),
             "glue.driver.workerUtilization": _extract_number(run, "glue.driver.workerUtilization", default=0.0),
             "glue.driver.disk.used_percentage": _extract_number(run, "glue.driver.disk.used_percentage", default=0.0),
         }
         checks = (
-            ("glue.driver.memory.heap.used_percentage", values["glue.driver.memory.heap.used_percentage"], self._thresholds.heap_used_pct_critical),
-            ("glue.driver.system.cpuSystemLoad", values["glue.driver.system.cpuSystemLoad"], self._thresholds.cpu_load_warn),
+            (
+                "glue.driver.memory.heap.used_percentage",
+                values["glue.driver.memory.heap.used_percentage"],
+                self._thresholds.heap_used_pct_critical,
+            ),
+            (
+                "glue.driver.system.cpuSystemLoad",
+                values["glue.driver.system.cpuSystemLoad"],
+                self._thresholds.cpu_load_warn,
+            ),
             ("glue.driver.skewness.job", values["glue.driver.skewness.job"], self._thresholds.skewness_warn),
-            ("glue.driver.workerUtilization", values["glue.driver.workerUtilization"], self._thresholds.worker_utilization_warn),
-            ("glue.driver.disk.used_percentage", values["glue.driver.disk.used_percentage"], self._thresholds.disk_used_pct_warn),
+            (
+                "glue.driver.workerUtilization",
+                values["glue.driver.workerUtilization"],
+                self._thresholds.worker_utilization_warn,
+            ),
+            (
+                "glue.driver.disk.used_percentage",
+                values["glue.driver.disk.used_percentage"],
+                self._thresholds.disk_used_pct_warn,
+            ),
         )
         for metric_name, observed, threshold in checks:
             if observed >= threshold:

@@ -30,7 +30,8 @@ import os
 import sys
 
 import boto3
-from elasticsearch import Elasticsearch, exceptions as es_exceptions
+from elasticsearch import Elasticsearch
+from elasticsearch import exceptions as es_exceptions
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 log = logging.getLogger("dataobs.bootstrap.tenant")
@@ -59,16 +60,14 @@ def create_tenant_role(es: Elasticsearch, tenant_id: str) -> None:
         indices=[
             {
                 "names": [
-                    f"dataobs-quality-results-*",
-                    f"dataobs-lineage-*",
-                    f"dataobs-freshness-*",
-                    f"dataobs-traces-*",
-                    f"dataobs-metrics-*",
+                    "dataobs-quality-results-*",
+                    "dataobs-lineage-*",
+                    "dataobs-freshness-*",
+                    "dataobs-traces-*",
+                    "dataobs-metrics-*",
                 ],
                 "privileges": ["read", "view_index_metadata"],
-                "query": json.dumps({
-                    "term": {"dataobs.tenant_id": tenant_id}
-                }),
+                "query": json.dumps({"term": {"dataobs.tenant_id": tenant_id}}),
             }
         ],
     )
@@ -138,9 +137,7 @@ def create_ccr_auto_follow(es: Elasticsearch, tenant_id: str) -> None:
             "dataobs-freshness-*",
         ],
         follow_index_pattern="{{leader_index}}-replicated",
-        settings={
-            "index.number_of_replicas": 0  # Single-node tenant, no replicas needed
-        },
+        settings={"index.number_of_replicas": 0},  # Single-node tenant, no replicas needed
     )
     log.info(
         "CCR auto-follow pattern 'dataobs-quality-%s' registered (remote=dataobs-server)",
@@ -160,8 +157,9 @@ def store_api_key_in_secrets_manager(tenant_id: str, api_key: str, region: str) 
         )
         log.info("API key stored in Secrets Manager: %s", secret_name)
     except client.exceptions.ResourceExistsException:
-        client.update_secret(SecretId=secret_name,
-                             SecretString=json.dumps({"api_key": api_key, "tenant_id": tenant_id}))
+        client.update_secret(
+            SecretId=secret_name, SecretString=json.dumps({"api_key": api_key, "tenant_id": tenant_id})
+        )
         log.info("API key updated in Secrets Manager: %s", secret_name)
 
 

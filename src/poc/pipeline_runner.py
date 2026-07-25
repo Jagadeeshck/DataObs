@@ -46,15 +46,18 @@ try:
     from elastic_transport import ConnectionError as ElasticTransportConnectionError
     from elastic_transport import ConnectionTimeout as ElasticTransportConnectionTimeout
 except ImportError:  # pragma: no cover - elasticsearch is optional in tests.
+
     class ElasticTransportConnectionError(Exception):
         pass
 
     class ElasticTransportConnectionTimeout(Exception):
         pass
 
+
 try:
     from py4j.protocol import Py4JError
 except ImportError:  # pragma: no cover - py4j is optional in tests.
+
     class Py4JError(RuntimeError):
         pass
 
@@ -62,6 +65,7 @@ except ImportError:  # pragma: no cover - py4j is optional in tests.
 try:
     from pyspark.errors import PySparkException
 except ImportError:  # pragma: no cover - pyspark is optional in tests.
+
     class PySparkException(RuntimeError):
         pass
 
@@ -270,9 +274,7 @@ class DataObsPipelineRunner:
 
     def _stage_dataset_etl(self) -> list[Dict[str, Any]]:
         if not isinstance(self._resolve_sink(), ElasticsearchPipelineSink):
-            logger.info(
-                "[Pipeline] dataset_etl skipped: Elasticsearch sink not active."
-            )
+            logger.info("[Pipeline] dataset_etl skipped: Elasticsearch sink not active.")
             return []
 
         from src.poc.datasets import resolve_sources
@@ -336,16 +338,13 @@ class DataObsPipelineRunner:
         spark = None
         if not (_module_available("pyspark") and _module_available("pyspark.sql")):
             if mode == "spark":
-                raise RuntimeError(
-                    "Spark mode requested, but PySpark dependencies are unavailable"
-                )
-            logger.warning(
-                "[Pipeline] PySpark not available; running mock transform."
-            )
+                raise RuntimeError("Spark mode requested, but PySpark dependencies are unavailable")
+            logger.warning("[Pipeline] PySpark not available; running mock transform.")
             return self._stage_mock_transform(write_results=True)
 
         from pyspark.sql import SparkSession
         from pyspark.sql import functions as F
+
         from src.poc.spark_instrumentation import SparkApmInstrumentation
 
         try:
@@ -387,9 +386,13 @@ class DataObsPipelineRunner:
                 ):
                     null_count = df_transformed.filter(F.col("value").isNull()).count()
                     row_count = df_transformed.count()
-                    quality_score = 100.0 if null_count == 0 else round(
-                        (1 - null_count / row_count) * 100,
-                        2,
+                    quality_score = (
+                        100.0
+                        if null_count == 0
+                        else round(
+                            (1 - null_count / row_count) * 100,
+                            2,
+                        )
                     )
                     self._apm.label(
                         quality_score=quality_score,
@@ -494,9 +497,7 @@ class DataObsPipelineRunner:
 
     def _stage_observability(self) -> None:
         if not isinstance(self._resolve_sink(), ElasticsearchPipelineSink):
-            logger.info(
-                "[Pipeline] observability skipped: Elasticsearch sink not active."
-            )
+            logger.info("[Pipeline] observability skipped: Elasticsearch sink not active.")
             return
 
         from src.poc.observability_writer import ObservabilityWriter
@@ -642,10 +643,7 @@ class DataObsPipelineRunner:
                 {"source": "record_id", "target": "record_id"},
             ],
         )
-        logger.info(
-            "[Pipeline] Observability docs emitted "
-            "(assets/quality/freshness/volume/schema/lineage/alerts)"
-        )
+        logger.info("[Pipeline] Observability docs emitted " "(assets/quality/freshness/volume/schema/lineage/alerts)")
 
     def run(self) -> Dict[str, Any]:
         self._bootstrap_telemetry()
@@ -654,8 +652,10 @@ class DataObsPipelineRunner:
         scenario = os.environ.get("DATAOBS_DEMO_SCENARIO", "").strip().lower()
         if scenario == "road_safety":
             from pathlib import Path
+
             from src.poc.scenarios.road_safety.generator import generate_scaled
             from src.poc.scenarios.road_safety.pipeline import run_road_safety_scenario
+
             scale = os.environ.get("DATAOBS_DEMO_SCALE", "small").lower()
             run_mode = os.environ.get("DATAOBS_DEMO_RUN_MODE", "good").lower()
             logger.info("[Pipeline][road_safety] DATAOBS_DEMO_SCENARIO=%s", scenario)
@@ -664,7 +664,9 @@ class DataObsPipelineRunner:
             seed_dir = Path("fixtures/poc/road_safety")
             data_dir = Path("/tmp/dataobs/tmp/road_safety") / f"{self.run_id}-{scale}"
             generated = generate_scaled(seed_dir, data_dir, scale=scale)
-            logger.info("[Pipeline][road_safety] Generated fixture files: %s", {k: str(v) for k, v in generated.items()})
+            logger.info(
+                "[Pipeline][road_safety] Generated fixture files: %s", {k: str(v) for k, v in generated.items()}
+            )
             result = run_road_safety_scenario(data_dir, self.run_id, run_mode=run_mode)
 
             outputs = result.get("outputs", {})
@@ -683,6 +685,7 @@ class DataObsPipelineRunner:
 
             if isinstance(self._resolve_sink(), ElasticsearchPipelineSink):
                 from elasticsearch import Elasticsearch
+
                 es = Elasticsearch(ES_HOST, basic_auth=(ES_USER, ES_PASS), verify_certs=False)
                 for index, docs in outputs.items():
                     for d in docs:
@@ -691,13 +694,46 @@ class DataObsPipelineRunner:
                     q_doc = _ensure_scenario_fields(q, self.run_id, run_mode)
                     es.index(index="dataobs-quality", document=q_doc)
                     if q["status"] != "pass":
-                        es.index(index="dataobs-alerts", document=_ensure_scenario_fields({"source": "quality", "severity": "high", "check_name": q["check_name"]}, self.run_id, run_mode))
-                        es.index(index="dataobs-schema", document=_ensure_scenario_fields({"status": "drift", "check_name": q["check_name"]}, self.run_id, run_mode))
-                        es.index(index="dataobs-volume", document=_ensure_scenario_fields({"status": "anomaly", "check_name": q["check_name"]}, self.run_id, run_mode))
-                        es.index(index="dataobs-freshness", document=_ensure_scenario_fields({"status": "stale", "check_name": q["check_name"]}, self.run_id, run_mode))
+                        es.index(
+                            index="dataobs-alerts",
+                            document=_ensure_scenario_fields(
+                                {"source": "quality", "severity": "high", "check_name": q["check_name"]},
+                                self.run_id,
+                                run_mode,
+                            ),
+                        )
+                        es.index(
+                            index="dataobs-schema",
+                            document=_ensure_scenario_fields(
+                                {"status": "drift", "check_name": q["check_name"]}, self.run_id, run_mode
+                            ),
+                        )
+                        es.index(
+                            index="dataobs-volume",
+                            document=_ensure_scenario_fields(
+                                {"status": "anomaly", "check_name": q["check_name"]}, self.run_id, run_mode
+                            ),
+                        )
+                        es.index(
+                            index="dataobs-freshness",
+                            document=_ensure_scenario_fields(
+                                {"status": "stale", "check_name": q["check_name"]}, self.run_id, run_mode
+                            ),
+                        )
                 for m in result["spark_metrics"]:
                     es.index(index="dataobs-spark-metrics", document=_ensure_scenario_fields(m, self.run_id, run_mode))
-                es.index(index="dataobs-lineage", document=_ensure_scenario_fields({"source": "road_safety_raw", "target": "dataobs-rs-accident-facts", "relation": "transformation"}, self.run_id, run_mode))
+                es.index(
+                    index="dataobs-lineage",
+                    document=_ensure_scenario_fields(
+                        {
+                            "source": "road_safety_raw",
+                            "target": "dataobs-rs-accident-facts",
+                            "relation": "transformation",
+                        },
+                        self.run_id,
+                        run_mode,
+                    ),
+                )
             summary["scenario"] = "road_safety"
             summary["scale"] = scale
             summary["run_mode"] = run_mode
@@ -717,9 +753,7 @@ class DataObsPipelineRunner:
                     "service.name": self.SERVICE_NAME,
                 },
             ):
-                summary["etl_datasets"] = len(
-                    self._run_stage("dataset_etl", self._stage_dataset_etl)
-                )
+                summary["etl_datasets"] = len(self._run_stage("dataset_etl", self._stage_dataset_etl))
                 summary["ingested_rows"] = self._run_stage("ingest", self._stage_ingest)
                 summary["transformed_rows"] = self._run_stage(
                     "spark_transform",
@@ -749,6 +783,4 @@ if __name__ == "__main__":
         level=os.environ.get("LOG_LEVEL", "INFO"),
         format="%(asctime)s %(levelname)s %(name)s - %(message)s",
     )
-    DataObsPipelineRunner(
-        tenant=os.environ.get("DATAOBS_TENANT_ID", "poc")
-    ).run()
+    DataObsPipelineRunner(tenant=os.environ.get("DATAOBS_TENANT_ID", "poc")).run()

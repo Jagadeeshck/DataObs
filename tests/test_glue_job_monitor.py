@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-import sys
 import asyncio
+import sys
 from pathlib import Path
 from unittest.mock import MagicMock
-
 
 _SPARK_DIR = Path(__file__).resolve().parents[1] / "integrations" / "spark"
 if str(_SPARK_DIR) not in sys.path:

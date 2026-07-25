@@ -4,6 +4,7 @@ Tests for alerting client payload builders.
 These tests call internal _payload() methods directly so no real webhook
 or API endpoints are hit.
 """
+
 from src.alerting.pagerduty import PagerDutyClient, PagerDutyConfig, PagerDutyEvent
 from src.alerting.slack import SlackClient, SlackConfig, SlackEvent
 
@@ -85,9 +86,7 @@ def test_slack_payload_includes_runbook_in_context_block():
 
 def test_slack_payload_channel_set_from_config():
     client = SlackClient(SlackConfig(webhook_url="https://hooks.slack.test", default_channel="#alerts"))
-    payload = client._payload(
-        SlackEvent(title="Alert", text="msg", severity="low")
-    )
+    payload = client._payload(SlackEvent(title="Alert", text="msg", severity="low"))
     assert payload["channel"] == "#alerts"
 
 

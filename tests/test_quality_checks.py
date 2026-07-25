@@ -9,6 +9,7 @@ Covers:
   - ReferentialIntegrityCheck
   - SchemaCheck
 """
+
 import pytest
 
 sqlalchemy = pytest.importorskip("sqlalchemy")
@@ -20,10 +21,10 @@ from src.quality.checks.schema_check import SchemaCheck
 from src.quality.checks.uniqueness_check import UniquenessCheck
 from src.quality.checks.value_range_check import ValueRangeCheck
 
-
 # ---------------------------------------------------------------------------
 # Fake ES client for SchemaCheck (stores and retrieves schema baselines)
 # ---------------------------------------------------------------------------
+
 
 class _FakeSchemaES:
     """Minimal ES stub for SchemaCheck._get_stored_schema / _store_schema."""
@@ -47,11 +48,12 @@ class _FakeSchemaES:
 # Fake ES client — accepts keyword-argument API (elasticsearch-py 8.x style)
 # ---------------------------------------------------------------------------
 
+
 class _FakeES:
     def __init__(self, metric_values):
         self.metric_values = metric_values
 
-    def search(self, index, **kwargs):          # was: def search(self, index, body)
+    def search(self, index, **kwargs):  # was: def search(self, index, body)
         hits = [{"_source": {"metric_value": v}} for v in self.metric_values]
         return {"hits": {"hits": hits}}
 
@@ -60,12 +62,11 @@ class _FakeES:
 # Shared DB helpers
 # ---------------------------------------------------------------------------
 
+
 def _db_with_orders(rows):
     engine = sqlalchemy.create_engine("sqlite+pysqlite:///:memory:")
     with engine.connect() as conn:
-        conn.execute(sqlalchemy.text(
-            "CREATE TABLE orders (order_id INTEGER, customer_id INTEGER, total_amount REAL)"
-        ))
+        conn.execute(sqlalchemy.text("CREATE TABLE orders (order_id INTEGER, customer_id INTEGER, total_amount REAL)"))
         for row in rows:
             conn.execute(
                 sqlalchemy.text(
@@ -82,12 +83,8 @@ def _db_with_orders_and_customers(order_rows, customer_rows):
     """DB with both orders and customers tables for referential integrity tests."""
     engine = sqlalchemy.create_engine("sqlite+pysqlite:///:memory:")
     with engine.connect() as conn:
-        conn.execute(sqlalchemy.text(
-            "CREATE TABLE orders (order_id INTEGER, customer_id INTEGER)"
-        ))
-        conn.execute(sqlalchemy.text(
-            "CREATE TABLE customers (id INTEGER PRIMARY KEY)"
-        ))
+        conn.execute(sqlalchemy.text("CREATE TABLE orders (order_id INTEGER, customer_id INTEGER)"))
+        conn.execute(sqlalchemy.text("CREATE TABLE customers (id INTEGER PRIMARY KEY)"))
         for row in order_rows:
             conn.execute(
                 sqlalchemy.text("INSERT INTO orders VALUES (:order_id, :customer_id)"),
@@ -106,12 +103,15 @@ def _db_with_orders_and_customers(order_rows, customer_rows):
 # NullCheck
 # ===========================================================================
 
+
 def test_null_check_fails_when_null_pct_exceeds_threshold():
-    engine = _db_with_orders([
-        {"order_id": 1, "customer_id": 10, "total_amount": 5.0},
-        {"order_id": 2, "customer_id": None, "total_amount": 3.0},
-        {"order_id": 3, "customer_id": None, "total_amount": 1.0},
-    ])
+    engine = _db_with_orders(
+        [
+            {"order_id": 1, "customer_id": 10, "total_amount": 5.0},
+            {"order_id": 2, "customer_id": None, "total_amount": 3.0},
+            {"order_id": 3, "customer_id": None, "total_amount": 1.0},
+        ]
+    )
     check = NullCheck()
     result = check.run(
         {
@@ -128,10 +128,12 @@ def test_null_check_fails_when_null_pct_exceeds_threshold():
 
 
 def test_null_check_passes_when_within_threshold():
-    engine = _db_with_orders([
-        {"order_id": 1, "customer_id": 10, "total_amount": 5.0},
-        {"order_id": 2, "customer_id": 20, "total_amount": 3.0},
-    ])
+    engine = _db_with_orders(
+        [
+            {"order_id": 1, "customer_id": 10, "total_amount": 5.0},
+            {"order_id": 2, "customer_id": 20, "total_amount": 3.0},
+        ]
+    )
     check = NullCheck()
     result = check.run(
         {
@@ -150,10 +152,9 @@ def test_null_check_passes_when_within_threshold():
 # RowCountCheck — basic bounds
 # ===========================================================================
 
+
 def test_row_count_check_passes_within_bounds():
-    engine = _db_with_orders([
-        {"order_id": i, "customer_id": i, "total_amount": float(i)} for i in range(50)
-    ])
+    engine = _db_with_orders([{"order_id": i, "customer_id": i, "total_amount": float(i)} for i in range(50)])
     check = RowCountCheck()
     result = check.run(
         {"dataset": "prod.public.orders", "min_rows": 10, "max_rows": 100, "severity": "high"},
@@ -163,9 +164,7 @@ def test_row_count_check_passes_within_bounds():
 
 
 def test_row_count_check_fails_below_minimum():
-    engine = _db_with_orders([
-        {"order_id": 1, "customer_id": 1, "total_amount": 1.0}
-    ])
+    engine = _db_with_orders([{"order_id": 1, "customer_id": 1, "total_amount": 1.0}])
     check = RowCountCheck()
     result = check.run(
         {"dataset": "prod.public.orders", "min_rows": 100, "severity": "high"},
@@ -178,10 +177,9 @@ def test_row_count_check_fails_below_minimum():
 # RowCountCheck — anomaly detection (was deselected due to mock bug, now fixed)
 # ===========================================================================
 
+
 def test_row_count_check_anomaly_detection_flags_large_outlier():
-    engine = _db_with_orders([
-        {"order_id": i, "customer_id": i, "total_amount": float(i)} for i in range(1000)
-    ])
+    engine = _db_with_orders([{"order_id": i, "customer_id": i, "total_amount": float(i)} for i in range(1000)])
     # Historical baseline ≈ 100 rows, std ≈ 2 → 1000 rows is many std devs above mean
     es = _FakeES([100, 105, 98, 102, 99, 101, 103, 97, 100])
     check = RowCountCheck(es_client=es)
@@ -202,9 +200,7 @@ def test_row_count_check_anomaly_detection_flags_large_outlier():
 
 def test_row_count_check_anomaly_detection_passes_within_baseline():
     """Row count within 1 std-dev of historical mean should pass anomaly check."""
-    engine = _db_with_orders([
-        {"order_id": i, "customer_id": i, "total_amount": float(i)} for i in range(100)
-    ])
+    engine = _db_with_orders([{"order_id": i, "customer_id": i, "total_amount": float(i)} for i in range(100)])
     # Historical baseline ≈ 100, std ≈ 2 — 100 rows is exactly on the mean
     es = _FakeES([100, 105, 98, 102, 99, 101, 103, 97, 100])
     check = RowCountCheck(es_client=es)
@@ -226,12 +222,15 @@ def test_row_count_check_anomaly_detection_passes_within_baseline():
 # UniquenessCheck
 # ===========================================================================
 
+
 def test_uniqueness_check_fails_on_duplicates():
-    engine = _db_with_orders([
-        {"order_id": 1, "customer_id": 10, "total_amount": 5.0},
-        {"order_id": 1, "customer_id": 20, "total_amount": 3.0},  # duplicate order_id
-        {"order_id": 3, "customer_id": 30, "total_amount": 1.0},
-    ])
+    engine = _db_with_orders(
+        [
+            {"order_id": 1, "customer_id": 10, "total_amount": 5.0},
+            {"order_id": 1, "customer_id": 20, "total_amount": 3.0},  # duplicate order_id
+            {"order_id": 3, "customer_id": 30, "total_amount": 1.0},
+        ]
+    )
     check = UniquenessCheck()
     result = check.run(
         {"dataset": "prod.public.orders", "columns": ["order_id"], "severity": "critical"},
@@ -241,10 +240,12 @@ def test_uniqueness_check_fails_on_duplicates():
 
 
 def test_uniqueness_check_passes_on_unique_column():
-    engine = _db_with_orders([
-        {"order_id": 1, "customer_id": 10, "total_amount": 5.0},
-        {"order_id": 2, "customer_id": 20, "total_amount": 3.0},
-    ])
+    engine = _db_with_orders(
+        [
+            {"order_id": 1, "customer_id": 10, "total_amount": 5.0},
+            {"order_id": 2, "customer_id": 20, "total_amount": 3.0},
+        ]
+    )
     check = UniquenessCheck()
     result = check.run(
         {"dataset": "prod.public.orders", "columns": ["order_id"], "severity": "critical"},
@@ -257,11 +258,14 @@ def test_uniqueness_check_passes_on_unique_column():
 # ValueRangeCheck
 # ===========================================================================
 
+
 def test_value_range_check_fails_on_out_of_range():
-    engine = _db_with_orders([
-        {"order_id": 1, "customer_id": 10, "total_amount": -50.0},   # negative — below min
-        {"order_id": 2, "customer_id": 20, "total_amount": 5.0},
-    ])
+    engine = _db_with_orders(
+        [
+            {"order_id": 1, "customer_id": 10, "total_amount": -50.0},  # negative — below min
+            {"order_id": 2, "customer_id": 20, "total_amount": 5.0},
+        ]
+    )
     check = ValueRangeCheck()
     result = check.run(
         {
@@ -277,10 +281,12 @@ def test_value_range_check_fails_on_out_of_range():
 
 
 def test_value_range_check_passes_within_range():
-    engine = _db_with_orders([
-        {"order_id": 1, "customer_id": 10, "total_amount": 100.0},
-        {"order_id": 2, "customer_id": 20, "total_amount": 250.0},
-    ])
+    engine = _db_with_orders(
+        [
+            {"order_id": 1, "customer_id": 10, "total_amount": 100.0},
+            {"order_id": 2, "customer_id": 20, "total_amount": 250.0},
+        ]
+    )
     check = ValueRangeCheck()
     result = check.run(
         {
@@ -299,6 +305,7 @@ def test_value_range_check_passes_within_range():
 # ReferentialIntegrityCheck
 # ===========================================================================
 
+
 def test_referential_integrity_fails_on_orphaned_rows():
     engine = _db_with_orders_and_customers(
         order_rows=[
@@ -315,7 +322,7 @@ def test_referential_integrity_fails_on_orphaned_rows():
         {
             "dataset": "orders",
             "column": "customer_id",
-            "references": "customers.id",   # ref_table=customers, ref_column=id
+            "references": "customers.id",  # ref_table=customers, ref_column=id
             "severity": "high",
         },
         engine,
@@ -347,6 +354,7 @@ def test_referential_integrity_passes_on_valid_references():
 # ===========================================================================
 # SchemaCheck — tests via _compare_schemas (unit) and first-run baseline
 # ===========================================================================
+
 
 def test_schema_check_compare_detects_column_removed():
     es = _FakeSchemaES(stored_schema={"order_id": "INTEGER", "customer_id": "INTEGER"})
@@ -390,6 +398,7 @@ def test_schema_check_first_run_stores_baseline_and_passes():
 
     class _PatchedSchemaCheck(SchemaCheck):
         """Override _get_current_schema to avoid needing information_schema in SQLite."""
+
         def _get_current_schema(self, dataset, connection):
             return {"order_id": "INTEGER", "customer_id": "INTEGER"}
 
@@ -417,9 +426,11 @@ def test_schema_check_fails_on_column_removed_vs_stored_baseline():
     )
     assert result.status == "FAIL"
 
+
 # ===========================================================================
 # Registry, SQL safety, and distribution drift extensibility
 # ===========================================================================
+
 
 def test_quality_check_registry_exposes_supported_types():
     from src.quality.checks.registry import build_check, supported_check_types

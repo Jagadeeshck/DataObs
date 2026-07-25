@@ -5,18 +5,19 @@ Uses fake ML/ES clients — no real Elasticsearch needed.
 The mocks accept the elasticsearch-py 8.x keyword-argument API
 (body= is removed; all params passed as keyword args).
 """
-from src.analytics.elasticsearch_ml import ElasticsearchMLManager, MLJobConfig
 
+from src.analytics.elasticsearch_ml import ElasticsearchMLManager, MLJobConfig
 
 # ---------------------------------------------------------------------------
 # Fake ML sub-client (mirrors es.ml.*)
 # ---------------------------------------------------------------------------
 
+
 class _MLApi:
     def __init__(self):
         self.calls: list = []
 
-    def put_job(self, job_id, **kwargs):          # was: put_job(self, job_id, body)
+    def put_job(self, job_id, **kwargs):  # was: put_job(self, job_id, body)
         self.calls.append(("put_job", job_id, kwargs))
 
     def put_datafeed(self, datafeed_id, **kwargs):  # was: put_datafeed(self, datafeed_id, body)
@@ -34,12 +35,13 @@ class _MLApi:
 # Fake ES client (mirrors es.search with keyword-arg API)
 # ---------------------------------------------------------------------------
 
+
 class _FakeES:
     def __init__(self):
         self.ml = _MLApi()
         self.search_calls: list = []
 
-    def search(self, index, **kwargs):      # was: search(self, index, body)
+    def search(self, index, **kwargs):  # was: search(self, index, body)
         self.search_calls.append({"index": index, **kwargs})
         return {"hits": {"hits": []}}
 
@@ -47,6 +49,7 @@ class _FakeES:
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 def test_ensure_job_creates_job_and_datafeed():
     es = _FakeES()
@@ -101,10 +104,7 @@ def test_get_top_anomalies_applies_severity_filter():
 
     query_filters = es.search_calls[0]["query"]["bool"]["filter"]
     range_filters = [f for f in query_filters if "range" in f]
-    assert any(
-        f["range"].get("record_score", {}).get("gte") == 70
-        for f in range_filters
-    )
+    assert any(f["range"].get("record_score", {}).get("gte") == 70 for f in range_filters)
 
 
 def test_get_top_anomalies_applies_job_id_filter():
@@ -115,7 +115,4 @@ def test_get_top_anomalies_applies_job_id_filter():
 
     query_filters = es.search_calls[0]["query"]["bool"]["filter"]
     term_filters = [f for f in query_filters if "term" in f]
-    assert any(
-        f["term"].get("job_id") == "dataobs-freshness-age-anomaly"
-        for f in term_filters
-    )
+    assert any(f["term"].get("job_id") == "dataobs-freshness-age-anomaly" for f in term_filters)

@@ -1,6 +1,7 @@
 """
 Dataset discovery and source resolution.
 """
+
 from __future__ import annotations
 
 import logging
@@ -17,14 +18,34 @@ FIXTURE_BASE_DIR = Path("fixtures/poc")
 
 DEFAULT_QUERIES: List[Dict[str, str]] = [
     {"name": "road-safety", "query": "road accidents personal injury great britain statistics", "theme": "transport"},
-    {"name": "air-quality-monitoring", "query": "automatic urban rural network air quality data csv", "theme": "environment"},
-    {"name": "local-authority-profile", "query": "local authority district names codes england wales csv", "theme": "government"},
+    {
+        "name": "air-quality-monitoring",
+        "query": "automatic urban rural network air quality data csv",
+        "theme": "environment",
+    },
+    {
+        "name": "local-authority-profile",
+        "query": "local authority district names codes england wales csv",
+        "theme": "government",
+    },
 ]
 
 FALLBACK_URLS: Dict[str, Dict[str, str]] = {
-    "road-safety": {"resource_url": "https://data.dft.gov.uk/road-accidents-safety-data/dft-road-casualty-statistics-casualty-last-5-years.csv", "format": "csv", "source_type": "data.gov.uk"},
-    "air-quality-monitoring": {"resource_url": "https://uk-air.defra.gov.uk/openair/R_data/metadata/site_info.csv", "format": "csv", "source_type": "uk-air.defra.gov.uk"},
-    "local-authority-profile": {"resource_url": "https://opendata.arcgis.com/datasets/0892f9a891614aaf82ea0fca5dc8b4d7_0.csv", "format": "csv", "source_type": "arcgis.com"},
+    "road-safety": {
+        "resource_url": "https://data.dft.gov.uk/road-accidents-safety-data/dft-road-casualty-statistics-casualty-last-5-years.csv",
+        "format": "csv",
+        "source_type": "data.gov.uk",
+    },
+    "air-quality-monitoring": {
+        "resource_url": "https://uk-air.defra.gov.uk/openair/R_data/metadata/site_info.csv",
+        "format": "csv",
+        "source_type": "uk-air.defra.gov.uk",
+    },
+    "local-authority-profile": {
+        "resource_url": "https://opendata.arcgis.com/datasets/0892f9a891614aaf82ea0fca5dc8b4d7_0.csv",
+        "format": "csv",
+        "source_type": "arcgis.com",
+    },
 }
 
 FIXTURE_FILES: Dict[str, Dict[str, str]] = {
@@ -108,7 +129,13 @@ def _url_is_reachable(url: str, timeout: int = 10) -> bool:
         pass
 
     try:
-        get = requests.get(url, timeout=timeout, allow_redirects=True, headers={"Range": "bytes=0-512", "User-Agent": "DataObs-POC/1.0"}, stream=True)
+        get = requests.get(
+            url,
+            timeout=timeout,
+            allow_redirects=True,
+            headers={"Range": "bytes=0-512", "User-Agent": "DataObs-POC/1.0"},
+            stream=True,
+        )
         chunk = next(get.iter_content(chunk_size=512), b"")
         if get.status_code >= 400:
             return False
@@ -122,7 +149,9 @@ def _url_is_reachable(url: str, timeout: int = 10) -> bool:
 
 def _search_ckan(query: str) -> Optional[Dict[str, Any]]:
     try:
-        resp = requests.get(CKAN_SEARCH_URL, params={"q": query, "rows": 10, "sort": "score desc, metadata_modified desc"}, timeout=30)
+        resp = requests.get(
+            CKAN_SEARCH_URL, params={"q": query, "rows": 10, "sort": "score desc, metadata_modified desc"}, timeout=30
+        )
         resp.raise_for_status()
         results = resp.json().get("result", {}).get("results", [])
         for dataset in results:
@@ -130,7 +159,14 @@ def _search_ckan(query: str) -> Optional[Dict[str, Any]]:
                 fmt = (resource.get("format") or "").lower().strip(".")
                 url = (resource.get("url") or "").strip()
                 if fmt in {"csv", "json", "xlsx"} and url.startswith("http"):
-                    return {"dataset_id": dataset.get("name") or dataset.get("id"), "title": dataset.get("title", ""), "resource_name": resource.get("name", ""), "resource_url": url, "format": fmt, "source_type": "data.gov.uk"}
+                    return {
+                        "dataset_id": dataset.get("name") or dataset.get("id"),
+                        "title": dataset.get("title", ""),
+                        "resource_name": resource.get("name", ""),
+                        "resource_url": url,
+                        "format": fmt,
+                        "source_type": "data.gov.uk",
+                    }
     except Exception as exc:
         logger.warning("[discover] CKAN API error for '%s': %s", query, exc)
     return None

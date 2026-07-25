@@ -23,6 +23,7 @@ Or via the convenience script::
 
     ./scripts/run_poc_pipeline.sh
 """
+
 from __future__ import annotations
 
 import csv
@@ -30,13 +31,14 @@ import io
 import json
 import logging
 import os
-from urllib.parse import urlparse
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List
+from urllib.parse import urlparse
 
 import requests
 from requests import HTTPError, RequestException
+
 from src.poc.config import ensure_dirs, get_poc_config
 from src.poc.datasets import resolve_sources
 from src.poc.es_writer import POCElasticWriter
@@ -52,9 +54,9 @@ def _now() -> str:
 
 def _build_spark(master: str):
     from pyspark.sql import SparkSession
+
     return (
-        SparkSession.builder
-        .appName("dataobs-poc-pipeline")
+        SparkSession.builder.appName("dataobs-poc-pipeline")
         .master(master)
         .config("spark.sql.session.timeZone", "UTC")
         .config("spark.ui.enabled", "false")
@@ -101,6 +103,7 @@ def _parse(path: Path, fmt: str) -> List[Dict[str, Any]]:
     if fmt in {"xlsx", "xls"}:
         try:
             import openpyxl  # noqa: PLC0415
+
             wb = openpyxl.load_workbook(io.BytesIO(raw), read_only=True, data_only=True)
             ws = wb.active
             rows = list(ws.iter_rows(values_only=True))
@@ -115,8 +118,7 @@ def _parse(path: Path, fmt: str) -> List[Dict[str, Any]]:
             return result
         except ImportError:
             logger.error(
-                "[parse] openpyxl is not installed — cannot parse XLSX. "
-                "Add 'openpyxl' to requirements-poc.txt."
+                "[parse] openpyxl is not installed — cannot parse XLSX. " "Add 'openpyxl' to requirements-poc.txt."
             )
             return []
         except Exception as exc:  # noqa: BLE001
@@ -143,6 +145,7 @@ def _normalize(records: List[Dict[str, Any]], dataset_name: str, source_url: str
 
 def _spark_transform(spark, records: List[Dict[str, Any]], limit: int = 5000) -> List[Dict[str, Any]]:
     from pyspark.sql.functions import lit
+
     if not records:
         return []
     df = spark.createDataFrame(records)
@@ -175,9 +178,7 @@ def main() -> None:
     _raw_endpoint = otel_cfg.get("endpoint", "") if not _otel_disabled else ""
     # Treat the otel-collector hostname as a signal that OTel is not intended
     # for this run (default YAML had a fallback pointing to otel-collector).
-    _otlp_endpoint: str | None = _raw_endpoint if (
-        _raw_endpoint and "otel-collector" not in _raw_endpoint
-    ) else None
+    _otlp_endpoint: str | None = _raw_endpoint if (_raw_endpoint and "otel-collector" not in _raw_endpoint) else None
 
     telemetry = TelemetryEmitter(
         service_name=otel_cfg.get("service_name", "dataobs-poc-pipeline"),
@@ -256,35 +257,39 @@ def main() -> None:
                     writer.write_raw(raw_annotated[:5000])
                     writer.write_curated(curated)
                     writer.write_quality(quality_results)
-                    writer.write_lineage([
-                        {
-                            "source": url,
-                            "target": dataset_name,
-                            "relation": "ingested_from",
-                            "dataset": dataset_name,
-                            "@timestamp": _now(),
-                        },
-                        {
-                            "source": dataset_name,
-                            "target": f"{dataset_name}_curated",
-                            "relation": "transformed_to",
-                            "dataset": dataset_name,
-                            "@timestamp": _now(),
-                        },
-                    ])
+                    writer.write_lineage(
+                        [
+                            {
+                                "source": url,
+                                "target": dataset_name,
+                                "relation": "ingested_from",
+                                "dataset": dataset_name,
+                                "@timestamp": _now(),
+                            },
+                            {
+                                "source": dataset_name,
+                                "target": f"{dataset_name}_curated",
+                                "relation": "transformed_to",
+                                "dataset": dataset_name,
+                                "@timestamp": _now(),
+                            },
+                        ]
+                    )
                     telemetry.emit_metric("records_ingested", len(curated), dataset=dataset_name)
                     telemetry.emit_lineage(url, dataset_name, relation="ingested_from")
                     telemetry.emit_lineage(dataset_name, f"{dataset_name}_curated", relation="transformed_to")
                     total_ingested += len(curated)
 
             except (HTTPError, RequestException, Exception) as exc:
-                failed_datasets.append({
-                    "dataset": dataset_name,
-                    "url": url,
-                    "error": str(exc),
-                    "stage": current_stage,
-                    "@timestamp": _now(),
-                })
+                failed_datasets.append(
+                    {
+                        "dataset": dataset_name,
+                        "url": url,
+                        "error": str(exc),
+                        "stage": current_stage,
+                        "@timestamp": _now(),
+                    }
+                )
 
                 logger.exception(
                     "[resilience] Dataset failed but pipeline will continue: %s (%s) at stage=%s",

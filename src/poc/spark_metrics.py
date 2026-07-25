@@ -1,7 +1,17 @@
 from __future__ import annotations
+
 from datetime import datetime, timezone
 
-def metric_doc(run_id: str, stage_name: str, input_rows: int, output_rows: int, status: str = "success", error_count: int = 0, run_mode: str = "good"):
+
+def metric_doc(
+    run_id: str,
+    stage_name: str,
+    input_rows: int,
+    output_rows: int,
+    status: str = "success",
+    error_count: int = 0,
+    run_mode: str = "good",
+):
     return {
         "@timestamp": datetime.now(timezone.utc).isoformat(),
         "run_id": run_id,

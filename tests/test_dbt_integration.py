@@ -21,6 +21,7 @@ Run with:
 
 Resolves: https://github.com/Jagadeeshck/DataObs/issues/29
 """
+
 from __future__ import annotations
 
 import json
@@ -31,7 +32,7 @@ from typing import Any, Generator
 from unittest.mock import MagicMock, patch
 
 import pytest
-from opentelemetry.sdk.trace import TracerProvider, ReadableSpan
+from opentelemetry.sdk.trace import ReadableSpan, TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 from opentelemetry.trace import SpanKind
@@ -42,23 +43,23 @@ for _candidate in (_ROOT,):
     if str(_candidate) not in sys.path:
         sys.path.insert(0, str(_candidate))
 
-import integrations.dbt.parse_run_results as _prr_module
 import integrations.dbt.dbt_cloud_poller as _poller_module
+import integrations.dbt.parse_run_results as _prr_module
+from integrations.dbt.dbt_cloud_poller import DbtCloudPoller
 from integrations.dbt.parse_run_results import (
     _REQUIRED_METADATA_FIELDS,
     _REQUIRED_RESULT_FIELDS,
     _REQUIRED_TOP_LEVEL,
     _SUPPORTED_SCHEMA_VERSIONS,
+    _resolve_collection_name,
     _resolve_db_system,
     _resolve_operation_name,
-    _resolve_collection_name,
     _validate_schema,
     parse_and_emit,
 )
-from integrations.dbt.dbt_cloud_poller import DbtCloudPoller
-
 
 # ── Span capture fixture ──────────────────────────────────────────────────────
+
 
 @pytest.fixture()
 def exporter() -> Generator[InMemorySpanExporter, None, None]:
@@ -83,6 +84,7 @@ def exporter() -> Generator[InMemorySpanExporter, None, None]:
 
 
 # ── Fixture helpers ───────────────────────────────────────────────────────────
+
 
 def _make_run_results(
     *,
@@ -158,6 +160,7 @@ def _emit_to_tmp(data: dict[str, Any], suffix: str = "") -> list[ReadableSpan]:
 
 # ── Schema validation tests ───────────────────────────────────────────────────
 
+
 class TestSchemaValidation:
     def test_valid_document_passes(self) -> None:
         _validate_schema(_make_run_results())
@@ -217,9 +220,7 @@ class TestSchemaValidation:
         _validate_schema(_make_run_results(results=[]))
 
     def test_unknown_schema_version_warns(self) -> None:
-        data = _make_run_results(
-            schema_version="https://schemas.getdbt.com/dbt/run-results/v99/run-results.json"
-        )
+        data = _make_run_results(schema_version="https://schemas.getdbt.com/dbt/run-results/v99/run-results.json")
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
             _validate_schema(data)
@@ -232,44 +233,53 @@ class TestSchemaValidation:
 
 # ── db.system.name mapping tests ──────────────────────────────────────────────
 
+
 class TestDbSystemNameMapping:
-    @pytest.mark.parametrize("adapter,expected", [
-        ("postgres", "postgresql"),
-        ("postgresql", "postgresql"),
-        ("redshift", "aws.redshift"),
-        ("snowflake", "other_sql"),
-        ("bigquery", "other_sql"),
-        ("trino", "trino"),
-        ("mysql", "mysql"),
-        ("sqlserver", "microsoft.sql_server"),
-        ("clickhouse", "clickhouse"),
-        ("databricks", "other_sql"),
-        ("duckdb", "other_sql"),
-        ("spark", "other_sql"),
-        ("unknown_adapter", "other_sql"),
-        ("", "other_sql"),
-        ("POSTGRES", "postgresql"),
-    ])
+    @pytest.mark.parametrize(
+        "adapter,expected",
+        [
+            ("postgres", "postgresql"),
+            ("postgresql", "postgresql"),
+            ("redshift", "aws.redshift"),
+            ("snowflake", "other_sql"),
+            ("bigquery", "other_sql"),
+            ("trino", "trino"),
+            ("mysql", "mysql"),
+            ("sqlserver", "microsoft.sql_server"),
+            ("clickhouse", "clickhouse"),
+            ("databricks", "other_sql"),
+            ("duckdb", "other_sql"),
+            ("spark", "other_sql"),
+            ("unknown_adapter", "other_sql"),
+            ("", "other_sql"),
+            ("POSTGRES", "postgresql"),
+        ],
+    )
     def test_adapter_mapping(self, adapter: str, expected: str) -> None:
         assert _resolve_db_system(adapter) == expected
 
     def test_all_mapped_values_are_nonempty_strings(self) -> None:
         from integrations.dbt.parse_run_results import _ADAPTER_TO_DB_SYSTEM
+
         for adapter, db_system in _ADAPTER_TO_DB_SYSTEM.items():
             assert isinstance(db_system, str) and db_system
 
 
 # ── db.operation.name resolution tests ───────────────────────────────────────
 
+
 class TestDbOperationNameResolution:
-    @pytest.mark.parametrize("resource_type,expected_prefix", [
-        ("model", "run_model"),
-        ("test", "test"),
-        ("seed", "seed"),
-        ("snapshot", "snapshot"),
-        ("analysis", "run_analysis"),
-        ("", "run"),
-    ])
+    @pytest.mark.parametrize(
+        "resource_type,expected_prefix",
+        [
+            ("model", "run_model"),
+            ("test", "test"),
+            ("seed", "seed"),
+            ("snapshot", "snapshot"),
+            ("analysis", "run_analysis"),
+            ("", "run"),
+        ],
+    )
     def test_operation_name_by_resource_type(self, resource_type: str, expected_prefix: str) -> None:
         result = _resolve_operation_name(resource_type, {})
         assert result.startswith(expected_prefix)
@@ -283,6 +293,7 @@ class TestDbOperationNameResolution:
 
 
 # ── db.collection.name resolution tests ──────────────────────────────────────
+
 
 class TestDbCollectionNameResolution:
     def test_relation_name_preferred_over_node_name(self) -> None:
@@ -305,6 +316,7 @@ class TestDbCollectionNameResolution:
 
 
 # ── OTel span attribute compliance tests ─────────────────────────────────────
+
 
 class TestSpanSemconvCompliance:
     def _spans(
@@ -400,6 +412,7 @@ class TestSpanSemconvCompliance:
 
 # ── Error / failure span tests ────────────────────────────────────────────────
 
+
 class TestErrorSpans:
     @pytest.mark.parametrize("status", ["error", "fail", "runtime error"])
     def test_error_status_sets_error_type(self, status: str, exporter: InMemorySpanExporter) -> None:
@@ -432,6 +445,7 @@ class TestErrorSpans:
 
 # ── Multiple results tests ────────────────────────────────────────────────────
 
+
 class TestMultipleResults:
     def test_one_span_per_result_plus_root(self, exporter: InMemorySpanExporter) -> None:
         results = [_make_result(name=f"model_{i}") for i in range(5)]
@@ -462,10 +476,9 @@ class TestMultipleResults:
 
 # ── dbt Cloud poller semconv tests ────────────────────────────────────────────
 
+
 class TestDbtCloudPollerSemconv:
-    def _make_cloud_run(
-        self, *, status: int = 10, status_humanized: str = "Success"
-    ) -> dict[str, Any]:
+    def _make_cloud_run(self, *, status: int = 10, status_humanized: str = "Success") -> dict[str, Any]:
         return {
             "id": 42,
             "job_id": 7,
@@ -530,6 +543,7 @@ class TestDbtCloudPollerSemconv:
 
 
 # ── File I/O tests ────────────────────────────────────────────────────────────
+
 
 class TestFileIO:
     def test_nonexistent_file_raises(self) -> None:

@@ -4,14 +4,15 @@ Unit tests for LineageTracker BFS traversal logic.
 Uses a fake Elasticsearch client that simulates a small in-memory graph
 so no real ES instance is required.
 """
+
 from __future__ import annotations
 
 from src.quality.lineage import LineageEdge, LineageNode, LineageTracker, NodeType
 
-
 # ---------------------------------------------------------------------------
 # Fake Elasticsearch client
 # ---------------------------------------------------------------------------
+
 
 class _FakeES:
     """
@@ -72,6 +73,7 @@ class _FakeIndices:
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_tracker(edges: list[tuple[str, str]]) -> LineageTracker:
     es = _FakeES(edges)
     return LineageTracker(es)
@@ -80,6 +82,7 @@ def _make_tracker(edges: list[tuple[str, str]]) -> LineageTracker:
 # ---------------------------------------------------------------------------
 # Tests: get_downstream_impact (BFS downstream)
 # ---------------------------------------------------------------------------
+
 
 def test_downstream_impact_direct_children():
     """A -> B and A -> C: impact of A should be [B, C]."""
@@ -133,6 +136,7 @@ def test_downstream_impact_node_order():
 # Tests: get_upstream_lineage (BFS upstream)
 # ---------------------------------------------------------------------------
 
+
 def test_upstream_lineage_direct_parents():
     """A -> C and B -> C: upstream of C should include A and B."""
     tracker = _make_tracker([("A", "C"), ("B", "C")])
@@ -158,6 +162,7 @@ def test_upstream_lineage_no_parents():
 # ---------------------------------------------------------------------------
 # Tests: upsert_node and record_edge (writes)
 # ---------------------------------------------------------------------------
+
 
 def test_upsert_node_writes_to_es():
     es = _FakeES([])

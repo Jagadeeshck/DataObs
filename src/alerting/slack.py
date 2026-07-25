@@ -18,8 +18,7 @@ class SlackConfig:
 
     def __repr__(self) -> str:  # prevent webhook_url leaking into logs
         return (
-            f"SlackConfig(webhook_url='***', default_channel={self.default_channel!r}, "
-            f"username={self.username!r})"
+            f"SlackConfig(webhook_url='***', default_channel={self.default_channel!r}, " f"username={self.username!r})"
         )
 
 
@@ -68,12 +67,14 @@ class SlackClient:
 
         # Runbook context block
         if event.runbook_url:
-            blocks.append({
-                "type": "context",
-                "elements": [
-                    {"type": "mrkdwn", "text": f":notebook: *Runbook:* <{event.runbook_url}|View runbook>"}
-                ],
-            })
+            blocks.append(
+                {
+                    "type": "context",
+                    "elements": [
+                        {"type": "mrkdwn", "text": f":notebook: *Runbook:* <{event.runbook_url}|View runbook>"}
+                    ],
+                }
+            )
 
         # Coloured attachment wrapper (Block Kit doesn't support colour natively;
         # wrapping in an attachment preserves the left-side colour stripe)

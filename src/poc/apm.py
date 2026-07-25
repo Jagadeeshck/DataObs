@@ -28,6 +28,7 @@ Environment variables (read at bootstrap):
   ELASTIC_APM_ENVIRONMENT   Environment label (default: poc)
   ELASTIC_APM_DISABLED      "true" → fully suppress agent (no-op mode)
 """
+
 from __future__ import annotations
 
 import logging
@@ -40,6 +41,7 @@ logger = logging.getLogger(__name__)
 try:
     import elasticapm
     from elasticapm import Client as _ApmClient
+
     _APM_AVAILABLE = True
 except Exception:  # noqa: BLE001
     elasticapm = None  # type: ignore[assignment]
@@ -75,18 +77,10 @@ class ApmTelemetry:
         secret_token: Optional[str] = None,
         global_labels: Optional[Dict[str, Any]] = None,
     ) -> None:
-        self.service_name = service_name or os.environ.get(
-            "ELASTIC_APM_SERVICE_NAME", _DEFAULT_SERVICE
-        )
-        self.environment = environment or os.environ.get(
-            "ELASTIC_APM_ENVIRONMENT", _DEFAULT_ENV
-        )
-        self.server_url = server_url or os.environ.get(
-            "ELASTIC_APM_SERVER_URL", _DEFAULT_SERVER_URL
-        )
-        self.secret_token = secret_token or os.environ.get(
-            "ELASTIC_APM_SECRET_TOKEN", _DEFAULT_TOKEN
-        )
+        self.service_name = service_name or os.environ.get("ELASTIC_APM_SERVICE_NAME", _DEFAULT_SERVICE)
+        self.environment = environment or os.environ.get("ELASTIC_APM_ENVIRONMENT", _DEFAULT_ENV)
+        self.server_url = server_url or os.environ.get("ELASTIC_APM_SERVER_URL", _DEFAULT_SERVER_URL)
+        self.secret_token = secret_token or os.environ.get("ELASTIC_APM_SECRET_TOKEN", _DEFAULT_TOKEN)
         self.global_labels = global_labels or {
             "service.namespace": "dataobs",
             "deployment.environment.name": self.environment,
@@ -113,9 +107,7 @@ class ApmTelemetry:
                     "ENVIRONMENT": self.environment,
                     "SERVER_URL": self.server_url,
                     "SECRET_TOKEN": self.secret_token,
-                    "GLOBAL_LABELS": ",".join(
-                        f"{k}={v}" for k, v in self.global_labels.items()
-                    ),
+                    "GLOBAL_LABELS": ",".join(f"{k}={v}" for k, v in self.global_labels.items()),
                     # Avoid noisy retry loops if the server is briefly
                     # unavailable (the agent drops events silently).
                     "TRANSPORT_CLASS": "elasticapm.transport.http.Transport",
@@ -182,7 +174,7 @@ class ApmTelemetry:
             yield
             elasticapm.set_transaction_outcome(outcome="success")
             self._client.end_transaction(name, "success")
-        except Exception as exc:
+        except Exception:
             try:
                 self._client.capture_exception()
             except Exception:  # noqa: BLE001

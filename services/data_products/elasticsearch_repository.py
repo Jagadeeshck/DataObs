@@ -87,6 +87,7 @@ class ElasticsearchDataProductRepository:
         if isinstance(value, (list, tuple)):
             return [ElasticsearchDataProductRepository._json_value(item) for item in value]
         return value
+
         @staticmethod
         def _decision_document(decision: DataProductMembershipDecision) -> dict[str, Any]:
             document = decision.model_dump(mode="json")
@@ -98,6 +99,7 @@ class ElasticsearchDataProductRepository:
             restored = dict(source)
             restored["reason"] = restored.pop("decision_reason", restored.get("reason"))
             return restored
+
     @staticmethod
     def _state_document(state: DataProductOperationState) -> dict[str, Any]:
         document = ElasticsearchDataProductRepository._json_value(asdict(state))
@@ -1263,9 +1265,7 @@ class ElasticsearchDataProductRepository:
             self.client.create(index=DECISIONS, id=document_id, document=document)
         except ConflictError as exc:
             existing_source = self.client.get(index=DECISIONS, id=document_id)["_source"]
-            existing = DataProductMembershipDecision.model_validate(
-                self._decision_from_source(existing_source)
-            )
+            existing = DataProductMembershipDecision.model_validate(self._decision_from_source(existing_source))
             if existing == decision:
                 return existing
             raise ProductConsistencyError("divergent decision replay") from exc
@@ -1275,7 +1275,7 @@ class ElasticsearchDataProductRepository:
         try:
             source = self.client.get(index=DECISIONS, id=scoped_id(tenant_id, environment, decision_id))["_source"]
         except NotFoundError:
-                                            return None
+            return None
         value = DataProductMembershipDecision.model_validate(self._decision_from_source(source))
         if (value.tenant_id, value.environment, value.product_id) != (tenant_id, environment, product_id):
             return None
@@ -1298,7 +1298,8 @@ class ElasticsearchDataProductRepository:
             sort=[{"occurred_at": "asc"}, {"decision_id": "asc"}, {"_id": "asc"}],
         )
         return tuple(
-            DataProductMembershipDecision.model_validate(self._decision_from_source(hit["_source"]))            for hit in response["hits"]["hits"]
+            DataProductMembershipDecision.model_validate(self._decision_from_source(hit["_source"]))
+            for hit in response["hits"]["hits"]
         )
 
     def list_membership_decisions(

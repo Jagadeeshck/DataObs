@@ -117,7 +117,10 @@ def validate(data: dict) -> list[str]:
             if mid not in actual:
                 e.append(f"{cid}: migration absent: {mid}")
         if c.get("state") == "validated":
-            surfaces = sum((impl.get(k, []) for k in ("code_paths", "api_paths", "ui_routes", "storage_resources", "migrations")), [])
+            surfaces = sum(
+                (impl.get(k, []) for k in ("code_paths", "api_paths", "ui_routes", "storage_resources", "migrations")),
+                [],
+            )
             applicable = [d for d in VDIMS if val.get(d) != "not_applicable"]
             passed = [d for d in applicable if val.get(d) == "passed"]
             if not surfaces:

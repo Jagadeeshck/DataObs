@@ -170,12 +170,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Validate compose files
-      env:
-        ELASTIC_PASSWORD: ci-placeholder-password
-        OPENSEARCH_PASSWORD: ci-placeholder-password
-        run: |
-          docker compose -f docker-compose.yml config
+                      - name: Validate compose files
+          env:
+            ELASTIC_PASSWORD: ci-placeholder-password
+            OPENSEARCH_PASSWORD: ci-placeholder-password
+          run: |
+            docker compose -f docker-compose.yml config
           docker compose -f docker-compose.certification.yml --profile full config
           docker compose -f docker-compose.poc.yml config
           docker compose -f tests/integration/docker-compose.test.yml config

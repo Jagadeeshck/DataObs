@@ -12,9 +12,7 @@ terraform {
 locals {
   agent_config_b64 = base64encode(file(var.agent_config_path))
 
-  targets = var.target_type == "tag"
-    ? [{ key = "tag:${var.target_tag_key}", values = [var.target_tag_value] }]
-    : [{ key = "InstanceIds", values = var.target_instance_ids }]
+  targets = var.target_type == "tag" ? [{ key = "tag:${var.target_tag_key}", values = [var.target_tag_value] }] : [{ key = "InstanceIds", values = var.target_instance_ids }]
 
   association_schedule = var.association_schedule == null ? "rate(30 days)" : var.association_schedule
 }

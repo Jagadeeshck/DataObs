@@ -382,6 +382,7 @@ jobs:
           python-version: '3.11'
       - name: Install dependencies
         run: pip install -r requirements.txt
+      - run: pip install pytest
       - name: Validate workflow YAML
         run: ./bin/dataobs workflows validate
       - name: Compile incident automation packages

@@ -1297,9 +1297,8 @@ class ElasticsearchDataProductRepository:
             },
             sort=[{"occurred_at": "asc"}, {"decision_id": "asc"}, {"_id": "asc"}],
         )
-                                        return tuple(
-            DataProductMembershipDecision.model_validate(self._decision_from_source(hit["_source"]))
-            for hit in response["hits"]["hits"]
+        return tuple(
+            DataProductMembershipDecision.model_validate(self._decision_from_source(hit["_source"]))            for hit in response["hits"]["hits"]
         )
 
     def list_membership_decisions(

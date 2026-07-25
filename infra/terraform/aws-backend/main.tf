@@ -149,7 +149,7 @@ module "amg" {
 
   tags = local.common_tags
 
-  depends_on = [module.amp, module.osis]
+  
 }
 
 # ─────────────────────────────────────────────────────────────────────────────

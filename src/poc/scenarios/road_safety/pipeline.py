@@ -76,7 +76,7 @@ def run_road_safety_scenario(data_dir: Path, run_id: str, run_mode: str = "good"
                 "check_name": name,
                 "status": status,
                 "details": details,
-                }
+            }
         )
 
     add("duplicate_accident_ids", "fail" if len({a["accident_id"] for a in accidents}) < len(accidents) else "pass", {})

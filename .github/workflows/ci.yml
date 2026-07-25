@@ -169,6 +169,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Validate compose files
+      env:
+        ELASTIC_PASSWORD: ci-placeholder-password
+        OPENSEARCH_PASSWORD: ci-placeholder-password
         run: |
           docker compose -f docker-compose.yml config
           docker compose -f docker-compose.certification.yml --profile full config

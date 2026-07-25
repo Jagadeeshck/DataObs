@@ -14,12 +14,12 @@ import pytest
 
 sqlalchemy = pytest.importorskip("sqlalchemy")
 
-from src.quality.checks.null_check import NullCheck
-from src.quality.checks.referential_integrity_check import ReferentialIntegrityCheck
-from src.quality.checks.row_count_check import RowCountCheck
-from src.quality.checks.schema_check import SchemaCheck
-from src.quality.checks.uniqueness_check import UniquenessCheck
-from src.quality.checks.value_range_check import ValueRangeCheck
+from src.quality.checks.null_check import NullCheck  # noqa: E402
+from src.quality.checks.referential_integrity_check import ReferentialIntegrityCheck  # noqa: E402
+from src.quality.checks.row_count_check import RowCountCheck  # noqa: E402
+from src.quality.checks.schema_check import SchemaCheck  # noqa: E402
+from src.quality.checks.uniqueness_check import UniquenessCheck  # noqa: E402
+from src.quality.checks.value_range_check import ValueRangeCheck  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Fake ES client for SchemaCheck (stores and retrieves schema baselines)

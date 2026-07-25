@@ -1275,7 +1275,7 @@ class ElasticsearchDataProductRepository:
         try:
             source = self.client.get(index=DECISIONS, id=scoped_id(tenant_id, environment, decision_id))["_source"]
         except NotFoundError:
-                                return None
+                                            return None
         value = DataProductMembershipDecision.model_validate(self._decision_from_source(source))
         if (value.tenant_id, value.environment, value.product_id) != (tenant_id, environment, product_id):
             return None
@@ -1297,7 +1297,7 @@ class ElasticsearchDataProductRepository:
             },
             sort=[{"occurred_at": "asc"}, {"decision_id": "asc"}, {"_id": "asc"}],
         )
-                                return tuple(
+                                        return tuple(
             DataProductMembershipDecision.model_validate(self._decision_from_source(hit["_source"]))
             for hit in response["hits"]["hits"]
         )

@@ -176,7 +176,7 @@ def main() -> None:
         os.environ["TENANT_ES_USER"],
         os.environ["TENANT_ES_PASSWORD"],
     )
-    server_es = get_client(
+    _server_es = get_client(
         server_endpoint,
         os.environ["SERVER_ES_USER"],
         os.environ["SERVER_ES_PASSWORD"],

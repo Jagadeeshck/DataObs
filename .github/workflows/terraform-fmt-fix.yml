@@ -2,6 +2,11 @@ name: Terraform Fmt Fix
 
 on:
   workflow_dispatch: {}
+  push:
+    branches:
+      - fix/data-product-decision-reason-mapping-collision
+    paths:
+      - '.github/workflows/terraform-fmt-fix.yml'
 
 permissions:
   contents: write

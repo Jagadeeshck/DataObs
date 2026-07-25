@@ -59,7 +59,7 @@ variable "enable_sns_notifications" {
 variable "service_account_token_ttl_seconds" {
   description = "TTL in seconds for the Terraform service account token. Rotate before expiry."
   type        = number
-  default     = 2592000   # 30 days
+  default     = 2592000 # 30 days
 }
 
 variable "amp_workspace_url" {

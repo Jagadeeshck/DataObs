@@ -48,8 +48,8 @@ resource "aws_ssm_document" "otel_agent_configure" {
 }
 
 resource "aws_ssm_association" "install" {
-  name             = aws_ssm_document.otel_agent_install.name
-  association_name = "${var.name_prefix}-otel-agent-install"
+  name                = aws_ssm_document.otel_agent_install.name
+  association_name    = "${var.name_prefix}-otel-agent-install"
   schedule_expression = local.association_schedule
 
   dynamic "targets" {
@@ -62,8 +62,8 @@ resource "aws_ssm_association" "install" {
 }
 
 resource "aws_ssm_association" "configure" {
-  name             = aws_ssm_document.otel_agent_configure.name
-  association_name = "${var.name_prefix}-otel-agent-configure"
+  name                = aws_ssm_document.otel_agent_configure.name
+  association_name    = "${var.name_prefix}-otel-agent-configure"
   schedule_expression = local.association_schedule
 
   dynamic "targets" {

@@ -114,7 +114,7 @@ variable "amg_enable_sns_notifications" {
 variable "amg_token_ttl_seconds" {
   description = "TTL in seconds for the AMG Terraform service account token."
   type        = number
-  default     = 2592000   # 30 days
+  default     = 2592000 # 30 days
 }
 
 # ── IAM / EKS ─────────────────────────────────────────────────────────────────

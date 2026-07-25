@@ -78,7 +78,7 @@ class ElasticsearchDataProductRepository:
     def __init__(self, client: Elasticsearch) -> None:
         self.client = client
 
-            @staticmethod
+                    @staticmethod
         def _json_value(value: Any) -> Any:
             if isinstance(value, datetime):
                 return value.isoformat()
@@ -87,7 +87,6 @@ class ElasticsearchDataProductRepository:
             if isinstance(value, (list, tuple)):
                 return [ElasticsearchDataProductRepository._json_value(item) for item in value]
             return value
-
         @staticmethod
         def _decision_document(decision: DataProductMembershipDecision) -> dict[str, Any]:
             document = decision.model_dump(mode="json")

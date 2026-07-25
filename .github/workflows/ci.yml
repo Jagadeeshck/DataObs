@@ -1,6 +1,14 @@
 name: CI
 
 on:
+  workflow_dispatch:
+    inputs:
+      certification_scope:
+        description: Focused hosted certification gate
+        required: true
+        default: all
+        type: choice
+        options: [all, postgres, kafka, openlineage, product, browser, security]
   push:
     branches: [main]
   pull_request:
@@ -11,6 +19,84 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  data-product-membership-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -r requirements.txt
+      - run: python -m compileall -q packages/domain_model/data_product.py services/data_products src/api/data_product_routes.py tests/data_products
+      - run: python -m pytest tests/data_products/test_membership_dependency_closure.py tests/data_products/test_cursors.py -q
+  incident-migration-occ-gate:
+    name: Incident migration and OCC gate
+    runs-on: ubuntu-latest
+    services:
+      elasticsearch:
+        image: docker.elastic.co/elasticsearch/elasticsearch:9.4.2
+        ports:
+          - 9200:9200
+        env:
+          discovery.type: single-node
+          xpack.security.enabled: "false"
+          ES_JAVA_OPTS: -Xms512m -Xmx512m
+        options: >-
+          --health-cmd "curl -fsS http://localhost:9200/_cluster/health"
+          --health-interval 10s --health-timeout 5s --health-retries 24
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Migration immutability against main
+        run: python scripts/check_migration_immutability.py --base-ref HEAD
+      - name: Install focused dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pytest ruff black mypy
+      - name: Focused quality checks
+        run: |
+          python scripts/check_generated_artifacts.py
+          python -m compileall -q packages/elastic_store services/incident_manager src/api tests
+          ruff check packages/elastic_store services/incident_manager src/api tests/unit/test_incident_occ.py
+          black --check packages/elastic_store services/incident_manager src/api tests/unit/test_incident_occ.py
+          mypy packages/elastic_store services/incident_manager
+      - name: Capture migration plan
+        run: |
+          python -m packages.elastic_store.cli plan > incident-migration-plan.json
+          curl -fsS http://localhost:9200/_mapping > incident-mappings-before.json
+      - name: Unit migration and incident tests
+        run: python -m pytest tests/elastic_store tests/unit/test_incident_automation.py tests/unit/test_incident_occ.py tests/unit/test_incident_workbench_safety.py -q --junitxml=incident-unit.xml
+      - name: Elasticsearch 9.4.2 migration and concurrency tests
+        env:
+          RUN_INTEGRATION_TESTS: "1"
+          ELASTICSEARCH_URL: http://localhost:9200
+        run: |
+          python -m pytest tests/integration/incident_migration_occ -q --junitxml=incident-migration-occ.xml | tee concurrency-test-summary.txt
+      - name: Capture redacted mapping snapshots
+        if: always()
+        run: |
+          curl -fsS http://localhost:9200/_mapping > incident-mappings-after.json
+      - name: Capture redacted Elasticsearch diagnostics on failure
+        if: failure()
+        run: curl -fsS http://localhost:9200/_cluster/health > incident-elasticsearch-redacted.log
+      - name: Upload incident gate artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: incident-migration-occ-artifacts
+          path: |
+            incident-migration-plan.json
+            incident-mappings-before.json
+            incident-mappings-after.json
+            incident-unit.xml
+            incident-migration-occ.xml
+            concurrency-test-summary.txt
+            replay-sequence-number-evidence.json
+            incident-elasticsearch-redacted.log
+
   python-quality:
     name: Python quality and unit tests
     runs-on: ubuntu-latest
@@ -31,6 +117,8 @@ jobs:
         run: black --check .
       - name: Compile Python
         run: python -m compileall -q src packages services integrations tests
+      - name: Reject tracked generated dependency and browser artifacts
+        run: python scripts/check_generated_artifacts.py
       - name: Type check product foundations
         run: mypy packages/domain_model packages/elastic_store services/collection_manager packages/agent_sdk services/scanner_worker
       - name: Migration plan artifact
@@ -83,6 +171,7 @@ jobs:
       - name: Validate compose files
         run: |
           docker compose -f docker-compose.yml config
+          docker compose -f docker-compose.certification.yml --profile full config
           docker compose -f docker-compose.poc.yml config
           docker compose -f tests/integration/docker-compose.test.yml config
           docker compose -f integrations/grafana-alloy/docker-compose.yml config
@@ -151,7 +240,7 @@ jobs:
           python -m compileall -q services/scanner_worker integrations/databases/postgres tests
           ruff check integrations/databases/postgres services/scanner_worker tests/integration/postgres_vertical_slice
           black --check integrations/databases/postgres services/scanner_worker tests/integration/postgres_vertical_slice
-          mypy services/scanner_worker integrations/databases/postgres || true
+          mypy services/scanner_worker integrations/databases/postgres
       - name: Build API and scanner images
         run: |
           docker build -f Dockerfile.api -t dataobs/api:${{ github.sha }} .
@@ -340,3 +429,320 @@ jobs:
         run: python -m pytest -q tests/elastic_store/test_migrations.py tests/unit/product_query tests/unit/test_pathway_worker_paging.py
       - name: Demo compose contract
         run: docker compose -f docker-compose.console-demo.yml config
+
+  documentation-truth-gate:
+    name: Documentation truth gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install documentation dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pytest ruff black
+      - name: Validate and render capability source of truth
+        run: |
+          python scripts/validate_capability_ledger.py
+          python scripts/render_capability_docs.py
+          git diff --exit-code
+          python scripts/check_generated_artifacts.py
+          python scripts/check_docs_links.py
+      - name: Documentation truth tests
+        run: >-
+          python -m pytest
+          tests/documentation/test_capability_ledger.py
+          tests/documentation/test_generated_capability_docs.py
+          tests/documentation/test_product_claims.py -q
+      - name: Resolve documentation comparison base
+        id: docs-base
+        env:
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+        run: echo "base=$(python scripts/resolve_ci_base.py --event-file "$GITHUB_EVENT_PATH")" >> "$GITHUB_OUTPUT"
+      - name: Migration immutability
+        run: python scripts/check_migration_immutability.py --base-ref "${{ steps.docs-base.outputs.base }}"
+      - name: Capability diff
+        run: python scripts/capability_diff.py --base-ref "${{ steps.docs-base.outputs.base }}" > capability-diff-report.txt
+      - name: Upload documentation truth reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: documentation-truth-reports
+          path: |
+            docs/product/feature-matrix.md
+            capability-validation-report.json
+            capability-state-counts.json
+            capability-diff-report.txt
+            broken-link-report.txt
+
+  certification-contracts:
+    name: Certification contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.11", cache: pip}
+      - uses: raven-actions/actionlint@v2
+      - run: pip install -r requirements.txt pytest jsonschema pyyaml ruff black
+      - name: Validate contracts and certification depth
+        run: |
+          ./scripts/certification/bootstrap.sh
+          source certification/runtime-secrets/compose.env
+          export CERTIFICATION_POSTGRES_PASSWORD_FILE
+          for profile in cert-migrations cert-postgres cert-kafka cert-jobs cert-product cert-browser cert-security; do docker compose -f docker-compose.certification.yml --profile "$profile" config >/dev/null; done
+          python -m pytest tests/certification/test_certification_depth.py tests/certification/test_runtime_contracts.py tests/certification/test_evidence_manifest.py tests/certification/test_capability_promotion.py -q --junitxml=artifacts-contracts.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: contracts, path: artifacts-contracts.xml, retention-days: 30}
+
+  certification-migrations-incidents:
+    name: Certification migrations and incidents
+    needs: [certification-contracts]
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.certification_scope == 'all' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.11", cache: pip}
+      - run: pip install -r requirements.txt pytest requests psycopg[binary] confluent-kafka
+      - name: Start focused stack
+        run: CERTIFICATION_PROFILE=cert-migrations ./scripts/certification/compose.sh up
+      - name: Apply and verify released migrations
+        run: |
+          ./scripts/certification/apply_migrations.sh
+          ./bin/dataobs elastic status
+          curl -fsS http://127.0.0.1:19200/_mapping >/dev/null
+          curl -fsS http://127.0.0.1:19200/_alias >/dev/null
+      - name: Prove migration apply is idempotent
+        run: ./scripts/certification/apply_migrations.sh
+      - name: Run live assertions
+        env:
+          RUN_CERTIFICATION_TESTS: "1"
+          CERTIFICATION_POSTGRES_DSN: postgresql://dataobs_fixture@127.0.0.1:15432/orders
+          KAFKA_BOOTSTRAP_SERVERS: 127.0.0.1:19092
+          CONNECT_URL: http://127.0.0.1:18083
+          SCHEMA_REGISTRY_URL: http://127.0.0.1:18081
+        run: source certification/runtime-secrets/compose.env; export CERTIFICATION_POSTGRES_PASSWORD_FILE; mkdir -p artifacts/migrations-incidents && python -m pytest tests/certification/test_migrations.py tests/certification/test_incidents.py -q --junitxml=artifacts/migrations-incidents/results.xml
+      - name: Diagnostics and memory
+        if: always()
+        run: docker stats --no-stream > artifacts/migrations-incidents/container-memory.txt || true; docker compose -f docker-compose.certification.yml --profile cert-migrations logs --no-color > artifacts/migrations-incidents/redacted.log || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: migrations-incidents, path: artifacts/migrations-incidents, retention-days: 30}
+      - if: always()
+        run: ./scripts/certification/compose.sh down
+
+  certification-postgres:
+    name: Certification PostgreSQL
+    needs: [certification-contracts]
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.certification_scope == 'all' || inputs.certification_scope == 'postgres' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.11", cache: pip}
+      - run: pip install -r requirements.txt pytest requests psycopg[binary] confluent-kafka
+      - name: Start focused stack
+        run: CERTIFICATION_PROFILE=cert-postgres ./scripts/certification/compose.sh up
+      - name: Apply and verify released migrations
+        run: |
+          ./scripts/certification/apply_migrations.sh
+          ./bin/dataobs elastic status
+          curl -fsS http://127.0.0.1:19200/_mapping >/dev/null
+          curl -fsS http://127.0.0.1:19200/_alias >/dev/null
+      - name: Run live assertions
+        env:
+          RUN_CERTIFICATION_TESTS: "1"
+          CERTIFICATION_POSTGRES_DSN: postgresql://dataobs_fixture@127.0.0.1:15432/orders
+          KAFKA_BOOTSTRAP_SERVERS: 127.0.0.1:19092
+          CONNECT_URL: http://127.0.0.1:18083
+          SCHEMA_REGISTRY_URL: http://127.0.0.1:18081
+        run: source certification/runtime-secrets/compose.env; export CERTIFICATION_POSTGRES_PASSWORD_FILE; mkdir -p artifacts/postgres && python -m pytest tests/certification/test_postgres.py -q --junitxml=artifacts/postgres/results.xml
+      - name: Diagnostics and memory
+        if: always()
+        run: docker stats --no-stream > artifacts/postgres/container-memory.txt || true; docker compose -f docker-compose.certification.yml --profile cert-postgres logs --no-color > artifacts/postgres/redacted.log || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: postgres, path: artifacts/postgres, retention-days: 30}
+      - if: always()
+        run: ./scripts/certification/compose.sh down
+
+  certification-kafka:
+    name: Certification Kafka
+    needs: [certification-contracts]
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.certification_scope == 'all' || inputs.certification_scope == 'kafka' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.11", cache: pip}
+      - run: pip install -r requirements.txt pytest requests psycopg[binary] confluent-kafka
+      - name: Start focused stack
+        run: CERTIFICATION_PROFILE=cert-kafka ./scripts/certification/compose.sh up
+      - name: Apply and verify released migrations
+        run: |
+          ./scripts/certification/apply_migrations.sh
+          ./bin/dataobs elastic status
+          curl -fsS http://127.0.0.1:19200/_mapping >/dev/null
+          curl -fsS http://127.0.0.1:19200/_alias >/dev/null
+      - name: Seed deterministic Kafka fixtures
+        run: |
+          ./scripts/certification/kafka/create_topics.sh
+          ./scripts/certification/kafka/register_schemas.sh
+          ./scripts/certification/kafka/create_connectors.sh
+          python scripts/certification/kafka/run_producers.py
+          python scripts/certification/kafka/run_consumers.py
+          ./scripts/certification/wait_for_kafka_observer.sh
+      - name: Run live assertions
+        env:
+          RUN_CERTIFICATION_TESTS: "1"
+          CERTIFICATION_POSTGRES_DSN: postgresql://dataobs_fixture@127.0.0.1:15432/orders
+          KAFKA_BOOTSTRAP_SERVERS: 127.0.0.1:19092
+          CONNECT_URL: http://127.0.0.1:18083
+          SCHEMA_REGISTRY_URL: http://127.0.0.1:18081
+        run: source certification/runtime-secrets/compose.env; export CERTIFICATION_POSTGRES_PASSWORD_FILE; mkdir -p artifacts/kafka && python -m pytest tests/certification/test_kafka.py tests/certification/test_otel.py -q --junitxml=artifacts/kafka/results.xml
+      - name: Diagnostics and memory
+        if: always()
+        run: docker stats --no-stream > artifacts/kafka/container-memory.txt || true; docker compose -f docker-compose.certification.yml --profile cert-kafka logs --no-color > artifacts/kafka/redacted.log || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: kafka, path: artifacts/kafka, retention-days: 30}
+      - if: always()
+        run: ./scripts/certification/compose.sh down
+
+  certification-openlineage-product:
+    name: Certification OpenLineage and product queries
+    needs: [certification-contracts]
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.certification_scope == 'all' || inputs.certification_scope == 'openlineage' || inputs.certification_scope == 'product' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.11", cache: pip}
+      - run: pip install -r requirements.txt pytest requests psycopg[binary] confluent-kafka
+      - name: Start focused stack
+        run: CERTIFICATION_PROFILE=cert-product ./scripts/certification/compose.sh up
+      - name: Apply and verify released migrations
+        run: |
+          ./scripts/certification/apply_migrations.sh
+          ./bin/dataobs elastic status
+          curl -fsS http://127.0.0.1:19200/_mapping >/dev/null
+          curl -fsS http://127.0.0.1:19200/_alias >/dev/null
+      - name: Run live assertions
+        env:
+          RUN_CERTIFICATION_TESTS: "1"
+          CERTIFICATION_POSTGRES_DSN: postgresql://dataobs_fixture@127.0.0.1:15432/orders
+          KAFKA_BOOTSTRAP_SERVERS: 127.0.0.1:19092
+          CONNECT_URL: http://127.0.0.1:18083
+          SCHEMA_REGISTRY_URL: http://127.0.0.1:18081
+        run: source certification/runtime-secrets/compose.env; export CERTIFICATION_POSTGRES_PASSWORD_FILE; mkdir -p artifacts/openlineage-product && python -m pytest tests/certification/test_openlineage.py tests/certification/test_product_queries.py -q --junitxml=artifacts/openlineage-product/results.xml
+      - name: Diagnostics and memory
+        if: always()
+        run: docker stats --no-stream > artifacts/openlineage-product/container-memory.txt || true; docker compose -f docker-compose.certification.yml --profile cert-product logs --no-color > artifacts/openlineage-product/redacted.log || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: openlineage-product, path: artifacts/openlineage-product, retention-days: 30}
+      - if: always()
+        run: ./scripts/certification/compose.sh down
+
+  certification-security:
+    name: Certification security
+    needs: [certification-contracts]
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.certification_scope == 'all' || inputs.certification_scope == 'security' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.11", cache: pip}
+      - run: pip install -r requirements.txt pytest requests psycopg[binary] confluent-kafka
+      - name: Start focused stack
+        run: CERTIFICATION_PROFILE=cert-security ./scripts/certification/compose.sh up
+      - name: Apply and verify released migrations
+        run: |
+          ./scripts/certification/apply_migrations.sh
+          ./bin/dataobs elastic status
+          curl -fsS http://127.0.0.1:19200/_mapping >/dev/null
+          curl -fsS http://127.0.0.1:19200/_alias >/dev/null
+      - name: Run live assertions
+        env:
+          RUN_CERTIFICATION_TESTS: "1"
+          CERTIFICATION_POSTGRES_DSN: postgresql://dataobs_fixture@127.0.0.1:15432/orders
+          KAFKA_BOOTSTRAP_SERVERS: 127.0.0.1:19092
+          CONNECT_URL: http://127.0.0.1:18083
+          SCHEMA_REGISTRY_URL: http://127.0.0.1:18081
+        run: source certification/runtime-secrets/compose.env; export CERTIFICATION_POSTGRES_PASSWORD_FILE; mkdir -p artifacts/security && python -m pytest tests/certification/test_security.py -q --junitxml=artifacts/security/results.xml
+      - name: Diagnostics and memory
+        if: always()
+        run: docker stats --no-stream > artifacts/security/container-memory.txt || true; docker compose -f docker-compose.certification.yml --profile cert-security logs --no-color > artifacts/security/redacted.log || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: security, path: artifacts/security, retention-days: 30}
+      - if: always()
+        run: ./scripts/certification/compose.sh down
+
+  certification-browser:
+    name: Certification browser
+    needs: [certification-contracts]
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.certification_scope == 'all' || inputs.certification_scope == 'browser' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: {version: 10.28.1}
+      - uses: actions/setup-node@v4
+        with: {node-version: "24.15.0", cache: pnpm, cache-dependency-path: ui/dataobs-console/pnpm-lock.yaml}
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.11", cache: pip}
+      - run: pip install -r requirements.txt
+      - run: cd ui/dataobs-console && pnpm install --frozen-lockfile && pnpm api:generate && pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm build && pnpm bundle:check
+      - name: Start production Console stack
+        run: CERTIFICATION_PROFILE=cert-browser ./scripts/certification/compose.sh up
+      - name: Apply and verify released migrations
+        run: |
+          ./scripts/certification/apply_migrations.sh
+          ./bin/dataobs elastic status
+          curl -fsS http://127.0.0.1:19200/_mapping >/dev/null
+          curl -fsS http://127.0.0.1:19200/_alias >/dev/null
+      - name: Run browser live assertions
+        run: ./scripts/certification/run_browser.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: browser, path: "ui/dataobs-console/playwright-report\nui/dataobs-console/test-results", retention-days: 30}
+      - if: always()
+        run: ./scripts/certification/compose.sh down
+
+  certification-summary:
+    name: Certification summary
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [certification-contracts, certification-migrations-incidents, certification-postgres, certification-kafka, certification-openlineage-product, certification-browser, certification-security]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: {path: artifacts}
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.11"}
+      - name: Validate requested scope and job results
+        env:
+          REQUESTED_SCOPE: ${{ github.event_name == 'workflow_dispatch' && inputs.certification_scope || 'all' }}
+          JOB_RESULTS: '{"contracts":"${{ needs.certification-contracts.result }}","migrations-incidents":"${{ needs.certification-migrations-incidents.result }}","postgres":"${{ needs.certification-postgres.result }}","kafka":"${{ needs.certification-kafka.result }}","openlineage-product":"${{ needs.certification-openlineage-product.result }}","browser":"${{ needs.certification-browser.result }}","security":"${{ needs.certification-security.result }}"}'
+        run: |
+          python scripts/certification/validate_job_results.py "$REQUESTED_SCOPE" "$JOB_RESULTS" | tee artifacts/job-results.json
+          python scripts/certification/redact_artifacts.py artifacts
+          python scripts/certification/verify_artifacts.py artifacts --sentinels-only
+          python scripts/certification/build_manifest.py artifacts
+          python scripts/certification/verify_artifacts.py artifacts
+      - uses: actions/upload-artifact@v4
+        with: {name: certification-summary, path: artifacts, retention-days: 30}

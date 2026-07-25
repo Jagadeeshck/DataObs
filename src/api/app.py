@@ -4,7 +4,7 @@ import logging
 import uuid
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 from elasticsearch import Elasticsearch
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, Response
@@ -15,6 +15,7 @@ from pydantic import BaseModel, ConfigDict
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from packages.domain_model.incident import IncidentState
+from packages.domain_model.investigation import PathwayRouteEdge, PathwayRouteNode, PathwaySearchRequest
 from packages.domain_model.workflow import ApprovalState
 from packages.elastic_store.registry import status as elastic_migration_status
 from services.collection_manager import CollectionManagerService
@@ -22,8 +23,15 @@ from services.collection_manager.elasticsearch_repository import ElasticsearchCo
 from services.collection_manager.leases import claim_task, renew_task
 from services.collection_manager.memory_repository import InMemoryCollectionRepository
 from services.incident_manager import IncidentManagerService
+from services.incident_manager.elasticsearch_repository import ElasticsearchIncidentRepository
+from services.incident_manager.repository import VersionConflict
+from services.monitoring.elasticsearch_repository import ElasticsearchMonitorRepository
 from services.product_query import ElasticsearchConsoleRepository
+from services.product_query.path_search import search_paths
+from src.api.monitor_routes import router as monitor_router
+from src.api.data_product_routes import create_data_product_router
 from src.api.store import StoreProtocol, get_store
+from src.api.stream_routes import create_stream_router
 from src.config.settings import AppSettings, load_settings
 from src.core.enterprise_blueprint import enterprise_backlog
 from src.core.pillars import PILLAR_REGISTRY, canonical_pillar_value
@@ -86,6 +94,19 @@ class HealthResponse(BaseModel):
     service: str = "dataobs-api"
     store_backend: str
     auth_mode: str
+
+
+class IncidentIngestionMetadata(BaseModel):
+    status: Literal["created", "updated", "replayed", "stale"]
+    reason: Literal["new_occurrence", "exact_replay", "newer_replay", "stale_replay", "projection_enrichment"]
+    occurrence_added: bool
+    incident_changed: bool
+
+
+class FindingIngestionResponse(BaseModel):
+    finding: Dict[str, Any]
+    incident: Dict[str, Any]
+    ingestion: IncidentIngestionMetadata
 
 
 class RuleRequest(DataObsModel):
@@ -199,12 +220,31 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
     else:
         repo = InMemoryCollectionRepository()
     app.state.collection_manager = CollectionManagerService(repo)
-    app.state.incident_manager = IncidentManagerService()
+    incident_repo = (
+        ElasticsearchIncidentRepository(make_es_client(resolved_settings))
+        if resolved_settings.store_backend.lower() == "elasticsearch"
+        else None
+    )
+    app.state.incident_manager = IncidentManagerService(incident_repo)
     app.state.console_repository = (
         ElasticsearchConsoleRepository(make_es_client(resolved_settings))
         if resolved_settings.store_backend.lower() == "elasticsearch"
         else None
     )
+    app.state.monitor_repository = (
+        ElasticsearchMonitorRepository(make_es_client(resolved_settings))
+        if resolved_settings.store_backend.lower() == "elasticsearch"
+        else None
+    )
+    if resolved_settings.store_backend.lower() == "elasticsearch":
+        from services.data_products.elasticsearch_repository import ElasticsearchDataProductRepository
+
+        app.state.data_product_repository = ElasticsearchDataProductRepository(make_es_client(resolved_settings))
+    else:
+        from services.data_products.memory_repository import MemoryDataProductRepository
+
+        app.state.data_product_repository = MemoryDataProductRepository()
+    app.include_router(monitor_router)
 
     @app.middleware("http")
     async def request_context_middleware(request: Request, call_next):
@@ -231,6 +271,9 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
             raise HTTPException(status_code=503, detail="Console projections require the Elasticsearch store backend")
         return repository
 
+    def get_data_product_repository(request: Request):
+        return request.app.state.data_product_repository
+
     async def require_auth(
         settings: AppSettings = Depends(get_settings),
         credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
@@ -250,7 +293,13 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
 
     @app.exception_handler(HTTPException)
     async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
-        code_map = {400: "bad_request", 401: "unauthorized", 404: "not_found", 405: "method_not_allowed"}
+        code_map = {
+            400: "bad_request",
+            401: "unauthorized",
+            404: "not_found",
+            405: "method_not_allowed",
+            409: "version_conflict",
+        }
         return JSONResponse(
             status_code=exc.status_code,
             content=_error_payload(code_map.get(exc.status_code, "http_error"), str(exc.detail), _request_id(request)),
@@ -325,7 +374,12 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
             headers={"Deprecation": "true", "Link": "</livez>; rel=successor-version"},
         )
 
-    @app.post("/api/v1/findings", status_code=201, dependencies=[Depends(require_auth)])
+    @app.post(
+        "/api/v1/findings",
+        status_code=201,
+        response_model=FindingIngestionResponse,
+        dependencies=[Depends(require_auth)],
+    )
     async def create_finding(
         request: Request,
         body: DataObservabilityRequest,
@@ -335,6 +389,11 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
             return manager.ingest(_as_dict(body), tenant_id=request.state.tenant_id)
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except VersionConflict as exc:
+            raise HTTPException(
+                status_code=409,
+                detail={"message": "Incident changed concurrently", "request_id": request.state.request_id},
+            ) from exc
 
     @app.get("/api/v1/findings", dependencies=[Depends(require_auth)])
     async def list_findings(
@@ -435,6 +494,10 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
             )
         except KeyError as exc:
             raise HTTPException(status_code=404, detail=f"Incident '{incident_id}' not found") from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except VersionConflict as exc:
+            raise HTTPException(status_code=409, detail="Incident changed concurrently") from exc
 
     @app.post("/api/v1/incidents/{incident_id}/acknowledge", dependencies=[Depends(require_auth)])
     async def acknowledge_incident(
@@ -457,7 +520,10 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
             raise HTTPException(status_code=404, detail=f"Incident '{incident_id}' not found")
         data = _as_dict(body)
         incident.owner_team = data.get("owner_team", incident.owner_team)
-        manager.repo.save_incident(incident)
+        try:
+            manager.repo.update_incident(incident)
+        except VersionConflict as exc:
+            raise HTTPException(status_code=409, detail="Incident changed concurrently") from exc
         return incident.model_dump(mode="json")
 
     @app.post("/api/v1/incidents/{incident_id}/suppress", dependencies=[Depends(require_auth)])
@@ -1139,11 +1205,47 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
 
     @app.get("/api/v1/assets", tags=["assets"], dependencies=[Depends(require_auth)])
     async def list_assets(
+        request: Request,
         service: CollectionManagerService = Depends(cm),
         tid: str = Depends(tenant_id),
-        limit: int = Query(100, ge=1, le=1000),
+        environment: str | None = Query(None, min_length=1),
+        search: str | None = Query(None, max_length=256),
+        limit: int = Query(100, ge=1, le=100),
         cursor: str | None = None,
+        asset_type: str | None = Query(None, max_length=64),
+        owner_team: str | None = Query(None, max_length=128),
+        source: str | None = Query(None, max_length=128),
     ) -> Dict[str, Any]:
+        repository = request.app.state.console_repository
+        if repository is not None and environment is not None:
+            from services.product_query.pagination import decode_cursor, encode_cursor
+
+            try:
+                search_after = decode_cursor(cursor)
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
+            found = repository.assets(
+                tid,
+                environment,
+                size=limit + 1,
+                search=search,
+                search_after=search_after,
+                asset_type=asset_type,
+                owner_team=owner_team,
+                source=source,
+            )
+            next_cursor = encode_cursor(found[limit - 1].get("_sort", [])) if len(found) > limit else None
+            items = [{key: value for key, value in item.items() if key != "_sort"} for item in found[:limit]]
+            return {
+                "items": items,
+                "next_cursor": next_cursor,
+                "data_status": "complete" if found else "unknown",
+                "observed_at": datetime.now().astimezone().isoformat(),
+                "source_coverage": ["elasticsearch"],
+                "confidence": 1.0 if found else None,
+                "warnings": [] if found else ["No matching assets were observed"],
+                "evidence": [],
+            }
         items = service.repo.list("assets", tid)[:limit]
         return {"items": items, "next_cursor": None}
 
@@ -1192,12 +1294,6 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
             raise HTTPException(status_code=404, detail=f"Asset '{asset_id}' not found")
         return asset
 
-    @app.get("/api/v1/monitors", tags=["monitors"], dependencies=[Depends(require_auth)])
-    async def list_monitors(
-        service: CollectionManagerService = Depends(cm), tid: str = Depends(tenant_id)
-    ) -> Dict[str, Any]:
-        return {"items": service.repo.list("monitors", tid)}
-
     @app.get("/api/v1/incidents", tags=["incidents"], dependencies=[Depends(require_auth)])
     async def list_incidents(
         service: CollectionManagerService = Depends(cm), tid: str = Depends(tenant_id)
@@ -1227,6 +1323,100 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
             request.state.tenant_id, environment, max_nodes=max_nodes, max_edges=max_edges, source=source_integration
         )
 
+    @app.get("/api/v1/assets/{asset_id}/{section}", tags=["assets"], dependencies=[Depends(require_auth)])
+    async def asset_section(
+        asset_id: str,
+        section: str,
+        request: Request,
+        environment: str = Query(..., min_length=1),
+        repository: ElasticsearchConsoleRepository = Depends(get_console_repository),
+    ) -> Dict[str, Any]:
+        allowed_sections = {
+            "summary",
+            "schema",
+            "quality",
+            "freshness",
+            "lineage",
+            "usage",
+            "incidents",
+            "changes",
+            "slos",
+            "cost",
+            "related",
+            "impact",
+            "annotations",
+        }
+        if section not in allowed_sections:
+            raise HTTPException(status_code=404, detail="Unknown asset section")
+        if section == "cost":
+            return {
+                "asset_id": asset_id,
+                "data_status": "not_configured",
+                "observed_at": None,
+                "source_coverage": [],
+                "confidence": None,
+                "warnings": ["Cost collection is not configured"],
+                "evidence": [],
+                "request_id": getattr(request.state, "request_id", None),
+                "trace_id": None,
+            }
+        document = repository.asset_section(request.state.tenant_id, environment, asset_id, section)
+        if document is None:
+            return {
+                "asset_id": asset_id,
+                "data_status": "not_configured",
+                "observed_at": None,
+                "source_coverage": [],
+                "confidence": None,
+                "warnings": [f"{section.capitalize()} collection is not configured or has no observations"],
+                "evidence": [],
+                "request_id": getattr(request.state, "request_id", None),
+                "trace_id": None,
+            }
+        return document
+
+    @app.post("/api/v1/pathway-explorer/search", tags=["pathways"], dependencies=[Depends(require_auth)])
+    async def pathway_search(
+        body: PathwaySearchRequest,
+        request: Request,
+        environment: str = Query(..., min_length=1),
+        repository: ElasticsearchConsoleRepository = Depends(get_console_repository),
+    ) -> Dict[str, Any]:
+        topology = repository.topology(request.state.tenant_id, environment, max_nodes=1000, max_edges=2500)
+        nodes = [
+            PathwayRouteNode(
+                id=str(item.get("id", item.get("node_id", item.get("_id")))),
+                name=str(item.get("name", item.get("id", "unknown"))),
+                node_type=str(item.get("node_type", item.get("type", "unknown"))),
+            )
+            for item in topology["nodes"]
+        ]
+        edges = [PathwayRouteEdge.model_validate(item) for item in topology["edges"]]
+        complete, partial, excluded, truncated = search_paths(
+            nodes,
+            edges,
+            body.start_node_id,
+            body.end_node_id,
+            max_hops=body.max_hops,
+            max_paths=body.max_paths,
+            minimum_confidence=body.minimum_confidence,
+            direction=body.direction,
+            include_partial=body.include_partial,
+        )
+        return {
+            "best_path": complete[0] if complete else None,
+            "alternative_paths": complete[1:],
+            "partial_paths": partial,
+            "excluded_path_count": excluded,
+            "truncated": truncated or topology["truncated"],
+            "data_status": "complete" if complete else "partial" if partial else "unknown",
+            "observed_at": datetime.now().astimezone().isoformat(),
+            "source_coverage": ["elasticsearch"],
+            "confidence": complete[0].confidence if complete else None,
+            "warnings": ["Traversal was bounded"] if truncated else [],
+            "evidence": [],
+        }
+
     @app.get("/api/v1/topology/nodes/{node_id}", tags=["console"], dependencies=[Depends(require_auth)])
     @app.get("/api/v1/entities/{node_id}/summary", tags=["console"], dependencies=[Depends(require_auth)])
     async def console_entity(
@@ -1255,5 +1445,8 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
     )
     async def get_enterprise_backlog() -> Dict[str, Any]:
         return {"backlog": enterprise_backlog(implemented_keys=[])}
+
+    app.include_router(create_stream_router(get_console_repository, require_auth))
+    app.include_router(create_data_product_router(get_data_product_repository, require_auth))
 
     return app

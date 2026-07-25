@@ -10,6 +10,8 @@
 .env.*.local
 *.env
 config/dataobs.yaml
+certification/runtime-secrets/*
+!certification/runtime-secrets/.gitkeep
 
 # ── Python ───────────────────────────────────────────────────────────────────
 __pycache__/
@@ -31,6 +33,21 @@ pip-wheel-metadata/
 .coverage
 htmlcov/
 .tox/
+coverage/
+coverage-*/
+test-results/
+playwright-report/
+.playwright/
+**/.cache/ms-playwright/
+
+# JavaScript dependencies and reproducible build output. Lockfiles remain tracked.
+node_modules/
+**/node_modules/
+ui/dataobs-console/.vite/
+ui/dataobs-console/coverage/
+ui/dataobs-console/dist/
+ui/dataobs-console/test-results/
+ui/dataobs-console/playwright-report/
 
 # ── Type checking ────────────────────────────────────────────────────────────
 .mypy_cache/

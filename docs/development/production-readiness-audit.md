@@ -1,44 +1,33 @@
-# Production readiness audit
+# Production-readiness audit
 
-This PR establishes product foundations and does not make DataObs production-ready.
+**Conclusion:** release readiness is blocked. Local tests are not hosted evidence. An individually validated capability would not imply product-level readiness.
 
-| Capability | Current state | Target | Evidence | Blocker | Milestone |
+| Area | State | Evidence | Blockers | Owner | Next gate |
 |---|---|---|---|---|---|
-| API | FastAPI/Uvicorn with legacy routes and `/api/v1` foundations | Hardened public API | `src/api/app.py` | IAM/rate limits incomplete | v1 |
-| auth | Local shared bearer token and pluggable principal abstraction | OIDC/API keys/RBAC | `src/api/app.py` | Full IAM non-goal | v1.x |
-| tenancy | Header tenant context and tenant-aware contracts | End-to-end tenant isolation | domain models/API tests | deeper auth scopes | v1 |
-| Elasticsearch migrations | Explicit migration CLI and readiness status | Versioned upgrade framework | `packages/elastic_store` | real cluster validation | v1 |
-| collection manager | Minimal source/scanner/task/result control plane | Fleet/EDOT orchestration | `services/collection_manager` | adapters stubbed | v1.x |
-| scanner | Synthetic result ingestion only | real connector vertical slices | scanner worker + collection manager | PostgreSQL scanner non-goal | follow-up |
-| connectors | References and SDK boundaries | certified connectors | docs/integrations | connector implementation | follow-up |
-| CI | Unit checks extended | blocking integration gates | `.github/workflows/ci.yml` | external services | v1 |
-| Docker | Existing API/quality images | product images with SBOM | Dockerfiles | collection-manager image hardening | v1.x |
-| Helm | Existing chart validation | production chart | `helm/dataobs` | secrets/HA | v1.x |
-| Terraform | Existing modules | deployment blueprints | `infra/terraform` | production environments | v1.x |
-| security | Secret-reference serialization | threat model and scanning | domain/source model | full security review | v1 |
-| observability | audit events and OTel hooks | self-observability dashboards | collection manager telemetry | dashboards | v1.x |
-| backup/restore | documented as blocker | tested snapshots | operations docs | automation non-goal | later |
-| upgrades | migrations record state | safe blue/green upgrades | elastic_store | rollback automation | later |
-| licensing | OSS repo license retained | dependency/license policy | LICENSE | legal review | v1 |
-| UI | Kibana primary, future console | DataObs Console | README | React console non-goal | later |
-| Streams | data stream templates only | Kafka/Elastic Streams packs | manifest | implementation non-goal | later |
-| Workflows | execution contracts only | remediation packs | domain/workflow | production packs non-goal | later |
+| Architecture | foundation | Six-pillar architecture and ledger | Unified certification absent | unassigned | Reconcile active architecture docs with ledger |
+| Migrations | functional_unvalidated | `packages/elastic_store/manifest.py`; local tests defined | Retained hosted upgrade run absent | unassigned | ES 9.4.2 upgrade rehearsal |
+| Storage | foundation | Elasticsearch registry and resources | durability, scale, restore evidence absent | unassigned | real-stack storage suite |
+| Connectors | foundation | PostgreSQL/Kafka/adapters in tree | provider/version matrix incomplete | unassigned | version-pinned integration evidence |
+| Collection runtime | foundation | collection manager and scanner worker | HA and scale absent | unassigned | failure/lease/scale certification |
+| Monitor runtime | foundation | monitor services and migration 0007 | complete operator workflow absent | unassigned | executable monitor journey |
+| APIs | foundation | checked-in `openapi.json` | security and compatibility certification absent | unassigned | hosted contract/security suite |
+| Console | foundation | React routes for core views | Jobs/Monitoring/Products/Automation incomplete; browser evidence absent | unassigned | Playwright and accessibility gate |
+| IAM | not_started | architecture documentation only | OIDC/RBAC implementation absent | unassigned | threat model and implementation plan |
+| Tenancy | foundation | tenant domain and onboarding runbook | enforced isolation proof absent | unassigned | adversarial isolation tests |
+| Security | blocked | threat models exist | consolidated testing and IAM absent | unassigned | security review and retained results |
+| CI | functional_unvalidated | workflow jobs defined | this branch has no hosted run yet | unassigned | successful retained PR run |
+| Browser/accessibility | scaffold | Playwright configuration/tests exist | complete usable journeys not demonstrated | unassigned | supported-browser and a11y run |
+| Scale | blocked | limited component audit results | product-level load envelope absent | unassigned | defined SLO/load certification |
+| Backup/restore | not_started | no supported workflow | implementation and rehearsal absent | unassigned | restore runbook plus destructive rehearsal |
+| Upgrades | functional_unvalidated | 0012 compatibility corrections | hosted rolling-upgrade evidence absent | unassigned | version-pinned rolling upgrade |
+| HA | not_started | deployment primitives only | topology and failover absent | unassigned | HA design and failover evidence |
+| Kubernetes | foundation | `k8s/` and Helm templates | supported topology/upgrade absent | unassigned | cluster deployment certification |
+| Terraform | foundation | limited AWS modules | full platform provisioning absent | unassigned | scoped IaC contract and tests |
+| Release | blocked | release workflow exists | signed, supported candidate evidence absent | unassigned | release rehearsal and artifact verification |
+| Licensing | blocked | dependency declarations | complete product/license review absent | unassigned | SBOM and human legal review |
+| Operations | foundation | runbooks in `docs/operations/` | on-call, SLO, DR rehearsals absent | unassigned | operational game day |
+| Support | not_started | no support contract | ownership and escalation absent | unassigned | define supported matrix and escalation |
 
-## Incident automation audit note
+## Phase B certification boundary
 
-Incident automation remains a draft vertical slice until container-backed CI proves Elasticsearch/Kibana 9.4.2 migrations, workflow deployment, alert-rule bindings, Cases integration, safe approvals, notification fallback, E2E recovery and sentinel-secret scans.
-# Kafka DSM completion-gate status
-
-The Kafka Observer and Pathway Worker now have executable long-running and
-single-cycle command paths. Their production repositories write inventory,
-current projections, topology edges, immutable observations, and checkpoints to
-Elasticsearch. Plaintext Kafka is rejected outside development/test, secrets are
-resolved only from environment or file references, and span normalization never
-captures message bodies.
-
-This is a completion gate, **not a production-readiness claim**. In particular,
-the container-backed three-broker/Kibana workflow demonstration, Kafka Connect
-and Schema Registry profiles, Cases execution, lease-based multi-worker
-coordination, and end-to-end failure/recovery evidence remain blocking work. The
-standalone console and any destructive or autonomous remediation remain out of
-scope.
+The unified certification harness narrows evidence gaps but does not remove the release blockers for secured Elastic deployment, OIDC/RBAC, provider certification, backup/restore, production scale, or incomplete investigation workbenches. Shared-token/development identity and disabled Elastic security in isolated CI remain explicit blockers.

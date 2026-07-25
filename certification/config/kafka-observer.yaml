@@ -1,0 +1,35 @@
+tenant_id: tenant-alpha
+environment: test
+integration_id: kafka-certification
+bootstrap_servers:
+  - kafka-1:9092
+  - kafka-2:9092
+  - kafka-3:9092
+client_id: dataobs-certification-observer
+request_timeout_seconds: 10
+retries: 3
+backoff_seconds: 1
+concurrency: 4
+bootstrap_server_allowlist:
+  - kafka-1:9092
+  - kafka-2:9092
+  - kafka-3:9092
+topic_include:
+  - "^certification-.*"
+topic_exclude:
+  - "^__.*"
+group_include:
+  - "^certification-.*"
+include_internal_topics: false
+batch_size: 500
+maximum_combinations_per_cycle: 100000
+lease_duration_seconds: 60
+lease_renewal_seconds: 20
+inventory_interval_seconds: 5
+group_interval_seconds: 5
+offset_interval_seconds: 5
+connect_interval_seconds: 5
+schema_interval_seconds: 5
+metric_interval_seconds: 5
+security:
+  protocol: PLAINTEXT

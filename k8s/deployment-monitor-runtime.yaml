@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: dataobs-monitor-runtime, namespace: dataobs}
+spec:
+  replicas: 2
+  selector: {matchLabels: {app: dataobs-monitor-runtime}}
+  template:
+    metadata: {labels: {app: dataobs-monitor-runtime}}
+    spec:
+      terminationGracePeriodSeconds: 30
+      securityContext: {runAsNonRoot: true, seccompProfile: {type: RuntimeDefault}}
+      containers:
+        - name: runtime
+          image: dataobs/monitor-runtime:pin-by-digest
+          args: [run]
+          securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
+          resources: {requests: {cpu: 100m, memory: 128Mi}, limits: {cpu: "1", memory: 512Mi}}
+          livenessProbe: {exec: {command: [python, -m, services.monitor_runtime.cli, health]}, initialDelaySeconds: 10, periodSeconds: 30}
+          readinessProbe: {exec: {command: [python, -m, services.monitor_runtime.cli, health]}, initialDelaySeconds: 5, periodSeconds: 10}

@@ -35,7 +35,8 @@ def test_duplicate_findings_create_one_incident():
     first = svc.ingest(event, tenant_id="t1")
     second = svc.ingest(event, tenant_id="t1")
     assert first["incident"]["id"] == second["incident"]["id"]
-    assert second["incident"]["occurrence_count"] == 2
+    assert second["incident"]["occurrence_count"] == 1
+    assert second["incident"]["finding_ids"] == first["incident"]["finding_ids"]
 
 
 def test_cross_tenant_rejected():

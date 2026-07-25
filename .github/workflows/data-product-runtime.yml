@@ -1,0 +1,215 @@
+name: Data Product hosted certification foundation
+on:
+  pull_request:
+    paths:
+      - 'services/data_products/**'
+      - 'packages/domain_model/data_product.py'
+      - 'packages/elastic_store/**'
+      - 'tests/data_products/**'
+      - 'tests/integration/data_products/**'
+      - 'tests/security/data_products/**'
+      - 'tests/certification/**'
+      - 'scripts/certification/**'
+      - 'docs/development/data-product-reconciliation-runtime-closure.md'
+      - 'docs/product/capability-ledger.yaml'
+      - '.github/workflows/data-product-runtime.yml'
+  # Keep manual dispatch available strictly for registration/runtime diagnosis.
+  # Hosted certification evidence must still come from a pull_request run.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: read
+
+jobs:
+  data-product-reconciliation-contracts:
+    runs-on: ubuntu-latest
+    env:
+      DATA_PRODUCT_CERTIFICATION_SHA: >-
+        ${{ github.event_name == 'pull_request'
+            && github.event.pull_request.head.sha
+            || github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: '${{ env.DATA_PRODUCT_CERTIFICATION_SHA }}', fetch-depth: 0}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install -r requirements.txt pytest black mypy ruff
+      - run: mkdir -p artifacts/foundation
+      - run: python scripts/check_migration_immutability.py --base-ref origin/main
+      - run: python scripts/check_docs_links.py
+      - run: ruff check packages/elastic_store services/data_products scripts/certification tests/data_products tests/integration/data_products tests/security/data_products tests/certification
+      - run: black --check packages/elastic_store services/data_products scripts/certification tests/data_products tests/integration/data_products tests/security/data_products tests/certification
+      - run: mypy packages/elastic_store/registry.py services/data_products/repository.py services/data_products/memory_repository.py services/data_products/elasticsearch_repository.py services/data_products/reconciliation.py
+      - run: python -m pytest tests/certification/test_data_product_runtime_workflow.py tests/certification/test_data_product_evidence.py tests/certification/test_evidence_manifest.py tests/data_products/test_membership_service.py tests/data_products/test_dependency_service.py tests/data_products/test_data_product_service.py tests/data_products/test_operation_reconciliation.py -q --junitxml=artifacts/foundation/contracts.xml
+      - uses: actions/upload-artifact@v4
+        with: {name: data-product-reconciliation-contracts, path: artifacts/foundation}
+  data-product-reconciliation-unit:
+    runs-on: ubuntu-latest
+    env:
+      DATA_PRODUCT_CERTIFICATION_SHA: >-
+        ${{ github.event_name == 'pull_request'
+            && github.event.pull_request.head.sha
+            || github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: '${{ env.DATA_PRODUCT_CERTIFICATION_SHA }}', fetch-depth: 0}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install -r requirements.txt pytest black mypy ruff
+      - run: mkdir -p artifacts/foundation
+      - run: python -m pytest tests/data_products tests/certification -q --junitxml=artifacts/foundation/unit.xml
+      - uses: actions/upload-artifact@v4
+        with: {name: data-product-reconciliation-unit, path: artifacts/foundation}
+  data-product-foundation-elasticsearch:
+    runs-on: ubuntu-latest
+    env:
+      DATA_PRODUCT_CERTIFICATION_SHA: >-
+        ${{ github.event_name == 'pull_request'
+            && github.event.pull_request.head.sha
+            || github.sha }}
+    services:
+      elasticsearch:
+        image: docker.elastic.co/elasticsearch/elasticsearch:9.4.2
+        env:
+          discovery.type: single-node
+          xpack.security.enabled: false
+        ports: ['9200:9200']
+        options: >-
+          --health-cmd "curl -fsS http://localhost:9200/_cluster/health"
+          --health-interval 10s --health-timeout 5s --health-retries 30
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: '${{ env.DATA_PRODUCT_CERTIFICATION_SHA }}', fetch-depth: 0}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install -r requirements.txt pytest black mypy ruff
+      - run: mkdir -p artifacts/foundation
+      - run: RUN_INTEGRATION_TESTS=1 DATA_PRODUCT_ALLOW_DESTRUCTIVE_TEST_RESET=1 DATA_PRODUCT_CERTIFICATION_PROFILE=data-product-runtime-foundation DATA_PRODUCT_EVIDENCE_DIR=artifacts/foundation ELASTICSEARCH_URL=http://127.0.0.1:9200 python -m pytest tests/integration/data_products/test_migrations_elasticsearch.py -q --junitxml=artifacts/foundation/migrations.xml
+      - run: RUN_INTEGRATION_TESTS=1 DATA_PRODUCT_CERTIFICATION_PROFILE=data-product-runtime-foundation ELASTICSEARCH_URL=http://127.0.0.1:9200 python -m pytest tests/integration/data_products/test_membership_dependency_elasticsearch.py::test_real_elasticsearch_membership_dependency_profile_is_selected -q
+      - run: RUN_INTEGRATION_TESTS=1 DATA_PRODUCT_CERTIFICATION_PROFILE=data-product-runtime-foundation DATA_PRODUCT_EVIDENCE_DIR=artifacts/foundation ELASTICSEARCH_URL=http://127.0.0.1:9200 python -m pytest tests/integration/data_products/test_operation_state_elasticsearch.py tests/integration/data_products/test_membership_dependency_elasticsearch.py -q --junitxml=artifacts/foundation/elasticsearch.xml
+      - uses: actions/upload-artifact@v4
+        with: {name: data-product-foundation-elasticsearch, path: artifacts/foundation}
+  data-product-foundation-security:
+    runs-on: ubuntu-latest
+    env:
+      DATA_PRODUCT_CERTIFICATION_SHA: >-
+        ${{ github.event_name == 'pull_request'
+            && github.event.pull_request.head.sha
+            || github.sha }}
+    services:
+      elasticsearch:
+        image: docker.elastic.co/elasticsearch/elasticsearch:9.4.2
+        env:
+          discovery.type: single-node
+          xpack.security.enabled: false
+        ports: ['9200:9200']
+        options: >-
+          --health-cmd "curl -fsS http://localhost:9200/_cluster/health"
+          --health-interval 10s --health-timeout 5s --health-retries 30
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: '${{ env.DATA_PRODUCT_CERTIFICATION_SHA }}', fetch-depth: 0}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install -r requirements.txt pytest black mypy ruff
+      - run: mkdir -p artifacts/foundation
+      - run: ELASTICSEARCH_URL=http://127.0.0.1:9200 ./bin/dataobs elastic apply
+      - run: RUN_INTEGRATION_TESTS=1 DATA_PRODUCT_CERTIFICATION_PROFILE=data-product-runtime-foundation ELASTICSEARCH_URL=http://127.0.0.1:9200 python -m pytest tests/integration/data_products/test_membership_dependency_elasticsearch.py::test_real_elasticsearch_membership_dependency_profile_is_selected -q
+      - name: Execute foundation controls including wrong-scope claim mutation denial
+        run: RUN_INTEGRATION_TESTS=1 DATA_PRODUCT_CERTIFICATION_PROFILE=data-product-runtime-foundation DATA_PRODUCT_EVIDENCE_DIR=artifacts/foundation ELASTICSEARCH_URL=http://127.0.0.1:9200 python -m pytest tests/security/data_products -q --junitxml=artifacts/foundation/security.xml
+      - name: Final sentinel scan after all retained security outputs exist
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root = Path("artifacts/foundation")
+          report_path = root / "sentinel-report.json"
+          report = json.loads(report_path.read_text())
+          final_files = {path.name for path in root.iterdir() if path.is_file()}
+          expected = {"security.xml", "security-report.json", "sentinel-report.json", "redacted.log"}
+          if final_files != expected:
+              raise SystemExit(f"final security inventory mismatch: {sorted(final_files)}")
+          report["files_scanned"] = len(final_files)
+          report_path.write_text(json.dumps(report, indent=2) + "\n")
+          PY
+          python scripts/certification/verify_artifacts.py --sentinels-only artifacts/foundation
+      - uses: actions/upload-artifact@v4
+        with: {name: data-product-foundation-security, path: artifacts/foundation}
+  data-product-foundation-evidence:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    needs: [data-product-reconciliation-contracts, data-product-reconciliation-unit, data-product-foundation-elasticsearch, data-product-foundation-security]
+    env:
+      CERTIFICATION_JOB_RESULTS: >-
+        {"data-product-reconciliation-contracts":"${{ needs.data-product-reconciliation-contracts.result }}","data-product-reconciliation-unit":"${{ needs.data-product-reconciliation-unit.result }}","data-product-foundation-elasticsearch":"${{ needs.data-product-foundation-elasticsearch.result }}","data-product-foundation-security":"${{ needs.data-product-foundation-security.result }}"}
+      CERTIFICATION_RETENTION_DAYS: '30'
+      CERTIFICATION_EVENT_NAME: pull_request
+      CERTIFICATION_STARTED_AT: ${{ github.event.pull_request.created_at }}
+      CERTIFICATION_RUN_ID: ${{ github.run_id }}
+      CERTIFICATION_RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      CERTIFICATION_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      DATA_PRODUCT_CERTIFICATION_SHA: ${{ github.event.pull_request.head.sha }}
+      EXPECTED_HOSTED_SHA: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: '${{ env.DATA_PRODUCT_CERTIFICATION_SHA }}', fetch-depth: 0}
+      - uses: actions/download-artifact@v4
+        with: {name: data-product-reconciliation-contracts, path: artifacts/downloaded/contracts}
+      - uses: actions/download-artifact@v4
+        with: {name: data-product-reconciliation-unit, path: artifacts/downloaded/unit}
+      - uses: actions/download-artifact@v4
+        with: {name: data-product-foundation-elasticsearch, path: artifacts/downloaded/elasticsearch}
+      - uses: actions/download-artifact@v4
+        with: {name: data-product-foundation-security, path: artifacts/downloaded/security}
+      - name: Require exact independent pull-request head SHA
+        run: |
+          python - <<'PY'
+          from scripts.certification.provenance import (
+              certification_commit_sha,
+              expected_certification_sha,
+          )
+
+          producer = certification_commit_sha()
+          expected = expected_certification_sha()
+          if expected is None:
+              raise SystemExit("independent expected SHA is missing")
+          if producer != expected:
+              raise SystemExit("producer and independent expected SHA differ")
+          PY
+      - run: python scripts/certification/assemble_data_product_evidence.py --profile data-product-runtime-foundation artifacts/downloaded artifacts/retained
+      - run: DATA_PRODUCT_CERTIFICATION_PROFILE=data-product-runtime-foundation python scripts/certification/build_manifest.py artifacts/retained
+      - run: python scripts/certification/verify_artifacts.py --require-hosted-provenance --expected-sha "$EXPECTED_HOSTED_SHA" artifacts/retained
+      - uses: actions/upload-artifact@v4
+        with: {name: data-product-foundation-evidence, path: artifacts/retained, retention-days: 30}
+  data-product-foundation-summary:
+    if: always() && github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    needs: [data-product-reconciliation-contracts, data-product-reconciliation-unit, data-product-foundation-elasticsearch, data-product-foundation-security, data-product-foundation-evidence]
+    steps:
+      - name: Require runtime jobs
+        env:
+          CONTRACTS: ${{ needs.data-product-reconciliation-contracts.result }}
+          UNIT: ${{ needs.data-product-reconciliation-unit.result }}
+          ELASTICSEARCH: ${{ needs.data-product-foundation-elasticsearch.result }}
+          SECURITY: ${{ needs.data-product-foundation-security.result }}
+          EVIDENCE: ${{ needs.data-product-foundation-evidence.result }}
+        run: test "$CONTRACTS" = success && test "$UNIT" = success && test "$ELASTICSEARCH" = success && test "$SECURITY" = success && test "$EVIDENCE" = success
+  data-product-foundation-diagnostic-summary:
+    if: always() && github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    needs: [data-product-reconciliation-contracts, data-product-reconciliation-unit, data-product-foundation-elasticsearch, data-product-foundation-security]
+    steps:
+      - name: Require diagnostic producer jobs
+        env:
+          CONTRACTS: ${{ needs.data-product-reconciliation-contracts.result }}
+          UNIT: ${{ needs.data-product-reconciliation-unit.result }}
+          ELASTICSEARCH: ${{ needs.data-product-foundation-elasticsearch.result }}
+          SECURITY: ${{ needs.data-product-foundation-security.result }}
+        run: |
+          echo "diagnostic only"
+          echo "not certification evidence"
+          echo "not valid for release"
+          echo "not valid for review-thread closure"
+          test "$CONTRACTS" = success && test "$UNIT" = success && test "$ELASTICSEARCH" = success && test "$SECURITY" = success

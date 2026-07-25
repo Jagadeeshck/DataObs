@@ -8,7 +8,9 @@ from elasticsearch import Elasticsearch
 
 class ObserverRepository(Protocol):
     def load_checkpoint(self, provider: str) -> dict[str, Any] | None: ...
+    def save_checkpoint(self, provider: str, checkpoint: dict[str, Any]) -> None: ...
     def save_collection(self, provider: str, inventory: dict[str, Any], checkpoint: dict[str, Any]) -> None: ...
+    def save_error(self, error: dict[str, Any]) -> None: ...
 
 
 class ElasticsearchObserverRepository:
@@ -37,8 +39,48 @@ class ElasticsearchObserverRepository:
         }
 
     def load_checkpoint(self, provider: str) -> dict[str, Any] | None:
-        response = self.es.get(index="dataobs-pathway-checkpoints-v1-read", id=self._id(provider), ignore=[404])
+        response = self.es.get(index="dataobs-kafka-observer-checkpoints-v1-read", id=self._id(provider), ignore=[404])
         return response.get("_source", {}).get("document") if response.get("found") else None
+
+    def save_checkpoint(self, provider: str, checkpoint: dict[str, Any]) -> None:
+        self.es.index(
+            index="dataobs-kafka-observer-checkpoints-v1-write",
+            id=self._id(provider),
+            document=self._base() | {"id": provider, "document": checkpoint},
+            refresh="wait_for",
+        )
+
+    def save_error(self, error: dict[str, Any]) -> None:
+        self.es.index(
+            index="logs-dataobs.kafka-collection-error-default",
+            id=self._id(error["collector"], error["fingerprint"]),
+            document=self._base() | {"@timestamp": error["last_observed"], **error},
+        )
+
+    def acquire_lease(self, name: str, owner: str, expires_at: str) -> bool:
+        lease_id = self._id(name)
+        script = {
+            "source": "if (ctx._source.lease_owner == params.owner || ctx._source.lease_expires_at.compareTo(params.now) <= 0) { ctx._source.lease_owner=params.owner; ctx._source.lease_expires_at=params.expires; } else { ctx.op='none'; }",
+            "params": {"owner": owner, "expires": expires_at, "now": datetime.now(timezone.utc).isoformat()},
+        }
+        response = self.es.update(
+            index="dataobs-kafka-observer-leases-v1-write",
+            id=lease_id,
+            script=script,
+            upsert=self._base() | {"lease_owner": owner, "lease_expires_at": expires_at},
+            refresh="wait_for",
+        )
+        return response.get("result") != "noop"
+
+    def release_lease(self, name: str, owner: str) -> None:
+        self.es.update(
+            index="dataobs-kafka-observer-leases-v1-write",
+            id=self._id(name),
+            script={
+                "source": "if (ctx._source.lease_owner == params.owner) { ctx.op='delete' }",
+                "params": {"owner": owner},
+            },
+        )
 
     def save_collection(self, provider: str, inventory: dict[str, Any], checkpoint: dict[str, Any]) -> None:
         now = datetime.now(timezone.utc).isoformat()
@@ -87,7 +129,7 @@ class ElasticsearchObserverRepository:
                 document=base | {"cluster_id": cluster_id, "consumer_group_id": group["group_id"], "document": group},
             )
         self.es.index(
-            index="dataobs-pathway-checkpoints-v1-write",
+            index="dataobs-kafka-observer-checkpoints-v1-write",
             id=self._id(provider),
             document=base | {"id": provider, "document": checkpoint},
             refresh="wait_for",
@@ -100,10 +142,17 @@ class MemoryObserverRepository:
     def __init__(self):
         self.checkpoints: dict[str, dict[str, Any]] = {}
         self.collections: list[dict[str, Any]] = []
+        self.errors: list[dict[str, Any]] = []
 
     def load_checkpoint(self, provider: str) -> dict[str, Any] | None:
         return self.checkpoints.get(provider)
 
+    def save_checkpoint(self, provider: str, checkpoint: dict[str, Any]) -> None:
+        self.checkpoints[provider] = dict(checkpoint)
+
     def save_collection(self, provider: str, inventory: dict[str, Any], checkpoint: dict[str, Any]) -> None:
         self.collections.append(inventory)
         self.checkpoints[provider] = checkpoint
+
+    def save_error(self, error: dict[str, Any]) -> None:
+        self.errors.append(dict(error))

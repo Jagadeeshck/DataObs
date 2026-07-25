@@ -19,6 +19,19 @@ class FindingType(StrEnum):
     SOURCE_UNAVAILABLE = "source_unavailable"
     PROFILE_ANOMALY = "profile_anomaly"
     LINEAGE_IMPACT_WARNING = "lineage_impact_warning"
+    JOB_FAILURE = "job_failure"
+    JOB_SLA_BREACH = "job_sla_breach"
+    STREAM_LAG = "stream_lag"
+    STREAM_RETENTION_RISK = "stream_retention_risk"
+    STREAM_REPLICATION_FAILURE = "stream_replication_failure"
+    CONNECTOR_FAILURE = "connector_failure"
+    BREAKING_SCHEMA_CHANGE = "breaking_schema_change"
+    PATHWAY_LATENCY = "pathway_latency"
+    MONITOR_ANOMALY = "monitor_anomaly"
+    DEPLOYMENT_REGRESSION = "deployment_regression"
+    COLLECTOR_FAILURE = "collector_failure"
+    SECURITY_POLICY_VIOLATION = "security_policy_violation"
+    UNKNOWN = "unknown"
 
 
 class SignalType(StrEnum):
@@ -50,9 +63,11 @@ class IncidentState(StrEnum):
     INVESTIGATING = "investigating"
     MITIGATING = "mitigating"
     WAITING_FOR_APPROVAL = "waiting_for_approval"
+    MONITORING_RECOVERY = "monitoring_recovery"
     RESOLVED = "resolved"
     SUPPRESSED = "suppressed"
     CLOSED = "closed"
+    REOPENED = "reopened"
 
 
 def deterministic_id(prefix: str, parts: list[str]) -> str:
@@ -94,6 +109,12 @@ class Finding(ProductEntity):
     first_observed_at: datetime
     last_observed_at: datetime
     recovery_signal: bool = False
+    resource_ids: list[str] = Field(default_factory=list)
+    rule_id: str | None = None
+    data_product_ids: list[str] = Field(default_factory=list)
+    correlation_features: dict[str, Any] = Field(default_factory=dict)
+    suppressed_until: datetime | None = None
+    recovered_at: datetime | None = None
 
     @field_validator("id", mode="before")
     @classmethod
@@ -117,10 +138,13 @@ class Finding(ProductEntity):
 
 
 class Incident(ProductEntity):
+    title: str = "Untitled incident"
     incident_state: IncidentState = IncidentState.OPEN
     severity: Severity = Severity.MEDIUM
     deduplication_key: str
     correlation_key: str | None = None
+    correlation_version: str = "v1"
+    correlation_explanation: dict[str, Any] = Field(default_factory=dict)
     finding_ids: list[str] = Field(default_factory=list)
     affected_assets: list[str] = Field(default_factory=list)
     root_cause_candidates: list[dict[str, Any]] = Field(default_factory=list)
@@ -144,5 +168,21 @@ class Incident(ProductEntity):
     closed_at: datetime | None = None
     resolution_reason: str | None = None
     recovery_evidence: list[dict[str, Any]] = Field(default_factory=list)
+    state_reason: str | None = None
+    priority: str = "P3"
+    urgency: str = "medium"
+    impact: str = "limited"
+    primary_resource: str | None = None
+    commander: str | None = None
+    responders: list[str] = Field(default_factory=list)
+    watchers: list[str] = Field(default_factory=list)
+    tags: list[str] = Field(default_factory=list)
+    data_product_ids: list[str] = Field(default_factory=list)
+    business_services: list[str] = Field(default_factory=list)
+    recovery_state: str = "pending"
+    recurrence_of: str | None = None
+    merged_from: list[str] = Field(default_factory=list)
+    split_from: str | None = None
+    reopened_at: datetime | None = None
     seq_no: int | None = None
     primary_term: int | None = None

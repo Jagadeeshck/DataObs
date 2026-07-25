@@ -1,0 +1,98 @@
+name: Data Product reconciliation certification
+on: [pull_request, workflow_dispatch]
+jobs:
+  data-product-reconciliation-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: pip install -r requirements.txt
+      - run: python scripts/check_migration_immutability.py --base-ref origin/main
+      - run: python scripts/check_generated_artifacts.py
+      - run: python scripts/check_docs_links.py
+      - run: python scripts/validate_capability_ledger.py
+      - run: black --check services/data_products tests/data_products tests/integration/data_products tests/security/data_products
+      - run: mypy services/data_products src
+      - run: ruff check services/data_products src/api/data_product_routes.py tests/data_products tests/integration/data_products tests/security/data_products
+  data-product-reconciliation-unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: pip install -r requirements.txt
+      - run: python -m pytest tests/data_products -q --junitxml=reconciliation-unit.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: reconciliation-unit-results, path: reconciliation-unit.xml, retention-days: 30}
+  data-product-reconciliation-elasticsearch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      elasticsearch:
+        image: docker.elastic.co/elasticsearch/elasticsearch:9.4.2
+        env: {discovery.type: single-node, xpack.security.enabled: 'false'}
+        ports: ['9200:9200']
+        options: --health-cmd 'curl -f http://localhost:9200/_cluster/health' --health-interval 10s --health-timeout 5s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: pip install -r requirements.txt
+      - run: ./bin/dataobs elastic migrate
+        env: {ELASTICSEARCH_URL: 'http://127.0.0.1:9200'}
+      - run: RUN_INTEGRATION_TESTS=1 ELASTICSEARCH_URL=http://127.0.0.1:9200 python -m pytest tests/integration/data_products -q --junitxml=elasticsearch.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: reconciliation-elasticsearch-results, path: elasticsearch.xml, retention-days: 30}
+  data-product-reconciliation-security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      elasticsearch:
+        image: docker.elastic.co/elasticsearch/elasticsearch:9.4.2
+        env: {discovery.type: single-node, xpack.security.enabled: 'false'}
+        ports: ['9200:9200']
+        options: --health-cmd 'curl -f http://localhost:9200/_cluster/health' --health-interval 10s --health-timeout 5s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: pip install -r requirements.txt
+      - run: ./bin/dataobs elastic migrate
+        env: {ELASTICSEARCH_URL: 'http://127.0.0.1:9200'}
+      - run: RUN_INTEGRATION_TESTS=1 ELASTICSEARCH_URL=http://127.0.0.1:9200 python -m pytest tests/security/data_products -q --junitxml=security.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: reconciliation-security-results, path: security.xml, retention-days: 30}
+  data-product-reconciliation-evidence:
+    runs-on: ubuntu-latest
+    needs: [data-product-reconciliation-contracts, data-product-reconciliation-unit, data-product-reconciliation-elasticsearch, data-product-reconciliation-security]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: {path: artifacts/data-product-reconciliation/retained, merge-multiple: true}
+      - name: Generate current-run evidence manifest
+        env:
+          CERTIFICATION_JOB_RESULTS: >-
+            {"contracts":"${{ needs.data-product-reconciliation-contracts.result }}","unit":"${{ needs.data-product-reconciliation-unit.result }}","elasticsearch":"${{ needs.data-product-reconciliation-elasticsearch.result }}","security":"${{ needs.data-product-reconciliation-security.result }}"}
+        run: python scripts/certification/build_manifest.py artifacts/data-product-reconciliation
+      - run: python -m json.tool artifacts/data-product-reconciliation/manifest.json
+      - uses: actions/upload-artifact@v4
+        with: {name: data-product-reconciliation-evidence, path: artifacts/data-product-reconciliation, retention-days: 30}
+  data-product-reconciliation-summary:
+    if: always()
+    runs-on: ubuntu-latest
+    needs: [data-product-reconciliation-contracts, data-product-reconciliation-unit, data-product-reconciliation-elasticsearch, data-product-reconciliation-security, data-product-reconciliation-evidence]
+    steps:
+      - name: Require contracts
+        run: test "${{ needs.data-product-reconciliation-contracts.result }}" = success
+      - name: Require unit
+        run: test "${{ needs.data-product-reconciliation-unit.result }}" = success
+      - name: Require Elasticsearch
+        run: test "${{ needs.data-product-reconciliation-elasticsearch.result }}" = success
+      - name: Require security and evidence
+        run: test "${{ needs.data-product-reconciliation-security.result }}" = success && test "${{ needs.data-product-reconciliation-evidence.result }}" = success

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+import re
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class KafkaSecurityConfig(BaseModel):
@@ -12,6 +14,7 @@ class KafkaSecurityConfig(BaseModel):
     ca_file: str | None = None
     certificate_file: str | None = None
     key_file: str | None = None
+    verify_tls: bool = True
 
     @field_validator("protocol")
     @classmethod
@@ -27,6 +30,19 @@ class KafkaSecurityConfig(BaseModel):
             raise ValueError("unsupported SASL mechanism")
         return value
 
+    @model_validator(mode="after")
+    def coherent_security(self) -> "KafkaSecurityConfig":
+        if self.protocol == "SASL_SSL" and not self.sasl_mechanism:
+            raise ValueError("SASL_SSL requires a supported SASL mechanism")
+        if self.sasl_mechanism and (not self.username_ref or not self.password_ref):
+            raise ValueError("SASL requires username_ref and password_ref")
+        for value in (self.username_ref, self.password_ref):
+            if value and not value.startswith(("env:", "file:")):
+                raise ValueError("credentials must use env: or file: references")
+        if self.protocol in {"SSL", "SASL_SSL"} and not self.verify_tls:
+            raise ValueError("TLS verification cannot be disabled")
+        return self
+
 
 class KafkaObserverConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -40,4 +56,35 @@ class KafkaObserverConfig(BaseModel):
     backoff_seconds: float = Field(default=1, ge=0.1, le=60)
     concurrency: int = Field(default=4, ge=1, le=32)
     optional_read_enabled: bool = False
+    bootstrap_server_allowlist: list[str] = Field(default_factory=list)
+    topic_include: list[str] = Field(default_factory=lambda: [".*"])
+    topic_exclude: list[str] = Field(default_factory=lambda: ["^__.*"])
+    group_include: list[str] = Field(default_factory=lambda: [".*"])
+    group_exclude: list[str] = Field(default_factory=list)
+    include_internal_topics: bool = False
+    batch_size: int = Field(default=500, ge=1, le=10_000)
+    maximum_combinations_per_cycle: int = Field(default=100_000, ge=1, le=1_000_000)
+    lease_duration_seconds: float = Field(default=60, ge=10, le=3600)
+    lease_renewal_seconds: float = Field(default=20, ge=1, le=1200)
+    inventory_interval_seconds: float = Field(default=300, ge=5)
+    group_interval_seconds: float = Field(default=30, ge=5)
+    offset_interval_seconds: float = Field(default=30, ge=5)
+    connect_interval_seconds: float = Field(default=60, ge=5)
+    schema_interval_seconds: float = Field(default=300, ge=5)
+    metric_interval_seconds: float = Field(default=30, ge=5)
     security: KafkaSecurityConfig = Field(default_factory=KafkaSecurityConfig)
+
+    @field_validator("bootstrap_servers")
+    @classmethod
+    def safe_bootstrap_servers(cls, values: list[str]) -> list[str]:
+        if not values or any(not re.fullmatch(r"[A-Za-z0-9._-]+:\d{1,5}", value) for value in values):
+            raise ValueError("bootstrap_servers must contain host:port entries without credentials or URLs")
+        return values
+
+    @model_validator(mode="after")
+    def allowed_bootstrap_servers(self) -> "KafkaObserverConfig":
+        if self.bootstrap_server_allowlist and not set(self.bootstrap_servers) <= set(self.bootstrap_server_allowlist):
+            raise ValueError("bootstrap server is not allowlisted")
+        if self.lease_renewal_seconds >= self.lease_duration_seconds:
+            raise ValueError("lease renewal must occur before lease expiry")
+        return self

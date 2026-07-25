@@ -1,0 +1,139 @@
+name: dataobs-certification
+x-kafka: &kafka
+  image: bitnami/kafka:3.9.0
+  profiles: [kafka, cert-kafka, full]
+  networks: [certification-data, certification-control]
+  healthcheck: {test: [CMD-SHELL, "kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null"], interval: 10s, timeout: 5s, retries: 30}
+x-kafka-env: &kafka-env
+  KAFKA_ENABLE_KRAFT: "yes"
+  KAFKA_CFG_PROCESS_ROLES: broker,controller
+  KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
+  KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+  KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: 1@kafka-1:9093,2@kafka-2:9093,3@kafka-3:9093
+  KAFKA_KRAFT_CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+  ALLOW_PLAINTEXT_LISTENER: "yes"
+  KAFKA_CFG_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.4.2
+    profiles: [core, postgres, kafka, jobs, browser-infra, security-infra, cert-core, cert-migrations, cert-postgres, cert-kafka, cert-jobs, cert-product, cert-browser, cert-security, full-backend, full]
+    environment: {discovery.type: single-node, xpack.security.enabled: "false", ES_JAVA_OPTS: -Xms512m -Xmx512m}
+    ports: ["127.0.0.1:19200:9200"]
+    networks: [certification-data, certification-control]
+    volumes: [certification-es:/usr/share/elasticsearch/data]
+    healthcheck: {test: [CMD-SHELL, "curl -fsS http://localhost:9200/_cluster/health?wait_for_status=yellow >/dev/null"], interval: 10s, timeout: 5s, retries: 30}
+    deploy: {resources: {limits: {memory: 1g}}}
+  kibana:
+    image: docker.elastic.co/kibana/kibana:9.4.2
+    profiles: [core, browser-infra, cert-browser, full]
+    environment: {ELASTICSEARCH_HOSTS: http://elasticsearch:9200, XPACK_SECURITY_ENABLED: "false"}
+    ports: ["127.0.0.1:15601:5601"]
+    networks: [certification-public, certification-data]
+    depends_on: {elasticsearch: {condition: service_healthy}}
+    healthcheck: {test: [CMD-SHELL, "curl -fsS http://localhost:5601/api/status >/dev/null"], interval: 10s, timeout: 5s, retries: 30}
+    deploy: {resources: {limits: {memory: 1g}}}
+  api:
+    build: {context: ., dockerfile: Dockerfile.api}
+    profiles: [core, postgres, kafka, jobs, browser-infra, security-infra, cert-core, cert-migrations, cert-postgres, cert-kafka, cert-jobs, cert-product, cert-browser, cert-security, full-backend, full]
+    environment: {DATAOBS_STORE_BACKEND: elasticsearch, ELASTICSEARCH_URL: http://elasticsearch:9200, DATAOBS_ALLOW_UNAUTHENTICATED_DEV: "true", API_PORT: "8080", OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317}
+    ports: ["127.0.0.1:18000:8080"]
+    networks: [certification-public, certification-control]
+    depends_on: {elasticsearch: {condition: service_healthy}, otel-collector: {condition: service_healthy}}
+    healthcheck: {test: [CMD-SHELL, "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8080/health', timeout=3)\""], interval: 10s, timeout: 5s, retries: 30}
+    deploy: {resources: {limits: {memory: 512m}}}
+  console:
+    build: {context: ui/dataobs-console}
+    profiles: [core, browser-infra, cert-browser, full]
+    ports: ["127.0.0.1:18080:8080"]
+    networks: [certification-public]
+    depends_on: {api: {condition: service_healthy}}
+    healthcheck: {test: [CMD-SHELL, "wget -q -O- http://localhost:8080/healthz >/dev/null && wget -q -O- http://localhost:8080/api/health >/dev/null"], interval: 10s, timeout: 5s, retries: 30}
+    deploy: {resources: {limits: {memory: 256m}}}
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.139.0
+    profiles: [core, postgres, kafka, jobs, browser-infra, security-infra, cert-core, cert-migrations, cert-postgres, cert-kafka, cert-jobs, cert-product, cert-browser, cert-security, full-backend, full]
+    command: [--config=/etc/otelcol/config.yaml]
+    volumes: [./certification/config/otel-collector.yaml:/etc/otelcol/config.yaml:ro]
+    networks: [certification-control]
+    healthcheck: {test: [CMD, /otelcol-contrib, components], interval: 10s, timeout: 5s, retries: 12}
+    deploy: {resources: {limits: {memory: 256m}}}
+  fixture-service:
+    image: nginxinc/nginx-unprivileged:1.29.4-alpine
+    profiles: [core, jobs, security-infra, cert-product, cert-jobs, cert-security, full]
+    volumes: [./certification/fixtures:/usr/share/nginx/html:ro]
+    networks: [certification-control]
+  denied-destination:
+    image: nginxinc/nginx-unprivileged:1.29.4-alpine
+    profiles: [security-infra, cert-security, full]
+    networks: [certification-denied]
+  postgres:
+    image: postgres:16.9-alpine
+    profiles: [postgres, cert-postgres, full-backend, full]
+    environment: {POSTGRES_DB: orders, POSTGRES_USER: dataobs_fixture, POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password}
+    secrets: [postgres_password]
+    ports: ["127.0.0.1:15432:5432"]
+    volumes: [./certification/fixtures/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro, certification-pg:/var/lib/postgresql/data]
+    networks: [certification-data]
+    healthcheck: {test: [CMD-SHELL, "pg_isready -U dataobs_fixture -d orders"], interval: 5s, timeout: 5s, retries: 30}
+    deploy: {resources: {limits: {memory: 512m}}}
+  scanner:
+    build: {context: ., dockerfile: Dockerfile.scanner}
+    profiles: [postgres, cert-postgres, full-backend, full]
+    secrets: [postgres_password]
+    command: [run, --config, /app/certification/config/postgres-scanner.yaml]
+    volumes: [./certification/config/postgres-scanner.yaml:/app/certification/config/postgres-scanner.yaml:ro]
+    environment: {DATAOBS_API_URL: http://api:8080}
+    networks: [certification-data, certification-control]
+    depends_on: {postgres: {condition: service_healthy}}
+  kafka-1:
+    <<: *kafka
+    environment: {<<: *kafka-env, KAFKA_CFG_NODE_ID: 1, KAFKA_CFG_ADVERTISED_LISTENERS: "PLAINTEXT://kafka-1:9092"}
+    ports: ["127.0.0.1:19092:9092"]
+  kafka-2:
+    <<: *kafka
+    environment: {<<: *kafka-env, KAFKA_CFG_NODE_ID: 2, KAFKA_CFG_ADVERTISED_LISTENERS: "PLAINTEXT://kafka-2:9092"}
+  kafka-3:
+    <<: *kafka
+    environment: {<<: *kafka-env, KAFKA_CFG_NODE_ID: 3, KAFKA_CFG_ADVERTISED_LISTENERS: "PLAINTEXT://kafka-3:9092"}
+  schema-registry:
+    image: confluentinc/cp-schema-registry:7.9.0
+    profiles: [kafka, cert-kafka, full]
+    environment: {SCHEMA_REGISTRY_HOST_NAME: schema-registry, SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: "kafka-1:9092,kafka-2:9092,kafka-3:9092", SCHEMA_REGISTRY_LISTENERS: "http://0.0.0.0:8081"}
+    ports: ["127.0.0.1:18081:8081"]
+    networks: [certification-data, certification-control]
+    depends_on: [kafka-1, kafka-2, kafka-3]
+  kafka-connect:
+    image: confluentinc/cp-kafka-connect:7.9.0
+    profiles: [kafka, cert-kafka, full]
+    environment: {CONNECT_BOOTSTRAP_SERVERS: "kafka-1:9092,kafka-2:9092,kafka-3:9092", CONNECT_GROUP_ID: certification-connect, CONNECT_CONFIG_STORAGE_TOPIC: _cert-config, CONNECT_OFFSET_STORAGE_TOPIC: _cert-offset, CONNECT_STATUS_STORAGE_TOPIC: _cert-status, CONNECT_KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter, CONNECT_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter, CONNECT_REST_ADVERTISED_HOST_NAME: kafka-connect, CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: 3, CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: 3, CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: 3}
+    ports: ["127.0.0.1:18083:8083"]
+    networks: [certification-data, certification-control]
+    depends_on: [kafka-1, kafka-2, kafka-3]
+  kafka-observer:
+    build: {context: ., dockerfile: Dockerfile.kafka-observer}
+    profiles: [kafka, cert-kafka, full]
+    command: [run, --config, /app/certification/config/kafka-observer.yaml]
+    volumes: [./certification/config/kafka-observer.yaml:/app/certification/config/kafka-observer.yaml:ro]
+    environment: {ELASTICSEARCH_URL: http://elasticsearch:9200}
+    networks: [certification-data, certification-control]
+    depends_on: [kafka-1, kafka-2, kafka-3]
+  playwright:
+    image: mcr.microsoft.com/playwright:v1.58.2-noble
+    profiles: [browser-runner]
+    working_dir: /work/ui/dataobs-console
+    volumes: [.:/work]
+    environment: {PLAYWRIGHT_BASE_URL: http://console:8080}
+    command: [pnpm, playwright, test, e2e/certification]
+    networks: [certification-public]
+    depends_on: [console]
+networks:
+  certification-public: {name: certification-public}
+  certification-data: {name: certification-data, internal: true}
+  certification-control: {name: certification-control, internal: true}
+  certification-denied: {name: certification-denied, internal: true}
+volumes:
+  certification-es: {}
+  certification-pg: {}
+secrets:
+  postgres_password:
+    file: ${CERTIFICATION_POSTGRES_PASSWORD_FILE:?run scripts/certification/bootstrap.sh first}

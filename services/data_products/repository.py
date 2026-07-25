@@ -1,0 +1,367 @@
+"""Authoritative, scope-explicit Data Product persistence contract."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Any, Protocol, Sequence, TypeAlias
+
+from packages.domain_model.data_product import (
+    DataProduct,
+    DataProductDependencyPage,
+    DataProductDependencyProjection,
+    DataProductMembership,
+    DataProductMembershipDecision,
+    DataProductMembershipDecisionPage,
+    DataProductMembershipPage,
+    DataProductMembershipProposal,
+    DataProductMembershipProposalPage,
+    DataProductOperationResult,
+    DataProductRevisionEvent,
+    DataProductSLODefinition,
+    DataProductSLOEvaluation,
+)
+from services.data_products.dependency_events import (
+    DataProductDependencyMutationPlan,
+    DataProductDependencyOperationResult,
+    DataProductDependencyReadSnapshot,
+)
+from services.data_products.events import ProductConsistencyError
+from services.data_products.idempotency import DataProductIdempotencyRecord, IdempotencyReservationResult
+from services.data_products.operation_state import (
+    DataProductOperationCheckpoint,
+    DataProductOperationClaim,
+    DataProductOperationFinalResult,
+    DataProductOperationHistoryEvent,
+    DataProductOperationPlan,
+    DataProductOperationResultEnvelope,
+    DataProductOperationState,
+)
+
+
+class ProductVersionConflict(RuntimeError):
+    pass
+
+
+class DependencyEdgeConflict(ProductConsistencyError):
+    """Base class for an expected dependency-edge reconciliation race."""
+
+
+class DependencyEdgeSuperseded(DependencyEdgeConflict):
+    """A realtime read proved that a newer revision already owns an edge."""
+
+
+SearchAfter: TypeAlias = Sequence[str | int | float]
+
+
+@dataclass(frozen=True)
+class DataProductListOptions:
+    limit: int = 50
+    search_after: SearchAfter | None = None
+
+
+class DataProductRevisionListOptions(DataProductListOptions):
+    pass
+
+
+class DataProductMembershipListOptions(DataProductListOptions):
+    pass
+
+
+class DataProductProposalListOptions(DataProductListOptions):
+    pass
+
+
+class DataProductDecisionListOptions(DataProductListOptions):
+    pass
+
+
+class DataProductDependencyListOptions(DataProductListOptions):
+    pass
+
+
+@dataclass(frozen=True)
+class DataProductMembershipMutationResult:
+    membership: DataProductMembership
+    operation_id: str
+    replayed: bool = False
+    decision_refs: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class DataProductProposalDecisionResult:
+    proposal: DataProductMembershipProposal
+    membership: DataProductMembership | None
+    operation_id: str
+    replayed: bool = False
+    decision_refs: tuple[str, ...] = ()
+    warnings: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class DataProductMembershipExclusionResult:
+    membership: DataProductMembership
+    operation_id: str
+    decision_refs: tuple[str, ...] = ()
+    replayed: bool = False
+
+
+@dataclass(frozen=True)
+class DataProductDependencyMutationResult:
+    page: DataProductDependencyPage
+    operation_id: str
+    replayed: bool = False
+
+
+@dataclass(frozen=True)
+class DataProductReconciliationResult:
+    operation_id: str
+    outcome: str
+    repaired_idempotency: bool
+
+
+class DataProductRepository(Protocol):
+    """Scoped recovery persistence.
+
+    Immutable writers are create-or-canonical-verify; all claim-owned mutations
+    must reject an expired or superseded claim generation.
+    """
+
+    def create_operation_state(self, state: DataProductOperationState) -> None: ...
+    def list_reconcilable_operations(
+        self,
+        tenant_id: str,
+        environment: str,
+        *,
+        limit: int = 100,
+        operation_kind: str | None = None,
+        now: datetime | None = None,
+    ) -> Sequence[DataProductOperationState]: ...
+    def get_operation_state(
+        self, tenant_id: str, environment: str, operation_id: str
+    ) -> DataProductOperationState | None: ...
+    def claim_operation(
+        self,
+        tenant_id: str,
+        environment: str,
+        operation_id: str,
+        *,
+        worker_id: str,
+        now: datetime,
+        expires_at: datetime,
+        expected_seq_no: int,
+        expected_primary_term: int,
+    ) -> DataProductOperationClaim: ...
+    def renew_operation_claim(
+        self, claim: DataProductOperationClaim, *, expires_at: datetime
+    ) -> DataProductOperationClaim: ...
+    def assert_operation_claim(self, claim: DataProductOperationClaim) -> None: ...
+    def checkpoint_operation(
+        self, claim: DataProductOperationClaim, checkpoint: DataProductOperationCheckpoint
+    ) -> None: ...
+    def complete_operation(self, claim: DataProductOperationClaim, result: DataProductOperationFinalResult) -> None: ...
+    def supersede_operation(self, claim: DataProductOperationClaim, *, error_code: str) -> None: ...
+    def fail_operation(self, claim: DataProductOperationClaim, *, error_code: str) -> None: ...
+    def schedule_operation_retry(
+        self,
+        claim: DataProductOperationClaim,
+        *,
+        error_code: str,
+        next_attempt_at: datetime,
+        retry_after_seconds: int,
+    ) -> None: ...
+    def release_operation_claim(self, claim: DataProductOperationClaim) -> None: ...
+    def append_operation_history(self, event: DataProductOperationHistoryEvent) -> None: ...
+    def get_operation_history(
+        self, tenant_id: str, environment: str, operation_id: str, *, limit: int = 100
+    ) -> Sequence[DataProductOperationHistoryEvent]: ...
+    def save_operation_plan(self, plan: DataProductOperationPlan) -> None: ...
+    def load_operation_plan(
+        self, tenant_id: str, environment: str, product_id: str, operation_id: str
+    ) -> DataProductOperationPlan | None: ...
+    def save_operation_result(self, result: DataProductOperationResultEnvelope) -> None: ...
+    def load_operation_result(
+        self, tenant_id: str, environment: str, product_id: str, operation_id: str
+    ) -> DataProductOperationResultEnvelope | None: ...
+    def repair_idempotency_terminal(
+        self,
+        record_id: str,
+        expected_operation_id: str,
+        expected_request_fingerprint: str,
+        outcome: str,
+        final_result_or_error: DataProductOperationFinalResult | str,
+    ) -> None: ...
+    def reserve_idempotency(
+        self, record_id: str, record: DataProductIdempotencyRecord
+    ) -> IdempotencyReservationResult: ...
+    def get_idempotency(self, record_id: str) -> DataProductIdempotencyRecord | None: ...
+    def bind_or_verify_idempotency_operation(
+        self,
+        record_id: str,
+        *,
+        tenant_id: str,
+        environment: str,
+        product_id: str,
+        action: str,
+        request_fingerprint: str,
+        expected_operation_id: str,
+    ) -> DataProductIdempotencyRecord: ...
+    def complete_idempotency(self, record_id: str, *, operation_id: str, revision: int, etag: str) -> None: ...
+    def fail_idempotency(self, record_id: str, *, error_code: str) -> None: ...
+    def supersede_idempotency(self, record_id: str, *, error_code: str = "newer_revision") -> None: ...
+    def list_expired_idempotency(
+        self, tenant_id: str, environment: str, *, now: datetime, limit: int = 100
+    ) -> Sequence[DataProductIdempotencyRecord]: ...
+
+    # Every lookup takes trusted scope, even where the document also carries it.
+    def create_product(self, product: DataProduct) -> DataProduct: ...
+    def get_product(self, tenant_id: str, environment: str, product_id: str) -> DataProduct | None: ...
+    def get_products_by_ids(
+        self, tenant_id: str, environment: str, product_ids: Sequence[str]
+    ) -> Sequence[DataProduct]: ...
+    def get_product_revision(
+        self, tenant_id: str, environment: str, product_id: str, revision: int
+    ) -> DataProduct | None: ...
+    def get_operation_result(
+        self, tenant_id: str, environment: str, operation_id: str, expected_revision: int, expected_etag: str
+    ) -> DataProductOperationResult: ...
+    def list_products(self, tenant_id: str, environment: str, **options: Any) -> Sequence[DataProduct]: ...
+    def update_product(self, product: DataProduct, *, expected_etag: str) -> DataProduct: ...
+    def activate_product(self, tenant_id: str, environment: str, product_id: str, **options: Any) -> DataProduct: ...
+    def deprecate_product(self, tenant_id: str, environment: str, product_id: str, **options: Any) -> DataProduct: ...
+    def archive_product(self, tenant_id: str, environment: str, product_id: str, **options: Any) -> DataProduct: ...
+
+    def begin_operation(self, event: DataProductRevisionEvent, product: DataProduct) -> DataProductRevisionEvent: ...
+    def begin_dependency_operation(
+        self, event: DataProductRevisionEvent, product: DataProduct, plan: DataProductDependencyMutationPlan
+    ) -> DataProductRevisionEvent: ...
+    def load_dependency_operation_plan(
+        self, tenant_id: str, environment: str, operation_id: str
+    ) -> tuple[DataProductRevisionEvent, DataProduct, DataProductDependencyMutationPlan] | None: ...
+    def save_dependency_operation_result(self, result: DataProductDependencyOperationResult) -> None: ...
+    def get_dependency_operation_result(
+        self, tenant_id: str, environment: str, product_id: str, operation_id: str
+    ) -> DataProductDependencyOperationResult: ...
+    def get_operation(self, tenant_id: str, environment: str, operation_id: str) -> DataProductRevisionEvent | None: ...
+    def finish_operation(self, event: DataProductRevisionEvent) -> None: ...
+    def list_pending_operations(self, tenant_id: str, environment: str, **options: Any) -> Sequence[Any]: ...
+    def append_revision(self, product: DataProduct, *, actor: str, reason: str) -> None: ...
+    def list_revisions(self, tenant_id: str, environment: str, product_id: str, **options: Any) -> Sequence[Any]: ...
+    def reconcile_pending_operations(self, tenant_id: str, environment: str, **options: Any) -> Sequence[Any]: ...
+
+    def create_membership(
+        self, tenant_id: str, environment: str, membership: DataProductMembership, **options: Any
+    ) -> DataProductMembership: ...
+    def get_membership(
+        self, tenant_id: str, environment: str, product_id: str, membership_id: str
+    ) -> DataProductMembership | None: ...
+    def list_memberships(
+        self, tenant_id: str, environment: str, product_id: str, **options: Any
+    ) -> DataProductMembershipPage: ...
+    def exclude_membership(
+        self, tenant_id: str, environment: str, product_id: str, membership_id: str, **options: Any
+    ) -> DataProductMembership: ...
+    def create_membership_proposal(
+        self, proposal: DataProductMembershipProposal, **options: Any
+    ) -> DataProductMembershipProposal: ...
+    def get_membership_proposal(
+        self, tenant_id: str, environment: str, product_id: str, proposal_id: str
+    ) -> DataProductMembershipProposal | None: ...
+    def list_membership_proposals(
+        self, tenant_id: str, environment: str, product_id: str, **options: Any
+    ) -> DataProductMembershipProposalPage: ...
+    def accept_membership_proposal(
+        self, tenant_id: str, environment: str, product_id: str, proposal_id: str, **options: Any
+    ) -> Any: ...
+    def reject_membership_proposal(
+        self, tenant_id: str, environment: str, product_id: str, proposal_id: str, **options: Any
+    ) -> Any: ...
+    def expire_membership_proposal(
+        self, tenant_id: str, environment: str, product_id: str, proposal_id: str, **options: Any
+    ) -> Any: ...
+    def supersede_membership_proposal(
+        self, tenant_id: str, environment: str, product_id: str, proposal_id: str, **options: Any
+    ) -> Any: ...
+    def append_membership_decision(
+        self, tenant_id: str, environment: str, product_id: str, decision: DataProductMembershipDecision, **options: Any
+    ) -> Any: ...
+    def get_membership_decision(
+        self, tenant_id: str, environment: str, product_id: str, decision_id: str
+    ) -> DataProductMembershipDecision | None: ...
+    def get_membership_decisions_for_operation(
+        self, tenant_id: str, environment: str, product_id: str, operation_id: str
+    ) -> Sequence[DataProductMembershipDecision]: ...
+    def list_membership_decisions(
+        self, tenant_id: str, environment: str, product_id: str, **options: Any
+    ) -> DataProductMembershipDecisionPage: ...
+
+    def save_dependencies(
+        self,
+        tenant_id: str,
+        environment: str,
+        product_id: str,
+        dependencies: Sequence[DataProductDependencyProjection],
+        **options: Any,
+    ) -> DataProductDependencyPage: ...
+    def list_dependencies(
+        self, tenant_id: str, environment: str, product_id: str, **options: Any
+    ) -> DataProductDependencyPage: ...
+    def read_complete_dependency_snapshot(
+        self, tenant_id: str, environment: str, product_id: str, *, maximum: int
+    ) -> DataProductDependencyReadSnapshot: ...
+    def apply_dependency_mutation_plan(
+        self, tenant_id: str, environment: str, product_id: str, plan: Any
+    ) -> DataProductDependencyPage: ...
+    def apply_dependency_upsert_chunk(
+        self, tenant_id: str, environment: str, product_id: str, edges: Sequence[Any]
+    ) -> None: ...
+    def apply_dependency_tombstone_chunk(
+        self, tenant_id: str, environment: str, product_id: str, edges: Sequence[Any]
+    ) -> None: ...
+    def get_direct_upstream(
+        self, tenant_id: str, environment: str, product_id: str, **options: Any
+    ) -> Sequence[Any]: ...
+    def get_direct_downstream(
+        self, tenant_id: str, environment: str, product_id: str, **options: Any
+    ) -> Sequence[Any]: ...
+    def get_transitive_upstream(self, tenant_id: str, environment: str, product_id: str, **options: Any) -> Any: ...
+    def get_transitive_downstream(self, tenant_id: str, environment: str, product_id: str, **options: Any) -> Any: ...
+
+    def create_slo(self, definition: DataProductSLODefinition) -> DataProductSLODefinition: ...
+    def get_slo(
+        self, tenant_id: str, environment: str, product_id: str, slo_id: str
+    ) -> DataProductSLODefinition | None: ...
+    def list_slos(self, tenant_id: str, environment: str, product_id: str, **options: Any) -> Sequence[Any]: ...
+    def update_slo(self, definition: DataProductSLODefinition, *, expected_etag: str) -> DataProductSLODefinition: ...
+    def activate_slo(self, tenant_id: str, environment: str, product_id: str, slo_id: str, **options: Any) -> Any: ...
+    def disable_slo(self, tenant_id: str, environment: str, product_id: str, slo_id: str, **options: Any) -> Any: ...
+    def archive_slo(self, tenant_id: str, environment: str, product_id: str, slo_id: str, **options: Any) -> Any: ...
+    def append_slo_revision(self, definition: DataProductSLODefinition, **options: Any) -> None: ...
+    def list_slo_revisions(
+        self, tenant_id: str, environment: str, product_id: str, slo_id: str, **options: Any
+    ) -> Sequence[Any]: ...
+    def save_slo_evaluation(self, evaluation: DataProductSLOEvaluation) -> DataProductSLOEvaluation: ...
+    def get_slo_evaluation(
+        self, tenant_id: str, environment: str, product_id: str, slo_id: str, evaluation_id: str
+    ) -> DataProductSLOEvaluation | None: ...
+    def list_slo_evaluations(
+        self, tenant_id: str, environment: str, product_id: str, slo_id: str, **options: Any
+    ) -> Sequence[Any]: ...
+
+    def save_reliability_event(
+        self, tenant_id: str, environment: str, product_id: str, event: Any, **options: Any
+    ) -> Any: ...
+    def save_current_reliability(
+        self, tenant_id: str, environment: str, product_id: str, value: Any, **options: Any
+    ) -> Any: ...
+    def get_current_reliability(self, tenant_id: str, environment: str, product_id: str) -> Any: ...
+    def list_reliability_history(
+        self, tenant_id: str, environment: str, product_id: str, **options: Any
+    ) -> Sequence[Any]: ...
+    def save_coverage(self, tenant_id: str, environment: str, product_id: str, value: Any, **options: Any) -> Any: ...
+    def get_coverage(self, tenant_id: str, environment: str, product_id: str) -> Any: ...
+    def save_impact(self, tenant_id: str, environment: str, product_id: str, value: Any, **options: Any) -> Any: ...
+    def get_impact(self, tenant_id: str, environment: str, product_id: str) -> Any: ...
+    def list_incidents(self, tenant_id: str, environment: str, product_id: str, **options: Any) -> Sequence[Any]: ...
+    def list_changes(self, tenant_id: str, environment: str, product_id: str, **options: Any) -> Sequence[Any]: ...
+    def readiness(self) -> dict[str, Any]: ...

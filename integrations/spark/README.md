@@ -145,3 +145,7 @@ Spans appear under **Explore → Tempo** with service name matching
 
 Resolves: [#27](https://github.com/Jagadeeshck/DataObs/issues/27)
 
+
+## Job Explorer boundary
+
+OpenLineage supplies application/dataset lineage. Replayable Spark event logs supply bounded stage/task/executor and Structured Streaming operational evidence; offsets are represented only by redacted hashes.

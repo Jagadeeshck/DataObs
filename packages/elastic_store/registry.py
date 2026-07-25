@@ -43,8 +43,100 @@ def _mapping() -> Dict[str, Any]:
             "fingerprint": {"type": "keyword"},
         }
         | INCIDENT_AUTOMATION_PROPERTIES
-        | KAFKA_PROPERTIES,
+        | KAFKA_PROPERTIES
+        | MONITORING_PROPERTIES
+        | JOB_RUN_PROPERTIES,
     }
+
+
+MONITORING_PROPERTIES: Dict[str, Any] = {
+    **{
+        key: {"type": "keyword"}
+        for key in [
+            "path_id",
+            "service_id",
+            "product_id",
+            "monitor_id",
+            "monitor_type",
+            "monitor_version",
+            "baseline_method",
+            "baseline_version",
+            "sensitivity",
+            "seasonality",
+            "cold_start_state",
+            "missing_data_state",
+            "finding_severity",
+            "recommendation_state",
+            "coverage_state",
+            "product_criticality",
+            "hypothesis_type",
+            "workflow_id",
+            "incident_id",
+            "investigation_id",
+            "hypothesis_id",
+        ]
+    },
+    **{key: {"type": "date"} for key in ["observation_timestamp", "evaluation_timestamp", "baseline_timestamp"]},
+    **{
+        key: {"type": "double"}
+        for key in ["expected_minimum", "expected_maximum", "threshold", "anomaly_score", "confidence"]
+    },
+    "definition_revision": {"type": "integer"},
+    "sample_count": {"type": "long"},
+    "reliability_components": {"type": "flattened"},
+    "supporting_evidence": {"type": "flattened"},
+    "contradicting_evidence": {"type": "flattened"},
+    "source_document_references": {"type": "keyword"},
+}
+
+JOB_RUN_PROPERTIES: Dict[str, Any] = {
+    **{
+        key: {"type": "keyword"}
+        for key in [
+            "source_integration",
+            "qualified_name",
+            "parent_run_id",
+            "stage_id",
+            "attempt_id",
+            "source_native_id",
+            "platform",
+            "source_state",
+            "state_reason",
+            "code_version",
+            "deployment_version",
+            "config_version",
+            "log_reference",
+            "infrastructure_entity_reference",
+            "failure_category",
+            "error_fingerprint",
+            "cost_status",
+            "cost_estimation_method",
+            "data_status",
+            "rca_id",
+            "streaming_query_id",
+        ]
+    },
+    **{key: {"type": "date"} for key in ["scheduled_at", "started_at", "ended_at", "ingested_at"]},
+    **{
+        key: {"type": "long"}
+        for key in [
+            "queue_delay_ms",
+            "schedule_delay_ms",
+            "attempt_count",
+            "input_records",
+            "output_records",
+            "input_bytes",
+            "output_bytes",
+            "critical_path_duration_ms",
+        ]
+    },
+    "input_asset_ids": {"type": "keyword"},
+    "output_asset_ids": {"type": "keyword"},
+    "resource_metrics": {"type": "flattened"},
+    "openlineage_facets": {"type": "flattened"},
+    "workflow_references": {"type": "keyword"},
+    "incident_references": {"type": "keyword"},
+}
 
 
 def _ensure_mutable_index(es: Elasticsearch, index: str) -> None:
@@ -61,6 +153,8 @@ def _ensure_data_stream_template(es: Elasticsearch, pattern: str) -> None:
         | INCIDENT_AUTOMATION_PROPERTIES
         | KAFKA_PROPERTIES
         | {
+            **MONITORING_PROPERTIES,
+            **JOB_RUN_PROPERTIES,
             "event_type": {"type": "keyword"},
             "message": {"type": "match_only_text"},
             "metricset": {"type": "keyword"},
@@ -80,7 +174,98 @@ def _ensure_data_stream_template(es: Elasticsearch, pattern: str) -> None:
     )
 
 
-def apply(es: Elasticsearch) -> List[Dict[str, Any]]:
+def _mapping_type_matches(expected: Dict[str, Any], installed: Dict[str, Any]) -> bool:
+    """Compare the immutable portions of an explicit property definition."""
+    if expected.get("type") != installed.get("type"):
+        return False
+    expected_fields = expected.get("fields", {})
+    installed_fields = installed.get("fields", {})
+    fields_match = all(
+        name in installed_fields and _mapping_type_matches(definition, installed_fields[name])
+        for name, definition in expected_fields.items()
+    )
+    expected_properties = expected.get("properties", {})
+    installed_properties = installed.get("properties", {})
+    return fields_match and all(
+        name in installed_properties and _mapping_type_matches(definition, installed_properties[name])
+        for name, definition in expected_properties.items()
+    )
+
+
+def _apply_mapping_update(es: Elasticsearch, index: str, properties: Dict[str, Any]) -> None:
+    """Add and verify explicit fields on a trusted concrete product index."""
+    registered_targets = {
+        name for migration in migrations() for name in migration.operations.get("mapping_updates", {})
+    }
+    if index not in registered_targets:
+        raise RuntimeError(f"Mapping migration targets an unregistered concrete index: {index}")
+    if not es.indices.exists(index=index):
+        raise RuntimeError(f"Required mapping target does not exist: {index}")
+    current = es.indices.get_mapping(index=index)[index]["mappings"]
+    if current.get("dynamic") != "strict":
+        raise RuntimeError(f"Required strict mapping is not installed on {index}")
+    current_properties = current.get("properties", {})
+    conflicts = [
+        name
+        for name, definition in properties.items()
+        if name in current_properties and not _mapping_type_matches(definition, current_properties[name])
+    ]
+    if conflicts:
+        raise RuntimeError(f"Incompatible existing mapping on {index}: {', '.join(sorted(conflicts))}")
+    es.indices.put_mapping(index=index, dynamic="strict", properties=properties)
+    installed = es.indices.get_mapping(index=index)[index]["mappings"]
+    if installed.get("dynamic") != "strict" or any(
+        name not in installed.get("properties", {})
+        or not _mapping_type_matches(definition, installed["properties"][name])
+        for name, definition in properties.items()
+    ):
+        raise RuntimeError(f"Mapping verification failed for {index}")
+
+
+def _ensure_transform(es: Elasticsearch, definition: Any) -> None:
+    # Older migrations carried name-only placeholders; 0007 definitions are executable latest transforms.
+    if not isinstance(definition, dict):
+        return
+    transform_id = definition["id"]
+    body = {
+        "source": {"index": [definition["source"]]},
+        "dest": {"index": definition["destination"]},
+        "latest": {"unique_key": definition["unique_key"], "sort": definition["sort"]},
+        "frequency": "1m",
+        "sync": {"time": {"field": definition["sort"], "delay": "60s"}},
+    }
+    try:
+        es.transform.get_transform(transform_id=transform_id)
+    except Exception:
+        es.transform.put_transform(transform_id=transform_id, **body)
+    try:
+        es.transform.start_transform(transform_id=transform_id)
+    except Exception as exc:
+        if "already started" not in str(exc).lower():
+            raise
+
+
+def _selected_migrations(through_migration_id: str | None = None) -> list[Any]:
+    """Return a dependency-complete released prefix, optionally bounded by ID."""
+    released = migrations()
+    if through_migration_id is None:
+        return released
+    ids = [migration.migration_id for migration in released]
+    if through_migration_id not in ids:
+        raise ValueError(f"Unknown migration id: {through_migration_id}")
+    selected = released[: ids.index(through_migration_id) + 1]
+    selected_ids = {migration.migration_id for migration in selected}
+    for migration in selected:
+        missing = set(migration.dependencies) - selected_ids
+        if missing:
+            raise RuntimeError(
+                f"Migration prefix through {through_migration_id} is dependency-invalid: "
+                f"{migration.migration_id} requires {', '.join(sorted(missing))}"
+            )
+    return selected
+
+
+def apply(es: Elasticsearch, *, through_migration_id: str | None = None) -> List[Dict[str, Any]]:
     if not es.indices.exists(index=MIGRATION_STATE_INDEX):
         es.indices.create(
             index=MIGRATION_STATE_INDEX,
@@ -98,29 +283,34 @@ def apply(es: Elasticsearch) -> List[Dict[str, Any]]:
     applied = status(es).get("applied", {})
     out: list[dict[str, Any]] = []
     applied_ids: set[str] = set(applied)
-    for m in migrations():
+    for m in _selected_migrations(through_migration_id):
         for dep in m.dependencies:
             if dep not in applied_ids:
                 raise RuntimeError(f"Migration {m.migration_id} depends on unapplied {dep}")
         existing = applied.get(m.migration_id)
         if existing and existing.get("checksum") != m.checksum:
             raise RuntimeError(f"Checksum mismatch for {m.migration_id}")
+        if existing:
+            out.append(existing)
+            applied_ids.add(m.migration_id)
+            continue
         for index in m.operations.get("mutable_indices", []):
             _ensure_mutable_index(es, index)
         for pattern in m.operations.get("data_streams", []):
             _ensure_data_stream_template(es, pattern)
-        if existing:
-            out.append(existing)
-        else:
-            doc = {
-                "migration_id": m.migration_id,
-                "schema_version": m.schema_version,
-                "checksum": m.checksum,
-                "applied_at": datetime.now(timezone.utc).isoformat(),
-                "status": "applied",
-            }
-            es.index(index=MIGRATION_STATE_INDEX, id=m.migration_id, document=doc, refresh="wait_for")
-            out.append(doc)
+        for definition in m.operations.get("transforms", []):
+            _ensure_transform(es, definition)
+        for index, properties in m.operations.get("mapping_updates", {}).items():
+            _apply_mapping_update(es, index, properties)
+        doc = {
+            "migration_id": m.migration_id,
+            "schema_version": m.schema_version,
+            "checksum": m.checksum,
+            "applied_at": datetime.now(timezone.utc).isoformat(),
+            "status": "applied",
+        }
+        es.index(index=MIGRATION_STATE_INDEX, id=m.migration_id, document=doc, refresh="wait_for")
+        out.append(doc)
         applied_ids.add(m.migration_id)
     es.indices.refresh(index=MIGRATION_STATE_INDEX)
     return out

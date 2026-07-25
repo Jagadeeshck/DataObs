@@ -1,0 +1,1 @@
+{"cluster":{"brokers":3,"mode":"KRaft"},"topics":[{"name":"orders.events","partitions":3}],"groups":["payments-worker","lagging-worker"],"connectors":["failing-fixture","recovering-fixture"],"schema_cases":["compatible","breaking-fixture"]}

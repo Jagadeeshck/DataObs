@@ -114,3 +114,75 @@ class ElasticsearchConsoleRepository:
 
     def list_views(self, tenant: str, principal: str) -> list[dict[str, Any]]:
         return self._search("dataobs-saved-views-v1-read", tenant, "*", size=100, sort=[{"updated_at": "desc"}])
+
+    def assets(
+        self,
+        tenant: str,
+        environment: str,
+        *,
+        size: int,
+        search: str | None = None,
+        search_after: list[Any] | None = None,
+        asset_type: str | None = None,
+        owner_team: str | None = None,
+        source: str | None = None,
+    ) -> list[dict[str, Any]]:
+        predicates = isolation_filters(tenant, environment)
+        for field, value in (
+            ("asset_type", asset_type),
+            ("owner_team.keyword", owner_team),
+            ("source.keyword", source),
+        ):
+            if value:
+                predicates.append({"term": {field: value}})
+        query: dict[str, Any] = {"bool": {"filter": predicates}}
+        if search:
+            query["bool"]["must"] = [
+                {
+                    "multi_match": {
+                        "query": search,
+                        "fields": ["id^6", "fqn^6", "name^4", "name.keyword^5", "description", "tags", "owner_team"],
+                    }
+                }
+            ]
+        arguments: dict[str, Any] = {
+            "index": "dataobs-assets-v1-read",
+            "query": query,
+            "size": size,
+            "sort": [{"name.keyword": "asc"}, {"asset_id": "asc"}],
+        }
+        if search_after:
+            arguments["search_after"] = search_after
+        response = self.es.search(**arguments)
+        return [
+            hit["_source"] | {"id": hit["_source"].get("asset_id", hit["_id"]), "_sort": hit.get("sort", [])}
+            for hit in response["hits"]["hits"]
+        ]
+
+    def asset_section(self, tenant: str, environment: str, asset_id: str, section: str) -> dict[str, Any] | None:
+        indices = {
+            "summary": "dataobs-assets-v1-read",
+            "schema": "dataobs-schema-current-v1-read",
+            "freshness": "dataobs-freshness-current-v1-read",
+            "quality": "dataobs-quality-current-v1-read",
+            "usage": "dataobs-asset-usage-current-v1-read",
+            "lineage": "dataobs-lineage-current-v1-read",
+            "incidents": "dataobs-incidents-v1-read",
+            "changes": "dataobs-asset-changes-v1-read",
+            "slos": "dataobs-asset-slos-v1-read",
+            "related": "dataobs-asset-impact-current-v1-read",
+            "impact": "dataobs-asset-impact-current-v1-read",
+            "annotations": "dataobs-asset-annotations-v1-read",
+        }
+        index = indices.get(section)
+        if index is None:
+            return None
+        predicates = isolation_filters(tenant, environment) + [{"term": {"asset_id": asset_id}}]
+        try:
+            response = self.es.search(
+                index=index, query={"bool": {"filter": predicates}}, size=1, sort=[{"@timestamp": "desc"}]
+            )
+        except NotFoundError:
+            return None
+        hits = response["hits"]["hits"]
+        return hits[0]["_source"] | {"_id": hits[0]["_id"]} if hits else None

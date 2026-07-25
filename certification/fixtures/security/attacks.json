@@ -1,0 +1,1 @@
+{"xss":["<script>fixture()</script>","<img src=x onerror=fixture()>"],"cursor":["tampered","expired","cross-route","cross-tenant"],"ssrf":["http://denied.invalid/","http://169.254.169.254/"],"workflow":["shell","sql","unrestricted_http","deprecated_step"]}

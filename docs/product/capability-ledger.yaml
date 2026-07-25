@@ -1,0 +1,1454 @@
+schema_version: '1.0'
+product_name: DataObs
+architecture: Elasticsearch-native six-pillar architecture
+primary_platform: Elasticsearch and Kibana
+canonical_pillars:
+- platform
+- data_pipeline
+- data
+- finops_cost
+- business
+- ai_agent
+last_audited_at: '2026-07-21'
+last_audited_commit: d8a04d0
+audited_pr_range: '#82-#106'
+capabilities:
+- id: platform.architecture
+  name: Elasticsearch-native architecture
+  summary: Evidence-led status for elasticsearch-native architecture.
+  pillar: platform
+  domain: platform
+  state: foundation
+  release_readiness: blocked
+  implementation:
+    code_paths:
+    - packages/elastic_store/manifest.py
+    api_paths: []
+    ui_routes: []
+    storage_resources: []
+    migrations:
+    - 0001_product_foundation
+  validation:
+    unit: defined_not_run
+    integration: defined_not_run
+    real_stack: not_applicable
+    hosted_ci: missing
+    browser: not_applicable
+    accessibility: not_applicable
+    security: not_applicable
+    scale: not_applicable
+    upgrade: not_applicable
+    release: missing
+  evidence:
+    tests: []
+    workflow_jobs: []
+    audit_docs: []
+    runbooks: []
+    artifacts: []
+  blockers:
+  - Retained hosted and applicable real-stack/browser/security/scale evidence is absent.
+  non_goals:
+  - No product implementation is added by the ledger.
+  next_gate: Execute and retain the evidence required for promotion.
+  owner: unassigned
+  last_audited_at: '2026-07-21'
+  last_audited_commit: d8a04d0
+- id: platform.migrations
+  name: Migration framework
+  summary: Evidence-led status for migration framework.
+  pillar: platform
+  domain: platform
+  state: functional_unvalidated
+  release_readiness: blocked
+  implementation:
+    code_paths:
+    - packages/elastic_store/registry.py
+    api_paths: []
+    ui_routes: []
+    storage_resources: []
+    migrations:
+    - 0001_product_foundation
+    - 0002_postgres_observability
+    - 0003_incident_automation
+    - 0004_kafka_data_streams_monitoring
+    - 0005_console_foundation
+    - 0006_pathway_asset_360
+    - 0007_automated_monitoring_data_products_rca
+    - 0008_job_run_observability
+    - 0009_topic_queue_stream_360
+    - 0010_topic_queue_stream_360_completion
+    - 0011_incident_automation_workbench
+    - 0012_incident_mapping_and_occ_fix
+  validation:
+    unit: defined_not_run
+    integration: defined_not_run
+    real_stack: not_applicable
+    hosted_ci: missing
+    browser: not_applicable
+    accessibility: not_applicable
+    security: not_applicable
+    scale: not_applicable
+    upgrade: defined_not_run
+    release: missing
+  evidence:
+    tests:
+    - tests/elastic_store/test_migrations.py
+    workflow_jobs: []
+    audit_docs: []
+    runbooks: []
+    artifacts: []
+  blockers:
+  - Retained hosted and applicable real-stack/browser/security/scale evidence is absent.
+  non_goals:
+  - No product implementation is added by the ledger.
+  next_gate: Execute and retain the evidence required for promotion.
+  owner: unassigned
+  last_audited_at: '2026-07-21'
+  last_audited_commit: d8a04d0
+- id: platform.collection
+  name: Collection manager
+  summary: Evidence-led status for collection manager.
+  pillar: platform
+  domain: platform
+  state: foundation
+  release_readiness: blocked
+  implementation:
+    code_paths:
+    - services/collection_manager/service.py
+    api_paths: []
+    ui_routes: []
+    storage_resources: []
+    migrations:
+    - 0001_product_foundation
+  validation:
+    unit: defined_not_run
+    integration: defined_not_run
+    real_stack: not_applicable
+    hosted_ci: missing
+    browser: not_applicable
+    accessibility: not_applicable
+    security: not_applicable
+    scale: not_applicable
+    upgrade: not_applicable
+    release: missing
+  evidence:
+    tests: []
+    workflow_jobs: []
+    audit_docs: []
+    runbooks: []
+    artifacts: []
+  blockers:
+  - Retained hosted and applicable real-stack/browser/security/scale evidence is absent.
+  non_goals:
+  - No product implementation is added by the ledger.
+  next_gate: Execute and retain the evidence required for promotion.
+  owner: unassigned
+  last_audited_at: '2026-07-21'
+  last_audited_commit: d8a04d0
+- id: platform.iam
+  name: OIDC and RBAC
+  summary: Evidence-led status for oidc and rbac.
+  pillar: platform
+  domain: security
+  state: not_started
+  release_readiness: blocked
+  implementation:
+    code_paths: []
+    api_paths: []
+    ui_routes: []
+    storage_resources: []
+    migrations: []
+  validation:
+    unit: not_applicable
+    integration: not_applicable
+    real_stack: not_applicable
+    hosted_ci: not_applicable
+    browser: not_applicable
+    accessibility: not_applicable
+    security: not_applicable
+    scale: not_applicable
+    upgrade: not_applicable
+    release: not_applicable
+  evidence:
+    tests: []
+    workflow_jobs: []
+    audit_docs: []
+    runbooks: []
+    artifacts: []
+  blockers:
+  - Meaningful implementation and executable evidence are absent.
+  non_goals:
+  - No product implementation is added by the ledger.
+  next_gate: Execute and retain the evidence required for promotion.
+  owner: unassigned
+  last_audited_at: '2026-07-21'
+  last_audited_commit: d8a04d0
+- id: platform.tenancy
+  name: Tenant model and boundaries
+  summary: Evidence-led status for tenant model and boundaries.
+  pillar: platform
+  domain: security
+  state: foundation
+  release_readiness: blocked
+  implementation:
+    code_paths:
+    - packages/domain_model/tenant.py
+    api_paths: []
+    ui_routes: []
+    storage_resources: []
+    migrations:
+    - 0001_product_foundation
+  validation:
+    unit: defined_not_run
+    integration: defined_not_run
+    real_stack: not_applicable
+    hosted_ci: missing
+    browser: not_applicable
+    accessibility: not_applicable
+    security: not_applicable
+    scale: not_applicable
+    upgrade: not_applicable
+    release: missing
+  evidence:
+    tests: []
+    workflow_jobs: []
+    audit_docs: []
+    runbooks: []
+    artifacts: []
+  blockers:
+  - Retained hosted and applicable real-stack/browser/security/scale evidence is absent.
+  non_goals:
+  - No product implementation is added by the ledger.
+  next_gate: Execute and retain the evidence required for promotion.
+  owner: unassigned
+  last_audited_at: '2026-07-21'
+  last_audited_commit: d8a04d0
+- id: platform.self_observability
+  name: Self-observability
+  summary: Evidence-led status for self-observability.
+  pillar: platform
+  domain: platform
+  state: foundation
+  release_readiness: blocked
+  implementation:
+    code_paths:
+    - src/telemetry.py
+    api_paths: []
+    ui_routes: []
+    storage_resources: []
+    migrations:
+    - 0001_product_foundation
+  validation:
+    unit: defined_not_run
+    integration: defined_not_run
+    real_stack: not_applicable
+    hosted_ci: missing
+    browser: not_applicable
+    accessibility: not_applicable
+    security: not_applicable
+    scale: not_applicable
+    upgrade: not_applicable
+    release: missing
+  evidence:
+    tests: []
+    workflow_jobs: []
+    audit_docs: []
+    runbooks: []
+    artifacts: []
+  blockers:
+  - Retained hosted and applicable real-stack/browser/security/scale evidence is absent.
+  non_goals:
+  - No product implementation is added by the ledger.
+  next_gate: Execute and retain the evidence required for promotion.
+  owner: unassigned
+  last_audited_at: '2026-07-21'
+  last_audited_commit: d8a04d0
+- id: platform.backup_restore
+  name: Backup and restore
+  summary: Evidence-led status for backup and restore.
+  pillar: platform
+  domain: platform
+  state: not_started
+  release_readiness: blocked
+  implementation:
+    code_paths: []
+    api_paths: []
+    ui_routes: []
+    storage_resources: []
+    migrations: []
+  validation:
+    unit: not_applicable
+    integration: not_applicable
+    real_stack: not_applicable
+    hosted_ci: not_applicable
+    browser: not_applicable
+    accessibility: not_applicable
+    security: not_applicable
+    scale: not_applicable
+    upgrade: not_applicable
+    release: not_applicable
+  evidence:
+    tests: []
+    workflow_jobs: []
+    audit_docs: []
+    runbooks: []
+    artifacts: []
+  blockers:
+  - Meaningful implementation and executable evidence are absent.
+  non_goals:
+  - No product implementation is added by the ledger.
+  next_gate: Execute and retain the evidence required for promotion.
+  owner: unassigned
+  last_audited_at: '2026-07-21'
+  last_audited_commit: d8a04d0
+- id: platform.upgrades
+  name: Rolling-upgrade correctness
+  summary: Evidence-led status for rolling-upgrade correctness.
+  pillar: platform
+  domain: platform
+  state: functional_unvalidated
+  release_readiness: blocked
+  implementation:
+    code_paths:
+    - packages/elastic_store/registry.py
+    api_paths: []
+    ui_routes: []
+    storage_resources: []
+    migrations:
+    - 0012_incident_mapping_and_occ_fix
+  validation:
+    unit: defined_not_run
+    integration: defined_not_run
+    real_stack: not_applicable
+    hosted_ci: missing
+    browser: not_applicable
+    accessibility: not_applicable
+    security: not_applicable
+    scale: not_applicable
+    upgrade: defined_not_run
+    release: missing
+  evidence:
+    tests:
+    - tests/elastic_store/test_migrations.py
+    workflow_jobs: []
+    audit_docs: []
+    runbooks: []
+    artifacts: []
+  blockers:
+  - Retained hosted and applicable real-stack/browser/security/scale evidence is absent.
+  non_goals:
+  - No product implementation is added by the ledger.
+  next_gate: Execute and retain the evidence required for promotion.
+  owner: unassigned
+  last_audited_at: '2026-07-21'
+  last_audited_commit: d8a04d0
+- id: platform.deployment
+  name: Helm, Terraform, and release packaging
+  summary: Evidence-led status for helm, terraform, and release packaging.
+  pillar: platform
+  domain: platform
+  state: foundation
+  release_readiness: blocked
+  implementation:
+    code_paths:
+    - helm/dataobs/Chart.yaml
+    - infra/terraform/aws-backend/main.tf
+    - .github/workflows/release.yml
+    api_paths: []
+    ui_routes: []
+    storage_resources: []
+    migrations: []
+  validation:
+    unit: defined_not_run
+    integration: defined_not_run
+    real_stack: not_applicable
+    hosted_ci: missing
+    browser: not_applicable
+    accessibility: not_applicable
+    security: not_applicable
+    scale: not_applicable
+    upgrade: not_applicable
+    release: missing
+  evidence:
+    tests: []
+    workflow_jobs: []
+    audit_docs: []
+    runbooks: []
+    artifacts: []
+  blockers:
+  - Retained hosted and applicable real-stack/browser/security/scale evidence is absent.
+  non_goals:
+  - No product implementation is added by the ledger.
+  next_gate: Execute and retain the evidence required for promotion.
+  owner: unassigned
+  last_audited_at: '2026-07-21'
+  last_audited_commit: d8a04d0
+- id: data.postgres
+  name: PostgreSQL discovery, schema, freshness, and profiling
+  summary: Evidence-led status for postgresql discovery, schema, freshness, and profiling.
+  pillar: data
+  domain: data
+  state: functional_unvalidated
+  release_readiness: blocked
+  implementation:
+    code_paths:
+    - services/scanner_worker/worker.py
+    api_paths: []
+    ui_routes: []
+    storage_resources: []
+    migrations:
+    - 0002_postgres_observability
+  validation:
+    unit: defined_not_run
+    integration: defined_not_run
+    real_stack: not_applicable
+    hosted_ci: missing
+    browser: not_applicable
+    accessibility: not_applicable
+    security: not_applicable
+    scale: not_applicable
+    upgrade: not_applicable
+    release: missing
+  evidence:
+    tests:
+    - tests/integration/postgres_vertical_slice/test_postgres_vertical_slice.py
+    workflow_jobs: []
+    audit_docs: []
+    runbooks: []
+    artifacts: []
+  blockers:
+  - Retained hosted and applicable real-stack/browser/security/scale evidence is absent.
+  non_goals:
+  - No product implementation is added by the ledger.
+  next_gate: Execute and retain the evidence required for promotion.
+  owner: unassigned
+  last_audited_at: '2026-07-21'
+  last_audited_commit: d8a04d0
+- id: data.quality_drift
+  name: Quality and drift evidence
+  summary: Evidence-led status for quality and drift evidence.
+  pillar: data
+  domain: data
+  state: foundation
+  release_readiness: blocked
+  implementation:
+    code_paths: []
+    api_paths: []
+    ui_routes: []
+    storage_resources: []
+    migrations:
+    - 0002_postgres_observability
+  validation:
+    unit: defined_not_run
+    integration: defined_not_run
+    real_stack: not_applicable
+    hosted_ci: missing
+    browser: not_applicable
+    accessibility: not_applicable
+    security: not_applicable
+    scale: not_applicable
+    upgrade: not_applicable
+    release: missing
+  evidence:
+    tests: []
+    workflow_jobs: []
+    audit_docs: []
+    runbooks: []
+    artifacts: []
+  blockers:
+  - Retained hosted and applicable real-stack/browser/security/scale evidence is absent.
+  non_goals:
+  - No product implementation is added by the ledger.
+  next_gate: Execute and retain the evidence required for promotion.
+  owner: unassigned
+  last_audited_at: '2026-07-21'
+  last_audited_commit: d8a04d0
+- id: data.asset360
+  name: Asset Catalog and Asset 360
+  summary: Evidence-led status for asset catalog and asset 360.
+  pillar: data
+  domain: console
+  state: foundation
+  release_readiness: blocked
+  implementation:
+    code_paths:
+    - src/api/app.py
+    api_paths:
+    - /api/v1/assets
+    ui_routes:
+    - /assets
+    - /assets/:assetId
+    storage_resources: []
+    migrations:
+    - 0006_pathway_asset_360
+  validation:
+    unit: defined_not_run
+    integration: defined_not_run
+    real_stack: not_applicable
+    hosted_ci: missing
+    browser: defined_not_run
+    accessibility: defined_not_run
+    security: not_applicable
+    scale: not_applicable
+    upgrade: not_applicable
+    release: missing
+  evidence:
+    tests: []
+    workflow_jobs: []
+    audit_docs: []
+    runbooks: []
+    artifacts: []
+  blockers:
+  - Retained hosted and applicable real-stack/browser/security/scale evidence is absent.
+  non_goals:
+  - No product implementation is added by the ledger.
+  next_gate: Execute and retain the evidence required for promotion.
+  owner: unassigned
+  last_audited_at: '2026-07-21'
+  last_audited_commit: d8a04d0
+- id: data.pathways
+  name: Lineage and Pathway Explorer
+  summary: Evidence-led status for lineage and pathway explorer.
+  pillar: data_pipeline
+  domain: console
+  state: foundation
+  release_readiness: blocked
+  implementation:
+    code_paths:
+    - services/pathway_worker/service.py
+    api_paths: []
+    ui_routes:
+    - /pathways
+    - /pathways/:pathwayId
+    storage_resources: []
+    migrations:
+    - 0006_pathway_asset_360
+  validation:
+    unit: defined_not_run
+    integration: defined_not_run
+    real_stack: not_applicable
+    hosted_ci: missing
+    browser: defined_not_run
+    accessibility: defined_not_run
+    security: not_applicable
+    scale: not_applicable
+    upgrade: not_applicable
+    release: missing
+  evidence:
+    tests: []
+    workflow_jobs: []
+    audit_docs: []
+    runbooks: []
+    artifacts: []
+  blockers:
+  - Retained hosted and applicable real-stack/browser/security/scale evidence is absent.
+  non_goals:
+  - No product implementation is added by the ledger.
+  next_gate: Execute and retain the evidence required for promotion.
+  owner: unassigned
+  last_audited_at: '2026-07-21'
+  last_audited_commit: d8a04d0
+- id: pipeline.openlineage
+  name: OpenLineage ingest
+  summary: Evidence-led status for openlineage ingest.
+  pillar: data_pipeline
+  domain: integrations
+  state: foundation
+  release_readiness: blocked
+  implementation:
+    code_paths:
+    - src/api/app.py
+    api_paths:
+    - /api/data-observability/lineage/events
+    ui_routes: []
+    storage_resources: []
+    migrations:
+    - 0008_job_run_observability
+  validation:
+    unit: defined_not_run
+    integration: defined_not_run
+    real_stack: not_applicable
+    hosted_ci: missing
+    browser: not_applicable
+    accessibility: not_applicable
+    security: not_applicable
+    scale: not_applicable
+    upgrade: not_applicable
+    release: missing
+  evidence:
+    tests: []
+    workflow_jobs: []
+    audit_docs: []
+    runbooks: []
+    artifacts: []
+  blockers:
+  - Retained hosted and applicable real-stack/browser/security/scale evidence is absent.
+  non_goals:
+  - No product implementation is added by the ledger.
+  next_gate: Execute and retain the evidence required for promotion.
+  owner: unassigned
+  last_audited_at: '2026-07-21'
+  last_audited_commit: d8a04d0
+- id: pipeline.jobs
+  name: Job and run domain and Explorer
+  summary: Evidence-led status for job and run domain and explorer.
+  pillar: data_pipeline
+  domain: console
+  state: foundation
+  release_readiness: blocked
+  implementation:
+    code_paths:
+    - packages/domain_model/job_run.py
+    api_paths: []
+    ui_routes:
+    - planned:/jobs
+    - planned:/runs
+    storage_resources: []
+    migrations:
+    - 0008_job_run_observability
+  validation:
+    unit: defined_not_run
+    integration: defined_not_run
+    real_stack: not_applicable
+    hosted_ci: missing
+    browser: defined_not_run
+    accessibility: defined_not_run
+    security: not_applicable
+    scale: not_applicable
+    upgrade: not_applicable
+    release: missing
+  evidence:
+    tests: []
+    workflow_jobs: []
+    audit_docs: []
+    runbooks: []
+    artifacts: []
+  blockers:
+  - Retained hosted and applicable real-stack/browser/security/scale evidence is absent.
+  non_goals:
+  - No product implementation is added by the ledger.
+  next_gate: Execute and retain the evidence required for promotion.
+  owner: unassigned
+  last_audited_at: '2026-07-21'
+  last_audited_commit: d8a04d0
+- id: pipeline.adapters
+  name: Airflow, dbt, and Spark adapters
+  summary: Evidence-led status for airflow, dbt, and spark adapters.
+  pillar: data_pipeline
+  domain: integrations
+  state: foundation
+  release_readiness: blocked
+  implementation:
+    code_paths:
+    - integrations/airflow/client.py
+    - integrations/dbt/normalizer.py
+    - integrations/spark/normalizer.py
+    api_paths: []
+    ui_routes: []
+    storage_resources: []
+    migrations: []
+  validation:
+    unit: defined_not_run
+    integration: defined_not_run
+    real_stack: not_applicable
+    hosted_ci: missing
+    browser: not_applicable
+    accessibility: not_applicable
+    security: not_applicable
+    scale: not_applicable
+    upgrade: not_applicable
+    release: missing
+  evidence:
+    tests: []
+    workflow_jobs: []
+    audit_docs: []
+    runbooks: []
+    artifacts: []
+  blockers:
+  - Retained hosted and applicable real-stack/browser/security/scale evidence is absent.
+  non_goals:
+  - No product implementation is added by the ledger.
+  next_gate: Execute and retain the evidence required for promotion.
+  owner: unassigned
+  last_audited_at: '2026-07-21'
+  last_audited_commit: d8a04d0
+- id: monitoring.runtime
+  name: Monitor runtime, baselines, and recommendations
+  summary: Evidence-led status for monitor runtime, baselines, and recommendations.
+  pillar: data
+  domain: monitoring
+  state: foundation
+  release_readiness: blocked
+  implementation:
+    code_paths: []
+    api_paths: []
+    ui_routes:
+    - planned:/monitoring
+    storage_resources: []
+    migrations:
+    - 0007_automated_monitoring_data_products_rca
+  validation:
+    unit: defined_not_run
+    integration: defined_not_run
+    real_stack: not_applicable
+    hosted_ci: missing
+    browser: not_applicable
+    accessibility: not_applicable
+    security: not_applicable
+    scale: not_applicable
+    upgrade: not_applicable
+    release: missing
+  evidence:
+    tests: []
+    workflow_jobs: []
+    audit_docs: []
+    runbooks: []
+    artifacts: []
+  blockers:
+  - Retained hosted and applicable real-stack/browser/security/scale evidence is absent.
+  non_goals:
+  - No product implementation is added by the ledger.
+  next_gate: Execute and retain the evidence required for promotion.
+  owner: unassigned
+  last_audited_at: '2026-07-21'
+  last_audited_commit: d8a04d0
+- id: monitoring.products
+  name: Data Products, SLOs, Product 360, and RCA
+  summary: Evidence-led status for data products, slos, product 360, and rca.
+  pillar: business
+  domain: monitoring
+  state: foundation
+  release_readiness: blocked
+  implementation:
+    code_paths:
+    - packages/domain_model/data_product.py
+    api_paths: []
+    ui_routes:
+    - planned:/data-products
+    storage_resources: []
+    migrations:
+    - 0007_automated_monitoring_data_products_rca
+  validation:
+    unit: defined_not_run
+    integration: defined_not_run
+    real_stack: not_applicable
+    hosted_ci: missing
+    browser: not_applicable
+    accessibility: not_applicable
+    security: not_applicable
+    scale: not_applicable
+    upgrade: not_applicable
+    release: missing
+  evidence:
+    tests: []
+    workflow_jobs: []
+    audit_docs: []
+    runbooks: []
+    artifacts: []
+  blockers:
+  - Retained hosted and applicable real-stack/browser/security/scale evidence is absent.
+  non_goals:
+  - No product implementation is added by the ledger.
+  next_gate: Execute and retain the evidence required for promotion.
+  owner: unassigned
+  last_audited_at: '2026-07-21'
+  last_audited_commit: d8a04d0
+- id: streams.kafka
+  name: Kafka Observer and inventory
+  summary: Evidence-led status for kafka observer and inventory.
+  pillar: data_pipeline
+  domain: streams
+  state: functional_unvalidated
+  release_readiness: blocked
+  implementation:
+    code_paths:
+    - services/kafka_observer/service.py
+    api_paths: []
+    ui_routes:
+    - /streams
+    storage_resources: []
+    migrations:
+    - 0004_kafka_data_streams_monitoring
+  validation:
+    unit: defined_not_run
+    integration: defined_not_run
+    real_stack: not_applicable
+    hosted_ci: missing
+    browser: not_applicable
+    accessibility: not_applicable
+    security: not_applicable
+    scale: not_applicable
+    upgrade: not_applicable
+    release: missing
+  evidence:
+    tests: []
+    workflow_jobs: []
+    audit_docs: []
+    runbooks: []
+    artifacts: []
+  blockers:
+  - Retained hosted and applicable real-stack/browser/security/scale evidence is absent.
+  non_goals:
+  - No product implementation is added by the ledger.
+  next_gate: Execute and retain the evidence required for promotion.
+  owner: unassigned
+  last_audited_at: '2026-07-21'
+  last_audited_commit: d8a04d0
+- id: streams.connect_schema
+  name: Kafka Connect and Schema Registry
+  summary: Evidence-led status for kafka connect and schema registry.
+  pillar: data_pipeline
+  domain: streams
+  state: foundation
+  release_readiness: blocked
+  implementation:
+    code_paths:
+    - integrations/kafka_connect/collector.py
+    - integrations/schema_registry/collector.py
+    api_paths: []
+    ui_routes: []
+    storage_resources: []
+    migrations:
+    - 0009_topic_queue_stream_360
+  validation:
+    unit: defined_not_run
+    integration: defined_not_run
+    real_stack: not_applicable
+    hosted_ci: missing
+    browser: not_applicable
+    accessibility: not_applicable
+    security: not_applicable
+    scale: not_applicable
+    upgrade: not_applicable
+    release: missing
+  evidence:
+    tests: []
+    workflow_jobs: []
+    audit_docs: []
+    runbooks: []
+    artifacts: []
+  blockers:
+  - Retained hosted and applicable real-stack/browser/security/scale evidence is absent.
+  non_goals:
+  - No product implementation is added by the ledger.
+  next_gate: Execute and retain the evidence required for promotion.
+  owner: unassigned
+  last_audited_at: '2026-07-21'
+  last_audited_commit: d8a04d0
+- id: streams.detail
+  name: Stream 360 detail pages
+  summary: Evidence-led status for stream 360 detail pages.
+  pillar: data_pipeline
+  domain: console
+  state: foundation
+  release_readiness: blocked
+  implementation:
+    code_paths:
+    - src/api/stream_routes.py
+    api_paths: []
+    ui_routes:
+    - /streams/clusters/:clusterId
+    - /streams/topics/:streamId
+    storage_resources: []
+    migrations:
+    - 0010_topic_queue_stream_360_completion
+  validation:
+    unit: defined_not_run
+    integration: defined_not_run
+    real_stack: not_applicable
+    hosted_ci: missing
+    browser: defined_not_run
+    accessibility: defined_not_run
+    security: not_applicable
+    scale: not_applicable
+    upgrade: not_applicable
+    release: missing
+  evidence:
+    tests: []
+    workflow_jobs: []
+    audit_docs: []
+    runbooks: []
+    artifacts: []
+  blockers:
+  - Retained hosted and applicable real-stack/browser/security/scale evidence is absent.
+  non_goals:
+  - No product implementation is added by the ledger.
+  next_gate: Execute and retain the evidence required for promotion.
+  owner: unassigned
+  last_audited_at: '2026-07-21'
+  last_audited_commit: d8a04d0
+- id: streams.live_actions
+  name: Durable stream SSE and safe actions
+  summary: Evidence-led status for durable stream sse and safe actions.
+  pillar: data_pipeline
+  domain: streams
+  state: foundation
+  release_readiness: blocked
+  implementation:
+    code_paths:
+    - src/api/stream_routes.py
+    api_paths: []
+    ui_routes: []
+    storage_resources: []
+    migrations:
+    - 0010_topic_queue_stream_360_completion
+  validation:
+    unit: defined_not_run
+    integration: defined_not_run
+    real_stack: not_applicable
+    hosted_ci: missing
+    browser: not_applicable
+    accessibility: not_applicable
+    security: not_applicable
+    scale: not_applicable
+    upgrade: not_applicable
+    release: missing
+  evidence:
+    tests: []
+    workflow_jobs: []
+    audit_docs: []
+    runbooks: []
+    artifacts: []
+  blockers:
+  - Retained hosted and applicable real-stack/browser/security/scale evidence is absent.
+  non_goals:
+  - No product implementation is added by the ledger.
+  next_gate: Execute and retain the evidence required for promotion.
+  owner: unassigned
+  last_audited_at: '2026-07-21'
+  last_audited_commit: d8a04d0
+- id: incidents.core
+  name: Finding ingest, correlation, lifecycle, and timeline
+  summary: Evidence-led status for finding ingest, correlation, lifecycle, and timeline.
+  pillar: platform
+  domain: incident_response
+  state: functional_unvalidated
+  release_readiness: blocked
+  implementation:
+    code_paths:
+    - services/incident_manager/service.py
+    api_paths: []
+    ui_routes:
+    - /incidents/:incidentId
+    storage_resources: []
+    migrations:
+    - 0003_incident_automation
+  validation:
+    unit: defined_not_run
+    integration: defined_not_run
+    real_stack: not_applicable
+    hosted_ci: missing
+    browser: not_applicable
+    accessibility: not_applicable
+    security: not_applicable
+    scale: not_applicable
+    upgrade: not_applicable
+    release: missing
+  evidence:
+    tests:
+    - tests/unit/test_incident_automation.py
+    workflow_jobs: []
+    audit_docs: []
+    runbooks: []
+    artifacts: []
+  blockers:
+  - Retained hosted and applicable real-stack/browser/security/scale evidence is absent.
+  non_goals:
+  - No product implementation is added by the ledger.
+  next_gate: Execute and retain the evidence required for promotion.
+  owner: unassigned
+  last_audited_at: '2026-07-21'
+  last_audited_commit: d8a04d0
+- id: incidents.replay
+  name: Incident mapping, OCC, and bounded replay
+  summary: Evidence-led status for incident mapping, occ, and bounded replay.
+  pillar: platform
+  domain: incident_response
+  state: functional_unvalidated
+  release_readiness: blocked
+  implementation:
+    code_paths:
+    - services/incident_manager/elasticsearch_repository.py
+    api_paths: []
+    ui_routes: []
+    storage_resources: []
+    migrations:
+    - 0012_incident_mapping_and_occ_fix
+  validation:
+    unit: defined_not_run
+    integration: defined_not_run
+    real_stack: not_applicable
+    hosted_ci: missing
+    browser: not_applicable
+    accessibility: not_applicable
+    security: not_applicable
+    scale: not_applicable
+    upgrade: defined_not_run
+    release: missing
+  evidence:
+    tests:
+    - tests/unit/test_incident_automation.py
+    workflow_jobs: []
+    audit_docs: []
+    runbooks: []
+    artifacts: []
+  blockers:
+  - Retained hosted and applicable real-stack/browser/security/scale evidence is absent.
+  non_goals:
+  - No product implementation is added by the ledger.
+  next_gate: Execute and retain the evidence required for promotion.
+  owner: unassigned
+  last_audited_at: '2026-07-21'
+  last_audited_commit: d8a04d0
+- id: incidents.workbench
+  name: Cases, workflows, approvals, actions, and verification
+  summary: Evidence-led status for cases, workflows, approvals, actions, and verification.
+  pillar: platform
+  domain: incident_response
+  state: foundation
+  release_readiness: blocked
+  implementation:
+    code_paths:
+    - packages/domain_model/workflow.py
+    - services/approvals/service.py
+    - services/action_executor/catalogue.py
+    api_paths: []
+    ui_routes:
+    - planned:/automation
+    - planned:/approvals
+    storage_resources: []
+    migrations:
+    - 0011_incident_automation_workbench
+  validation:
+    unit: defined_not_run
+    integration: defined_not_run
+    real_stack: not_applicable
+    hosted_ci: missing
+    browser: not_applicable
+    accessibility: not_applicable
+    security: not_applicable
+    scale: not_applicable
+    upgrade: not_applicable
+    release: missing
+  evidence:
+    tests:
+    - tests/unit/test_incident_automation.py
+    workflow_jobs: []
+    audit_docs: []
+    runbooks: []
+    artifacts: []
+  blockers:
+  - Retained hosted and applicable real-stack/browser/security/scale evidence is absent.
+  non_goals:
+  - No product implementation is added by the ledger.
+  next_gate: Execute and retain the evidence required for promotion.
+  owner: unassigned
+  last_audited_at: '2026-07-21'
+  last_audited_commit: d8a04d0
+- id: console.command
+  name: Command Center
+  summary: Evidence-led status for command center.
+  pillar: platform
+  domain: console
+  state: foundation
+  release_readiness: blocked
+  implementation:
+    code_paths:
+    - ui/dataobs-console/src/features/command-center/CommandCenter.tsx
+    api_paths: []
+    ui_routes:
+    - /
+    storage_resources: []
+    migrations:
+    - 0005_console_foundation
+  validation:
+    unit: defined_not_run
+    integration: defined_not_run
+    real_stack: not_applicable
+    hosted_ci: missing
+    browser: defined_not_run
+    accessibility: defined_not_run
+    security: not_applicable
+    scale: not_applicable
+    upgrade: not_applicable
+    release: missing
+  evidence:
+    tests: []
+    workflow_jobs: []
+    audit_docs: []
+    runbooks: []
+    artifacts: []
+  blockers:
+  - Retained hosted and applicable real-stack/browser/security/scale evidence is absent.
+  non_goals:
+  - No product implementation is added by the ledger.
+  next_gate: Execute and retain the evidence required for promotion.
+  owner: unassigned
+  last_audited_at: '2026-07-21'
+  last_audited_commit: d8a04d0
+- id: console.validation
+  name: Console browser and accessibility validation
+  summary: Evidence-led status for console browser and accessibility validation.
+  pillar: platform
+  domain: console
+  state: scaffold
+  release_readiness: blocked
+  implementation:
+    code_paths:
+    - ui/dataobs-console/playwright.config.ts
+    api_paths: []
+    ui_routes: []
+    storage_resources: []
+    migrations: []
+  validation:
+    unit: defined_not_run
+    integration: defined_not_run
+    real_stack: not_applicable
+    hosted_ci: missing
+    browser: defined_not_run
+    accessibility: defined_not_run
+    security: not_applicable
+    scale: not_applicable
+    upgrade: not_applicable
+    release: missing
+  evidence:
+    tests: []
+    workflow_jobs: []
+    audit_docs: []
+    runbooks: []
+    artifacts: []
+  blockers:
+  - Retained hosted and applicable real-stack/browser/security/scale evidence is absent.
+  non_goals:
+  - No product implementation is added by the ledger.
+  next_gate: Execute and retain the evidence required for promotion.
+  owner: unassigned
+  last_audited_at: '2026-07-21'
+  last_audited_commit: d8a04d0
+- id: future.finops
+  name: FinOps and Cost Observability
+  summary: Evidence-led status for finops and cost observability.
+  pillar: finops_cost
+  domain: finops_cost
+  state: not_started
+  release_readiness: blocked
+  implementation:
+    code_paths: []
+    api_paths: []
+    ui_routes: []
+    storage_resources: []
+    migrations: []
+  validation:
+    unit: not_applicable
+    integration: not_applicable
+    real_stack: not_applicable
+    hosted_ci: not_applicable
+    browser: not_applicable
+    accessibility: not_applicable
+    security: not_applicable
+    scale: not_applicable
+    upgrade: not_applicable
+    release: not_applicable
+  evidence:
+    tests: []
+    workflow_jobs: []
+    audit_docs: []
+    runbooks: []
+    artifacts: []
+  blockers:
+  - Meaningful implementation and executable evidence are absent.
+  non_goals:
+  - No product implementation is added by the ledger.
+  next_gate: Execute and retain the evidence required for promotion.
+  owner: unassigned
+  last_audited_at: '2026-07-21'
+  last_audited_commit: d8a04d0
+- id: future.business
+  name: Business Reliability Scorecards
+  summary: Evidence-led status for business reliability scorecards.
+  pillar: business
+  domain: business
+  state: not_started
+  release_readiness: blocked
+  implementation:
+    code_paths: []
+    api_paths: []
+    ui_routes: []
+    storage_resources: []
+    migrations: []
+  validation:
+    unit: not_applicable
+    integration: not_applicable
+    real_stack: not_applicable
+    hosted_ci: not_applicable
+    browser: not_applicable
+    accessibility: not_applicable
+    security: not_applicable
+    scale: not_applicable
+    upgrade: not_applicable
+    release: not_applicable
+  evidence:
+    tests: []
+    workflow_jobs: []
+    audit_docs: []
+    runbooks: []
+    artifacts: []
+  blockers:
+  - Meaningful implementation and executable evidence are absent.
+  non_goals:
+  - No product implementation is added by the ledger.
+  next_gate: Execute and retain the evidence required for promotion.
+  owner: unassigned
+  last_audited_at: '2026-07-21'
+  last_audited_commit: d8a04d0
+- id: future.ai_agent
+  name: AI and Agent Observability
+  summary: Evidence-led status for ai and agent observability.
+  pillar: ai_agent
+  domain: ai_agent
+  state: not_started
+  release_readiness: blocked
+  implementation:
+    code_paths: []
+    api_paths: []
+    ui_routes: []
+    storage_resources: []
+    migrations: []
+  validation:
+    unit: not_applicable
+    integration: not_applicable
+    real_stack: not_applicable
+    hosted_ci: not_applicable
+    browser: not_applicable
+    accessibility: not_applicable
+    security: not_applicable
+    scale: not_applicable
+    upgrade: not_applicable
+    release: not_applicable
+  evidence:
+    tests: []
+    workflow_jobs: []
+    audit_docs: []
+    runbooks: []
+    artifacts: []
+  blockers:
+  - Meaningful implementation and executable evidence are absent.
+  non_goals:
+  - No product implementation is added by the ledger.
+  next_gate: Execute and retain the evidence required for promotion.
+  owner: unassigned
+  last_audited_at: '2026-07-21'
+  last_audited_commit: d8a04d0
+- id: future.advisor
+  name: DataObs Advisor
+  summary: Evidence-led status for dataobs advisor.
+  pillar: ai_agent
+  domain: ai_agent
+  state: not_started
+  release_readiness: blocked
+  implementation:
+    code_paths: []
+    api_paths: []
+    ui_routes: []
+    storage_resources: []
+    migrations: []
+  validation:
+    unit: not_applicable
+    integration: not_applicable
+    real_stack: not_applicable
+    hosted_ci: not_applicable
+    browser: not_applicable
+    accessibility: not_applicable
+    security: not_applicable
+    scale: not_applicable
+    upgrade: not_applicable
+    release: not_applicable
+  evidence:
+    tests: []
+    workflow_jobs: []
+    audit_docs: []
+    runbooks: []
+    artifacts: []
+  blockers:
+  - Meaningful implementation and executable evidence are absent.
+  non_goals:
+  - No product implementation is added by the ledger.
+  next_gate: Execute and retain the evidence required for promotion.
+  owner: unassigned
+  last_audited_at: '2026-07-21'
+  last_audited_commit: d8a04d0
+- id: integration.elastic
+  name: Elasticsearch and Kibana authoritative plane
+  summary: Evidence-led status for elasticsearch and kibana authoritative plane.
+  pillar: platform
+  domain: integrations
+  state: foundation
+  release_readiness: blocked
+  implementation:
+    code_paths:
+    - integrations/elastic/README.md
+    api_paths: []
+    ui_routes: []
+    storage_resources: []
+    migrations:
+    - 0001_product_foundation
+  validation:
+    unit: defined_not_run
+    integration: defined_not_run
+    real_stack: not_applicable
+    hosted_ci: missing
+    browser: not_applicable
+    accessibility: not_applicable
+    security: not_applicable
+    scale: not_applicable
+    upgrade: not_applicable
+    release: missing
+  evidence:
+    tests: []
+    workflow_jobs: []
+    audit_docs: []
+    runbooks: []
+    artifacts: []
+  blockers:
+  - Retained hosted and applicable real-stack/browser/security/scale evidence is absent.
+  non_goals:
+  - No product implementation is added by the ledger.
+  next_gate: Execute and retain the evidence required for promotion.
+  owner: unassigned
+  last_audited_at: '2026-07-21'
+  last_audited_commit: d8a04d0
+- id: integration.otel
+  name: OpenTelemetry ingestion standard
+  summary: Evidence-led status for opentelemetry ingestion standard.
+  pillar: platform
+  domain: integrations
+  state: foundation
+  release_readiness: blocked
+  implementation:
+    code_paths:
+    - config/otel-collector-config.yaml
+    api_paths: []
+    ui_routes: []
+    storage_resources: []
+    migrations: []
+  validation:
+    unit: defined_not_run
+    integration: defined_not_run
+    real_stack: not_applicable
+    hosted_ci: missing
+    browser: not_applicable
+    accessibility: not_applicable
+    security: not_applicable
+    scale: not_applicable
+    upgrade: not_applicable
+    release: missing
+  evidence:
+    tests: []
+    workflow_jobs: []
+    audit_docs: []
+    runbooks: []
+    artifacts: []
+  blockers:
+  - Retained hosted and applicable real-stack/browser/security/scale evidence is absent.
+  non_goals:
+  - No product implementation is added by the ledger.
+  next_gate: Execute and retain the evidence required for promotion.
+  owner: unassigned
+  last_audited_at: '2026-07-21'
+  last_audited_commit: d8a04d0
+- id: integration.optional
+  name: OpenSearch, Grafana, and Alloy interoperability
+  summary: Evidence-led status for opensearch, grafana, and alloy interoperability.
+    Elasticsearch remains authoritative; this is export/interoperability only.
+  pillar: platform
+  domain: integrations
+  state: optional_integration
+  release_readiness: blocked
+  implementation:
+    code_paths:
+    - integrations/grafana-alloy/README.md
+    api_paths: []
+    ui_routes: []
+    storage_resources: []
+    migrations: []
+  validation:
+    unit: not_applicable
+    integration: not_applicable
+    real_stack: not_applicable
+    hosted_ci: not_applicable
+    browser: not_applicable
+    accessibility: not_applicable
+    security: not_applicable
+    scale: not_applicable
+    upgrade: not_applicable
+    release: not_applicable
+  evidence:
+    tests: []
+    workflow_jobs: []
+    audit_docs: []
+    runbooks: []
+    artifacts: []
+  blockers:
+  - Retained hosted and applicable real-stack/browser/security/scale evidence is absent.
+  non_goals:
+  - No product implementation is added by the ledger.
+  next_gate: Execute and retain the evidence required for promotion.
+  owner: unassigned
+  last_audited_at: '2026-07-21'
+  last_audited_commit: d8a04d0
+- id: integration.cloud
+  name: AWS, Azure, GCP, and Snowflake providers
+  summary: Evidence-led status for aws, azure, gcp, and snowflake providers.
+  pillar: platform
+  domain: integrations
+  state: not_started
+  release_readiness: blocked
+  implementation:
+    code_paths: []
+    api_paths: []
+    ui_routes: []
+    storage_resources: []
+    migrations: []
+  validation:
+    unit: not_applicable
+    integration: not_applicable
+    real_stack: not_applicable
+    hosted_ci: not_applicable
+    browser: not_applicable
+    accessibility: not_applicable
+    security: not_applicable
+    scale: not_applicable
+    upgrade: not_applicable
+    release: not_applicable
+  evidence:
+    tests: []
+    workflow_jobs: []
+    audit_docs: []
+    runbooks: []
+    artifacts: []
+  blockers:
+  - Meaningful implementation and executable evidence are absent.
+  non_goals:
+  - No product implementation is added by the ledger.
+  next_gate: Execute and retain the evidence required for promotion.
+  owner: unassigned
+  last_audited_at: '2026-07-21'
+  last_audited_commit: d8a04d0
+migration_checksums:
+  0001_product_foundation: 71d939094a97b4dd7c61de60542b60dd41cb238fd6bebfd75d53d723b00f3556
+  0002_postgres_observability: c2098fa24ddae209fcf2ffeb369f7040d57018d58682a8513db9e943c749aa2d
+  0003_incident_automation: f1f250822f94c5cc95c0b8547402a7a1294a8a3f04f1b8bd6b2713a643712ee5
+  0004_kafka_data_streams_monitoring: bf2a4cb663077d1df0be960300d04f4ad0ac2a43ab34fc0f01bf2fa40a1b32c6
+  0005_console_foundation: 3b6861df951b1e4c46d0c2b6430e9327c6cf83533a7c908e0dca1cdde7793197
+  0006_pathway_asset_360: 19dd1a7a5c6c36f3f807b13ca5d4785affc499cfbd53488c222b5a82b47faf10
+  0007_automated_monitoring_data_products_rca: 827dd6e892a7199d4b6e91577cc3108b10045a0d67fc68375b088d20e412213e
+  0008_job_run_observability: ce32e272e9e5f7b30387cfdffbe17a403ce22fd2cffc947aea41bcddcd3e0ffe
+  0009_topic_queue_stream_360: 6568576cd65fbf0f151674322506c17d95d8b361370e5a74e9bd972937eb8e95
+  0010_topic_queue_stream_360_completion: 10230af88ce07b64b1e8d310065d2ae2461b4e09b8ef73c04fcf200a8f44d2cc
+  0011_incident_automation_workbench: e5ac77c3fb833c9e8380922d2d38c5e23409f1446afe6b131a137d272b6ce1aa
+  0012_incident_mapping_and_occ_fix: 4ca3e9b2959b948c09879f125c5cd1de59b4b9c29df4e0f7e348c7a6316fa2b9
+  0013_monitor_runtime_completion: b8690cc9655a3992633ea57d07c9175dae90fb8dfbe602d3d4aea06155bdffef
+  0014_data_product_360_completion: 7b0c111cff713342ebac7040a19a03399d9266f861749792269607b1842a7bc8
+  0015_data_product_360_productization: 4bfd71dcd39336b0fcd0140589924d2f97635b90c9459f0fe5d3d6339a08155d
+  0016_data_product_membership_dependency_runtime: 18ff89df0cac8777a3a72d076470a7a517b61d439e64b2b1287852a5f845178c
+  0017_data_product_reconciliation_retry_date: b34bc1859ee83a91f19bee1c96d67d1a20838149ee90dbedd56d376e0646c561

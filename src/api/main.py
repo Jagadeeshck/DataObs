@@ -13,6 +13,7 @@ DATAOBS_TENANT_ID       Tenant ID for index partitioning (default: default)
 DATAOBS_ALLOW_UNAUTHENTICATED_DEV  true/false dev-only no-token mode (default: true)
 LOG_LEVEL               Python log level (default: INFO)
 """
+
 from __future__ import annotations
 
 import logging

@@ -23,8 +23,8 @@ dataobs-logs-pipeline:
     - opensearch:
         hosts:
           - "${opensearch_endpoint}"
-        index: "dataobs-logs-%{@index_date}"
-        aws:
+      index: "dataobs-logs-%%{@index_date}"      
+          aws:
           region: "${region}"
           sts_role_arn: "${pipeline_role_arn}"
         bulk_size: 4

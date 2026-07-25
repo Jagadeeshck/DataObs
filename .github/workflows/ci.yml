@@ -170,7 +170,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-                      - name: Validate compose files
+      - name: Validate compose files
           env:
             ELASTIC_PASSWORD: ci-placeholder-password
             OPENSEARCH_PASSWORD: ci-placeholder-password

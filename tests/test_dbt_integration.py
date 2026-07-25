@@ -43,10 +43,10 @@ for _candidate in (_ROOT,):
     if str(_candidate) not in sys.path:
         sys.path.insert(0, str(_candidate))
 
-import integrations.dbt.dbt_cloud_poller as _poller_module
-import integrations.dbt.parse_run_results as _prr_module
-from integrations.dbt.dbt_cloud_poller import DbtCloudPoller
-from integrations.dbt.parse_run_results import (
+import integrations.dbt.dbt_cloud_poller as _poller_module  # noqa: E402
+import integrations.dbt.parse_run_results as _prr_module  # noqa: E402
+from integrations.dbt.dbt_cloud_poller import DbtCloudPoller  # noqa: E402
+from integrations.dbt.parse_run_results import (  # noqa: E402
     _REQUIRED_METADATA_FIELDS,
     _REQUIRED_RESULT_FIELDS,
     _REQUIRED_TOP_LEVEL,

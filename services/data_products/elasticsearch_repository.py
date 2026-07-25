@@ -80,6 +80,18 @@ class ElasticsearchDataProductRepository:
 
     @staticmethod
     def _json_value(value: Any) -> Any:
+
+    @staticmethod
+    def _decision_document(decision: DataProductMembershipDecision) -> dict[str, Any]:
+        document = decision.model_dump(mode="json")
+        document["decision_reason"] = document.pop("reason")
+                            return document
+
+    @staticmethod
+        def _decision_from_source(source: dict[str, Any]) -> dict[str, Any]:
+        restored = dict(source)
+        restored["reason"] = restored.pop("decision_reason", restored.get("reason"))
+                return restored
         if isinstance(value, datetime):
             return value.isoformat()
         if isinstance(value, dict):
@@ -1249,10 +1261,12 @@ class ElasticsearchDataProductRepository:
             raise ValueError("decision scope mismatch")
         document_id = scoped_id(tenant_id, environment, decision.decision_id)
         try:
-            self.client.create(index=DECISIONS, id=document_id, document=decision.model_dump(mode="json"))
+            document = self._decision_document(decision)
+            self.client.create(index=DECISIONS, id=document_id, document=document)
         except ConflictError as exc:
+            existing_source = self.client.get(index=DECISIONS, id=document_id)["_source"]
             existing = DataProductMembershipDecision.model_validate(
-                self.client.get(index=DECISIONS, id=document_id)["_source"]
+                self._decision_from_source(existing_source)
             )
             if existing == decision:
                 return existing
@@ -1263,8 +1277,8 @@ class ElasticsearchDataProductRepository:
         try:
             source = self.client.get(index=DECISIONS, id=scoped_id(tenant_id, environment, decision_id))["_source"]
         except NotFoundError:
-            return None
-        value = DataProductMembershipDecision.model_validate(source)
+                                return None
+        value = DataProductMembershipDecision.model_validate(self._decision_from_source(source))
         if (value.tenant_id, value.environment, value.product_id) != (tenant_id, environment, product_id):
             return None
         return value
@@ -1285,7 +1299,10 @@ class ElasticsearchDataProductRepository:
             },
             sort=[{"occurred_at": "asc"}, {"decision_id": "asc"}, {"_id": "asc"}],
         )
-        return tuple(DataProductMembershipDecision.model_validate(hit["_source"]) for hit in response["hits"]["hits"])
+                                return tuple(
+            DataProductMembershipDecision.model_validate(self._decision_from_source(hit["_source"]))
+            for hit in response["hits"]["hits"]
+        )
 
     def list_membership_decisions(
         self,

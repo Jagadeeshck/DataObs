@@ -130,7 +130,7 @@ module "osis" {
 # ─────────────────────────────────────────────────────────────────────────────
 # 4. Amazon Managed Grafana
 # ─────────────────────────────────────────────────────────────────────────────
-module "amg" {
+module "amg" { {
   source = "../modules/amg"
 
   name_prefix                = local.name_prefix

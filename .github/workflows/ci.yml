@@ -392,8 +392,7 @@ jobs:
       - name: Validate compose
         run: docker compose -f docker-compose.incident-automation-demo.yml config
       - name: Sentinel secret scan
-      
-              run: 'rg "DATAOBS_SENTINEL_SECRET_DO_NOT_LEAK" --glob "!scripts/demo_incident_automation.sh" && exit 1; exit 0'
+      run: 'rg "DATAOBS_SENTINEL_SECRET_DO_NOT_LEAK" --glob "!scripts/demo_incident_automation.sh" && exit 1; exit 0'
   console-quality:
     name: Console type, test, build and contract drift
     runs-on: ubuntu-latest

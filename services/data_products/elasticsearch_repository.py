@@ -78,28 +78,27 @@ class ElasticsearchDataProductRepository:
     def __init__(self, client: Elasticsearch) -> None:
         self.client = client
 
-    @staticmethod
-    def _json_value(value: Any) -> Any:
+            @staticmethod
+        def _json_value(value: Any) -> Any:
+            if isinstance(value, datetime):
+                return value.isoformat()
+            if isinstance(value, dict):
+                return {key: ElasticsearchDataProductRepository._json_value(item) for key, item in value.items()}
+            if isinstance(value, (list, tuple)):
+                return [ElasticsearchDataProductRepository._json_value(item) for item in value]
+            return value
 
-    @staticmethod
-    def _decision_document(decision: DataProductMembershipDecision) -> dict[str, Any]:
-        document = decision.model_dump(mode="json")
-        document["decision_reason"] = document.pop("reason")
-                            return document
+        @staticmethod
+        def _decision_document(decision: DataProductMembershipDecision) -> dict[str, Any]:
+            document = decision.model_dump(mode="json")
+            document["decision_reason"] = document.pop("reason")
+            return document
 
-    @staticmethod
+        @staticmethod
         def _decision_from_source(source: dict[str, Any]) -> dict[str, Any]:
-        restored = dict(source)
-        restored["reason"] = restored.pop("decision_reason", restored.get("reason"))
-                return restored
-        if isinstance(value, datetime):
-            return value.isoformat()
-        if isinstance(value, dict):
-            return {key: ElasticsearchDataProductRepository._json_value(item) for key, item in value.items()}
-        if isinstance(value, (list, tuple)):
-            return [ElasticsearchDataProductRepository._json_value(item) for item in value]
-        return value
-
+            restored = dict(source)
+            restored["reason"] = restored.pop("decision_reason", restored.get("reason"))
+            return restored
     @staticmethod
     def _state_document(state: DataProductOperationState) -> dict[str, Any]:
         document = ElasticsearchDataProductRepository._json_value(asdict(state))

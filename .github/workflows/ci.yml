@@ -365,7 +365,7 @@ jobs:
         run: |
           trivy image --format cyclonedx --output sbom-api.cdx.json dataobs/api:${{ github.sha }}
           trivy image --format cyclonedx --output sbom-quality.cdx.json dataobs/quality:${{ github.sha }}
-          trivy image --format cyclonedx --output sbom-collection-manager.cdx.json
+          trivy image --format cyclonedx --output sbom-collection-manager.cdx.json dataobs/collection-manager:${{ github.sha }} dataobs/collection-manager:${{ github.sha }}
           trivy image --format cyclonedx --output sbom-scanner.cdx.json dataobs/scanner:${{ github.sha }} dataobs/collection-manager:${{ github.sha }}
       - name: Upload SBOMs
         uses: actions/upload-artifact@v4

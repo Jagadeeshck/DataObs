@@ -279,12 +279,18 @@ jobs:
           ! rg -n 'DATAOBS_SENTINEL_PASSWORD_DO_NOT_PERSIST' /tmp/dataobs-*.json
       - name: Trivy scanner image
         uses: aquasecurity/trivy-action@0.35.0
-        with: { image-ref: "dataobs/scanner:${{ github.sha }}", format: table, ignore-unfixed: true, vuln-type: os,library, severity: CRITICAL,HIGH, exit-code: "1", scanners: vuln }
-                                
+        with:
+          image-ref: "dataobs/scanner:${{ github.sha }}"
+          format: table
+          ignore-unfixed: true
+          vuln-type: os,library
+          severity: CRITICAL,HIGH
+          exit-code: "1"
+          scanners: vuln
       - name: Generate SBOM
         run: trivy image --format cyclonedx --output sbom-scanner.cdx.json dataobs/scanner:${{ github.sha }}
       - name: Capture Compose logs
-      if: always()
+        if: always()
         run: docker compose -f docker-compose.postgres-demo.yml logs --no-color > postgres-demo.log
       - name: Upload PostgreSQL vertical slice artifacts
         if: always()
@@ -297,6 +303,7 @@ jobs:
             sbom-scanner.cdx.json
       - name: Tear down stack
         if: always()
+        run: docker compose -f docker-compose.postgres-demo.yml down -v
         run: docker compose -f docker-compose.postgres-demo.yml down -v
 
   terraform-helm:

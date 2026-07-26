@@ -88,15 +88,15 @@ class ElasticsearchDataProductRepository:
             return [ElasticsearchDataProductRepository._json_value(item) for item in value]
         return value
 
-        @staticmethod
-        def _decision_document(decision: DataProductMembershipDecision) -> dict[str, Any]:
-            document = decision.model_dump(mode="json")
-            document["decision_reason"] = document.pop("reason")
-            return document
+    @staticmethod
+    def _decision_document(decision: DataProductMembershipDecision) -> dict[str, Any]:
+        document = decision.model_dump(mode="json")
+        document["decision_reason"] = document.pop("reason")
+        return document
 
-        @staticmethod
-        def _decision_from_source(source: dict[str, Any]) -> dict[str, Any]:
-            restored = dict(source)
+    @staticmethod
+    def _decision_from_source(source: dict[str, Any]) -> dict[str, Any]:
+        restored = dict(source)
             restored["reason"] = restored.pop("decision_reason", restored.get("reason"))
             return restored
 

@@ -20,6 +20,11 @@ LABEL org.opencontainers.image.description="DataObs lightweight REST API for rul
 
 WORKDIR /app
 
+# Upgrade base-image bundled setuptools/wheel/jaraco.context in place to remediate
+# Trivy CVE-2026-23949 (jaraco.context) and CVE-2026-24049 (wheel). pip handles
+# removal of the old dist-info/RECORD entries so no orphaned vulnerable metadata remains.
+RUN pip install --no-cache-dir --upgrade "setuptools>=70.0.0" "wheel>=0.46.2" "jaraco.context>=6.1.0"
+
 # Copy installed packages from builder
 COPY --from=builder /install /usr/local
 

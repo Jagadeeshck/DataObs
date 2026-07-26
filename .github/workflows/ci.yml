@@ -283,8 +283,8 @@ jobs:
                                 
       - name: Generate SBOM
         run: trivy image --format cyclonedx --output sbom-scanner.cdx.json dataobs/scanner:${{ github.sha }}
-
-        if: always()
+      - name: Capture Compose logs
+      if: always()
         run: docker compose -f docker-compose.postgres-demo.yml logs --no-color > postgres-demo.log
       - name: Upload PostgreSQL vertical slice artifacts
         if: always()

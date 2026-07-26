@@ -41,3 +41,10 @@ httpx>=0.27,<1.0
 # Kafka DSM
 confluent-kafka>=2.6,<3.0
 jsonschema==4.25.1
+
+
+# Security pins - Trivy CVE remediation (2026)
+# jaraco.context: CVE-2026-23949 path traversal via malicious tar archives
+jaraco.context>=6.1.0
+# wheel: CVE-2026-24049 privilege escalation / arbitrary code execution via malicious wheel file
+wheel>=0.46.2

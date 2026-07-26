@@ -97,7 +97,9 @@ class ElasticsearchDataProductRepository:
         @staticmethod
         def _decision_from_source(source: dict[str, Any]) -> dict[str, Any]:
             restored = dict(source)
-            restored["reason"] = restored.pop("decision_reason", restored.get("reason"))
+restored["reason"] = restored.pop(
+                "decision_reason", restored.get("reason")
+            )
             return restored
 
     @staticmethod

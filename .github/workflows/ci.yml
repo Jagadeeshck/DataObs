@@ -175,7 +175,7 @@ jobs:
           ELASTIC_PASSWORD: ci-placeholder-password
           OPENSEARCH_PASSWORD: ci-placeholder-password
           KIBANA_PASSWORD: ci-placeholder-password
-                    CERTIFICATION_POSTGRES_PASSWORD_FILE: /tmp/ci-placeholder-postgres-password
+            CERTIFICATION_POSTGRES_PASSWORD_FILE: /tmp/ci-placeholder-postgres-password
         run: |
           docker compose -f docker-compose.yml config
           docker compose -f docker-compose.certification.yml --profile full config

@@ -419,9 +419,8 @@ jobs:
         run: docker build -t dataobs/console:${{ github.sha }} ui/dataobs-console
       - name: Bundle secret and source-map policy
         run: |
-          rg -n 'DATAOBS_SENTINEL_PASSWORD_DO_NOT_PERSIST' ui/dataobs-console/dist && exit 1 || true
-                    if find ui/dataobs-console/dist -name '*.map' | grep -q .; then exit 1; fi
-
+          if rg -n 'DATAOBS_SENTINEL_PASSWORD_DO_NOT_PERSIST' ui/dataobs-console/dist; then exit 1; fi
+          if find ui/dataobs-console/dist -name '*.map' | grep -q .; then exit 1; fi
   console-backend-contract:
     name: Console backend contract gate
     runs-on: ubuntu-latest

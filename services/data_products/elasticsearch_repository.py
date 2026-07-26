@@ -1261,12 +1261,12 @@ class ElasticsearchDataProductRepository:
             raise ValueError("decision scope mismatch")
         document_id = scoped_id(tenant_id, environment, decision.decision_id)
         try:
-            document = ElasticsearchDataProductRepository._decision_document(decision)
+            document = self._decision_document(decision)
             self.client.create(index=DECISIONS, id=document_id, document=document)
         except ConflictError as exc:
             existing_source = self.client.get(index=DECISIONS, id=document_id)["_source"]
             existing = DataProductMembershipDecision.model_validate(
-                ElasticsearchDataProductRepository._decision_from_source(existing_source)
+                self._decision_from_source(existing_source)
             )
             if existing == decision:
                 return existing
@@ -1279,7 +1279,7 @@ class ElasticsearchDataProductRepository:
         except NotFoundError:
             return None
         value = DataProductMembershipDecision.model_validate(
-            ElasticsearchDataProductRepository._decision_from_source(source)
+            self._decision_from_source(source)
         )
         if (value.tenant_id, value.environment, value.product_id) != (tenant_id, environment, product_id):
             return None
@@ -1303,7 +1303,7 @@ class ElasticsearchDataProductRepository:
         )
         return tuple(
             DataProductMembershipDecision.model_validate(
-                ElasticsearchDataProductRepository._decision_from_source(hit["_source"])
+                self._decision_from_source(hit["_source"])
             )
             for hit in response["hits"]["hits"]
         )

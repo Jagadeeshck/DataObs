@@ -658,6 +658,7 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
 
     @app.get("/quality/results", response_model=QualityResultsResponse, dependencies=[Depends(require_auth)])
     async def get_quality_results(
+        request: Request,
         stores: StoreBundle = Depends(get_stores),
         limit: int = Query(100, ge=1, le=1000),
         offset: int = Query(0, ge=0),
@@ -668,7 +669,12 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
         severity: str | None = None,
         run_id: str | None = None,
     ) -> Dict[str, Any]:
-        results = stores.store.list_quality_results(
+        store = stores.store
+        if resolved_settings.store_backend.lower() == "elasticsearch":
+            from src.api.es_store import ElasticsearchStore
+
+            store = ElasticsearchStore(make_es_client(resolved_settings), tenant_id=request.state.tenant_id)
+        results = store.list_quality_results(
             limit=1000,
             offset=0,
             table=table,
@@ -680,6 +686,22 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
         )
         page = _paginate(results, limit, offset)
         return {"results": page["items"], "count": len(page["items"]), "pagination": page["pagination"]}
+
+    @app.get("/quality/results/{result_id}", dependencies=[Depends(require_auth)])
+    async def get_quality_result(
+        result_id: str,
+        request: Request,
+        stores: StoreBundle = Depends(get_stores),
+    ) -> Dict[str, Any]:
+        store = stores.store
+        if resolved_settings.store_backend.lower() == "elasticsearch":
+            from src.api.es_store import ElasticsearchStore
+
+            store = ElasticsearchStore(make_es_client(resolved_settings), tenant_id=request.state.tenant_id)
+        result = store.get_quality_result(result_id)
+        if result is None:
+            raise HTTPException(status_code=404, detail=f"Quality result '{result_id}' not found")
+        return result
 
     @app.get("/lineage/nodes", response_model=LineageNodesResponse, dependencies=[Depends(require_auth)])
     async def get_lineage_nodes(

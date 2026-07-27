@@ -1,6 +1,8 @@
 receivers:
   otlp:
     protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
       http:
         endpoint: 0.0.0.0:4318
 processors:
@@ -12,9 +14,15 @@ exporters:
     traces_index: dataobs-traces
     mapping:
       mode: none
+  debug:
+    verbosity: basic
 service:
   pipelines:
     traces:
       receivers: [otlp]
       processors: [batch]
       exporters: [elasticsearch]
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [debug]

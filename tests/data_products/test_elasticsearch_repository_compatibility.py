@@ -69,7 +69,9 @@ def test_reconcilable_selection_applies_exact_microsecond_boundaries():
     client = FakeClient(hits)
     repository = ElasticsearchDataProductRepository(client)
 
-    selected = repository.list_reconcilable_operations("tenant", "production", now=instant, limit=3)
+    selected = repository.list_reconcilable_operations(
+        "tenant", "production", now=instant, limit=3
+    )
 
     assert [state.operation_id for state in selected] == ["missing", "past", "exact"]
     assert client.calls[0]["sort"] == [
@@ -82,7 +84,9 @@ def test_operation_history_uses_mapped_event_identifier_for_tie_breaking():
     client = FakeClient()
     repository = ElasticsearchDataProductRepository(client)
 
-    assert repository.get_operation_history("tenant", "production", "operation") == []
+    assert (
+        repository.get_operation_history("tenant", "production", "operation") == []
+    )
     assert client.calls[0]["sort"] == [
         {"occurred_at": "asc"},
         {"document.event_id": "asc"},
@@ -90,14 +94,19 @@ def test_operation_history_uses_mapped_event_identifier_for_tie_breaking():
 
 
 def test_dependency_chunk_refreshes_once_after_writes(monkeypatch):
+    def no_op_chunk(self, tenant_id, environment, product_id, edges, *, tombstone):
+        return None
+
     monkeypatch.setattr(
         BaseElasticsearchDataProductRepository,
         "_apply_dependency_chunk",
-        lambda self, tenant_id, environment, product_id, edges, *, tombstone: None,
+        no_op_chunk,
     )
     client = FakeClient()
     repository = ElasticsearchDataProductRepository(client)
 
-    repository._apply_dependency_chunk("tenant", "production", "product", (object(),), tombstone=False)
+    repository._apply_dependency_chunk(
+        "tenant", "production", "product", (object(),), tombstone=False
+    )
 
     client.indices.refresh.assert_called_once_with(index=DEPENDENCIES)

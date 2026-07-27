@@ -21,8 +21,19 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install -r requirements.txt pytest black ruff pyyaml
-      - name: Apply, validate, and clean final repair
-        run: >-
-          python -c
-          'import runpy,sys; sys.path.insert(0, ".");
-          runpy.run_path(".github/scripts/final_repair_30304590400.py", run_name="__main__")'
+      - name: Apply atomic repair or retain diagnostic
+        shell: bash
+        run: |
+          set +e
+          python -c 'import runpy,sys; sys.path.insert(0, "."); runpy.run_path(".github/scripts/final_repair_30304590400.py", run_name="__main__")' > .github/final-repair.log 2>&1
+          rc=$?
+          if [ "$rc" -eq 0 ]; then
+            exit 0
+          fi
+          cat .github/final-repair.log
+          git config user.name "dataobs-ci"
+          git config user.email "dataobs-ci@users.noreply.github.com"
+          git add .github/final-repair.log
+          git commit -m "chore: retain final repair failure diagnostic" || true
+          git push origin HEAD:fix/run-30304590400-final
+          exit "$rc"

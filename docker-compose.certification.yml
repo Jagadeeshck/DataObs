@@ -80,7 +80,7 @@ services:
     build: {context: ., dockerfile: Dockerfile.scanner}
     profiles: [postgres, cert-postgres, full-backend, full]
     secrets: [postgres_password]
-    command: [run, --config, /app/certification/config/postgres-scanner.yaml]
+    command: [--config, /app/certification/config/postgres-scanner.yaml, run]
     volumes: [./certification/config/postgres-scanner.yaml:/app/certification/config/postgres-scanner.yaml:ro]
     environment: {DATAOBS_API_URL: http://api:8080}
     networks: [certification-data, certification-control]

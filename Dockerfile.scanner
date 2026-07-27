@@ -4,4 +4,4 @@ COPY requirements.txt pyproject.toml ./
 RUN pip install --no-cache-dir -r requirements.txt psycopg[binary] pyyaml
 COPY . .
 ENTRYPOINT ["python", "-m", "services.scanner_worker.cli"]
-CMD ["run", "--config", "config/postgres-scanner.example.yaml"]
+CMD ["--config", "config/postgres-scanner.example.yaml", "run"]

@@ -39,8 +39,8 @@ def test_clean_install_executes_all_released_migrations(elasticsearch_client, el
     applied = apply(elasticsearch_client)
     migration_status = status(elasticsearch_client)
     expected = migrations()
-    assert [item.migration_id[:4] for item in expected] == [f"{number:04d}" for number in range(1, 19)]
-    assert expected[-1].migration_id == "0018_data_product_decision_reason_alias"
+    assert [item.migration_id[:4] for item in expected] == [f"{number:04d}" for number in range(1, 20)]
+    assert expected[-1].migration_id == "0019_data_product_operation_claim_expires_date"
     assert len(applied) == len(expected)
     assert migration_status["ready"]
     assert set(migration_status["applied"]) == {item.migration_id for item in expected}
@@ -128,6 +128,7 @@ def test_mapping_contract_uses_installed_mapping(elasticsearch_client, elasticse
         "outcome": "keyword",
         "occurred_at": "date",
         "next_attempt_at": "date",
+        "claim_expires_at": "date",
         "document": "flattened",
     }.items():
         assert properties[field]["type"] == kind

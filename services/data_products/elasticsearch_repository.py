@@ -114,9 +114,10 @@ class ElasticsearchDataProductRepository:
             "outcome": state.status,
             "occurred_at": state.updated_at.isoformat(),
             # `document` is flattened and therefore cannot provide date range
-            # semantics.  Keep the compatibility copy in the envelope while
-            # querying this strictly mapped value.
+            # semantics.  Keep the compatibility copies in the envelope while
+            # querying these strictly mapped values.
             "next_attempt_at": state.next_attempt_at.isoformat() if state.next_attempt_at else None,
+            "claim_expires_at": state.claim_expires_at.isoformat() if state.claim_expires_at else None,
             "document": document,
         }
 
@@ -140,7 +141,7 @@ class ElasticsearchDataProductRepository:
         document_id = scoped_id(state.tenant_id, state.environment, f"state:{state.operation_id}")
         document = self._state_document(state)
         try:
-            self.client.create(index=OPERATIONS, id=document_id, document=document)
+            self.client.create(index=OPERATIONS, id=document_id, document=document, refresh="wait_for")
         except ConflictError as exc:
             existing = self.client.get(index=OPERATIONS, id=document_id)["_source"]
             if existing != document:
@@ -183,14 +184,7 @@ class ElasticsearchDataProductRepository:
                 "bool": {
                     "should": [
                         {"term": {"outcome": "pending"}},
-                        {
-                            "range": {
-                                "document.claim_expires_at": {
-                                    "gte": "1970-01-01T00:00:00+00:00",
-                                    "lte": query_instant,
-                                }
-                            }
-                        },
+                        {"range": {"claim_expires_at": {"lte": query_instant}}},
                     ],
                     "minimum_should_match": 1,
                 }
@@ -372,7 +366,7 @@ class ElasticsearchDataProductRepository:
             "document": document,
         }
         try:
-            self.client.create(index=OPERATIONS, id=event_id, document=envelope)
+            self.client.create(index=OPERATIONS, id=event_id, document=envelope, refresh="wait_for")
         except ConflictError as exc:
             if self.client.get(index=OPERATIONS, id=event_id)["_source"] != envelope:
                 raise ProductConsistencyError("divergent immutable operation history") from exc
@@ -417,7 +411,7 @@ class ElasticsearchDataProductRepository:
             "document": self._json_value(asdict(value)),
         }
         try:
-            self.client.create(index=OPERATIONS, id=document_id, document=envelope)
+            self.client.create(index=OPERATIONS, id=document_id, document=envelope, refresh="wait_for")
         except ConflictError as exc:
             if self.client.get(index=OPERATIONS, id=document_id)["_source"] != envelope:
                 raise ProductConsistencyError(f"divergent {kind}") from exc

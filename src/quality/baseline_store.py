@@ -3,6 +3,7 @@ Elasticsearch-backed store for distribution drift baselines.
 
 Resolves: https://github.com/Jagadeeshck/DataObs/issues/24
 """
+
 from __future__ import annotations
 
 from typing import Optional
@@ -51,9 +52,7 @@ class ElasticsearchBaselineStore:
 
     def get(self, table: str, column: str) -> Optional[DriftBaseline]:
         try:
-            resp = self._es.get(  # type: ignore[attr-defined]
-                index=self._index, id=self._doc_id(table, column)
-            )
+            resp = self._es.get(index=self._index, id=self._doc_id(table, column))  # type: ignore[attr-defined]
             src = resp["_source"]
             return DriftBaseline(
                 column=src["column"],
@@ -68,6 +67,7 @@ class ElasticsearchBaselineStore:
 
     def put(self, baseline: DriftBaseline) -> None:
         from datetime import datetime, timezone
+
         self._es.index(  # type: ignore[attr-defined]
             index=self._index,
             id=self._doc_id(baseline.table, baseline.column),

@@ -6,6 +6,7 @@ anomalies in DataObs quality metric time series without manual thresholds.
 
 Resolves: https://github.com/Jagadeeshck/DataObs/issues/30
 """
+
 from __future__ import annotations
 
 import random
@@ -18,9 +19,7 @@ from opentelemetry import metrics, trace
 _tracer = trace.get_tracer("dataobs.analytics.anomaly")
 _meter = metrics.get_meter("dataobs.analytics.anomaly")
 
-_anomaly_score = _meter.create_gauge(
-    "dataobs.anomaly.score", description="Continuous anomaly score", unit="1"
-)
+_anomaly_score = _meter.create_gauge("dataobs.anomaly.score", description="Continuous anomaly score", unit="1")
 _anomaly_detected = _meter.create_counter(
     "dataobs.anomaly.detected", description="Anomaly detection events", unit="{event}"
 )
@@ -69,8 +68,7 @@ class BootstrapAnomalyDetector:
         if len(self._window) < 3:
             return (float("-inf"), float("inf"))
         boot_means = sorted(
-            statistics.mean(random.choices(self._window, k=len(self._window)))
-            for _ in range(self._n_bootstrap)
+            statistics.mean(random.choices(self._window, k=len(self._window))) for _ in range(self._n_bootstrap)
         )
         low_idx = int(self._alpha / 2 * self._n_bootstrap)
         high_idx = int((1 - self._alpha / 2) * self._n_bootstrap)
@@ -113,8 +111,7 @@ class BootstrapAnomalyDetector:
                 is_anomaly=is_anomaly,
                 severity=severity,
                 message=(
-                    f"Value {current_value:.4f} outside 95% CI "
-                    f"[{self._ci_low:.4f}, {self._ci_high:.4f}]"
+                    f"Value {current_value:.4f} outside 95% CI " f"[{self._ci_low:.4f}, {self._ci_high:.4f}]"
                     if is_anomaly
                     else "No anomaly detected"
                 ),
@@ -140,8 +137,7 @@ class HistogramBucketDriftDetector:
 
         total_current = sum(current_counts) or 1
         chi2 = sum(
-            (o / total_current - e / self._total_baseline) ** 2
-            / max(e / self._total_baseline, 1e-9)
+            (o / total_current - e / self._total_baseline) ** 2 / max(e / self._total_baseline, 1e-9)
             for o, e in zip(current_counts, self._baseline)
         )
         is_anomaly = chi2 > 15.0  # approximate p=0.001 for common bucket counts

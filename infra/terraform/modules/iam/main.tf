@@ -185,8 +185,8 @@ data "aws_iam_policy_document" "osis_os_write" {
 
   # Required for OSIS to publish pipeline metrics
   statement {
-    sid     = "CloudWatchMetrics"
-    actions = ["cloudwatch:PutMetricData"]
+    sid       = "CloudWatchMetrics"
+    actions   = ["cloudwatch:PutMetricData"]
     resources = ["*"]
     condition {
       test     = "StringEquals"
@@ -216,8 +216,8 @@ data "aws_iam_policy_document" "osis_os_write" {
   dynamic "statement" {
     for_each = var.amp_workspace_arn != null ? [1] : []
     content {
-      sid     = "AMPRemoteWriteFromOSIS"
-      actions = ["aps:RemoteWrite"]
+      sid       = "AMPRemoteWriteFromOSIS"
+      actions   = ["aps:RemoteWrite"]
       resources = [var.amp_workspace_arn]
     }
   }

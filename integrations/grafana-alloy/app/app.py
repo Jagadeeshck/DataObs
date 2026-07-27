@@ -13,57 +13,55 @@ from flask import Flask, jsonify, request
 
 # ── OpenTelemetry core ────────────────────────────────────────────────────────
 from opentelemetry import metrics, trace
+
+# ── Logs ──────────────────────────────────────────────────────────────────────
+from opentelemetry._logs import set_logger_provider
+from opentelemetry.exporter.otlp.proto.grpc._log_exporter import OTLPLogExporter
+from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+
+# ── Auto-instrumentation ──────────────────────────────────────────────────────
+from opentelemetry.instrumentation.flask import FlaskInstrumentor
+from opentelemetry.instrumentation.logging import LoggingInstrumentor
+from opentelemetry.instrumentation.requests import RequestsInstrumentor
+from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
+from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
+
+# ── Metrics ───────────────────────────────────────────────────────────────────
+from opentelemetry.sdk.metrics import MeterProvider
+from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
 from opentelemetry.sdk.resources import Resource
 
 # ── Traces ────────────────────────────────────────────────────────────────────
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
-
-# ── Metrics ───────────────────────────────────────────────────────────────────
-from opentelemetry.sdk.metrics import MeterProvider
-from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
-from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
-
-# ── Logs ──────────────────────────────────────────────────────────────────────
-from opentelemetry._logs import set_logger_provider
-from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
-from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
-from opentelemetry.exporter.otlp.proto.grpc._log_exporter import OTLPLogExporter
-
-# ── Auto-instrumentation ──────────────────────────────────────────────────────
-from opentelemetry.instrumentation.flask import FlaskInstrumentor
-from opentelemetry.instrumentation.requests import RequestsInstrumentor
-from opentelemetry.instrumentation.logging import LoggingInstrumentor
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Configuration from environment
 # ─────────────────────────────────────────────────────────────────────────────
-OTLP_ENDPOINT   = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://alloy:4317")
-SERVICE_NAME    = os.getenv("OTEL_SERVICE_NAME", "sample-python-app")
+OTLP_ENDPOINT = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://alloy:4317")
+SERVICE_NAME = os.getenv("OTEL_SERVICE_NAME", "sample-python-app")
 SERVICE_VERSION = os.getenv("SERVICE_VERSION", "1.0.0")
-ENVIRONMENT     = os.getenv("DEPLOYMENT_ENVIRONMENT", "development")
+ENVIRONMENT = os.getenv("DEPLOYMENT_ENVIRONMENT", "development")
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Shared Resource — ties every signal to the same service identity
 # ─────────────────────────────────────────────────────────────────────────────
-resource = Resource.create({
-    "service.name":            SERVICE_NAME,
-    "service.version":         SERVICE_VERSION,
-    "deployment.environment":  ENVIRONMENT,
-    "service.namespace":       "observability-demo",
-    "host.name":               os.getenv("HOSTNAME", "localhost"),
-})
+resource = Resource.create(
+    {
+        "service.name": SERVICE_NAME,
+        "service.version": SERVICE_VERSION,
+        "deployment.environment": ENVIRONMENT,
+        "service.namespace": "observability-demo",
+        "host.name": os.getenv("HOSTNAME", "localhost"),
+    }
+)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Traces setup
 # ─────────────────────────────────────────────────────────────────────────────
 tracer_provider = TracerProvider(resource=resource)
-tracer_provider.add_span_processor(
-    BatchSpanProcessor(
-        OTLPSpanExporter(endpoint=OTLP_ENDPOINT, insecure=True)
-    )
-)
+tracer_provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter(endpoint=OTLP_ENDPOINT, insecure=True)))
 trace.set_tracer_provider(tracer_provider)
 tracer = trace.get_tracer(__name__)
 
@@ -105,9 +103,7 @@ order_value_histogram = meter.create_histogram(
 # ─────────────────────────────────────────────────────────────────────────────
 logger_provider = LoggerProvider(resource=resource)
 logger_provider.add_log_record_processor(
-    BatchLogRecordProcessor(
-        OTLPLogExporter(endpoint=OTLP_ENDPOINT, insecure=True)
-    )
+    BatchLogRecordProcessor(OTLPLogExporter(endpoint=OTLP_ENDPOINT, insecure=True))
 )
 set_logger_provider(logger_provider)
 
@@ -132,11 +128,12 @@ RequestsInstrumentor().instrument()
 # Simulated in-memory data store
 # ─────────────────────────────────────────────────────────────────────────────
 PRODUCTS = {
-    "P001": {"name": "Widget Alpha",  "price": 29.99, "stock": 150},
-    "P002": {"name": "Widget Beta",   "price": 49.99, "stock": 75},
-    "P003": {"name": "Widget Gamma",  "price": 9.99,  "stock": 300},
+    "P001": {"name": "Widget Alpha", "price": 29.99, "stock": 150},
+    "P002": {"name": "Widget Beta", "price": 49.99, "stock": 75},
+    "P003": {"name": "Widget Gamma", "price": 9.99, "stock": 300},
 }
 orders: dict = {}
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Middleware — track active requests
@@ -151,8 +148,8 @@ def before_request():
 def after_request(response):
     duration = time.time() - getattr(request, "_start_time", time.time())
     labels = {
-        "http.method":      request.method,
-        "http.route":       request.path,
+        "http.method": request.method,
+        "http.route": request.path,
         "http.status_code": str(response.status_code),
     }
     http_requests_counter.add(1, labels)
@@ -160,19 +157,23 @@ def after_request(response):
     active_requests_gauge.add(-1, {"http.method": request.method})
     return response
 
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Routes
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 @app.route("/")
 def root():
     logger.info("Root endpoint called")
-    return jsonify({
-        "service":     SERVICE_NAME,
-        "version":     SERVICE_VERSION,
-        "environment": ENVIRONMENT,
-        "endpoints":   ["/products", "/orders", "/checkout", "/health", "/simulate-error"],
-    })
+    return jsonify(
+        {
+            "service": SERVICE_NAME,
+            "version": SERVICE_VERSION,
+            "environment": ENVIRONMENT,
+            "endpoints": ["/products", "/orders", "/checkout", "/health", "/simulate-error"],
+        }
+    )
 
 
 @app.route("/health")
@@ -220,7 +221,7 @@ def checkout():
     with tracer.start_as_current_span("checkout") as root_span:
         data = request.get_json() or {}
         product_id = data.get("product_id", "P001")
-        quantity   = int(data.get("quantity", 1))
+        quantity = int(data.get("quantity", 1))
 
         root_span.set_attribute("order.product_id", product_id)
         root_span.set_attribute("order.quantity", quantity)
@@ -272,11 +273,11 @@ def checkout():
         PRODUCTS[product_id]["stock"] -= quantity
         order_id = f"ORD-{len(orders) + 1:04d}"
         orders[order_id] = {
-            "id":         order_id,
+            "id": order_id,
             "product_id": product_id,
-            "quantity":   quantity,
-            "total":      total,
-            "status":     "confirmed",
+            "quantity": quantity,
+            "total": total,
+            "status": "confirmed",
         }
 
         root_span.set_attribute("order.id", order_id)
@@ -310,6 +311,9 @@ def simulate_error():
 if __name__ == "__main__":
     logger.info(
         "Starting %s v%s in %s — OTLP endpoint: %s",
-        SERVICE_NAME, SERVICE_VERSION, ENVIRONMENT, OTLP_ENDPOINT,
+        SERVICE_NAME,
+        SERVICE_VERSION,
+        ENVIRONMENT,
+        OTLP_ENDPOINT,
     )
     app.run(host="0.0.0.0", port=5000, debug=False)

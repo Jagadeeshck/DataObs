@@ -12,9 +12,7 @@ terraform {
 locals {
   agent_config_b64 = base64encode(file(var.agent_config_path))
 
-  targets = var.target_type == "tag"
-    ? [{ key = "tag:${var.target_tag_key}", values = [var.target_tag_value] }]
-    : [{ key = "InstanceIds", values = var.target_instance_ids }]
+  targets = var.target_type == "tag" ? [{ key = "tag:${var.target_tag_key}", values = [var.target_tag_value] }] : [{ key = "InstanceIds", values = var.target_instance_ids }]
 
   association_schedule = var.association_schedule == null ? "rate(30 days)" : var.association_schedule
 }
@@ -50,8 +48,8 @@ resource "aws_ssm_document" "otel_agent_configure" {
 }
 
 resource "aws_ssm_association" "install" {
-  name             = aws_ssm_document.otel_agent_install.name
-  association_name = "${var.name_prefix}-otel-agent-install"
+  name                = aws_ssm_document.otel_agent_install.name
+  association_name    = "${var.name_prefix}-otel-agent-install"
   schedule_expression = local.association_schedule
 
   dynamic "targets" {
@@ -64,8 +62,8 @@ resource "aws_ssm_association" "install" {
 }
 
 resource "aws_ssm_association" "configure" {
-  name             = aws_ssm_document.otel_agent_configure.name
-  association_name = "${var.name_prefix}-otel-agent-configure"
+  name                = aws_ssm_document.otel_agent_configure.name
+  association_name    = "${var.name_prefix}-otel-agent-configure"
   schedule_expression = local.association_schedule
 
   dynamic "targets" {

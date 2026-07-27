@@ -48,7 +48,7 @@ resource "aws_grafana_workspace" "this" {
 
   # Enable the data sources DataObs uses
   data_sources = [
-    "PROMETHEUS",           # AMP
+    "PROMETHEUS", # AMP
     "AMAZON_OPENSEARCH_SERVICE",
     "CLOUDWATCH",
     "XRAY",
@@ -85,10 +85,10 @@ resource "aws_secretsmanager_secret" "grafana_token" {
 }
 
 resource "aws_secretsmanager_secret_version" "grafana_token" {
-  secret_id     = aws_secretsmanager_secret.grafana_token.id
+  secret_id = aws_secretsmanager_secret.grafana_token.id
   secret_string = jsonencode({
-    token        = aws_grafana_workspace_service_account_token.terraform.key
-    workspace_id = aws_grafana_workspace.this.id
+    token         = aws_grafana_workspace_service_account_token.terraform.key
+    workspace_id  = aws_grafana_workspace.this.id
     workspace_url = "https://${aws_grafana_workspace.this.endpoint}"
   })
 }
@@ -112,25 +112,25 @@ resource "grafana_folder" "dataobs" {
 
 # ── Data Source: Amazon Managed Prometheus (Metrics) ─────────────────────────
 resource "grafana_data_source" "amp" {
-  provider    = grafana.amg
-  name        = "DataObs — AMP (Metrics)"
-  type        = "prometheus"
-  uid         = "dataobs-amp"
-  is_default  = true
+  provider   = grafana.amg
+  name       = "DataObs — AMP (Metrics)"
+  type       = "prometheus"
+  uid        = "dataobs-amp"
+  is_default = true
 
-  url = var.amp_workspace_url   # https://aps-workspaces.<region>.amazonaws.com/workspaces/<id>/
+  url = var.amp_workspace_url # https://aps-workspaces.<region>.amazonaws.com/workspaces/<id>/
 
   json_data_encoded = jsonencode({
-    httpMethod               = "POST"
-    sigV4Auth                = true
-    sigV4AuthType            = "workspace-iam-role"
-    sigV4Region              = data.aws_region.current.name
-    timeInterval             = "30s"
-    queryTimeout             = "60s"
+    httpMethod    = "POST"
+    sigV4Auth     = true
+    sigV4AuthType = "workspace-iam-role"
+    sigV4Region   = data.aws_region.current.name
+    timeInterval  = "30s"
+    queryTimeout  = "60s"
     # Wire exemplars → trace data source for click-through from metrics to traces
     exemplarTraceIdDestinations = [{
-      name            = "trace_id"
-      datasourceUid   = "dataobs-os-traces"
+      name          = "trace_id"
+      datasourceUid = "dataobs-os-traces"
     }]
   })
 
@@ -193,7 +193,7 @@ resource "grafana_data_source" "xray" {
   uid      = "dataobs-xray"
 
   json_data_encoded = jsonencode({
-    authType  = "workspace-iam-role"
+    authType      = "workspace-iam-role"
     defaultRegion = data.aws_region.current.name
   })
 

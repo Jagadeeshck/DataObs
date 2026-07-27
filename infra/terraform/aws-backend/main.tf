@@ -73,12 +73,12 @@ locals {
 module "amp" {
   source = "../modules/amp"
 
-  name_prefix     = local.name_prefix
-  workspace_alias = "${local.name_prefix}-metrics"
-  enable_logging  = true
-  log_retention_days            = var.log_retention_days
+  name_prefix                     = local.name_prefix
+  workspace_alias                 = "${local.name_prefix}-metrics"
+  enable_logging                  = true
+  log_retention_days              = var.log_retention_days
   alarm_ingestion_error_threshold = var.amp_alarm_error_threshold
-  alarm_sns_topic_arn           = var.alarm_sns_topic_arn
+  alarm_sns_topic_arn             = var.alarm_sns_topic_arn
 
   tags = local.common_tags
 }
@@ -133,14 +133,14 @@ module "osis" {
 module "amg" {
   source = "../modules/amg"
 
-  name_prefix                = local.name_prefix
-  workspace_name             = "${local.name_prefix}-grafana"
-  workspace_description      = "DataObs — ${var.environment} observability dashboards"
-  grafana_version            = var.grafana_version
-  authentication_providers   = var.amg_authentication_providers
-  permission_type            = var.amg_permission_type
-  workspace_role_arn         = var.amg_permission_type == "CUSTOMER_MANAGED" ? module.iam.amg_role_arn : null
-  enable_sns_notifications   = var.amg_enable_sns_notifications
+  name_prefix                       = local.name_prefix
+  workspace_name                    = "${local.name_prefix}-grafana"
+  workspace_description             = "DataObs — ${var.environment} observability dashboards"
+  grafana_version                   = var.grafana_version
+  authentication_providers          = var.amg_authentication_providers
+  permission_type                   = var.amg_permission_type
+  workspace_role_arn                = var.amg_permission_type == "CUSTOMER_MANAGED" ? module.iam.amg_role_arn : null
+  enable_sns_notifications          = var.amg_enable_sns_notifications
   service_account_token_ttl_seconds = var.amg_token_ttl_seconds
 
   amp_workspace_url          = module.amp.prometheus_endpoint
@@ -149,7 +149,7 @@ module "amg" {
 
   tags = local.common_tags
 
-  depends_on = [module.amp, module.osis]
+
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -157,14 +157,14 @@ module "amg" {
 # Run: terraform apply -target=module.iam after OSIS pipelines are created.
 # ─────────────────────────────────────────────────────────────────────────────
 resource "aws_iam_policy" "osis_ingest_scoped" {
-  count       = var.osis_pipeline_arn_override == null ? 0 : 0  # managed by iam module first apply
+  count       = var.osis_pipeline_arn_override == null ? 0 : 0 # managed by iam module first apply
   name        = "${local.name_prefix}-osis-ingest-scoped"
   description = "Tightened OSIS Ingest policy scoped to specific pipeline ARNs"
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
-      Effect   = "Allow"
-      Action   = ["osis:Ingest"]
+      Effect = "Allow"
+      Action = ["osis:Ingest"]
       Resource = [
         module.osis.traces_pipeline_arn,
         module.osis.logs_pipeline_arn,

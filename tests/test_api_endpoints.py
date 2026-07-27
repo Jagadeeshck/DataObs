@@ -6,38 +6,114 @@ import pytest
 from fastapi.testclient import TestClient
 
 from src.api.app import StoreBundle, create_app
-from src.config.settings import APISettings, AppSettings, AuthSettings, ElasticsearchSettings, ObservabilitySettings, RuntimeSettings, TenantSettings
+from src.config.settings import (
+    APISettings,
+    AppSettings,
+    AuthSettings,
+    ElasticsearchSettings,
+    ObservabilitySettings,
+    RuntimeSettings,
+    TenantSettings,
+)
 
 
 class _FakeStore:
     def __init__(self) -> None:
         self.rules = {
-            "r1": {"rule_id": "r1", "dataset": "orders", "enabled": True, "severity": "high", "check_type": "null_check"},
-            "r2": {"rule_id": "r2", "dataset": "payments", "enabled": False, "severity": "low", "check_type": "range_check"},
+            "r1": {
+                "rule_id": "r1",
+                "dataset": "orders",
+                "enabled": True,
+                "severity": "high",
+                "check_type": "null_check",
+            },
+            "r2": {
+                "rule_id": "r2",
+                "dataset": "payments",
+                "enabled": False,
+                "severity": "low",
+                "check_type": "range_check",
+            },
         }
         self.results = {
-            "q1": {"id": "q1", "table": "orders", "status": "pass", "dataset": "d1", "check_type": "null_check", "severity": "high", "run_id": "run-1"},
-            "q2": {"id": "q2", "table": "orders", "status": "fail", "dataset": "d1", "check_type": "range_check", "severity": "low", "run_id": "run-2"},
-            "q3": {"id": "q3", "table": "payments", "status": "pass", "dataset": "d2", "check_type": "null_check", "severity": "high", "run_id": "run-2"},
+            "q1": {
+                "id": "q1",
+                "table": "orders",
+                "status": "pass",
+                "dataset": "d1",
+                "check_type": "null_check",
+                "severity": "high",
+                "run_id": "run-1",
+            },
+            "q2": {
+                "id": "q2",
+                "table": "orders",
+                "status": "fail",
+                "dataset": "d1",
+                "check_type": "range_check",
+                "severity": "low",
+                "run_id": "run-2",
+            },
+            "q3": {
+                "id": "q3",
+                "table": "payments",
+                "status": "pass",
+                "dataset": "d2",
+                "check_type": "null_check",
+                "severity": "high",
+                "run_id": "run-2",
+            },
         }
 
-    def get_all_rules(self, **kwargs): return list(self.rules.values())
-    def add_rule(self, rule): self.rules[rule.get("rule_id","rnew")] = rule; return rule.get("rule_id","rnew")
-    def delete_rule(self, rule_id): return self.rules.pop(rule_id, None) is not None
-    def save_quality_result(self, result): self.results[result.get("id","new")] = result; return result.get("id","new")
-    def list_quality_results(self, **kwargs): return list(self.results.values())
-    def get_all_nodes(self, **kwargs): return [{"node_id":"n1","type":"table","dataset":"d1"},{"node_id":"n2","type":"job","dataset":"d2"}]
-    def get_all_edges(self, **kwargs): return [{"source_node_id":"n1","target_node_id":"n2","relation":"feeds"},{"source_node_id":"n2","target_node_id":"n3","relation":"feeds"}]
-    def get_downstream_impact(self, node_id, depth=5): return ["n2"]
+    def get_all_rules(self, **kwargs):
+        return list(self.rules.values())
+
+    def add_rule(self, rule):
+        self.rules[rule.get("rule_id", "rnew")] = rule
+        return rule.get("rule_id", "rnew")
+
+    def delete_rule(self, rule_id):
+        return self.rules.pop(rule_id, None) is not None
+
+    def save_quality_result(self, result):
+        self.results[result.get("id", "new")] = result
+        return result.get("id", "new")
+
+    def list_quality_results(self, **kwargs):
+        return list(self.results.values())
+
+    def get_all_nodes(self, **kwargs):
+        return [{"node_id": "n1", "type": "table", "dataset": "d1"}, {"node_id": "n2", "type": "job", "dataset": "d2"}]
+
+    def get_all_edges(self, **kwargs):
+        return [
+            {"source_node_id": "n1", "target_node_id": "n2", "relation": "feeds"},
+            {"source_node_id": "n2", "target_node_id": "n3", "relation": "feeds"},
+        ]
+
+    def get_downstream_impact(self, node_id, depth=5):
+        return ["n2"]
 
 
 @pytest.fixture()
 def client() -> TestClient:
-    app = create_app(settings=AppSettings(runtime=RuntimeSettings(env="test"), api=APISettings(), elasticsearch=ElasticsearchSettings(), auth=AuthSettings(api_token="t", allow_unauthenticated_dev=False), tenant=TenantSettings(), observability=ObservabilitySettings(), store_backend="memory"), store_bundle=StoreBundle(store=_FakeStore()))
+    app = create_app(
+        settings=AppSettings(
+            runtime=RuntimeSettings(env="test"),
+            api=APISettings(),
+            elasticsearch=ElasticsearchSettings(),
+            auth=AuthSettings(api_token="t", allow_unauthenticated_dev=False),
+            tenant=TenantSettings(),
+            observability=ObservabilitySettings(),
+            store_backend="memory",
+        ),
+        store_bundle=StoreBundle(store=_FakeStore()),
+    )
     return TestClient(app)
 
 
-def _auth() -> Dict[str, str]: return {"Authorization": "Bearer t"}
+def _auth() -> Dict[str, str]:
+    return {"Authorization": "Bearer t"}
 
 
 def test_request_id_round_trip(client: TestClient):

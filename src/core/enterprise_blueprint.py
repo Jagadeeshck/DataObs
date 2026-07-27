@@ -78,9 +78,7 @@ BLUEPRINT_CAPABILITIES: List[BlueprintCapability] = [
     BlueprintCapability(
         key="finops_visibility",
         title="Pipeline Cost and FinOps Visibility",
-        why_it_wins_contracts=(
-            "Procurement teams prioritize vendors that reduce both data incidents and cloud spend."
-        ),
+        why_it_wins_contracts=("Procurement teams prioritize vendors that reduce both data incidents and cloud spend."),
         implementation_hint=(
             "Correlate failed pipelines and quality regressions with warehouse/job costs in one dashboard."
         ),

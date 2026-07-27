@@ -17,7 +17,7 @@ from typing import List, Optional
 
 from elasticsearch import Elasticsearch
 from opentelemetry import trace
-from tenacity import retry, stop_after_attempt, wait_exponential, before_sleep_log
+from tenacity import before_sleep_log, retry, stop_after_attempt, wait_exponential
 
 logger = logging.getLogger(__name__)
 tracer = trace.get_tracer("dataobs.lineage")
@@ -37,11 +37,11 @@ class NodeType(str, Enum):
 
 @dataclass
 class LineageNode:
-    node_id: str                        # Unique identifier: e.g., "rds.prod.orders"
+    node_id: str  # Unique identifier: e.g., "rds.prod.orders"
     node_type: NodeType
     name: str
-    platform: str                       # aws | gcp | azure | on-prem
-    environment: str                    # production | staging | dev
+    platform: str  # aws | gcp | azure | on-prem
+    environment: str  # production | staging | dev
     tags: dict = field(default_factory=dict)
     description: Optional[str] = None
     owner: Optional[str] = None
@@ -66,8 +66,8 @@ class LineageNode:
 class LineageEdge:
     source_node_id: str
     target_node_id: str
-    job_id: str                         # The job/process that created this edge
-    job_type: str                       # glue_job | lambda | dbt | airflow | manual
+    job_id: str  # The job/process that created this edge
+    job_type: str  # glue_job | lambda | dbt | airflow | manual
     transformation: Optional[str] = None  # SQL or description of transform
     run_id: Optional[str] = None
     created_at: Optional[str] = None

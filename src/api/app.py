@@ -28,8 +28,8 @@ from services.incident_manager.repository import VersionConflict
 from services.monitoring.elasticsearch_repository import ElasticsearchMonitorRepository
 from services.product_query import ElasticsearchConsoleRepository
 from services.product_query.path_search import search_paths
-from src.api.monitor_routes import router as monitor_router
 from src.api.data_product_routes import create_data_product_router
+from src.api.monitor_routes import router as monitor_router
 from src.api.store import StoreProtocol, get_store
 from src.api.stream_routes import create_stream_router
 from src.config.settings import AppSettings, load_settings

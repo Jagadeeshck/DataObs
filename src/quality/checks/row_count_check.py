@@ -12,12 +12,13 @@ from typing import Any, List, Optional
 
 import sqlalchemy
 from elasticsearch import Elasticsearch
-from tenacity import retry, stop_after_attempt, wait_exponential, before_sleep_log
+from tenacity import before_sleep_log, retry, stop_after_attempt, wait_exponential
 
 from .base import BaseCheck, CheckResult
 from .sql import table_name_from_dataset
 
 logger = logging.getLogger(__name__)
+
 
 class RowCountCheck(BaseCheck):
     check_type = "row_count"

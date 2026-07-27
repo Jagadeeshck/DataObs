@@ -1,5 +1,9 @@
+# ruff: noqa: F403, F405
 from typing import Protocol
+
 from .models import *
+
+
 class DataObsConnector(Protocol):
     def capabilities(self) -> ConnectorCapabilities: ...
     def test_connection(self) -> ConnectionTestResult: ...

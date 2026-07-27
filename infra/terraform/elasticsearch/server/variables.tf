@@ -77,8 +77,8 @@ variable "common_tags" {
   description = "Tags applied to all resources"
   type        = map(string)
   default = {
-    Project     = "DataObs"
-    ManagedBy   = "Terraform"
-    Tier        = "server"
+    Project   = "DataObs"
+    ManagedBy = "Terraform"
+    Tier      = "server"
   }
 }

@@ -1,2 +1,2 @@
-from .models import *
+from .models import *  # noqa: F403
 from .registry import ConnectorRegistry

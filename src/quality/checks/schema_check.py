@@ -79,6 +79,7 @@ class SchemaCheck(BaseCheck):
     def _get_current_schema(self, dataset: str, connection: Any) -> Dict[str, str]:
         """Query information_schema for column types."""
         import sqlalchemy
+
         table_name = dataset.split(".")[-1]
         schema_name = dataset.split(".")[-2] if dataset.count(".") >= 2 else "public"
 
@@ -112,6 +113,7 @@ class SchemaCheck(BaseCheck):
     def _store_schema(self, dataset: str, schema: Dict[str, str]) -> None:
         """Store current schema as the new baseline."""
         from datetime import datetime, timezone
+
         self.es.index(
             index="dataobs-schema-registry",
             document={
@@ -122,9 +124,7 @@ class SchemaCheck(BaseCheck):
             },
         )
 
-    def _compare_schemas(
-        self, previous: Dict[str, str], current: Dict[str, str]
-    ) -> List[Dict]:
+    def _compare_schemas(self, previous: Dict[str, str], current: Dict[str, str]) -> List[Dict]:
         """Return a list of schema changes between two schemas."""
         changes = []
 
@@ -132,7 +132,9 @@ class SchemaCheck(BaseCheck):
             if col not in current:
                 changes.append({"change_type": "column_removed", "column": col, "previous_type": dtype})
             elif current[col] != dtype:
-                changes.append({"change_type": "type_changed", "column": col, "previous_type": dtype, "new_type": current[col]})
+                changes.append(
+                    {"change_type": "type_changed", "column": col, "previous_type": dtype, "new_type": current[col]}
+                )
 
         for col, dtype in current.items():
             if col not in previous:

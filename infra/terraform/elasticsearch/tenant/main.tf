@@ -163,9 +163,9 @@ resource "aws_secretsmanager_secret" "tenant_es_api_key" {
 resource "aws_secretsmanager_secret_version" "tenant_es_api_key" {
   secret_id = aws_secretsmanager_secret.tenant_es_api_key.id
   secret_string = jsonencode({
-    tenant_id      = var.tenant_id
-    endpoint       = "https://${aws_opensearch_domain.tenant.endpoint}"
-    api_key        = var.tenant_es_api_key
+    tenant_id       = var.tenant_id
+    endpoint        = "https://${aws_opensearch_domain.tenant.endpoint}"
+    api_key         = var.tenant_es_api_key
     server_endpoint = var.server_es_endpoint
   })
 }

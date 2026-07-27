@@ -173,7 +173,8 @@ class SparkApmInstrumentation:
                     try:
                         logger.debug(
                             "[SparkApm] Job ended: %s -> %s",
-                            job_end.jobId(), job_end.jobResult(),
+                            job_end.jobId(),
+                            job_end.jobResult(),
                         )
                     except Exception as exc:
                         logger.debug("[SparkApm] onJobEnd error (ignored): %s", exc)
@@ -183,7 +184,9 @@ class SparkApmInstrumentation:
                         info = stage_completed.stageInfo()
                         logger.debug(
                             "[SparkApm] Stage %s (attempt %s) completed — %s tasks",
-                            info.stageId(), info.attemptNumber(), info.numTasks(),
+                            info.stageId(),
+                            info.attemptNumber(),
+                            info.numTasks(),
                         )
                     except Exception as exc:
                         logger.debug("[SparkApm] onStageCompleted error (ignored): %s", exc)
@@ -204,7 +207,8 @@ class SparkApmInstrumentation:
         except Exception as exc:  # noqa: BLE001
             logger.warning(
                 "[SparkApm] SparkListener registration skipped (%s) — "
-                "APM spans still active via Python context managers", exc,
+                "APM spans still active via Python context managers",
+                exc,
             )
 
     # ── Public API ─────────────────────────────────────────────────────────

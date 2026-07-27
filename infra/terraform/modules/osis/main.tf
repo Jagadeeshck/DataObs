@@ -16,7 +16,7 @@ terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = ">= 5.36"   # aws_osis_pipeline GA'd in 5.36
+      version = ">= 5.36" # aws_osis_pipeline GA'd in 5.36
     }
   }
 }
@@ -94,12 +94,12 @@ resource "aws_osis_pipeline" "metrics" {
   max_units     = var.max_units
 
   pipeline_configuration_body = templatefile("${path.module}/templates/metrics-pipeline.yaml.tftpl", {
-    opensearch_endpoint   = var.opensearch_domain_endpoint
-    pipeline_role_arn     = var.pipeline_role_arn
-    region                = data.aws_region.current.name
-    amp_remote_write_url  = var.amp_remote_write_url
-    amp_role_arn          = var.pipeline_role_arn    # same role with aps:RemoteWrite
-    enable_amp_fanout     = var.enable_amp_metrics_fanout
+    opensearch_endpoint  = var.opensearch_domain_endpoint
+    pipeline_role_arn    = var.pipeline_role_arn
+    region               = data.aws_region.current.name
+    amp_remote_write_url = var.amp_remote_write_url
+    amp_role_arn         = var.pipeline_role_arn # same role with aps:RemoteWrite
+    enable_amp_fanout    = var.enable_amp_metrics_fanout
   })
 
   log_publishing_options {

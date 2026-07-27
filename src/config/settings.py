@@ -149,23 +149,48 @@ def load_settings() -> AppSettings:
             port=int(os.getenv("API_PORT", _deep_get(config, "api", "port", default=8080))),
         ),
         elasticsearch=ElasticsearchSettings(
-            url=os.getenv("ELASTICSEARCH_URL", _deep_get(config, "elasticsearch", "url", default="http://localhost:9200")),
+            url=os.getenv(
+                "ELASTICSEARCH_URL", _deep_get(config, "elasticsearch", "url", default="http://localhost:9200")
+            ),
             user=os.getenv("ELASTICSEARCH_USER", _deep_get(config, "elasticsearch", "user", default="elastic")),
             password=os.getenv("ELASTICSEARCH_PASSWORD", _deep_get(config, "elasticsearch", "password", default="")),
             api_key=os.getenv("ELASTICSEARCH_API_KEY", _deep_get(config, "elasticsearch", "api_key", default=None)),
-            verify_tls=_to_bool(os.getenv("ELASTICSEARCH_VERIFY_TLS", _deep_get(config, "elasticsearch", "verify_tls", default=True)), default=True),
+            verify_tls=_to_bool(
+                os.getenv("ELASTICSEARCH_VERIFY_TLS", _deep_get(config, "elasticsearch", "verify_tls", default=True)),
+                default=True,
+            ),
         ),
         auth=AuthSettings(
             api_token=os.getenv("API_TOKEN", _deep_get(config, "auth", "api_token", default=None)) or None,
-            allow_unauthenticated_dev=_to_bool(os.getenv("DATAOBS_ALLOW_UNAUTHENTICATED_DEV", _deep_get(config, "auth", "allow_unauthenticated_dev", default=True)), default=True),
+            allow_unauthenticated_dev=_to_bool(
+                os.getenv(
+                    "DATAOBS_ALLOW_UNAUTHENTICATED_DEV",
+                    _deep_get(config, "auth", "allow_unauthenticated_dev", default=True),
+                ),
+                default=True,
+            ),
         ),
-        tenant=TenantSettings(tenant_id=str(os.getenv("DATAOBS_TENANT_ID", _deep_get(config, "tenant", "id", default="default")))),
-        observability=ObservabilitySettings(log_level=str(os.getenv("LOG_LEVEL", _deep_get(config, "observability", "log_level", default="INFO"))).upper()),
-        store_backend=str(os.getenv("DATAOBS_STORE_BACKEND", _deep_get(config, "store", "backend", default="memory"))).lower(),
+        tenant=TenantSettings(
+            tenant_id=str(os.getenv("DATAOBS_TENANT_ID", _deep_get(config, "tenant", "id", default="default")))
+        ),
+        observability=ObservabilitySettings(
+            log_level=str(
+                os.getenv("LOG_LEVEL", _deep_get(config, "observability", "log_level", default="INFO"))
+            ).upper()
+        ),
+        store_backend=str(
+            os.getenv("DATAOBS_STORE_BACKEND", _deep_get(config, "store", "backend", default="memory"))
+        ).lower(),
     )
 
     _validate(settings)
-    logger.info("DataObs settings loaded env=%s backend=%s tenant=%s es_host=%s", settings.runtime.env, settings.store_backend, settings.tenant_id, settings.elasticsearch.host_for_logs)
+    logger.info(
+        "DataObs settings loaded env=%s backend=%s tenant=%s es_host=%s",
+        settings.runtime.env,
+        settings.store_backend,
+        settings.tenant_id,
+        settings.elasticsearch.host_for_logs,
+    )
     return settings
 
 
@@ -177,7 +202,9 @@ def _validate(settings: AppSettings) -> None:
         if settings.auth.allow_unauthenticated_dev:
             raise ConfigurationError("Production forbids unauthenticated dev mode.")
         if settings.store_backend != "elasticsearch":
-            raise ConfigurationError("Production requires DATAOBS_STORE_BACKEND=elasticsearch and forbids memory as authoritative product state; optional exporters cannot hold authoritative product state.")
+            raise ConfigurationError(
+                "Production requires DATAOBS_STORE_BACKEND=elasticsearch and forbids memory as authoritative product state; optional exporters cannot hold authoritative product state."
+            )
         if not settings.elasticsearch.url:
             raise ConfigurationError("Production requires ELASTICSEARCH_URL.")
         if not (settings.elasticsearch.api_key or (settings.elasticsearch.user and settings.elasticsearch.password)):

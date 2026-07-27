@@ -10,6 +10,7 @@ Provides:
 
 Resolves: https://github.com/Jagadeeshck/DataObs/issues/27
 """
+
 from __future__ import annotations
 
 import os
@@ -42,6 +43,7 @@ __all__ = [
 # Module-level tracer / meter — resolved lazily so tests can inject stubs
 # ---------------------------------------------------------------------------
 
+
 def _tracer() -> trace.Tracer:
     return trace.get_tracer("dataobs.spark")
 
@@ -53,6 +55,7 @@ def _meter() -> metrics.Meter:
 # ---------------------------------------------------------------------------
 # SDK bootstrap
 # ---------------------------------------------------------------------------
+
 
 def setup_spark_otel_provider(
     service_name: str | None = None,
@@ -79,9 +82,7 @@ def setup_spark_otel_provider(
         return
 
     svc_name = service_name or os.getenv("OTEL_SERVICE_NAME", "spark-job")
-    otlp_endpoint = endpoint or os.getenv(
-        "OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4317"
-    )
+    otlp_endpoint = endpoint or os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4317")
     deploy_env = os.getenv("DEPLOY_ENV", os.getenv("DEPLOYMENT_ENVIRONMENT", "development"))
 
     resource = Resource.create(
@@ -140,10 +141,9 @@ def setup_spark_otel_provider(
 # Shared metric instruments (created lazily via helper to simplify mocking)
 # ---------------------------------------------------------------------------
 
+
 def _get_job_duration_histogram() -> metrics.Histogram:
-    return _meter().create_histogram(
-        "spark.job.duration", unit="ms", description="Spark job wall-clock duration"
-    )
+    return _meter().create_histogram("spark.job.duration", unit="ms", description="Spark job wall-clock duration")
 
 
 def _get_stage_shuffle_histogram() -> metrics.Histogram:
@@ -189,6 +189,7 @@ def _get_records_counter() -> metrics.Counter:
 # ---------------------------------------------------------------------------
 # SparkListener bridge
 # ---------------------------------------------------------------------------
+
 
 class OTelSparkListener:
     """
@@ -248,18 +249,12 @@ class OTelSparkListener:
         with _tracer().start_as_current_span("spark.stage", attributes=attributes):
             task_metrics = info.taskMetrics()  # type: ignore[attr-defined]
             if task_metrics:
-                shuffle_bytes: int = (
-                    task_metrics.shuffleWriteMetrics().bytesWritten()  # type: ignore[attr-defined]
-                )
+                shuffle_bytes: int = task_metrics.shuffleWriteMetrics().bytesWritten()  # type: ignore[attr-defined]
                 spill_bytes: int = task_metrics.diskBytesSpilled()  # type: ignore[attr-defined]
                 gc_time_ms: int = task_metrics.jvmGCTime()  # type: ignore[attr-defined]
                 records_read: int = task_metrics.inputMetrics().recordsRead()  # type: ignore[attr-defined]
-                records_written: int = (
-                    task_metrics.outputMetrics().recordsWritten()  # type: ignore[attr-defined]
-                )
-                self._stage_shuffle.record(
-                    shuffle_bytes, {"spark.stage.id": stage_id}
-                )
+                records_written: int = task_metrics.outputMetrics().recordsWritten()  # type: ignore[attr-defined]
+                self._stage_shuffle.record(shuffle_bytes, {"spark.stage.id": stage_id})
                 self._stage_spill.set(spill_bytes, {"spark.stage.id": stage_id})
                 self._stage_gc.set(gc_time_ms, {"spark.stage.id": stage_id})
                 self._records.add(
@@ -272,6 +267,7 @@ class OTelSparkListener:
 # Helper: executor memory
 # ---------------------------------------------------------------------------
 
+
 def record_executor_memory(executor_id: str, used_bytes: int) -> None:
     """
     Emit a ``spark.executor.memory.used`` gauge for a single executor.
@@ -280,14 +276,13 @@ def record_executor_memory(executor_id: str, used_bytes: int) -> None:
         executor_id: Spark executor ID (e.g. ``"1"``).
         used_bytes:  JVM heap bytes currently in use.
     """
-    _get_executor_memory_gauge().set(
-        used_bytes, {"spark.executor.id": executor_id}
-    )
+    _get_executor_memory_gauge().set(used_bytes, {"spark.executor.id": executor_id})
 
 
 # ---------------------------------------------------------------------------
 # Helper: DataFrame instrumentation
 # ---------------------------------------------------------------------------
+
 
 def instrument_dataframe(df: Any, operation: str, table: str) -> Any:
     """
@@ -321,6 +316,7 @@ def instrument_dataframe(df: Any, operation: str, table: str) -> Any:
 # Helper: quality-check instrumentation
 # ---------------------------------------------------------------------------
 
+
 @contextmanager
 def instrument_quality_check(
     check_name: str,
@@ -350,7 +346,5 @@ def instrument_quality_check(
         SpanAttributes.DB_SYSTEM: "spark",
         **extra_attrs,
     }
-    with _tracer().start_as_current_span(
-        f"quality.check.{check_name}", attributes=attributes
-    ) as span:
+    with _tracer().start_as_current_span(f"quality.check.{check_name}", attributes=attributes) as span:
         yield span

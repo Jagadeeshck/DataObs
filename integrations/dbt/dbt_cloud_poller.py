@@ -13,6 +13,7 @@ as the db.system.name value (semconv fallback for unrecognised SQL engines).
 
 Resolves: https://github.com/Jagadeeshck/DataObs/issues/29
 """
+
 from __future__ import annotations
 
 import time
@@ -29,12 +30,12 @@ DBT_CLOUD_BASE = "https://cloud.getdbt.com/api/v2"
 # dbt Cloud job run status codes → OTel StatusCode
 # https://docs.getdbt.com/dbt-cloud/api-v2#/operations/List%20Runs
 _CLOUD_STATUS_TO_OTEL: dict[int, StatusCode] = {
-    1: StatusCode.UNSET,    # Queued
-    2: StatusCode.UNSET,    # Starting
-    3: StatusCode.UNSET,    # Running
-    10: StatusCode.OK,      # Success
-    20: StatusCode.ERROR,   # Error
-    30: StatusCode.ERROR,   # Cancelled
+    1: StatusCode.UNSET,  # Queued
+    2: StatusCode.UNSET,  # Starting
+    3: StatusCode.UNSET,  # Running
+    10: StatusCode.OK,  # Success
+    20: StatusCode.ERROR,  # Error
+    30: StatusCode.ERROR,  # Cancelled
 }
 
 # Human-readable status values that indicate failure
@@ -89,7 +90,7 @@ class DbtCloudPoller:
             url,
             headers=self._headers,
             params={
-                "status": 10,       # 10 = Success; caller can widen to include Error (20)
+                "status": 10,  # 10 = Success; caller can widen to include Error (20)
                 "order_by": "-id",
                 "limit": 50,
             },
@@ -144,15 +145,13 @@ class DbtCloudPoller:
         db_operation_name = "dbt_cloud_run"
 
         # db.namespace: map environment name to low-cardinality namespace
-        env_name: str = run.get("environment", {}).get("name", "") if isinstance(
-            run.get("environment"), dict
-        ) else ""
+        env_name: str = run.get("environment", {}).get("name", "") if isinstance(run.get("environment"), dict) else ""
         db_namespace = self._resolve_namespace(env_name)
 
         # db.query.summary: low-cardinality summary
-        job_name: str = run.get("job", {}).get("name", f"job-{job_id}") if isinstance(
-            run.get("job"), dict
-        ) else f"job-{job_id}"
+        job_name: str = (
+            run.get("job", {}).get("name", f"job-{job_id}") if isinstance(run.get("job"), dict) else f"job-{job_id}"
+        )
         db_query_summary = f"dbt_cloud_run {job_name}"
 
         # db.response.status_code: use dbt Cloud's integer status code as string
@@ -180,23 +179,24 @@ class DbtCloudPoller:
             attrs["error.type"] = f"dbt.cloud.{status_humanized.lower()}"
 
         # --- dbt Cloud–specific custom attributes ---
-        attrs.update({
-            "dbt.cloud.account_id": self._account_id,
-            "dbt.cloud.job_id": str(job_id),
-            "dbt.cloud.run_id": str(run_id),
-            "dbt.cloud.environment_id": str(env_id),
-            "dbt.cloud.project_id": str(project_id),
-            "dbt.cloud.status": status_humanized,
-            "dbt.cloud.status_code": status_code,
-            "dbt.cloud.job_name": job_name,
-            "dbt.cloud.duration_humanized": duration_humanized,
-            "dbt.cloud.duration_seconds": duration_seconds,
-            "dbt.cloud.finished_at": finished_at,
-            "dbt.cloud.run_url": (
-                f"https://cloud.getdbt.com/deploy/{project_id}/runs/{run_id}"
-                if project_id and run_id else ""
-            ),
-        })
+        attrs.update(
+            {
+                "dbt.cloud.account_id": self._account_id,
+                "dbt.cloud.job_id": str(job_id),
+                "dbt.cloud.run_id": str(run_id),
+                "dbt.cloud.environment_id": str(env_id),
+                "dbt.cloud.project_id": str(project_id),
+                "dbt.cloud.status": status_humanized,
+                "dbt.cloud.status_code": status_code,
+                "dbt.cloud.job_name": job_name,
+                "dbt.cloud.duration_humanized": duration_humanized,
+                "dbt.cloud.duration_seconds": duration_seconds,
+                "dbt.cloud.finished_at": finished_at,
+                "dbt.cloud.run_url": (
+                    f"https://cloud.getdbt.com/deploy/{project_id}/runs/{run_id}" if project_id and run_id else ""
+                ),
+            }
+        )
 
         with _tracer.start_as_current_span(
             span_name,
@@ -206,9 +206,7 @@ class DbtCloudPoller:
             span.set_status(Status(otel_status_code))
 
             if is_error:
-                error_msg = run.get("trigger", {}).get("cause", "") if isinstance(
-                    run.get("trigger"), dict
-                ) else ""
+                error_msg = run.get("trigger", {}).get("cause", "") if isinstance(run.get("trigger"), dict) else ""
                 span.add_event(
                     "dbt.cloud.run_failed",
                     attributes={
@@ -217,9 +215,7 @@ class DbtCloudPoller:
                     },
                 )
                 if error_msg:
-                    span.record_exception(
-                        RuntimeError(f"dbt Cloud run {run_id} failed: {error_msg}")
-                    )
+                    span.record_exception(RuntimeError(f"dbt Cloud run {run_id} failed: {error_msg}"))
 
     @staticmethod
     def _resolve_namespace(env_name: str) -> str:

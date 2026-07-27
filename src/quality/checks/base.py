@@ -17,8 +17,8 @@ from typing import Any, Dict, Optional
 class CheckResult:
     check_type: str
     dataset: str
-    status: str                         # PASS | FAIL | ERROR | WARN
-    severity: str                       # critical | high | medium | low
+    status: str  # PASS | FAIL | ERROR | WARN
+    severity: str  # critical | high | medium | low
     message: str
     checked_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     details: Dict[str, Any] = field(default_factory=dict)
@@ -53,8 +53,7 @@ class BaseCheck(ABC):
     check_type: str = "base"
 
     @abstractmethod
-    def run(self, config: dict, connection: Any) -> CheckResult:
-        ...
+    def run(self, config: dict, connection: Any) -> CheckResult: ...
 
     def _pass(self, dataset: str, message: str, severity: str = "low", **kwargs) -> CheckResult:
         return CheckResult(

@@ -3,6 +3,7 @@ Unit tests for src/api/es_store.ElasticsearchStore.
 
 All Elasticsearch client calls are mocked — no live ES cluster required.
 """
+
 from __future__ import annotations
 
 import os
@@ -13,6 +14,7 @@ import pytest
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_es_mock() -> MagicMock:
     """Return a MagicMock that satisfies ElasticsearchStore._bootstrap()."""
@@ -27,6 +29,7 @@ def _make_es_mock() -> MagicMock:
 
 def _make_store(tenant_id: str = "test"):
     from src.api.es_store import ElasticsearchStore
+
     return ElasticsearchStore(_make_es_mock(), tenant_id=tenant_id)
 
 
@@ -34,16 +37,19 @@ def _make_store(tenant_id: str = "test"):
 # Bootstrap / index creation
 # ---------------------------------------------------------------------------
 
+
 class TestBootstrap:
     def test_creates_three_indices_on_init(self):
         es = _make_es_mock()
         from src.api.es_store import ElasticsearchStore
+
         ElasticsearchStore(es, tenant_id="t1")
         assert es.indices.create.call_count == 3
 
     def test_index_names_include_tenant(self):
         es = _make_es_mock()
         from src.api.es_store import ElasticsearchStore
+
         ElasticsearchStore(es, tenant_id="acme")
         created = [c.kwargs["index"] for c in es.indices.create.call_args_list]
         assert "dataobs-quality-results-acme" in created
@@ -54,6 +60,7 @@ class TestBootstrap:
         es = _make_es_mock()
         es.indices.exists.return_value = True
         from src.api.es_store import ElasticsearchStore
+
         ElasticsearchStore(es, tenant_id="t1")
         es.indices.create.assert_not_called()
 
@@ -61,6 +68,7 @@ class TestBootstrap:
         es = _make_es_mock()
         es.ilm.get_lifecycle.side_effect = Exception("not found")
         from src.api.es_store import ElasticsearchStore
+
         ElasticsearchStore(es, tenant_id="t1")
         es.ilm.put_lifecycle.assert_called_once()
 
@@ -73,11 +81,14 @@ class TestBootstrap:
 # Quality results
 # ---------------------------------------------------------------------------
 
+
 class TestQualityResults:
     def test_save_returns_id(self):
         store = _make_store()
         store._es.index.return_value = {"_id": "abc"}
-        doc_id = store.save_quality_result({"check_name": "null_check", "table": "orders", "status": "pass", "score": 1.0})
+        doc_id = store.save_quality_result(
+            {"check_name": "null_check", "table": "orders", "status": "pass", "score": 1.0}
+        )
         assert isinstance(doc_id, str) and len(doc_id) > 0
 
     def test_save_uses_wait_for_refresh(self):
@@ -102,6 +113,7 @@ class TestQualityResults:
 
     def test_get_returns_none_on_not_found(self):
         from elasticsearch import NotFoundError
+
         store = _make_store()
         store._es.get.side_effect = NotFoundError(404, {}, {})
         assert store.get_quality_result("missing") is None
@@ -127,6 +139,7 @@ class TestQualityResults:
 # Rules
 # ---------------------------------------------------------------------------
 
+
 class TestRules:
     def test_save_rule_returns_rule_id(self):
         store = _make_store()
@@ -149,6 +162,7 @@ class TestRules:
 
     def test_get_rule_returns_none_on_missing(self):
         from elasticsearch import NotFoundError
+
         store = _make_store()
         store._es.get.side_effect = NotFoundError(404, {}, {})
         assert store.get_rule("missing") is None
@@ -160,6 +174,7 @@ class TestRules:
 
     def test_delete_rule_returns_false_on_not_found(self):
         from elasticsearch import NotFoundError
+
         store = _make_store()
         store._es.delete.side_effect = NotFoundError(404, {}, {})
         assert store.delete_rule("missing") is False
@@ -174,6 +189,7 @@ class TestRules:
     def test_multi_tenant_isolation(self):
         """Two stores with different tenant_ids must never share index names."""
         from src.api.es_store import ElasticsearchStore
+
         es_a = _make_es_mock()
         es_b = _make_es_mock()
         store_a = ElasticsearchStore(es_a, tenant_id="alpha")
@@ -187,6 +203,7 @@ class TestRules:
 # Lineage
 # ---------------------------------------------------------------------------
 
+
 class TestLineage:
     def test_save_lineage_node_returns_node_id(self):
         store = _make_store()
@@ -196,6 +213,7 @@ class TestLineage:
 
     def test_get_lineage_node_returns_none_on_missing(self):
         from elasticsearch import NotFoundError
+
         store = _make_store()
         store._es.get.side_effect = NotFoundError(404, {}, {})
         assert store.get_lineage_node("missing") is None
@@ -223,23 +241,27 @@ class TestLineage:
 # Factory — get_store()
 # ---------------------------------------------------------------------------
 
+
 class TestGetStore:
     def test_returns_in_memory_by_default(self, monkeypatch):
         monkeypatch.delenv("DATAOBS_STORE_BACKEND", raising=False)
         from src.api.es_store import get_store
         from src.api.store import InMemoryStore
+
         store = get_store(es_client=None)
         assert isinstance(store, InMemoryStore)
 
     def test_returns_es_store_when_backend_set(self, monkeypatch):
         monkeypatch.setenv("DATAOBS_STORE_BACKEND", "elasticsearch")
         from src.api.es_store import ElasticsearchStore, get_store
+
         store = get_store(es_client=_make_es_mock(), tenant_id="t1")
         assert isinstance(store, ElasticsearchStore)
 
     def test_raises_when_es_backend_without_client(self, monkeypatch):
         monkeypatch.setenv("DATAOBS_STORE_BACKEND", "elasticsearch")
         from src.api.es_store import get_store
+
         with pytest.raises(ValueError, match="requires a valid es_client"):
             get_store(es_client=None)
 
@@ -248,11 +270,13 @@ class TestGetStore:
 # InMemoryStore parity checks
 # ---------------------------------------------------------------------------
 
+
 class TestInMemoryStore:
     """Verify InMemoryStore satisfies the same contract as ElasticsearchStore."""
 
     def _store(self):
         from src.api.store import InMemoryStore
+
         return InMemoryStore()
 
     def test_save_and_get_quality_result(self):
@@ -264,7 +288,7 @@ class TestInMemoryStore:
     def test_list_quality_results_filter_table(self):
         s = self._store()
         s.save_quality_result({"table": "orders", "status": "pass", "score": 1.0, "check_name": "c"})
-        s.save_quality_result({"table": "users",  "status": "fail", "score": 0.0, "check_name": "c"})
+        s.save_quality_result({"table": "users", "status": "fail", "score": 0.0, "check_name": "c"})
         results = s.list_quality_results(table="orders")
         assert len(results) == 1 and results[0]["table"] == "orders"
 
@@ -288,6 +312,7 @@ class TestInMemoryStore:
     def test_multi_instance_isolation(self):
         """Two InMemoryStore instances must not share state."""
         from src.api.store import InMemoryStore
+
         a, b = InMemoryStore(), InMemoryStore()
         a.save_rule({"rule_id": "r1", "dataset": "d"})
         assert b.get_all_rules() == []

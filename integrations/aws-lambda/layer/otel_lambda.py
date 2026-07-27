@@ -3,6 +3,7 @@ AWS Lambda OTel auto-instrumentation decorator.
 
 Resolves: https://github.com/Jagadeeshck/DataObs/issues/28
 """
+
 from __future__ import annotations
 
 import functools
@@ -35,6 +36,7 @@ def otel_lambda(fn: Callable) -> Callable:
         def handler(event, context):
             return {"statusCode": 200}
     """
+
     @functools.wraps(fn)
     def wrapper(event: dict, lambda_ctx: Any) -> Any:
         global _COLD_START

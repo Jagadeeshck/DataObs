@@ -2,13 +2,29 @@ from fastapi.testclient import TestClient
 
 from src.api.app import StoreBundle, create_app
 from src.api.store import InMemoryStore
-from src.config.settings import APISettings, AppSettings, AuthSettings, ElasticsearchSettings, ObservabilitySettings, RuntimeSettings, TenantSettings
+from src.config.settings import (
+    APISettings,
+    AppSettings,
+    AuthSettings,
+    ElasticsearchSettings,
+    ObservabilitySettings,
+    RuntimeSettings,
+    TenantSettings,
+)
 from src.data_observability.openlineage import OpenLineageValidationError
 from src.data_observability.service import calculate_asset_health, parse_openlineage_event
 
 
 def settings():
-    return AppSettings(RuntimeSettings(env="test"), APISettings(), ElasticsearchSettings(), AuthSettings(allow_unauthenticated_dev=True), TenantSettings(), ObservabilitySettings(), store_backend="memory")
+    return AppSettings(
+        RuntimeSettings(env="test"),
+        APISettings(),
+        ElasticsearchSettings(),
+        AuthSettings(allow_unauthenticated_dev=True),
+        TenantSettings(),
+        ObservabilitySettings(),
+        store_backend="memory",
+    )
 
 
 def client():
@@ -22,30 +38,63 @@ def event(event_type="COMPLETE", event_time="2026-07-08T00:05:00Z"):
         "producer": "https://dataobs.example/openlineage/test",
         "run": {"runId": "r1", "facets": {"nominalTime": {"nominalStartTime": "2026-07-08T00:00:00Z"}}},
         "job": {"namespace": "dbt", "name": "build_orders"},
-        "inputs": [{
-            "namespace": "warehouse",
-            "name": "raw.orders",
-            "facets": {"schema": {"fields": [{"name": "order_id", "type": "string"}, {"name": "amount", "type": "double"}]}}
-        }],
-        "outputs": [{
-            "namespace": "warehouse",
-            "name": "analytics.orders",
-            "facets": {
-                "schema": {"fields": [{"name": "order_id", "type": "string"}, {"name": "amount", "type": "double"}]},
-                "columnLineage": {"fields": {"amount": {"inputFields": [{"namespace": "warehouse", "name": "raw.orders", "field": "amount", "transformations": [{"type": "DIRECT", "subtype": "IDENTITY", "masking": False}]}]}}},
-                "dataQualityAssertions": {"assertions": [{"assertion": "not_null", "name": "orders_amount_not_null", "column": "amount", "success": True, "severity": "error"}]},
-                "dataQualityMetrics": {"rowCount": 1200, "bytes": 24000}
+        "inputs": [
+            {
+                "namespace": "warehouse",
+                "name": "raw.orders",
+                "facets": {
+                    "schema": {"fields": [{"name": "order_id", "type": "string"}, {"name": "amount", "type": "double"}]}
+                },
             }
-        }]
+        ],
+        "outputs": [
+            {
+                "namespace": "warehouse",
+                "name": "analytics.orders",
+                "facets": {
+                    "schema": {
+                        "fields": [{"name": "order_id", "type": "string"}, {"name": "amount", "type": "double"}]
+                    },
+                    "columnLineage": {
+                        "fields": {
+                            "amount": {
+                                "inputFields": [
+                                    {
+                                        "namespace": "warehouse",
+                                        "name": "raw.orders",
+                                        "field": "amount",
+                                        "transformations": [
+                                            {"type": "DIRECT", "subtype": "IDENTITY", "masking": False}
+                                        ],
+                                    }
+                                ]
+                            }
+                        }
+                    },
+                    "dataQualityAssertions": {
+                        "assertions": [
+                            {
+                                "assertion": "not_null",
+                                "name": "orders_amount_not_null",
+                                "column": "amount",
+                                "success": True,
+                                "severity": "error",
+                            }
+                        ]
+                    },
+                    "dataQualityMetrics": {"rowCount": 1200, "bytes": 24000},
+                },
+            }
+        ],
     }
 
 
 def test_asset_health_states():
     assert calculate_asset_health({}, [], []) == "unknown"
-    assert calculate_asset_health({}, [{"status":"pass", "severity":"critical"}], []) == "healthy"
-    assert calculate_asset_health({}, [{"status":"failed", "severity":"warning"}], []) == "warning"
-    assert calculate_asset_health({}, [{"status":"failed", "severity":"critical"}], []) == "critical"
-    assert calculate_asset_health({}, [], [{"status":"failed"}]) == "critical"
+    assert calculate_asset_health({}, [{"status": "pass", "severity": "critical"}], []) == "healthy"
+    assert calculate_asset_health({}, [{"status": "failed", "severity": "warning"}], []) == "warning"
+    assert calculate_asset_health({}, [{"status": "failed", "severity": "critical"}], []) == "critical"
+    assert calculate_asset_health({}, [], [{"status": "failed"}]) == "critical"
 
 
 def test_parse_openlineage_event():
@@ -71,20 +120,45 @@ def test_parse_openlineage_event_rejects_missing_job_namespace():
 
 def test_asset_creation_and_search_api():
     c = client()
-    resp = c.post("/api/data-observability/assets", json={"asset_id":"a1","name":"Orders","asset_type":"table","source_system":"warehouse","owner":"data","domain":"commerce","criticality":"critical","tags":["orders"],"description":"Order table"})
+    resp = c.post(
+        "/api/data-observability/assets",
+        json={
+            "asset_id": "a1",
+            "name": "Orders",
+            "asset_type": "table",
+            "source_system": "warehouse",
+            "owner": "data",
+            "domain": "commerce",
+            "criticality": "critical",
+            "tags": ["orders"],
+            "description": "Order table",
+        },
+    )
     assert resp.status_code == 201
     assert resp.json()["asset_id"] == "a1"
-    resp = c.get("/api/data-observability/assets", params={"q":"ord"})
+    resp = c.get("/api/data-observability/assets", params={"q": "ord"})
     assert resp.status_code == 200
     assert resp.json()["count"] == 1
 
 
 def test_quality_run_ingestion_and_health_api():
     c = client()
-    c.post("/api/data-observability/assets", json={"asset_id":"a1","name":"Orders"})
-    resp = c.post("/api/data-observability/quality-runs", json={"check_id":"c1","asset_id":"a1","status":"failed","observed_value":5,"expected_value":0,"severity":"critical","message":"bad","duration_ms":1})
+    c.post("/api/data-observability/assets", json={"asset_id": "a1", "name": "Orders"})
+    resp = c.post(
+        "/api/data-observability/quality-runs",
+        json={
+            "check_id": "c1",
+            "asset_id": "a1",
+            "status": "failed",
+            "observed_value": 5,
+            "expected_value": 0,
+            "severity": "critical",
+            "message": "bad",
+            "duration_ms": 1,
+        },
+    )
     assert resp.status_code == 201
-    assert c.get("/api/data-observability/quality-runs", params={"asset_id":"a1"}).json()["count"] == 1
+    assert c.get("/api/data-observability/quality-runs", params={"asset_id": "a1"}).json()["count"] == 1
     assert c.get("/api/data-observability/assets/a1/health").json()["health_status"] == "critical"
 
 

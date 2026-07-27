@@ -137,7 +137,7 @@ resource "aws_opensearch_domain" "dataobs_server" {
 
   # --- Auto-Tune for JVM heap optimisation ---
   auto_tune_options {
-    desired_state = "ENABLED"
+    desired_state       = "ENABLED"
     rollback_on_disable = "NO_ROLLBACK"
 
     maintenance_schedule {

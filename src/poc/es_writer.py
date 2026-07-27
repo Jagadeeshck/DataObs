@@ -10,6 +10,7 @@ Writes four document types into separate POC indices:
 All indices are created idempotently on first run.  ILM is intentionally
 omitted for POC to keep the setup simple; add it for production.
 """
+
 from __future__ import annotations
 
 import logging
@@ -37,35 +38,35 @@ class POCElasticWriter:
             self.idx["raw"]: {
                 "properties": {
                     "@timestamp": {"type": "date"},
-                    "dataset":    {"type": "keyword"},
+                    "dataset": {"type": "keyword"},
                     "source_url": {"type": "keyword"},
                 }
             },
             self.idx["curated"]: {
                 "properties": {
-                    "@timestamp":    {"type": "date"},
-                    "dataset":       {"type": "keyword"},
+                    "@timestamp": {"type": "date"},
+                    "dataset": {"type": "keyword"},
                     "pipeline_name": {"type": "keyword"},
-                    "dataset_name":  {"type": "keyword"},
+                    "dataset_name": {"type": "keyword"},
                 }
             },
             self.idx["quality"]: {
                 "properties": {
                     "@timestamp": {"type": "date"},
-                    "table":      {"type": "keyword"},
+                    "table": {"type": "keyword"},
                     "check_name": {"type": "keyword"},
-                    "column":     {"type": "keyword"},
-                    "status":     {"type": "keyword"},
-                    "score":      {"type": "float"},
+                    "column": {"type": "keyword"},
+                    "status": {"type": "keyword"},
+                    "score": {"type": "float"},
                 }
             },
             self.idx["lineage"]: {
                 "properties": {
                     "@timestamp": {"type": "date"},
-                    "source":     {"type": "keyword"},
-                    "target":     {"type": "keyword"},
-                    "relation":   {"type": "keyword"},
-                    "dataset":    {"type": "keyword"},
+                    "source": {"type": "keyword"},
+                    "target": {"type": "keyword"},
+                    "relation": {"type": "keyword"},
+                    "dataset": {"type": "keyword"},
                 }
             },
         }

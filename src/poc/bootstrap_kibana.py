@@ -12,6 +12,7 @@ Or via the convenience script::
 
     ./scripts/run_poc_pipeline.sh
 """
+
 from __future__ import annotations
 
 import logging
@@ -38,14 +39,10 @@ def _kibana_auth(poc_cfg: dict) -> HTTPBasicAuth:
     """
     es_cfg = poc_cfg.get("elasticsearch", {})
     username = (
-        os.environ.get("KIBANA_USERNAME")
-        or os.environ.get("ELASTIC_USERNAME")
-        or es_cfg.get("username", "elastic")
+        os.environ.get("KIBANA_USERNAME") or os.environ.get("ELASTIC_USERNAME") or es_cfg.get("username", "elastic")
     )
     password = (
-        os.environ.get("KIBANA_PASSWORD")
-        or os.environ.get("ELASTIC_PASSWORD")
-        or es_cfg.get("password", "changeme")
+        os.environ.get("KIBANA_PASSWORD") or os.environ.get("ELASTIC_PASSWORD") or es_cfg.get("password", "changeme")
     )
     return HTTPBasicAuth(username, password)
 
@@ -126,12 +123,25 @@ def main() -> None:
         or "http://localhost:5601"
     )
     so_file = dash_cfg.get("load_saved_objects_file", "kibana/dataobs-poc-saved-objects.ndjson")
-    dv_patterns = dash_cfg.get("create_data_views", [
-        "dataobs-quality", "dataobs-alerts", "dataobs-freshness", "dataobs-volume",
-        "dataobs-schema", "dataobs-lineage", "dataobs-assets", "dataobs-spark-metrics",
-        "dataobs-rs-*", "dataobs-test-data", "dataobs-spark-results",
-        "traces-apm*", "metrics-apm*", "logs-apm*",
-    ])
+    dv_patterns = dash_cfg.get(
+        "create_data_views",
+        [
+            "dataobs-quality",
+            "dataobs-alerts",
+            "dataobs-freshness",
+            "dataobs-volume",
+            "dataobs-schema",
+            "dataobs-lineage",
+            "dataobs-assets",
+            "dataobs-spark-metrics",
+            "dataobs-rs-*",
+            "dataobs-test-data",
+            "dataobs-spark-results",
+            "traces-apm*",
+            "metrics-apm*",
+            "logs-apm*",
+        ],
+    )
 
     auth = _kibana_auth(poc_cfg)
 
@@ -146,8 +156,11 @@ def main() -> None:
     if poc_cfg.get("bootstrap_dashboards", True) and so_path.exists():
         import_saved_objects(base_url, so_path, auth)
     else:
-        logger.info("[kibana] Skipping saved objects import (file=%s, bootstrap_dashboards=%s).",
-                    so_path, poc_cfg.get("bootstrap_dashboards"))
+        logger.info(
+            "[kibana] Skipping saved objects import (file=%s, bootstrap_dashboards=%s).",
+            so_path,
+            poc_cfg.get("bootstrap_dashboards"),
+        )
 
 
 if __name__ == "__main__":

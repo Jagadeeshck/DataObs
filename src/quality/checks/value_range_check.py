@@ -30,9 +30,7 @@ class ValueRangeCheck(BaseCheck):
 
         try:
             with connection.connect() as conn:
-                result = conn.execute(
-                    sqlalchemy.text(f"SELECT MIN({column}), MAX({column}) FROM {table_name}")
-                )
+                result = conn.execute(sqlalchemy.text(f"SELECT MIN({column}), MAX({column}) FROM {table_name}"))
                 row = result.fetchone()
                 actual_min, actual_max = row[0], row[1]
 
@@ -47,7 +45,13 @@ class ValueRangeCheck(BaseCheck):
                     dataset=dataset,
                     message=f"Value range violation in {column}: {'; '.join(violations)}",
                     severity=severity,
-                    details={"column": column, "actual_min": actual_min, "actual_max": actual_max, "allowed_min": min_value, "allowed_max": max_value},
+                    details={
+                        "column": column,
+                        "actual_min": actual_min,
+                        "actual_max": actual_max,
+                        "allowed_min": min_value,
+                        "allowed_max": max_value,
+                    },
                 )
 
             return self._pass(

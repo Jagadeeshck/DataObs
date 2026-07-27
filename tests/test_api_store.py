@@ -1,4 +1,5 @@
 """Store-layer tests for in-memory and legacy compatibility adapters."""
+
 from __future__ import annotations
 
 from src.api.store import InMemoryStore, LineageStore, RuleStore
@@ -58,7 +59,9 @@ def test_memory_store_rule_crud_roundtrip():
 def test_memory_store_quality_save_list_and_filters():
     store = InMemoryStore()
     store.save_quality_result({"id": "q1", "check_name": "null", "table": "orders", "status": "pass", "score": 1.0})
-    store.save_quality_result({"id": "q2", "check_name": "freshness", "table": "orders", "status": "fail", "score": 0.2})
+    store.save_quality_result(
+        {"id": "q2", "check_name": "freshness", "table": "orders", "status": "fail", "score": 0.2}
+    )
     store.save_quality_result({"id": "q3", "check_name": "null", "table": "users", "status": "pass", "score": 0.9})
 
     assert len(store.list_quality_results()) == 3
@@ -81,6 +84,7 @@ def test_memory_store_lineage_bfs_traversal():
 
 
 # Legacy adapter checks (kept for migration compatibility)
+
 
 def test_legacy_rule_store_add_and_list():
     store = RuleStore(_FakeES())

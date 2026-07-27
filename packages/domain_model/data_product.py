@@ -291,7 +291,7 @@ class DataProductReliability(DomainModel):
     evidence_refs: List[str] = Field(default_factory=list)
     confidence: float = Field(ge=0, le=1)
     observed_period: str
-    overall_score: float | None = Field(default=None, ge=0, le=1)
+    overall_score: float | None = Field(default=None, ge=0, le=100)
     overall_state: Literal["healthy", "at_risk", "unhealthy", "unknown"]
     trend: Literal["improving", "stable", "declining", "unknown"] = "unknown"
     formula: str = "weighted sum of observed, non-stale components / observed weights"

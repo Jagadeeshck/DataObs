@@ -25,10 +25,10 @@ resource "grafana_folder" "dataobs" {
 # ── Dashboards ────────────────────────────────────────────────────────────────
 locals {
   dashboards = {
-    "dataobs-overview"      = file("${path.module}/dashboards/dataobs-overview.json")
-    "quality-checks"        = file("${path.module}/dashboards/quality-checks.json")
-    "otel-pipeline-health"  = file("${path.module}/dashboards/otel-pipeline-health.json")
-    "alert-delivery"        = file("${path.module}/dashboards/alert-delivery.json")
+    "dataobs-overview"     = file("${path.module}/dashboards/dataobs-overview.json")
+    "quality-checks"       = file("${path.module}/dashboards/quality-checks.json")
+    "otel-pipeline-health" = file("${path.module}/dashboards/otel-pipeline-health.json")
+    "alert-delivery"       = file("${path.module}/dashboards/alert-delivery.json")
   }
 }
 
@@ -71,14 +71,14 @@ resource "grafana_rule_group" "quality_checks" {
     condition = "C"
 
     data {
-      ref_id = "A"
+      ref_id         = "A"
       datasource_uid = var.datasource_prometheus_uid
       model = jsonencode({
-        expr         = "rate(dataobs_quality_check_failed_total[5m])"
-        instant      = false
-        intervalMs   = 1000
+        expr          = "rate(dataobs_quality_check_failed_total[5m])"
+        instant       = false
+        intervalMs    = 1000
         maxDataPoints = 43200
-        refId        = "A"
+        refId         = "A"
       })
       relative_time_range {
         from = 300

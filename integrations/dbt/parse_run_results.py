@@ -18,6 +18,7 @@ Key semconv attributes used:
 
 Resolves: https://github.com/Jagadeeshck/DataObs/issues/29
 """
+
 from __future__ import annotations
 
 import json
@@ -33,13 +34,13 @@ _tracer = trace.get_tracer("dataobs.dbt", "0.2.0")
 # Values from: https://opentelemetry.io/docs/specs/semconv/db/database-spans/
 # dbt adapters that map directly to semconv enum values:
 _ADAPTER_TO_DB_SYSTEM: dict[str, str] = {
-    "bigquery": "gcp.spanner",      # closest; BigQuery not in enum → use other_sql fallback below
-    "snowflake": "other_sql",       # Snowflake not in semconv enum
+    "bigquery": "gcp.spanner",  # closest; BigQuery not in enum → use other_sql fallback below
+    "snowflake": "other_sql",  # Snowflake not in semconv enum
     "redshift": "aws.redshift",
     "postgres": "postgresql",
     "postgresql": "postgresql",
     "trino": "trino",
-    "spark": "other_sql",           # Spark SQL → other_sql
+    "spark": "other_sql",  # Spark SQL → other_sql
     "databricks": "other_sql",
     "duckdb": "other_sql",
     "mysql": "mysql",
@@ -70,7 +71,7 @@ _RESOURCE_TYPE_TO_OPERATION: dict[str, str] = {
 _STATUS_TO_OTEL_CODE: dict[str, StatusCode] = {
     "success": StatusCode.OK,
     "pass": StatusCode.OK,
-    "warn": StatusCode.OK,       # warning = not an error in OTel terms
+    "warn": StatusCode.OK,  # warning = not an error in OTel terms
     "error": StatusCode.ERROR,
     "fail": StatusCode.ERROR,
     "runtime error": StatusCode.ERROR,
@@ -200,21 +201,22 @@ def _emit_node_span(
         attrs["server.address"] = server_addr["host"]
 
     # dbt-specific custom attributes (prefixed dbt.*)
-    attrs.update({
-        "dbt.model.name": node.get("name", ""),
-        "dbt.resource_type": resource_type,
-        "dbt.status": status,
-        "dbt.materialization": node.get("config", {}).get("materialized", ""),
-        "dbt.unique_id": node.get("unique_id", ""),
-        "dbt.package_name": node.get("package_name", ""),
-        "dbt.path": node.get("original_file_path", ""),
-        "dbt.started_at": started_at,
-        "dbt.completed_at": completed_at,
-        "dbt.execution_time_seconds": execution_time,
-        # Adapter metadata (low-cardinality values only)
-        "dbt.adapter.code": str(adapter_response.get("_message", "")
-                               or adapter_response.get("code", ""))[:256],
-    })
+    attrs.update(
+        {
+            "dbt.model.name": node.get("name", ""),
+            "dbt.resource_type": resource_type,
+            "dbt.status": status,
+            "dbt.materialization": node.get("config", {}).get("materialized", ""),
+            "dbt.unique_id": node.get("unique_id", ""),
+            "dbt.package_name": node.get("package_name", ""),
+            "dbt.path": node.get("original_file_path", ""),
+            "dbt.started_at": started_at,
+            "dbt.completed_at": completed_at,
+            "dbt.execution_time_seconds": execution_time,
+            # Adapter metadata (low-cardinality values only)
+            "dbt.adapter.code": str(adapter_response.get("_message", "") or adapter_response.get("code", ""))[:256],
+        }
+    )
 
     # error.type — conditionally required when operation failed
     if status in _ERROR_STATUSES:
@@ -241,9 +243,7 @@ def _emit_node_span(
                 },
             )
             # Also record as exception so it surfaces in error tracking
-            span.record_exception(
-                RuntimeError(failure_message or f"dbt {status}: {node.get('name', 'unknown')}")
-            )
+            span.record_exception(RuntimeError(failure_message or f"dbt {status}: {node.get('name', 'unknown')}"))
 
         # Attach test sub-results as events (dbt test failures contain sub-failures)
         for sub in result.get("failures", []) or []:
@@ -253,6 +253,7 @@ def _emit_node_span(
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 def _resolve_db_system(adapter_type: str) -> str:
     """Map dbt adapter name to semconv db.system.name value."""
@@ -307,11 +308,13 @@ _REQUIRED_RESULT_FIELDS = frozenset({"status", "unique_id", "timing"})
 _REQUIRED_METADATA_FIELDS = frozenset({"dbt_schema_version", "invocation_id"})
 
 #: Schema versions this parser understands.
-_SUPPORTED_SCHEMA_VERSIONS = frozenset({
-    "https://schemas.getdbt.com/dbt/run-results/v4/run-results.json",
-    "https://schemas.getdbt.com/dbt/run-results/v5/run-results.json",
-    "https://schemas.getdbt.com/dbt/run-results/v6/run-results.json",
-})
+_SUPPORTED_SCHEMA_VERSIONS = frozenset(
+    {
+        "https://schemas.getdbt.com/dbt/run-results/v4/run-results.json",
+        "https://schemas.getdbt.com/dbt/run-results/v5/run-results.json",
+        "https://schemas.getdbt.com/dbt/run-results/v6/run-results.json",
+    }
+)
 
 
 def _validate_schema(data: dict[str, Any]) -> None:
@@ -324,9 +327,7 @@ def _validate_schema(data: dict[str, Any]) -> None:
     # Top-level required fields
     missing_top = _REQUIRED_TOP_LEVEL - data.keys()
     if missing_top:
-        raise ValueError(
-            f"run_results.json missing required top-level fields: {sorted(missing_top)}"
-        )
+        raise ValueError(f"run_results.json missing required top-level fields: {sorted(missing_top)}")
 
     # metadata block
     metadata = data["metadata"]
@@ -335,14 +336,13 @@ def _validate_schema(data: dict[str, Any]) -> None:
 
     missing_meta = _REQUIRED_METADATA_FIELDS - metadata.keys()
     if missing_meta:
-        raise ValueError(
-            f"run_results.json metadata missing fields: {sorted(missing_meta)}"
-        )
+        raise ValueError(f"run_results.json metadata missing fields: {sorted(missing_meta)}")
 
     # Schema version check (warn but don't fail on unknown versions)
     schema_version = metadata.get("dbt_schema_version", "")
     if schema_version and schema_version not in _SUPPORTED_SCHEMA_VERSIONS:
         import warnings
+
         warnings.warn(
             f"Unrecognised dbt run_results schema version: {schema_version!r}. "
             f"Supported: {sorted(_SUPPORTED_SCHEMA_VERSIONS)}. Parsing anyway.",
@@ -360,8 +360,6 @@ def _validate_schema(data: dict[str, Any]) -> None:
             raise ValueError(f"results[{idx}] must be a dict, got {type(result).__name__}")
         missing_result = _REQUIRED_RESULT_FIELDS - result.keys()
         if missing_result:
-            raise ValueError(
-                f"results[{idx}] missing required fields: {sorted(missing_result)}"
-            )
+            raise ValueError(f"results[{idx}] missing required fields: {sorted(missing_result)}")
         if not isinstance(result["timing"], list):
             raise ValueError(f"results[{idx}].timing must be a list")

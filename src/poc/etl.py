@@ -1,4 +1,4 @@
-""" 
+"""
 src/poc/etl.py
 ──────────────
 Dataset ETL: download → parse → normalise → bulk-ingest to Elasticsearch.
@@ -25,6 +25,7 @@ Indexes created:
 
 A summary document is indexed into dataobs-ingest-summary per run.
 """
+
 from __future__ import annotations
 
 import csv
@@ -46,12 +47,10 @@ logger = logging.getLogger(__name__)
 # ── helpers ────────────────────────────────────────────────────────────────
 
 _RE_DATE = re.compile(
-    r"^\d{4}-\d{2}-\d{2}"
-    r"|^\d{2}/\d{2}/\d{4}"
-    r"|^\d{2}-\w{3}-\d{4}$",
+    r"^\d{4}-\d{2}-\d{2}" r"|^\d{2}/\d{2}/\d{4}" r"|^\d{2}-\w{3}-\d{4}$",
 )
-_RE_INT  = re.compile(r"^-?\d{1,15}$")
-_RE_FLOAT= re.compile(r"^-?\d+\.\d+$")
+_RE_INT = re.compile(r"^-?\d{1,15}$")
+_RE_FLOAT = re.compile(r"^-?\d+\.\d+$")
 
 
 def _infer_type(values: List[str]) -> str:
@@ -92,11 +91,11 @@ def _infer_mapping(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
     all_keys = list(rows[0].keys())
     properties: Dict[str, Any] = {
         "@timestamp": {"type": "date"},
-        "dataset":    {"type": "keyword"},
-        "run_id":     {"type": "keyword"},
-        "theme":      {"type": "keyword"},
+        "dataset": {"type": "keyword"},
+        "run_id": {"type": "keyword"},
+        "theme": {"type": "keyword"},
         "source_url": {"type": "keyword"},
-        "row_index":  {"type": "long"},
+        "row_index": {"type": "long"},
     }
     sample = rows[:200]
     for key in all_keys:
@@ -115,8 +114,7 @@ def _download(url: str, timeout: int = 120) -> bytes:
         return Path(url).read_bytes()
 
     buf = io.BytesIO()
-    resp = requests.get(url, stream=True, timeout=timeout,
-                        headers={"User-Agent": "DataObs-POC/1.0"})
+    resp = requests.get(url, stream=True, timeout=timeout, headers={"User-Agent": "DataObs-POC/1.0"})
     resp.raise_for_status()
     total = 0
     chunk_size = 1 << 20
@@ -132,6 +130,7 @@ def _download(url: str, timeout: int = 120) -> bytes:
 def _detect_encoding(raw: bytes) -> str:
     try:
         import chardet
+
         result = chardet.detect(raw[:65536])
         return result.get("encoding") or "utf-8"
     except ImportError:
@@ -264,6 +263,7 @@ def parse_dataset(raw: bytes, fmt: str, max_rows: int = 50_000) -> Tuple[List[st
 
 # ── Elasticsearch helpers ──────────────────────────────────────────────────
 
+
 def ensure_index(es: Elasticsearch, index: str, properties: Dict[str, Any]) -> None:
     """Create index with dynamic mapping + provided property hints if absent."""
     if es.indices.exists(index=index):
@@ -297,11 +297,11 @@ def _enrich(
         doc.update(
             {
                 "@timestamp": ts,
-                "dataset":    dataset,
-                "run_id":     run_id,
-                "theme":      theme,
+                "dataset": dataset,
+                "run_id": run_id,
+                "theme": theme,
                 "source_url": source_url,
-                "row_index":  i,
+                "row_index": i,
             }
         )
         yield doc
@@ -310,8 +310,7 @@ def _enrich(
 def bulk_index(es: Elasticsearch, index: str, docs: Iterable[Dict[str, Any]]) -> int:
     """Bulk-index documents; return count of indexed docs."""
     actions = ({"_index": index, "_source": doc} for doc in docs)
-    ok, errors = helpers.bulk(es, actions, chunk_size=500, raise_on_error=False,
-                              stats_only=True)
+    ok, errors = helpers.bulk(es, actions, chunk_size=500, raise_on_error=False, stats_only=True)
     if errors:
         logger.warning("[etl] %d bulk errors in index %s", errors, index)
     logger.info("[etl] Indexed %d documents into %s", ok, index)
@@ -319,6 +318,7 @@ def bulk_index(es: Elasticsearch, index: str, docs: Iterable[Dict[str, Any]]) ->
 
 
 # ── Public ETL API ─────────────────────────────────────────────────────────
+
 
 class DatasetETL:
     """
@@ -361,17 +361,22 @@ class DatasetETL:
         Returns a summary dict with keys: dataset, index, rows_ingested,
         columns, duration_seconds, status, error.
         """
-        name       = source.get("name") or source.get("dataset_id") or "unknown"
-        theme      = source.get("theme", "unknown")
-        url        = source["resource_url"]
-        fmt        = source.get("format", "csv")
-        index      = f"{self.index_prefix}-{name}".lower().replace(" ", "-")
-        ts         = datetime.now(timezone.utc).isoformat()
-        t0         = time.time()
+        name = source.get("name") or source.get("dataset_id") or "unknown"
+        theme = source.get("theme", "unknown")
+        url = source["resource_url"]
+        fmt = source.get("format", "csv")
+        index = f"{self.index_prefix}-{name}".lower().replace(" ", "-")
+        ts = datetime.now(timezone.utc).isoformat()
+        t0 = time.time()
         result: Dict[str, Any] = {
-            "dataset": name, "index": index, "theme": theme,
-            "rows_ingested": 0, "columns": 0,
-            "duration_seconds": 0.0, "status": "ok", "error": None,
+            "dataset": name,
+            "index": index,
+            "theme": theme,
+            "rows_ingested": 0,
+            "columns": 0,
+            "duration_seconds": 0.0,
+            "status": "ok",
+            "error": None,
         }
         try:
             raw = _download(url)
@@ -388,14 +393,13 @@ class DatasetETL:
             properties = _infer_mapping(rows)
             ensure_index(self.es, index, properties)
 
-            docs = list(_enrich(rows, dataset=name, run_id=run_id,
-                                theme=theme, source_url=url, ts=ts))
+            docs = list(_enrich(rows, dataset=name, run_id=run_id, theme=theme, source_url=url, ts=ts))
             result["rows_ingested"] = bulk_index(self.es, index, docs)
 
         except Exception as exc:
             logger.error("[etl] Ingest failed for %s: %s", name, exc, exc_info=True)
             result["status"] = "error"
-            result["error"]  = str(exc)
+            result["error"] = str(exc)
 
         result["duration_seconds"] = round(time.time() - t0, 2)
         return result
@@ -413,8 +417,10 @@ class DatasetETL:
             summaries.append(summary)
             logger.info(
                 "[etl] %s → %s  (%d rows, %.1fs, status=%s)",
-                summary["dataset"], summary["index"],
-                summary["rows_ingested"], summary["duration_seconds"],
+                summary["dataset"],
+                summary["index"],
+                summary["rows_ingested"],
+                summary["duration_seconds"],
                 summary["status"],
             )
         return summaries
@@ -428,25 +434,31 @@ class DatasetETL:
         """Write per-run summary document to dataobs-ingest-summary."""
         doc = {
             "@timestamp": datetime.now(timezone.utc).isoformat(),
-            "run_id":     run_id,
-            "tenant":     tenant,
+            "run_id": run_id,
+            "tenant": tenant,
             "datasets_attempted": len(summaries),
-            "datasets_ok":    sum(1 for s in summaries if s["status"] == "ok"),
+            "datasets_ok": sum(1 for s in summaries if s["status"] == "ok"),
             "datasets_empty": sum(1 for s in summaries if s["status"] == "empty"),
             "datasets_error": sum(1 for s in summaries if s["status"] == "error"),
-            "total_rows":     sum(s["rows_ingested"] for s in summaries),
-            "sources":        summaries,
+            "total_rows": sum(s["rows_ingested"] for s in summaries),
+            "sources": summaries,
         }
-        ensure_index(self.es, "dataobs-ingest-summary", {
-            "@timestamp": {"type": "date"},
-            "run_id":     {"type": "keyword"},
-            "tenant":     {"type": "keyword"},
-            "datasets_attempted": {"type": "integer"},
-            "datasets_ok":        {"type": "integer"},
-            "total_rows":         {"type": "long"},
-        })
+        ensure_index(
+            self.es,
+            "dataobs-ingest-summary",
+            {
+                "@timestamp": {"type": "date"},
+                "run_id": {"type": "keyword"},
+                "tenant": {"type": "keyword"},
+                "datasets_attempted": {"type": "integer"},
+                "datasets_ok": {"type": "integer"},
+                "total_rows": {"type": "long"},
+            },
+        )
         self.es.index(index="dataobs-ingest-summary", document=doc)
         logger.info(
             "[etl] Ingest summary: %d/%d ok, %d total rows",
-            doc["datasets_ok"], doc["datasets_attempted"], doc["total_rows"],
+            doc["datasets_ok"],
+            doc["datasets_attempted"],
+            doc["total_rows"],
         )

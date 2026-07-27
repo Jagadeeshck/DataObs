@@ -1,0 +1,39 @@
+name: Terraform Fmt Fix
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches:
+      - fix/data-product-decision-reason-mapping-collision
+    paths:
+      - '.github/workflows/terraform-fmt-fix.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  fmt-fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      - name: Run terraform fmt -recursive
+        run: terraform fmt -recursive infra/terraform
+
+      - name: Commit and push fixes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet; then
+            echo "No formatting changes needed."
+          else
+            git add -A
+            git commit -m "chore: terraform fmt -recursive auto-fix"
+            git push origin HEAD:${{ github.ref_name }}
+          fi

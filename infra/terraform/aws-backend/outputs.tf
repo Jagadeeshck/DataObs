@@ -101,11 +101,11 @@ output "amg_role_arn" {
 output "otel_collector_env" {
   description = "Key/value map of environment variables to set on the OTel Collector for the AWS backend."
   value = {
-    DATAOBS_BACKEND          = "aws_grafana"
-    AMP_REMOTE_WRITE_URL     = module.amp.remote_write_url
-    OSIS_PIPELINE_ENDPOINT   = module.osis.traces_ingest_endpoint   # primary: traces
-    OSIS_LOGS_ENDPOINT       = module.osis.logs_ingest_endpoint
-    OSIS_METRICS_ENDPOINT    = module.osis.metrics_ingest_endpoint
-    AWS_REGION               = var.aws_region
+    DATAOBS_BACKEND        = "aws_grafana"
+    AMP_REMOTE_WRITE_URL   = module.amp.remote_write_url
+    OSIS_PIPELINE_ENDPOINT = module.osis.traces_ingest_endpoint # primary: traces
+    OSIS_LOGS_ENDPOINT     = module.osis.logs_ingest_endpoint
+    OSIS_METRICS_ENDPOINT  = module.osis.metrics_ingest_endpoint
+    AWS_REGION             = var.aws_region
   }
 }

@@ -33,8 +33,8 @@ resource "aws_prometheus_workspace" "this" {
   }
 
   tags = merge(var.tags, {
-    Name    = var.workspace_alias
-    Module  = "dataobs-amp"
+    Name   = var.workspace_alias
+    Module = "dataobs-amp"
   })
 }
 
@@ -72,17 +72,17 @@ resource "aws_cloudwatch_metric_alarm" "amp_ingestion_errors" {
 # ── SSM Parameter: Remote Write URL ─────────────────────────────────────────
 # Stored so that OTel Collector on EC2 / ECS can resolve it at runtime.
 resource "aws_ssm_parameter" "amp_remote_write_url" {
-  name  = "/${var.name_prefix}/amp/remote-write-url"
-  type  = "String"
-  value = "${aws_prometheus_workspace.this.prometheus_endpoint}api/v1/remote_write"
+  name        = "/${var.name_prefix}/amp/remote-write-url"
+  type        = "String"
+  value       = "${aws_prometheus_workspace.this.prometheus_endpoint}api/v1/remote_write"
   description = "DataObs AMP remote write endpoint for OTel Collector"
-  tags  = var.tags
+  tags        = var.tags
 }
 
 resource "aws_ssm_parameter" "amp_workspace_id" {
-  name  = "/${var.name_prefix}/amp/workspace-id"
-  type  = "String"
-  value = aws_prometheus_workspace.this.id
+  name        = "/${var.name_prefix}/amp/workspace-id"
+  type        = "String"
+  value       = aws_prometheus_workspace.this.id
   description = "DataObs AMP workspace ID"
-  tags  = var.tags
+  tags        = var.tags
 }

@@ -10,18 +10,19 @@ or a real OTel Collector.  Tests cover:
   - ``record_executor_memory`` → gauge call
   - ``setup_spark_otel_provider`` → SDK wiring (no-op when disabled)
 """
+
 from __future__ import annotations
 
 import sys
 import types
-from unittest.mock import MagicMock, call, patch
-
-import pytest
 
 # ---------------------------------------------------------------------------
 # Ensure the integration directory is importable without install.
 # ---------------------------------------------------------------------------
 from pathlib import Path
+from unittest.mock import MagicMock, call, patch
+
+import pytest
 
 _SPARK_DIR = Path(__file__).resolve().parents[1] / "integrations" / "spark"
 if str(_SPARK_DIR) not in sys.path:
@@ -32,10 +33,12 @@ if str(_SPARK_DIR) not in sys.path:
 # when the SDK is not installed in the CI environment.
 # ---------------------------------------------------------------------------
 
+
 def _ensure_otel_stubs() -> None:
     """Inject lightweight stub modules if the real SDK is absent."""
     try:
         import opentelemetry  # noqa: F401
+
         return  # real SDK present — no stubs needed
     except ModuleNotFoundError:
         pass
@@ -75,7 +78,6 @@ _ensure_otel_stubs()
 # Now import the module under test.
 # ---------------------------------------------------------------------------
 import otel_spark  # noqa: E402  (after path/stub setup)
-
 
 # ===========================================================================
 # Fixtures
@@ -293,9 +295,7 @@ class TestInstrumentQualityCheck:
 
     def test_extra_attrs_forwarded(self, patched_tracer, patched_meter, noop_span):
         patched_tracer.start_as_current_span.return_value = noop_span
-        with otel_spark.instrument_quality_check(
-            "value_range", "orders", column="amount", min_value=0
-        ):
+        with otel_spark.instrument_quality_check("value_range", "orders", column="amount", min_value=0):
             pass
 
         attrs = patched_tracer.start_as_current_span.call_args.kwargs["attributes"]
@@ -322,9 +322,7 @@ class TestRecordExecutorMemory:
         with patch.object(otel_spark, "_get_executor_memory_gauge", return_value=gauge):
             otel_spark.record_executor_memory(executor_id="3", used_bytes=256 * 1024 * 1024)
 
-        gauge.set.assert_called_once_with(
-            256 * 1024 * 1024, {"spark.executor.id": "3"}
-        )
+        gauge.set.assert_called_once_with(256 * 1024 * 1024, {"spark.executor.id": "3"})
 
 
 # ===========================================================================

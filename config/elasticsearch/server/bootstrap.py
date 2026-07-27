@@ -26,7 +26,8 @@ import sys
 from pathlib import Path
 
 import boto3
-from elasticsearch import Elasticsearch, exceptions as es_exceptions
+from elasticsearch import Elasticsearch
+from elasticsearch import exceptions as es_exceptions
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 log = logging.getLogger("dataobs.bootstrap.server")
@@ -70,8 +71,7 @@ def bootstrap_ingest_pipeline(es: Elasticsearch) -> None:
     pipeline_doc = json.loads((BASE / "ingest-pipeline.json").read_text())
     for pipeline in pipeline_doc["pipelines"]:
         name = pipeline.pop("name")
-        es.ingest.put_pipeline(id=name, processors=pipeline["processors"],
-                               on_failure=pipeline.get("on_failure", []))
+        es.ingest.put_pipeline(id=name, processors=pipeline["processors"], on_failure=pipeline.get("on_failure", []))
         log.info("Ingest pipeline '%s' applied", name)
 
 

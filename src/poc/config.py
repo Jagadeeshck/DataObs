@@ -6,6 +6,7 @@ section and the current standalone ``config/dataobs_poc.yaml`` file used by
 Docker Compose. Environment placeholders in the form ``${VAR}`` or
 ``${VAR:-default}`` are expanded before YAML parsing.
 """
+
 from __future__ import annotations
 
 import os

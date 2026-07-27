@@ -23,7 +23,7 @@ class ReferentialIntegrityCheck(BaseCheck):
     def run(self, config: dict, connection: Any) -> CheckResult:
         dataset = config["dataset"]
         column = validate_simple_identifier(config["column"], "column")
-        references = validate_sql_identifier(config["references"], "references")   # e.g. "schema.parent_table.id"
+        references = validate_sql_identifier(config["references"], "references")  # e.g. "schema.parent_table.id"
         severity = config.get("severity", "high")
 
         parts = references.split(".")

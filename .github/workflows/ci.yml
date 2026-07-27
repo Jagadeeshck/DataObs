@@ -27,6 +27,7 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
       - run: pip install -r requirements.txt
+      - run: pip install pytest
       - run: python -m compileall -q packages/domain_model/data_product.py services/data_products src/api/data_product_routes.py tests/data_products
       - run: python -m pytest tests/data_products/test_membership_dependency_closure.py tests/data_products/test_cursors.py -q
   incident-migration-occ-gate:
@@ -50,12 +51,13 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
-      - name: Migration immutability against main
-        run: python scripts/check_migration_immutability.py --base-ref HEAD
+      - run: pip install pyyaml
       - name: Install focused dependencies
         run: |
           pip install -r requirements.txt
           pip install pytest ruff black mypy
+      - name: Migration immutability against main
+        run: python scripts/check_migration_immutability.py --base-ref HEAD
       - name: Focused quality checks
         run: |
           python scripts/check_generated_artifacts.py
@@ -169,13 +171,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Validate compose files
+        env:
+          ELASTIC_PASSWORD: ci-placeholder-password
+          OPENSEARCH_PASSWORD: ci-placeholder-password
+          KIBANA_PASSWORD: ci-placeholder-password
+          CERTIFICATION_POSTGRES_PASSWORD_FILE: /tmp/ci-placeholder-postgres-password
         run: |
           docker compose -f docker-compose.yml config
           docker compose -f docker-compose.certification.yml --profile full config
           docker compose -f docker-compose.poc.yml config
           docker compose -f tests/integration/docker-compose.test.yml config
           docker compose -f integrations/grafana-alloy/docker-compose.yml config
-
   integration-tests:
     name: Integration tests
     runs-on: ubuntu-latest
@@ -274,14 +280,14 @@ jobs:
       - name: Trivy scanner image
         uses: aquasecurity/trivy-action@0.35.0
         with:
-          image-ref: dataobs/scanner:${{ github.sha }}
+          image-ref: "dataobs/scanner:${{ github.sha }}"
           format: table
           ignore-unfixed: true
           vuln-type: os,library
           severity: CRITICAL,HIGH
           exit-code: "1"
           scanners: vuln
-      - name: Scanner SBOM
+      - name: Generate SBOM
         run: trivy image --format cyclonedx --output sbom-scanner.cdx.json dataobs/scanner:${{ github.sha }}
       - name: Capture Compose logs
         if: always()
@@ -359,8 +365,8 @@ jobs:
         run: |
           trivy image --format cyclonedx --output sbom-api.cdx.json dataobs/api:${{ github.sha }}
           trivy image --format cyclonedx --output sbom-quality.cdx.json dataobs/quality:${{ github.sha }}
-          trivy image --format cyclonedx --output sbom-collection-manager.cdx.json
-          trivy image --format cyclonedx --output sbom-scanner.cdx.json dataobs/scanner:${{ github.sha }} dataobs/collection-manager:${{ github.sha }}
+          trivy image --format cyclonedx --output sbom-collection-manager.cdx.json dataobs/collection-manager:${{ github.sha }}
+          trivy image --format cyclonedx --output sbom-scanner.cdx.json dataobs/scanner:${{ github.sha }}
       - name: Upload SBOMs
         uses: actions/upload-artifact@v4
         with:
@@ -377,6 +383,7 @@ jobs:
           python-version: '3.11'
       - name: Install dependencies
         run: pip install -r requirements.txt
+      - run: pip install pytest
       - name: Validate workflow YAML
         run: ./bin/dataobs workflows validate
       - name: Compile incident automation packages
@@ -386,8 +393,7 @@ jobs:
       - name: Validate compose
         run: docker compose -f docker-compose.incident-automation-demo.yml config
       - name: Sentinel secret scan
-        run: '! rg "DATAOBS_SENTINEL_SECRET_DO_NOT_LEAK" --glob "!scripts/demo_incident_automation.sh"'
-
+        run: 'rg "DATAOBS_SENTINEL_SECRET_DO_NOT_LEAK" --glob "!scripts/demo_incident_automation.sh" && exit 1; exit 0'
   console-quality:
     name: Console type, test, build and contract drift
     runs-on: ubuntu-latest
@@ -413,9 +419,8 @@ jobs:
         run: docker build -t dataobs/console:${{ github.sha }} ui/dataobs-console
       - name: Bundle secret and source-map policy
         run: |
-          ! rg -n 'DATAOBS_SENTINEL_PASSWORD_DO_NOT_PERSIST' ui/dataobs-console/dist
-          ! find ui/dataobs-console/dist -name '*.map' | grep .
-
+          if rg -n 'DATAOBS_SENTINEL_PASSWORD_DO_NOT_PERSIST' ui/dataobs-console/dist; then exit 1; fi
+          if find ui/dataobs-console/dist -name '*.map' | grep -q .; then exit 1; fi
   console-backend-contract:
     name: Console backend contract gate
     runs-on: ubuntu-latest

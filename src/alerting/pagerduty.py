@@ -16,10 +16,7 @@ class PagerDutyConfig:
     timeout_seconds: int = 10
 
     def __repr__(self) -> str:  # prevent routing_key leaking into logs
-        return (
-            f"PagerDutyConfig(routing_key='***', source={self.source!r}, "
-            f"events_api_url={self.events_api_url!r})"
-        )
+        return f"PagerDutyConfig(routing_key='***', source={self.source!r}, " f"events_api_url={self.events_api_url!r})"
 
 
 @dataclass

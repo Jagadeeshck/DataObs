@@ -15,6 +15,7 @@ set of Elasticsearch indices the user can browse in Kibana Discover:
 The emitter is intentionally synchronous and tolerant: every method
 catches and logs ES errors so a failed write never breaks the pipeline.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -80,8 +81,7 @@ def _ecs_envelope(
 class ObservabilityWriter:
     """Writes data-observability documents into the unified ES cluster."""
 
-    def __init__(self, host: str, password: str, tenant: str = "poc",
-                 username: str = "elastic") -> None:
+    def __init__(self, host: str, password: str, tenant: str = "poc", username: str = "elastic") -> None:
         self.es = Elasticsearch(
             [host],
             basic_auth=(username, password),

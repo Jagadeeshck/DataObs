@@ -15,6 +15,7 @@ refactor to ensure:
 All Spark / JVM / elasticapm dependencies are mocked so the suite runs
 without PySpark, a real APM server, or the OTel SDK installed.
 """
+
 from __future__ import annotations
 
 import logging
@@ -24,8 +25,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-
 # ── Minimal stubs ────────────────────────────────────────────────────────────
+
 
 def _ensure_elasticapm_stub() -> None:
     if "elasticapm" in sys.modules:
@@ -44,6 +45,7 @@ _ensure_elasticapm_stub()
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
+
 def _make_mock_spark():
     sc = MagicMock()
     sc.master = "local[*]"
@@ -57,8 +59,8 @@ def _make_mock_spark():
 
 def _make_mock_apm(enabled: bool = False):
     """Return a minimal ApmTelemetry mock that satisfies the context manager protocol."""
-    from unittest.mock import MagicMock
     import contextlib
+    from unittest.mock import MagicMock
 
     apm = MagicMock()
     apm.enabled = enabled
@@ -141,6 +143,7 @@ class TestSparkApmNoOtelDependency:
         never assigned in the shim's __init__ path.
         """
         import inspect
+
         from src.poc.spark_instrumentation import SparkOtelInstrumentation
 
         source = inspect.getsource(SparkOtelInstrumentation)
@@ -148,6 +151,7 @@ class TestSparkApmNoOtelDependency:
         # The fix is: assignment (`self._stage_duration = ...`) is always safe.
         # We allow assignments but not bare conditional reads.
         import re
+
         bare_reads = re.findall(r"if\s+self\._stage_duration", source)
         assert not bare_reads, (
             "SparkOtelInstrumentation must not contain `if self._stage_duration:` — "
@@ -168,6 +172,7 @@ class TestSparkApmNoOtelDependency:
 
         with caplog.at_level(_logging.DEBUG):
             from src.poc.telemetry import TelemetryEmitter
+
             TelemetryEmitter(service_name="default-test", otlp_endpoint=None)
 
         combined = " ".join(caplog.messages)

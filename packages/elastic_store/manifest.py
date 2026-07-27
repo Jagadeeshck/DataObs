@@ -1536,6 +1536,19 @@ DATA_PRODUCT_RECONCILIATION_RETRY_DATE_MIGRATION = Migration(
     operations={"mapping_updates": {"dataobs-data-product-operation-state-v1": {"next_attempt_at": {"type": "date"}}}},
 )
 
+DATA_PRODUCT_DECISION_REASON_ALIAS_MIGRATION = Migration(
+    "0018_data_product_decision_reason_alias",
+    "Add an additive decision_reason field alongside the existing reason field to avoid mapping collisions",
+    "v1",
+    dependencies=["0017_data_product_reconciliation_retry_date"],
+    rollback_strategy="stop decision writers; retain the additive decision_reason mapping and existing reason field",
+    operations={
+        "mapping_updates": {
+            "dataobs-data-product-membership-decisions-v1": {"decision_reason": {"type": "match_only_text"}}
+        }
+    },
+)
+
 
 def migrations() -> List[Migration]:
     return [
@@ -1556,6 +1569,7 @@ def migrations() -> List[Migration]:
         DATA_PRODUCT_360_PRODUCTIZATION_MIGRATION,
         DATA_PRODUCT_MEMBERSHIP_DEPENDENCY_RUNTIME_MIGRATION,
         DATA_PRODUCT_RECONCILIATION_RETRY_DATE_MIGRATION,
+        DATA_PRODUCT_DECISION_REASON_ALIAS_MIGRATION,
     ]
 
 

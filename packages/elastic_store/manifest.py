@@ -1461,6 +1461,7 @@ DATA_PRODUCT_DECISION_PROPERTIES: Dict[str, Any] = {
     "expected_revision": {"type": "integer"},
     "result_revision": {"type": "integer"},
     **{key: {"type": "date"} for key in ["decided_at", "occurred_at", "applied_at"]},
+}
 
 DATA_PRODUCT_DEPENDENCY_PROPERTIES: Dict[str, Any] = {
     **{

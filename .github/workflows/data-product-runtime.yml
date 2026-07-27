@@ -55,6 +55,7 @@ jobs:
           src/api/data_product_routes.py
       - run: python -m pytest tests/certification/test_data_product_runtime_workflow.py tests/certification/test_data_product_evidence.py tests/certification/test_evidence_manifest.py tests/data_products/test_membership_service.py tests/data_products/test_dependency_service.py tests/data_products/test_data_product_service.py tests/data_products/test_operation_reconciliation.py -q --junitxml=artifacts/foundation/contracts.xml
       - uses: actions/upload-artifact@v4
+        if: always()
         with: {name: data-product-reconciliation-contracts, path: artifacts/foundation}
   data-product-reconciliation-unit:
     runs-on: ubuntu-latest
@@ -72,6 +73,7 @@ jobs:
       - run: mkdir -p artifacts/foundation
       - run: python -m pytest tests/data_products tests/certification -q --junitxml=artifacts/foundation/unit.xml
       - uses: actions/upload-artifact@v4
+        if: always()
         with: {name: data-product-reconciliation-unit, path: artifacts/foundation}
   data-product-foundation-elasticsearch:
     runs-on: ubuntu-latest
@@ -101,6 +103,7 @@ jobs:
       - run: RUN_INTEGRATION_TESTS=1 DATA_PRODUCT_CERTIFICATION_PROFILE=data-product-runtime-foundation ELASTICSEARCH_URL=http://127.0.0.1:9200 python -m pytest tests/integration/data_products/test_membership_dependency_elasticsearch.py::test_real_elasticsearch_membership_dependency_profile_is_selected -q
       - run: RUN_INTEGRATION_TESTS=1 DATA_PRODUCT_CERTIFICATION_PROFILE=data-product-runtime-foundation DATA_PRODUCT_EVIDENCE_DIR=artifacts/foundation ELASTICSEARCH_URL=http://127.0.0.1:9200 python -m pytest tests/integration/data_products/test_operation_state_elasticsearch.py tests/integration/data_products/test_membership_dependency_elasticsearch.py -q --junitxml=artifacts/foundation/elasticsearch.xml
       - uses: actions/upload-artifact@v4
+        if: always()
         with: {name: data-product-foundation-elasticsearch, path: artifacts/foundation}
   data-product-foundation-security:
     runs-on: ubuntu-latest
@@ -147,6 +150,7 @@ jobs:
           PY
           python scripts/certification/verify_artifacts.py --sentinels-only artifacts/foundation
       - uses: actions/upload-artifact@v4
+        if: always()
         with: {name: data-product-foundation-security, path: artifacts/foundation}
   data-product-foundation-evidence:
     if: github.event_name == 'pull_request'

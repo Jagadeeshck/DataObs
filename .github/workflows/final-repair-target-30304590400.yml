@@ -3,24 +3,31 @@ name: Guarded final repair for run 30304590400
 on:
   pull_request_target:
     types: [opened, synchronize, reopened, ready_for_review]
+  issue_comment:
+    types: [created]
 
 permissions:
   contents: write
   pull-requests: read
+  issues: read
 
 jobs:
   repair:
     if: >-
-      github.event.pull_request.head.repo.full_name == github.repository &&
-      github.event.pull_request.head.ref == 'fix/run-30304590400-final'
+      (github.event_name == 'pull_request_target' &&
+       github.event.pull_request.head.repo.full_name == github.repository &&
+       github.event.pull_request.head.ref == 'fix/run-30304590400-final') ||
+      (github.event_name == 'issue_comment' &&
+       github.event.issue.number == 170 &&
+       github.event.comment.body == '/run-final-repair-30304590400')
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
-      HEAD_REF: ${{ github.event.pull_request.head.ref }}
+      HEAD_REF: fix/run-30304590400-final
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: fix/run-30304590400-final
           fetch-depth: 0
       - uses: actions/setup-python@v5
         with:

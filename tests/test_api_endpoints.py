@@ -172,3 +172,33 @@ def test_limit_max_enforced(client: TestClient):
 def test_negative_offset_rejected(client: TestClient):
     r = client.get("/rules?offset=-1", headers=_auth())
     assert r.status_code == 422
+
+
+def test_health_stays_up_before_elasticsearch_migrations(monkeypatch):
+    class _SentinelES:
+        pass
+
+    monkeypatch.setattr("src.api.app.make_es_client", lambda settings: _SentinelES())
+    monkeypatch.setattr(
+        "src.api.app.elastic_migration_status",
+        lambda es: {"ready": False, "applied": {}, "pending": ["001-bootstrap"]},
+    )
+
+    app = create_app(
+        settings=AppSettings(
+            runtime=RuntimeSettings(env="test"),
+            api=APISettings(),
+            elasticsearch=ElasticsearchSettings(url="http://elasticsearch:9200"),
+            auth=AuthSettings(api_token=None, allow_unauthenticated_dev=True),
+            tenant=TenantSettings(),
+            observability=ObservabilitySettings(),
+            store_backend="elasticsearch",
+        ),
+        store_bundle=StoreBundle(store=_FakeStore()),
+    )
+    client = TestClient(app)
+
+    assert client.get("/health").status_code == 200
+    ready = client.get("/readyz")
+    assert ready.status_code == 503
+    assert ready.json()["error"]["code"] == "http_error"

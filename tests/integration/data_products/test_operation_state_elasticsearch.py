@@ -36,17 +36,25 @@ def _state(repository, scope, operation_id, instant, *, due=None, status="pendin
             scope["environment"],
             scope["product"],
             "manual_membership",
-            status,
+            "pending",
             0,
             instant,
-            claim_owner="worker-a" if status == "claimed" else None,
-            claim_generation=1 if status == "claimed" else 0,
-            claimed_at=instant if status == "claimed" else None,
-            claim_expires_at=expiry,
             next_attempt_at=due,
             plan_reference=plan.reference,
         )
     )
+    if status == "claimed":
+        current = repository.get_operation_state(scope["tenant"], scope["environment"], operation_id)
+        repository.claim_operation(
+            scope["tenant"],
+            scope["environment"],
+            operation_id,
+            worker_id="worker-a",
+            now=instant,
+            expires_at=expiry or instant,
+            expected_seq_no=current.seq_no,
+            expected_primary_term=current.primary_term,
+        )
 
 
 def _canonical_result(scope, operation_id, number, instant):

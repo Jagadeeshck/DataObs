@@ -199,9 +199,15 @@ jobs:
           pip install pytest requests
       - name: Start integration stack
         run: docker compose -f tests/integration/docker-compose.test.yml up -d --build
-      - name: Wait for health
+      - name: Wait for Elasticsearch health
         run: |
           timeout 180 bash -c 'until curl -fsS http://localhost:9200/_cluster/health; do sleep 5; done'
+      - name: Apply Elasticsearch migrations
+        run: ./bin/dataobs elastic apply
+      - name: Restart API after migrations
+        run: docker compose -f tests/integration/docker-compose.test.yml restart dataobs-api
+      - name: Wait for API health
+        run: |
           timeout 180 bash -c 'until curl -fsS http://localhost:8000/health; do sleep 5; done'
       - name: Run integration tests
         run: RUN_INTEGRATION_TESTS=1 python -m pytest tests/integration -q --junitxml=integration-test-results.xml

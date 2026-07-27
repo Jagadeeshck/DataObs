@@ -114,9 +114,10 @@ class ElasticsearchDataProductRepository:
             "outcome": state.status,
             "occurred_at": state.updated_at.isoformat(),
             # `document` is flattened and therefore cannot provide date range
-            # semantics.  Keep the compatibility copy in the envelope while
-            # querying this strictly mapped value.
+            # semantics.  Keep the compatibility copies in the envelope while
+            # querying these strictly mapped values.
             "next_attempt_at": state.next_attempt_at.isoformat() if state.next_attempt_at else None,
+            "claim_expires_at": state.claim_expires_at.isoformat() if state.claim_expires_at else None,
             "document": document,
         }
 
@@ -140,7 +141,7 @@ class ElasticsearchDataProductRepository:
         document_id = scoped_id(state.tenant_id, state.environment, f"state:{state.operation_id}")
         document = self._state_document(state)
         try:
-            self.client.create(index=OPERATIONS, id=document_id, document=document)
+            self.client.create(index=OPERATIONS, id=document_id, document=document, refresh="wait_for")
         except ConflictError as exc:
             existing = self.client.get(index=OPERATIONS, id=document_id)["_source"]
             if existing != document:
@@ -153,7 +154,6 @@ class ElasticsearchDataProductRepository:
             hit = self.client.get(
                 index=OPERATIONS,
                 id=scoped_id(tenant_id, environment, f"state:{operation_id}"),
-                seq_no_primary_term=True,
             )
         except NotFoundError:
             return None
@@ -184,7 +184,7 @@ class ElasticsearchDataProductRepository:
                 "bool": {
                     "should": [
                         {"term": {"outcome": "pending"}},
-                        {"range": {"document.claim_expires_at": {"lte": query_instant}}},
+                        {"range": {"claim_expires_at": {"lte": query_instant}}},
                     ],
                     "minimum_should_match": 1,
                 }
@@ -209,7 +209,7 @@ class ElasticsearchDataProductRepository:
             size=limit,
             seq_no_primary_term=True,
             query={"bool": {"filter": filters}},
-            sort=[{"occurred_at": "asc"}, {"operation_id": "asc"}, {"_id": "asc"}],
+            sort=[{"occurred_at": "asc"}, {"operation_id": "asc"}],
         )
         return [
             self._state_from_hit(hit)
@@ -366,7 +366,7 @@ class ElasticsearchDataProductRepository:
             "document": document,
         }
         try:
-            self.client.create(index=OPERATIONS, id=event_id, document=envelope)
+            self.client.create(index=OPERATIONS, id=event_id, document=envelope, refresh="wait_for")
         except ConflictError as exc:
             if self.client.get(index=OPERATIONS, id=event_id)["_source"] != envelope:
                 raise ProductConsistencyError("divergent immutable operation history") from exc
@@ -411,7 +411,7 @@ class ElasticsearchDataProductRepository:
             "document": self._json_value(asdict(value)),
         }
         try:
-            self.client.create(index=OPERATIONS, id=document_id, document=envelope)
+            self.client.create(index=OPERATIONS, id=document_id, document=envelope, refresh="wait_for")
         except ConflictError as exc:
             if self.client.get(index=OPERATIONS, id=document_id)["_source"] != envelope:
                 raise ProductConsistencyError(f"divergent {kind}") from exc
@@ -515,7 +515,7 @@ class ElasticsearchDataProductRepository:
     ) -> DataProductIdempotencyRecord:
         """OCC-bind an operation id after verifying every request dimension."""
         try:
-            hit = self.client.get(index=IDEMPOTENCY, id=record_id, seq_no_primary_term=True)
+            hit = self.client.get(index=IDEMPOTENCY, id=record_id)
         except NotFoundError as exc:
             raise ProductConsistencyError("idempotency reservation missing") from exc
         record = DataProductIdempotencyRecord.model_validate(hit["_source"])
@@ -563,7 +563,7 @@ class ElasticsearchDataProductRepository:
 
     def _transition_idempotency(self, record_id: str, **changes: Any) -> None:
         try:
-            hit = self.client.get(index=IDEMPOTENCY, id=record_id, seq_no_primary_term=True)
+            hit = self.client.get(index=IDEMPOTENCY, id=record_id)
         except NotFoundError as exc:
             raise ProductConsistencyError("idempotency reservation missing") from exc
         record = DataProductIdempotencyRecord.model_validate(hit["_source"])
@@ -671,9 +671,7 @@ class ElasticsearchDataProductRepository:
 
     def get_product(self, tenant_id: str, environment: str, product_id: str) -> DataProduct | None:
         try:
-            hit = self.client.get(
-                index=PRODUCTS, id=scoped_id(tenant_id, environment, product_id), seq_no_primary_term=True
-            )
+            hit = self.client.get(index=PRODUCTS, id=scoped_id(tenant_id, environment, product_id))
         except NotFoundError:
             return None
         source = hit["_source"]
@@ -728,7 +726,7 @@ class ElasticsearchDataProductRepository:
     def update_product(self, product: DataProduct, *, expected_etag: str) -> DataProduct:
         document_id = scoped_id(product.tenant_id, product.environment, product.id)
         try:
-            hit = self.client.get(index=PRODUCTS, id=document_id, seq_no_primary_term=True)
+            hit = self.client.get(index=PRODUCTS, id=document_id)
             if hit["_source"].get("etag") != expected_etag:
                 raise ProductVersionConflict("stale data product ETag")
             if int(hit["_source"].get("revision", 0)) >= product.revision:
@@ -834,7 +832,7 @@ class ElasticsearchDataProductRepository:
         from services.data_products.dependency_events import DependencyResultInconsistent
 
         try:
-            hit = self.client.get(index=OPERATIONS, id=result.operation.operation_id, seq_no_primary_term=True)
+            hit = self.client.get(index=OPERATIONS, id=result.operation.operation_id)
         except NotFoundError as exc:
             raise DependencyResultInconsistent("dependency_result_inconsistent") from exc
         source = hit["_source"]
@@ -912,7 +910,7 @@ class ElasticsearchDataProductRepository:
 
     def finish_operation(self, event: DataProductRevisionEvent) -> None:
         try:
-            pending = self.client.get(index=OPERATIONS, id=event.operation_id, seq_no_primary_term=True)
+            pending = self.client.get(index=OPERATIONS, id=event.operation_id)
             source = pending["_source"]
             if source.get("definition_checksum") != event.definition_checksum:
                 raise ProductConsistencyError("operation outcome has no matching pending operation")
@@ -1084,7 +1082,7 @@ class ElasticsearchDataProductRepository:
         expected_etag: str,
     ) -> DataProductMembership:
         document_id = scoped_id(tenant_id, environment, f"{product_id}:{membership_id}")
-        hit = self.client.get(index=MEMBERSHIPS, id=document_id, seq_no_primary_term=True)
+        hit = self.client.get(index=MEMBERSHIPS, id=document_id)
         current = DataProductMembership.model_validate(hit["_source"])
         if current.etag != expected_etag:
             raise ProductVersionConflict("stale membership ETag")
@@ -1359,7 +1357,7 @@ class ElasticsearchDataProductRepository:
             edge_id = scoped_id(tenant_id, environment, f"{product_id}:{edge.upstream_product_id}")
             document = edge.model_dump(mode="json")
             try:
-                hit = self.client.get(index=DEPENDENCIES, id=edge_id, seq_no_primary_term=True)
+                hit = self.client.get(index=DEPENDENCIES, id=edge_id)
             except NotFoundError:
                 try:
                     self.client.create(index=DEPENDENCIES, id=edge_id, document=document)
@@ -1430,7 +1428,7 @@ class ElasticsearchDataProductRepository:
             edge_id = scoped_id(tenant_id, environment, f"{product_id}:{edge.upstream_product_id}")
             document = edge.model_dump(mode="json")
             try:
-                hit = self.client.get(index=DEPENDENCIES, id=edge_id, seq_no_primary_term=True)
+                hit = self.client.get(index=DEPENDENCIES, id=edge_id)
             except NotFoundError:
                 try:
                     self.client.create(index=DEPENDENCIES, id=edge_id, document=document)
@@ -1491,7 +1489,6 @@ class ElasticsearchDataProductRepository:
                 {"removed": "asc"},
                 {"upstream_product_id": "asc"},
                 {"graph_version": "desc"},
-                {"_id": "asc"},
             ),
         )
         return DataProductDependencyPage(items=items, has_more=more, search_after=after)

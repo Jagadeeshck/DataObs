@@ -1549,6 +1549,15 @@ DATA_PRODUCT_DECISION_REASON_ALIAS_MIGRATION = Migration(
     },
 )
 
+DATA_PRODUCT_CLAIM_EXPIRES_DATE_MIGRATION = Migration(
+    "0019_data_product_operation_claim_expires_date",
+    "Add a date-safe claim expiry field to Data Product operation state",
+    "v1",
+    dependencies=["0018_data_product_decision_reason_alias"],
+    rollback_strategy="stop reconciliation workers; retain the additive date mapping and operation evidence",
+    operations={"mapping_updates": {"dataobs-data-product-operation-state-v1": {"claim_expires_at": {"type": "date"}}}},
+)
+
 
 def migrations() -> List[Migration]:
     return [
@@ -1570,6 +1579,7 @@ def migrations() -> List[Migration]:
         DATA_PRODUCT_MEMBERSHIP_DEPENDENCY_RUNTIME_MIGRATION,
         DATA_PRODUCT_RECONCILIATION_RETRY_DATE_MIGRATION,
         DATA_PRODUCT_DECISION_REASON_ALIAS_MIGRATION,
+        DATA_PRODUCT_CLAIM_EXPIRES_DATE_MIGRATION,
     ]
 
 

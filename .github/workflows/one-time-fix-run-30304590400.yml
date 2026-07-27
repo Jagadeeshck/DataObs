@@ -1,0 +1,165 @@
+name: One-time fix for hosted foundation run 30304590400
+
+on:
+  push:
+    branches:
+      - codex/restore-hosted-certification-for-dataobs
+
+permissions:
+  contents: write
+
+jobs:
+  apply-fix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/restore-hosted-certification-for-dataobs
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Patch Elasticsearch 9.4.2 runtime contracts
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          def replace_once(path: str, old: str, new: str) -> None:
+              file = Path(path)
+              text = file.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{path}: expected one match, found {count}: {old!r}")
+              file.write_text(text.replace(old, new, 1))
+
+          repository = "services/data_products/elasticsearch_repository.py"
+          replace_once(
+              repository,
+              '            "next_attempt_at": state.next_attempt_at.isoformat() if state.next_attempt_at else None,\n'
+              '            "claim_expires_at": state.claim_expires_at.isoformat() if state.claim_expires_at else None,',
+              '            "next_attempt_at": state.next_attempt_at.isoformat() if state.next_attempt_at else None,\n'
+              '            "next_attempt_at_nanos": state.next_attempt_at.isoformat() if state.next_attempt_at else None,\n'
+              '            "claim_expires_at": state.claim_expires_at.isoformat() if state.claim_expires_at else None,',
+          )
+          replace_once(
+              repository,
+              '{"range": {"next_attempt_at": {"lte": query_instant}}},',
+              '{"range": {"next_attempt_at_nanos": {"lte": query_instant}}},',
+          )
+          replace_once(
+              repository,
+              '            sort=[{"occurred_at": "asc"}, {"operation_id": "asc"}],',
+              '            sort=[\n'
+              '                {"next_attempt_at_nanos": {"order": "asc", "missing": "_first"}},\n'
+              '                {"operation_id": "asc"},\n'
+              '            ],',
+          )
+          replace_once(
+              repository,
+              '            sort=[{"occurred_at": "asc"}, {"_id": "asc"}],',
+              '            sort=[{"occurred_at": "asc"}, {"document.event_id": "asc"}],',
+          )
+          replace_once(
+              repository,
+              '\n    @staticmethod\n    def _classify_dependency_edge',
+              '\n        self.client.indices.refresh(index=DEPENDENCIES)\n\n'
+              '    @staticmethod\n    def _classify_dependency_edge',
+          )
+
+          manifest = Path("packages/elastic_store/manifest.py")
+          text = manifest.read_text()
+          pattern = re.compile(
+              r'DATA_PRODUCT_CLAIM_EXPIRES_DATE_MIGRATION = Migration\(.*?\n\)\n\n\ndef migrations',
+              re.DOTALL,
+          )
+          replacement = '''DATA_PRODUCT_CLAIM_EXPIRES_DATE_MIGRATION = Migration(
+              "0019_data_product_operation_claim_expires_date",
+              "Add nanosecond-safe claim expiry and retry scheduling fields to Data Product operation state",
+              "v1",
+              dependencies=["0018_data_product_decision_reason_alias"],
+              rollback_strategy="stop reconciliation workers; retain the additive scheduling mappings and operation evidence",
+              operations={
+                  "mapping_updates": {
+                      "dataobs-data-product-operation-state-v1": {
+                          "claim_expires_at": {"type": "date_nanos"},
+                          "next_attempt_at_nanos": {"type": "date_nanos"},
+                      }
+                  }
+              },
+          )
+
+
+          def migrations'''
+          text, count = pattern.subn(replacement, text, count=1)
+          if count != 1:
+              raise SystemExit(f"manifest migration block matches: {count}")
+          manifest.write_text(text)
+
+          mapping_test = "tests/integration/data_products/test_migrations_elasticsearch.py"
+          replace_once(
+              mapping_test,
+              '        "next_attempt_at": "date",\n        "claim_expires_at": "date",',
+              '        "next_attempt_at": "date",\n'
+              '        "next_attempt_at_nanos": "date_nanos",\n'
+              '        "claim_expires_at": "date_nanos",',
+          )
+
+          unit_test = Path("tests/data_products/test_elastic_migration_selection.py")
+          unit_text = unit_test.read_text()
+          marker = "def test_operation_schedule_precision_mapping_is_additive():"
+          if marker not in unit_text:
+              unit_text += '''
+
+
+def test_operation_schedule_precision_mapping_is_additive():
+              latest = migrations()[-1]
+              mapping = latest.operations["mapping_updates"]["dataobs-data-product-operation-state-v1"]
+              assert latest.migration_id == "0019_data_product_operation_claim_expires_date"
+              assert mapping["claim_expires_at"]["type"] == "date_nanos"
+              assert mapping["next_attempt_at_nanos"]["type"] == "date_nanos"
+          '''
+              unit_test.write_text(unit_text)
+          PY
+
+      - name: Update generated migration checksum
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          from packages.elastic_store.manifest import migrations
+
+          migration = migrations()[-1]
+          ledger = Path("docs/product/capability-ledger.yaml")
+          text = ledger.read_text()
+          pattern = re.compile(rf"(^  {re.escape(migration.migration_id)}: )[0-9a-f]+$", re.MULTILINE)
+          text, count = pattern.subn(rf"\g<1>{migration.checksum}", text, count=1)
+          if count != 1:
+              raise SystemExit(f"capability ledger checksum matches: {count}")
+          ledger.write_text(text)
+          print(migration.migration_id, migration.checksum)
+          PY
+
+      - name: Validate focused changes
+        run: |
+          pip install pytest black ruff pyyaml
+          black services/data_products/elasticsearch_repository.py packages/elastic_store/manifest.py tests/integration/data_products/test_migrations_elasticsearch.py tests/data_products/test_elastic_migration_selection.py
+          ruff check services/data_products/elasticsearch_repository.py packages/elastic_store/manifest.py tests/integration/data_products/test_migrations_elasticsearch.py tests/data_products/test_elastic_migration_selection.py
+          python scripts/validate_capability_ledger.py
+          python -m pytest tests/data_products/test_elastic_migration_selection.py -q
+          python -m compileall -q services/data_products/elasticsearch_repository.py packages/elastic_store/manifest.py
+
+      - name: Commit verified fix
+        run: |
+          if git diff --quiet; then
+            echo "No changes required"
+            exit 0
+          fi
+          git config user.name "dataobs-ci"
+          git config user.email "dataobs-ci@users.noreply.github.com"
+          git add services/data_products/elasticsearch_repository.py packages/elastic_store/manifest.py docs/product/capability-ledger.yaml tests/integration/data_products/test_migrations_elasticsearch.py tests/data_products/test_elastic_migration_selection.py
+          git commit -m "fix: restore nanosecond scheduling and search visibility"
+          git push origin HEAD:codex/restore-hosted-certification-for-dataobs

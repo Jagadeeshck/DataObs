@@ -1,5 +1,8 @@
 from packages.elastic_store.manifest import migrations
-from packages.elastic_store.registry import _selected_migrations
+from packages.elastic_store.registry import (
+    _mapping_update_type_matches,
+    _selected_migrations,
+)
 
 
 def test_default_selection_is_full_and_stable():
@@ -22,3 +25,24 @@ def test_unknown_apply_boundary_fails_closed():
         assert "Unknown migration id" in str(exc)
     else:
         raise AssertionError("unknown migration boundary was accepted")
+
+
+def test_released_decision_reason_collision_is_compatible():
+    assert _mapping_update_type_matches(
+        "dataobs-data-product-membership-decisions-v1",
+        "reason",
+        {"type": "match_only_text"},
+        {"type": "keyword"},
+    )
+
+
+def test_unknown_mapping_conflicts_remain_fail_closed():
+    expected = {"type": "match_only_text"}
+    installed = {"type": "keyword"}
+    assert not _mapping_update_type_matches("dataobs-other-v1", "reason", expected, installed)
+    assert not _mapping_update_type_matches(
+        "dataobs-data-product-membership-decisions-v1",
+        "other_reason",
+        expected,
+        installed,
+    )

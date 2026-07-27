@@ -31,3 +31,12 @@ def test_scanner_targets_composed_read_only_secret():
     assert (postgres["host"], postgres["port"]) == ("postgres", 5432)
     assert (postgres["database"], postgres["username"]) == ("orders", "dataobs_fixture")
     assert postgres["password_ref"] == "file:///run/secrets/postgres_password"
+
+
+def test_scanner_cli_config_precedes_run_subcommand():
+    compose = yaml.safe_load((ROOT / "docker-compose.certification.yml").read_text())
+    scanner = compose["services"]["scanner"]
+    assert scanner["command"] == ["--config", "/app/certification/config/postgres-scanner.yaml", "run"]
+
+    dockerfile = (ROOT / "Dockerfile.scanner").read_text()
+    assert 'CMD ["--config", "config/postgres-scanner.example.yaml", "run"]' in dockerfile

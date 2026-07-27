@@ -19,6 +19,7 @@ services:
     volumes:
       - ./otel-collector-test.yaml:/etc/otelcol/config.yaml:ro
     ports:
+      - "4317:4317"
       - "4318:4318"
       - "13133:13133"
     depends_on:
@@ -42,30 +43,13 @@ services:
 
   mock-webhook:
     image: python:3.11-alpine
-    command:
-      - python
-      - -c
-      - |
-        import json
-        from http.server import BaseHTTPRequestHandler, HTTPServer
-        class Handler(BaseHTTPRequestHandler):
-            def do_POST(self):
-                length = int(self.headers.get('content-length', '0'))
-                self.rfile.read(length)
-                self.send_response(202 if self.path.startswith('/pagerduty') else 201 if self.path.startswith('/servicenow') else 200)
-                self.send_header('content-type', 'application/json' if not self.path.startswith('/slack') else 'text/plain')
-                self.end_headers()
-                if self.path.startswith('/slack'):
-                    self.wfile.write(b'ok')
-                elif self.path.startswith('/servicenow'):
-                    self.wfile.write(json.dumps({'result': {'number': 'INC001'}}).encode())
-                else:
-                    self.wfile.write(json.dumps({'status': 'success', 'dedup_key': 'quality-orders-customer_id'}).encode())
-        HTTPServer(('0.0.0.0', 8080), Handler).serve_forever()
+    command: ["python", "/app/mock_webhook.py"]
+    volumes:
+      - ./mock_webhook.py:/app/mock_webhook.py:ro
     ports:
       - "8089:8080"
     healthcheck:
-      test: ["CMD-SHELL", "python - <<'PY'\nimport urllib.request\ntry:\n urllib.request.urlopen('http://localhost:8080', timeout=1)\nexcept Exception:\n pass\nPY"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
       interval: 5s
       timeout: 3s
       retries: 12

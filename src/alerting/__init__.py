@@ -1,5 +1,6 @@
 """Alerting integration clients for DataObs."""
 
+from .dispatcher import AlertDispatcher, DeliveryResult, DispatchResult
 from .pagerduty import PagerDutyClient, PagerDutyConfig, PagerDutyEvent
 from .servicenow import AlertEvent as ServiceNowAlertEvent
 from .servicenow import ServiceNowClient, ServiceNowConfig
@@ -15,4 +16,7 @@ __all__ = [
     "SlackClient",
     "SlackConfig",
     "SlackEvent",
+    "AlertDispatcher",
+    "DeliveryResult",
+    "DispatchResult",
 ]

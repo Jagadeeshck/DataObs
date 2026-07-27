@@ -5,17 +5,38 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any, Sequence
 
-from services.data_products.elasticsearch_repository_base import *  # noqa: F403
 from services.data_products.elasticsearch_repository_base import (
+    DECISIONS,
     DEPENDENCIES,
+    IDEMPOTENCY,
+    MEMBERSHIPS,
     OPERATIONS,
+    PRODUCTS,
+    PROPOSALS,
+    REQUIRED_RESOURCES,
+    REVISIONS,
     ElasticsearchDataProductRepository as _BaseElasticsearchDataProductRepository,
+    scoped_id,
 )
 from services.data_products.events import ProductConsistencyError
 from services.data_products.operation_state import (
     DataProductOperationHistoryEvent,
     DataProductOperationState,
 )
+
+__all__ = [
+    "DECISIONS",
+    "DEPENDENCIES",
+    "IDEMPOTENCY",
+    "MEMBERSHIPS",
+    "OPERATIONS",
+    "PRODUCTS",
+    "PROPOSALS",
+    "REQUIRED_RESOURCES",
+    "REVISIONS",
+    "ElasticsearchDataProductRepository",
+    "scoped_id",
+]
 
 
 class ElasticsearchDataProductRepository(_BaseElasticsearchDataProductRepository):
@@ -54,7 +75,11 @@ class ElasticsearchDataProductRepository(_BaseElasticsearchDataProductRepository
             {
                 "bool": {
                     "should": [
-                        {"bool": {"must_not": {"exists": {"field": "next_attempt_at"}}}},
+                        {
+                            "bool": {
+                                "must_not": {"exists": {"field": "next_attempt_at"}}
+                            }
+                        },
                         {"range": {"next_attempt_at": {"lte": query_instant}}},
                     ],
                     "minimum_should_match": 1,
@@ -91,7 +116,10 @@ class ElasticsearchDataProductRepository(_BaseElasticsearchDataProductRepository
                 if "status" not in hit["_source"].get("document", {}):
                     continue
                 state = self._state_from_hit(hit)
-                if state.next_attempt_at is not None and state.next_attempt_at > query_now:
+                if (
+                    state.next_attempt_at is not None
+                    and state.next_attempt_at > query_now
+                ):
                     continue
                 if state.status == "claimed" and (
                     state.claim_expires_at is None or state.claim_expires_at > query_now
@@ -102,7 +130,9 @@ class ElasticsearchDataProductRepository(_BaseElasticsearchDataProductRepository
                 break
             continuation = hits[-1].get("sort")
             if not continuation:
-                raise ProductConsistencyError("reconciliation page missing continuation")
+                raise ProductConsistencyError(
+                    "reconciliation page missing continuation"
+                )
             search_after = tuple(continuation)
 
         minimum = datetime.min.replace(tzinfo=timezone.utc)
@@ -144,7 +174,11 @@ class ElasticsearchDataProductRepository(_BaseElasticsearchDataProductRepository
             events.append(DataProductOperationHistoryEvent(**value))
         return sorted(events, key=lambda event: (event.occurred_at, event.event_id))
 
-    def _apply_dependency_chunk(self, tenant_id, environment, product_id, edges, *, tombstone):
-        super()._apply_dependency_chunk(tenant_id, environment, product_id, edges, tombstone=tombstone)
+    def _apply_dependency_chunk(
+        self, tenant_id, environment, product_id, edges, *, tombstone
+    ):
+        super()._apply_dependency_chunk(
+            tenant_id, environment, product_id, edges, tombstone=tombstone
+        )
         if edges:
             self.client.indices.refresh(index=DEPENDENCIES)

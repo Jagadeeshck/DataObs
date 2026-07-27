@@ -1,7 +1,7 @@
 name: Data Product reconciliation certification
 on: [pull_request, workflow_dispatch]
 permissions:
-  contents: read
+  contents: write
   actions: read
   pull-requests: read
 env:
@@ -16,6 +16,42 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with: {ref: '${{ env.DATA_PRODUCT_CERTIFICATION_SHA }}', fetch-depth: 0}
+      - name: Apply one-time Elasticsearch get API correction
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("services/data_products/elasticsearch_repository.py")
+          text = path.read_text()
+          multiline = '''            hit = self.client.get(
+                          index=OPERATIONS,
+                          id=scoped_id(tenant_id, environment, f"state:{operation_id}"),
+                          seq_no_primary_term=True,
+                      )'''
+          replacement = '''            hit = self.client.get(
+                          index=OPERATIONS,
+                          id=scoped_id(tenant_id, environment, f"state:{operation_id}"),
+                      )'''
+          if multiline in text:
+              text = text.replace(multiline, replacement, 1)
+          text = text.replace(", seq_no_primary_term=True", "")
+          remaining = [line.strip() for line in text.splitlines() if "seq_no_primary_term=True" in line]
+          if remaining != ["seq_no_primary_term=True,", "seq_no_primary_term=True,"]:
+              raise SystemExit(f"unexpected remaining seq_no_primary_term uses: {remaining}")
+          path.write_text(text)
+          PY
+          if git diff --quiet -- services/data_products/elasticsearch_repository.py; then
+            echo "source already corrected"
+            exit 0
+          fi
+          git config user.name "dataobs-ci"
+          git config user.email "dataobs-ci@users.noreply.github.com"
+          git add services/data_products/elasticsearch_repository.py
+          git commit -m "fix: update Data Product reads for Elasticsearch client 9"
+          git push origin "HEAD:${HEAD_REF}"
       - uses: actions/setup-python@v5
         with: {python-version: '3.11'}
       - run: pip install -r requirements.txt

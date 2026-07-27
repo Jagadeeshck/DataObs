@@ -2,11 +2,11 @@
 
 ## Baseline
 
-- Latest local `main`/HEAD SHA available in this environment: `97e24f0e07673eb00375e8fc4b4bc2db1f74b19a` (`97e24f0 Merge pull request #80 from Jagadeeshck/codex/complete-dataobs-phase-0-issue-closure`).
-- PR #80 verification: local history contains commit `97e24f0e07673eb00375e8fc4b4bc2db1f74b19a`.
-- Authenticated GitHub state blocker: `gh` is not installed and `git fetch origin main` over HTTPS failed without credentials. Full open issue/PR bodies, comments, Actions status, and issue mutation could not be performed here.
-- Initial open issue count used for this local report: 13 known legacy issues (#24, #25, #28, #29, #30, #31, #32, #46, #47, #48, #49, #50, #51), pending authenticated re-query.
-- Final legacy open issue count in GitHub: unknown/not mutated. This PR must stay draft until authenticated comments/closures finish.
+- Audited local implementation SHA: `5164762a6337a44a76ad2c7574a78edc048a70b3`, with merged history through PR #168.
+- This checkout has no configured Git remote, GitHub CLI, or authenticated issue/PR mutation channel. Current open counts and bodies therefore cannot be asserted or changed from this environment.
+- PR #162 must be closed without merge after an authenticated check confirms it is the obsolete revert of the superseded foundation state. That disposition is pending rather than falsely recorded as complete.
+- Issue #25 has an implemented end-to-end contract and the `e2e-signal-path` artifact definition. It must remain unresolved (or be reopened if currently closed as `not_planned`) until final-head hosted CI succeeds and the retained artifact is verified.
+- Historical large roadmap issues remain superseded unless the documented issue policy and an authenticated audit require otherwise.
 
 ## Acceptance matrix
 

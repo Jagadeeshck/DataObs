@@ -9,9 +9,9 @@ canonical_pillars:
 - finops_cost
 - business
 - ai_agent
-last_audited_at: '2026-07-21'
-last_audited_commit: d8a04d0
-audited_pr_range: '#82-#106'
+last_audited_at: '2026-07-27'
+last_audited_commit: 5164762a6337a44a76ad2c7574a78edc048a70b3
+audited_pr_range: '#82-#168'
 capabilities:
 - id: platform.architecture
   name: Elasticsearch-native architecture
@@ -51,8 +51,8 @@ capabilities:
   - No product implementation is added by the ledger.
   next_gate: Execute and retain the evidence required for promotion.
   owner: unassigned
-  last_audited_at: '2026-07-21'
-  last_audited_commit: d8a04d0
+  last_audited_at: '2026-07-27'
+  last_audited_commit: 5164762a6337a44a76ad2c7574a78edc048a70b3
 - id: platform.migrations
   name: Migration framework
   summary: Evidence-led status for migration framework.
@@ -66,7 +66,7 @@ capabilities:
     api_paths: []
     ui_routes: []
     storage_resources: []
-    migrations:
+    migrations: &id001
     - 0001_product_foundation
     - 0002_postgres_observability
     - 0003_incident_automation
@@ -79,6 +79,13 @@ capabilities:
     - 0010_topic_queue_stream_360_completion
     - 0011_incident_automation_workbench
     - 0012_incident_mapping_and_occ_fix
+    - 0013_monitor_runtime_completion
+    - 0014_data_product_360_completion
+    - 0015_data_product_360_productization
+    - 0016_data_product_membership_dependency_runtime
+    - 0017_data_product_reconciliation_retry_date
+    - 0018_data_product_decision_reason_alias
+    - 0019_data_product_operation_claim_expires_date
   validation:
     unit: defined_not_run
     integration: defined_not_run
@@ -92,19 +99,25 @@ capabilities:
     release: missing
   evidence:
     tests:
+    - tests/data_products/test_elastic_migration_selection.py
     - tests/elastic_store/test_migrations.py
-    workflow_jobs: []
+    - tests/integration/data_products/test_migrations_elasticsearch.py
+    workflow_jobs:
+    - ci.yml:incident-migration-occ-gate
+    - data-product-runtime.yml:data-product-foundation-elasticsearch
     audit_docs: []
     runbooks: []
-    artifacts: []
+    artifacts:
+    - incident-migration-occ-artifacts (defined; final-head hosted run pending)
+    - data-product-foundation (defined; final-head hosted run pending)
   blockers:
-  - Retained hosted and applicable real-stack/browser/security/scale evidence is absent.
+  - Final-head hosted Elasticsearch 9.4.2 and rolling-upgrade artifacts are not retained in this checkout.
   non_goals:
   - No product implementation is added by the ledger.
-  next_gate: Execute and retain the evidence required for promotion.
+  next_gate: Retain final-head migration/OCC and rolling-upgrade evidence from Elasticsearch 9.4.2.
   owner: unassigned
-  last_audited_at: '2026-07-21'
-  last_audited_commit: d8a04d0
+  last_audited_at: '2026-07-27'
+  last_audited_commit: 5164762a6337a44a76ad2c7574a78edc048a70b3
 - id: platform.collection
   name: Collection manager
   summary: Evidence-led status for collection manager.
@@ -143,8 +156,8 @@ capabilities:
   - No product implementation is added by the ledger.
   next_gate: Execute and retain the evidence required for promotion.
   owner: unassigned
-  last_audited_at: '2026-07-21'
-  last_audited_commit: d8a04d0
+  last_audited_at: '2026-07-27'
+  last_audited_commit: 5164762a6337a44a76ad2c7574a78edc048a70b3
 - id: platform.iam
   name: OIDC and RBAC
   summary: Evidence-led status for oidc and rbac.
@@ -181,8 +194,8 @@ capabilities:
   - No product implementation is added by the ledger.
   next_gate: Execute and retain the evidence required for promotion.
   owner: unassigned
-  last_audited_at: '2026-07-21'
-  last_audited_commit: d8a04d0
+  last_audited_at: '2026-07-27'
+  last_audited_commit: 5164762a6337a44a76ad2c7574a78edc048a70b3
 - id: platform.tenancy
   name: Tenant model and boundaries
   summary: Evidence-led status for tenant model and boundaries.
@@ -221,8 +234,8 @@ capabilities:
   - No product implementation is added by the ledger.
   next_gate: Execute and retain the evidence required for promotion.
   owner: unassigned
-  last_audited_at: '2026-07-21'
-  last_audited_commit: d8a04d0
+  last_audited_at: '2026-07-27'
+  last_audited_commit: 5164762a6337a44a76ad2c7574a78edc048a70b3
 - id: platform.self_observability
   name: Self-observability
   summary: Evidence-led status for self-observability.
@@ -261,8 +274,8 @@ capabilities:
   - No product implementation is added by the ledger.
   next_gate: Execute and retain the evidence required for promotion.
   owner: unassigned
-  last_audited_at: '2026-07-21'
-  last_audited_commit: d8a04d0
+  last_audited_at: '2026-07-27'
+  last_audited_commit: 5164762a6337a44a76ad2c7574a78edc048a70b3
 - id: platform.backup_restore
   name: Backup and restore
   summary: Evidence-led status for backup and restore.
@@ -299,8 +312,8 @@ capabilities:
   - No product implementation is added by the ledger.
   next_gate: Execute and retain the evidence required for promotion.
   owner: unassigned
-  last_audited_at: '2026-07-21'
-  last_audited_commit: d8a04d0
+  last_audited_at: '2026-07-27'
+  last_audited_commit: 5164762a6337a44a76ad2c7574a78edc048a70b3
 - id: platform.upgrades
   name: Rolling-upgrade correctness
   summary: Evidence-led status for rolling-upgrade correctness.
@@ -314,8 +327,7 @@ capabilities:
     api_paths: []
     ui_routes: []
     storage_resources: []
-    migrations:
-    - 0012_incident_mapping_and_occ_fix
+    migrations: *id001
   validation:
     unit: defined_not_run
     integration: defined_not_run
@@ -329,19 +341,25 @@ capabilities:
     release: missing
   evidence:
     tests:
+    - tests/data_products/test_elastic_migration_selection.py
     - tests/elastic_store/test_migrations.py
-    workflow_jobs: []
+    - tests/integration/data_products/test_migrations_elasticsearch.py
+    workflow_jobs:
+    - ci.yml:incident-migration-occ-gate
+    - data-product-runtime.yml:data-product-foundation-elasticsearch
     audit_docs: []
     runbooks: []
-    artifacts: []
+    artifacts:
+    - incident-migration-occ-artifacts (defined; final-head hosted run pending)
+    - data-product-foundation (defined; final-head hosted run pending)
   blockers:
-  - Retained hosted and applicable real-stack/browser/security/scale evidence is absent.
+  - Final-head hosted Elasticsearch 9.4.2 and rolling-upgrade artifacts are not retained in this checkout.
   non_goals:
   - No product implementation is added by the ledger.
-  next_gate: Execute and retain the evidence required for promotion.
+  next_gate: Retain final-head migration/OCC and rolling-upgrade evidence from Elasticsearch 9.4.2.
   owner: unassigned
-  last_audited_at: '2026-07-21'
-  last_audited_commit: d8a04d0
+  last_audited_at: '2026-07-27'
+  last_audited_commit: 5164762a6337a44a76ad2c7574a78edc048a70b3
 - id: platform.deployment
   name: Helm, Terraform, and release packaging
   summary: Evidence-led status for helm, terraform, and release packaging.
@@ -351,8 +369,14 @@ capabilities:
   release_readiness: blocked
   implementation:
     code_paths:
+    - Dockerfile.api
+    - Dockerfile.quality
+    - Dockerfile.scanner
+    - Dockerfile.monitor-runtime
+    - Dockerfile.pathway-worker
+    - Dockerfile.kafka-observer
+    - ui/dataobs-console/Dockerfile
     - helm/dataobs/Chart.yaml
-    - infra/terraform/aws-backend/main.tf
     - .github/workflows/release.yml
     api_paths: []
     ui_routes: []
@@ -371,18 +395,22 @@ capabilities:
     release: missing
   evidence:
     tests: []
-    workflow_jobs: []
+    workflow_jobs:
+    - ci.yml:docker-validation
+    - ci.yml:terraform-helm
+    - ci.yml:image-security
     audit_docs: []
     runbooks: []
     artifacts: []
   blockers:
-  - Retained hosted and applicable real-stack/browser/security/scale evidence is absent.
+  - The Helm chart packages only API, quality worker, and collector foundations and is not production-ready; final-head image
+    and release rehearsal evidence is absent.
   non_goals:
   - No product implementation is added by the ledger.
   next_gate: Execute and retain the evidence required for promotion.
   owner: unassigned
-  last_audited_at: '2026-07-21'
-  last_audited_commit: d8a04d0
+  last_audited_at: '2026-07-27'
+  last_audited_commit: 5164762a6337a44a76ad2c7574a78edc048a70b3
 - id: data.postgres
   name: PostgreSQL discovery, schema, freshness, and profiling
   summary: Evidence-led status for postgresql discovery, schema, freshness, and profiling.
@@ -422,14 +450,14 @@ capabilities:
   - No product implementation is added by the ledger.
   next_gate: Execute and retain the evidence required for promotion.
   owner: unassigned
-  last_audited_at: '2026-07-21'
-  last_audited_commit: d8a04d0
+  last_audited_at: '2026-07-27'
+  last_audited_commit: 5164762a6337a44a76ad2c7574a78edc048a70b3
 - id: data.quality_drift
   name: Quality and drift evidence
   summary: Evidence-led status for quality and drift evidence.
   pillar: data
   domain: data
-  state: foundation
+  state: functional_unvalidated
   release_readiness: blocked
   implementation:
     code_paths: []
@@ -441,7 +469,7 @@ capabilities:
   validation:
     unit: defined_not_run
     integration: defined_not_run
-    real_stack: not_applicable
+    real_stack: defined_not_run
     hosted_ci: missing
     browser: not_applicable
     accessibility: not_applicable
@@ -450,19 +478,24 @@ capabilities:
     upgrade: not_applicable
     release: missing
   evidence:
-    tests: []
-    workflow_jobs: []
+    tests:
+    - tests/integration/test_alert_delivery.py
+    - tests/integration/test_otel_pipeline.py
+    - tests/integration/test_quality_signal_path.py
+    workflow_jobs:
+    - ci.yml:integration-tests
     audit_docs: []
     runbooks: []
-    artifacts: []
+    artifacts:
+    - e2e-signal-path (defined; redacted final-head hosted artifact pending)
   blockers:
-  - Retained hosted and applicable real-stack/browser/security/scale evidence is absent.
+  - The complete quality-to-incident contract exists, but no successful retained artifact for this PR head is available yet.
   non_goals:
   - No product implementation is added by the ledger.
-  next_gate: Execute and retain the evidence required for promotion.
+  next_gate: Run the final-head Elasticsearch 9.4.2 integration job and retain the redaction-safe e2e-signal-path artifact.
   owner: unassigned
-  last_audited_at: '2026-07-21'
-  last_audited_commit: d8a04d0
+  last_audited_at: '2026-07-27'
+  last_audited_commit: 5164762a6337a44a76ad2c7574a78edc048a70b3
 - id: data.asset360
   name: Asset Catalog and Asset 360
   summary: Evidence-led status for asset catalog and asset 360.
@@ -504,8 +537,8 @@ capabilities:
   - No product implementation is added by the ledger.
   next_gate: Execute and retain the evidence required for promotion.
   owner: unassigned
-  last_audited_at: '2026-07-21'
-  last_audited_commit: d8a04d0
+  last_audited_at: '2026-07-27'
+  last_audited_commit: 5164762a6337a44a76ad2c7574a78edc048a70b3
 - id: data.pathways
   name: Lineage and Pathway Explorer
   summary: Evidence-led status for lineage and pathway explorer.
@@ -546,8 +579,8 @@ capabilities:
   - No product implementation is added by the ledger.
   next_gate: Execute and retain the evidence required for promotion.
   owner: unassigned
-  last_audited_at: '2026-07-21'
-  last_audited_commit: d8a04d0
+  last_audited_at: '2026-07-27'
+  last_audited_commit: 5164762a6337a44a76ad2c7574a78edc048a70b3
 - id: pipeline.openlineage
   name: OpenLineage ingest
   summary: Evidence-led status for openlineage ingest.
@@ -587,8 +620,8 @@ capabilities:
   - No product implementation is added by the ledger.
   next_gate: Execute and retain the evidence required for promotion.
   owner: unassigned
-  last_audited_at: '2026-07-21'
-  last_audited_commit: d8a04d0
+  last_audited_at: '2026-07-27'
+  last_audited_commit: 5164762a6337a44a76ad2c7574a78edc048a70b3
 - id: pipeline.jobs
   name: Job and run domain and Explorer
   summary: Evidence-led status for job and run domain and explorer.
@@ -629,8 +662,8 @@ capabilities:
   - No product implementation is added by the ledger.
   next_gate: Execute and retain the evidence required for promotion.
   owner: unassigned
-  last_audited_at: '2026-07-21'
-  last_audited_commit: d8a04d0
+  last_audited_at: '2026-07-27'
+  last_audited_commit: 5164762a6337a44a76ad2c7574a78edc048a70b3
 - id: pipeline.adapters
   name: Airflow, dbt, and Spark adapters
   summary: Evidence-led status for airflow, dbt, and spark adapters.
@@ -670,23 +703,31 @@ capabilities:
   - No product implementation is added by the ledger.
   next_gate: Execute and retain the evidence required for promotion.
   owner: unassigned
-  last_audited_at: '2026-07-21'
-  last_audited_commit: d8a04d0
+  last_audited_at: '2026-07-27'
+  last_audited_commit: 5164762a6337a44a76ad2c7574a78edc048a70b3
 - id: monitoring.runtime
   name: Monitor runtime, baselines, and recommendations
   summary: Evidence-led status for monitor runtime, baselines, and recommendations.
   pillar: data
   domain: monitoring
-  state: foundation
+  state: functional_unvalidated
   release_readiness: blocked
   implementation:
-    code_paths: []
-    api_paths: []
+    code_paths:
+    - services/monitor_runtime/service.py
+    - services/monitoring/baseline_engine.py
+    - services/monitor_recommender/service.py
+    api_paths:
+    - /api/v1/monitors
+    - /api/v1/monitor-runtime/health
+    - /api/v1/monitor-coverage
+    - /api/v1/monitor-recommendations
     ui_routes:
     - planned:/monitoring
     storage_resources: []
     migrations:
     - 0007_automated_monitoring_data_products_rca
+    - 0013_monitor_runtime_completion
   validation:
     unit: defined_not_run
     integration: defined_not_run
@@ -699,60 +740,102 @@ capabilities:
     upgrade: not_applicable
     release: missing
   evidence:
-    tests: []
+    tests:
+    - tests/automated_monitoring/test_runtime_completion.py
+    - tests/monitoring/test_runtime_services.py
     workflow_jobs: []
     audit_docs: []
     runbooks: []
     artifacts: []
   blockers:
-  - Retained hosted and applicable real-stack/browser/security/scale evidence is absent.
+  - Final-head hosted real-stack, scale, recovery, and security evidence is absent.
   non_goals:
   - No product implementation is added by the ledger.
   next_gate: Execute and retain the evidence required for promotion.
   owner: unassigned
-  last_audited_at: '2026-07-21'
-  last_audited_commit: d8a04d0
+  last_audited_at: '2026-07-27'
+  last_audited_commit: 5164762a6337a44a76ad2c7574a78edc048a70b3
 - id: monitoring.products
   name: Data Products, SLOs, Product 360, and RCA
   summary: Evidence-led status for data products, slos, product 360, and rca.
   pillar: business
   domain: monitoring
-  state: foundation
+  state: functional_unvalidated
   release_readiness: blocked
   implementation:
     code_paths:
-    - packages/domain_model/data_product.py
-    api_paths: []
+    - services/data_products/application_service.py
+    - services/data_products/elasticsearch_repository.py
+    - services/data_products/membership_service.py
+    - services/data_products/dependency_service.py
+    - services/data_products/reconciliation.py
+    - services/data_products/reliability.py
+    api_paths:
+    - /api/v1/data-products
+    - /api/v1/data-products/{product_id}
+    - /api/v1/data-products/{product_id}/members
+    - /api/v1/data-products/{product_id}/membership-proposals
+    - /api/v1/data-products/{product_id}/dependencies
+    - /api/v1/data-products/{product_id}/impact
+    - /api/v1/data-products/{product_id}/revisions
     ui_routes:
-    - planned:/data-products
+    - /data-products
+    - /data-products/:productId
     storage_resources: []
     migrations:
     - 0007_automated_monitoring_data_products_rca
+    - 0008_job_run_observability
+    - 0009_topic_queue_stream_360
+    - 0010_topic_queue_stream_360_completion
+    - 0011_incident_automation_workbench
+    - 0012_incident_mapping_and_occ_fix
+    - 0013_monitor_runtime_completion
+    - 0014_data_product_360_completion
+    - 0015_data_product_360_productization
+    - 0016_data_product_membership_dependency_runtime
+    - 0017_data_product_reconciliation_retry_date
+    - 0018_data_product_decision_reason_alias
+    - 0019_data_product_operation_claim_expires_date
   validation:
     unit: defined_not_run
     integration: defined_not_run
-    real_stack: not_applicable
+    real_stack: defined_not_run
     hosted_ci: missing
-    browser: not_applicable
-    accessibility: not_applicable
-    security: not_applicable
+    browser: defined_not_run
+    accessibility: defined_not_run
+    security: defined_not_run
     scale: not_applicable
-    upgrade: not_applicable
+    upgrade: defined_not_run
     release: missing
   evidence:
-    tests: []
-    workflow_jobs: []
+    tests:
+    - tests/data_products/test_service.py
+    - tests/data_products/test_membership_service.py
+    - tests/data_products/test_dependency_service.py
+    - tests/data_products/test_operation_reconciliation.py
+    - tests/integration/data_products/test_membership_dependency_elasticsearch.py
+    - tests/security/data_products/test_reconciliation_security.py
+    workflow_jobs:
+    - data-product-runtime.yml:data-product-foundation-elasticsearch
+    - data-product-runtime.yml:data-product-foundation-security
+    - data-product-runtime.yml:data-product-foundation-evidence
+    - data-product-membership.yml:data-product-reconciliation-elasticsearch
+    - data-product-membership.yml:data-product-reconciliation-security
+    - data-product-membership.yml:data-product-reconciliation-evidence
     audit_docs: []
     runbooks: []
-    artifacts: []
+    artifacts:
+    - data-product-foundation (defined; final-head hosted run pending)
+    - data-product-reconciliation-evidence (defined; final-head hosted run pending)
   blockers:
-  - Retained hosted and applicable real-stack/browser/security/scale evidence is absent.
+  - Final-head hosted Elasticsearch, independent evidence verification, browser/accessibility, and security artifacts are
+    not yet retained.
   non_goals:
   - No product implementation is added by the ledger.
-  next_gate: Execute and retain the evidence required for promotion.
+  next_gate: Run foundation and full reconciliation profiles for the final PR head and independently verify retained artifacts.
   owner: unassigned
-  last_audited_at: '2026-07-21'
-  last_audited_commit: d8a04d0
+  last_audited_at: '2026-07-27'
+  last_audited_commit: 5164762a6337a44a76ad2c7574a78edc048a70b3
 - id: streams.kafka
   name: Kafka Observer and inventory
   summary: Evidence-led status for kafka observer and inventory.
@@ -792,8 +875,8 @@ capabilities:
   - No product implementation is added by the ledger.
   next_gate: Execute and retain the evidence required for promotion.
   owner: unassigned
-  last_audited_at: '2026-07-21'
-  last_audited_commit: d8a04d0
+  last_audited_at: '2026-07-27'
+  last_audited_commit: 5164762a6337a44a76ad2c7574a78edc048a70b3
 - id: streams.connect_schema
   name: Kafka Connect and Schema Registry
   summary: Evidence-led status for kafka connect and schema registry.
@@ -833,8 +916,8 @@ capabilities:
   - No product implementation is added by the ledger.
   next_gate: Execute and retain the evidence required for promotion.
   owner: unassigned
-  last_audited_at: '2026-07-21'
-  last_audited_commit: d8a04d0
+  last_audited_at: '2026-07-27'
+  last_audited_commit: 5164762a6337a44a76ad2c7574a78edc048a70b3
 - id: streams.detail
   name: Stream 360 detail pages
   summary: Evidence-led status for stream 360 detail pages.
@@ -875,8 +958,8 @@ capabilities:
   - No product implementation is added by the ledger.
   next_gate: Execute and retain the evidence required for promotion.
   owner: unassigned
-  last_audited_at: '2026-07-21'
-  last_audited_commit: d8a04d0
+  last_audited_at: '2026-07-27'
+  last_audited_commit: 5164762a6337a44a76ad2c7574a78edc048a70b3
 - id: streams.live_actions
   name: Durable stream SSE and safe actions
   summary: Evidence-led status for durable stream sse and safe actions.
@@ -915,8 +998,8 @@ capabilities:
   - No product implementation is added by the ledger.
   next_gate: Execute and retain the evidence required for promotion.
   owner: unassigned
-  last_audited_at: '2026-07-21'
-  last_audited_commit: d8a04d0
+  last_audited_at: '2026-07-27'
+  last_audited_commit: 5164762a6337a44a76ad2c7574a78edc048a70b3
 - id: incidents.core
   name: Finding ingest, correlation, lifecycle, and timeline
   summary: Evidence-led status for finding ingest, correlation, lifecycle, and timeline.
@@ -936,7 +1019,7 @@ capabilities:
   validation:
     unit: defined_not_run
     integration: defined_not_run
-    real_stack: not_applicable
+    real_stack: defined_not_run
     hosted_ci: missing
     browser: not_applicable
     accessibility: not_applicable
@@ -946,19 +1029,24 @@ capabilities:
     release: missing
   evidence:
     tests:
+    - tests/integration/test_alert_delivery.py
+    - tests/integration/test_otel_pipeline.py
+    - tests/integration/test_quality_signal_path.py
     - tests/unit/test_incident_automation.py
-    workflow_jobs: []
+    workflow_jobs:
+    - ci.yml:integration-tests
     audit_docs: []
     runbooks: []
-    artifacts: []
+    artifacts:
+    - e2e-signal-path (defined; redacted final-head hosted artifact pending)
   blockers:
-  - Retained hosted and applicable real-stack/browser/security/scale evidence is absent.
+  - The complete quality-to-incident contract exists, but no successful retained artifact for this PR head is available yet.
   non_goals:
   - No product implementation is added by the ledger.
-  next_gate: Execute and retain the evidence required for promotion.
+  next_gate: Run the final-head Elasticsearch 9.4.2 integration job and retain the redaction-safe e2e-signal-path artifact.
   owner: unassigned
-  last_audited_at: '2026-07-21'
-  last_audited_commit: d8a04d0
+  last_audited_at: '2026-07-27'
+  last_audited_commit: 5164762a6337a44a76ad2c7574a78edc048a70b3
 - id: incidents.replay
   name: Incident mapping, OCC, and bounded replay
   summary: Evidence-led status for incident mapping, occ, and bounded replay.
@@ -998,8 +1086,8 @@ capabilities:
   - No product implementation is added by the ledger.
   next_gate: Execute and retain the evidence required for promotion.
   owner: unassigned
-  last_audited_at: '2026-07-21'
-  last_audited_commit: d8a04d0
+  last_audited_at: '2026-07-27'
+  last_audited_commit: 5164762a6337a44a76ad2c7574a78edc048a70b3
 - id: incidents.workbench
   name: Cases, workflows, approvals, actions, and verification
   summary: Evidence-led status for cases, workflows, approvals, actions, and verification.
@@ -1043,8 +1131,8 @@ capabilities:
   - No product implementation is added by the ledger.
   next_gate: Execute and retain the evidence required for promotion.
   owner: unassigned
-  last_audited_at: '2026-07-21'
-  last_audited_commit: d8a04d0
+  last_audited_at: '2026-07-27'
+  last_audited_commit: 5164762a6337a44a76ad2c7574a78edc048a70b3
 - id: console.command
   name: Command Center
   summary: Evidence-led status for command center.
@@ -1058,6 +1146,20 @@ capabilities:
     api_paths: []
     ui_routes:
     - /
+    - /flow
+    - /assets
+    - /assets/:assetId
+    - /pathways
+    - /pathways/:pathwayId
+    - /incidents/:incidentId
+    - /streams
+    - /data-products
+    - /data-products/:productId
+    - /streams/clusters/:clusterId
+    - /streams/topics/:streamId
+    - /streams/consumer-groups/:groupId
+    - /streams/connectors/:connectorId
+    - /streams/schemas/:subjectId
     storage_resources: []
     migrations:
     - 0005_console_foundation
@@ -1074,18 +1176,21 @@ capabilities:
     release: missing
   evidence:
     tests: []
-    workflow_jobs: []
+    workflow_jobs:
+    - ci.yml:console-quality
+    - ci.yml:console-backend-contract
+    - ci.yml:certification-browser
     audit_docs: []
     runbooks: []
     artifacts: []
   blockers:
-  - Retained hosted and applicable real-stack/browser/security/scale evidence is absent.
+  - Routes are implemented; final-head browser and accessibility evidence is not retained.
   non_goals:
   - No product implementation is added by the ledger.
   next_gate: Execute and retain the evidence required for promotion.
   owner: unassigned
-  last_audited_at: '2026-07-21'
-  last_audited_commit: d8a04d0
+  last_audited_at: '2026-07-27'
+  last_audited_commit: 5164762a6337a44a76ad2c7574a78edc048a70b3
 - id: console.validation
   name: Console browser and accessibility validation
   summary: Evidence-led status for console browser and accessibility validation.
@@ -1123,8 +1228,8 @@ capabilities:
   - No product implementation is added by the ledger.
   next_gate: Execute and retain the evidence required for promotion.
   owner: unassigned
-  last_audited_at: '2026-07-21'
-  last_audited_commit: d8a04d0
+  last_audited_at: '2026-07-27'
+  last_audited_commit: 5164762a6337a44a76ad2c7574a78edc048a70b3
 - id: future.finops
   name: FinOps and Cost Observability
   summary: Evidence-led status for finops and cost observability.
@@ -1161,8 +1266,8 @@ capabilities:
   - No product implementation is added by the ledger.
   next_gate: Execute and retain the evidence required for promotion.
   owner: unassigned
-  last_audited_at: '2026-07-21'
-  last_audited_commit: d8a04d0
+  last_audited_at: '2026-07-27'
+  last_audited_commit: 5164762a6337a44a76ad2c7574a78edc048a70b3
 - id: future.business
   name: Business Reliability Scorecards
   summary: Evidence-led status for business reliability scorecards.
@@ -1199,8 +1304,8 @@ capabilities:
   - No product implementation is added by the ledger.
   next_gate: Execute and retain the evidence required for promotion.
   owner: unassigned
-  last_audited_at: '2026-07-21'
-  last_audited_commit: d8a04d0
+  last_audited_at: '2026-07-27'
+  last_audited_commit: 5164762a6337a44a76ad2c7574a78edc048a70b3
 - id: future.ai_agent
   name: AI and Agent Observability
   summary: Evidence-led status for ai and agent observability.
@@ -1237,8 +1342,8 @@ capabilities:
   - No product implementation is added by the ledger.
   next_gate: Execute and retain the evidence required for promotion.
   owner: unassigned
-  last_audited_at: '2026-07-21'
-  last_audited_commit: d8a04d0
+  last_audited_at: '2026-07-27'
+  last_audited_commit: 5164762a6337a44a76ad2c7574a78edc048a70b3
 - id: future.advisor
   name: DataObs Advisor
   summary: Evidence-led status for dataobs advisor.
@@ -1275,8 +1380,8 @@ capabilities:
   - No product implementation is added by the ledger.
   next_gate: Execute and retain the evidence required for promotion.
   owner: unassigned
-  last_audited_at: '2026-07-21'
-  last_audited_commit: d8a04d0
+  last_audited_at: '2026-07-27'
+  last_audited_commit: 5164762a6337a44a76ad2c7574a78edc048a70b3
 - id: integration.elastic
   name: Elasticsearch and Kibana authoritative plane
   summary: Evidence-led status for elasticsearch and kibana authoritative plane.
@@ -1315,14 +1420,14 @@ capabilities:
   - No product implementation is added by the ledger.
   next_gate: Execute and retain the evidence required for promotion.
   owner: unassigned
-  last_audited_at: '2026-07-21'
-  last_audited_commit: d8a04d0
+  last_audited_at: '2026-07-27'
+  last_audited_commit: 5164762a6337a44a76ad2c7574a78edc048a70b3
 - id: integration.otel
   name: OpenTelemetry ingestion standard
   summary: Evidence-led status for opentelemetry ingestion standard.
   pillar: platform
   domain: integrations
-  state: foundation
+  state: functional_unvalidated
   release_readiness: blocked
   implementation:
     code_paths:
@@ -1334,7 +1439,7 @@ capabilities:
   validation:
     unit: defined_not_run
     integration: defined_not_run
-    real_stack: not_applicable
+    real_stack: defined_not_run
     hosted_ci: missing
     browser: not_applicable
     accessibility: not_applicable
@@ -1343,23 +1448,28 @@ capabilities:
     upgrade: not_applicable
     release: missing
   evidence:
-    tests: []
-    workflow_jobs: []
+    tests:
+    - tests/integration/test_alert_delivery.py
+    - tests/integration/test_otel_pipeline.py
+    - tests/integration/test_quality_signal_path.py
+    workflow_jobs:
+    - ci.yml:integration-tests
     audit_docs: []
     runbooks: []
-    artifacts: []
+    artifacts:
+    - e2e-signal-path (defined; redacted final-head hosted artifact pending)
   blockers:
-  - Retained hosted and applicable real-stack/browser/security/scale evidence is absent.
+  - The complete quality-to-incident contract exists, but no successful retained artifact for this PR head is available yet.
   non_goals:
   - No product implementation is added by the ledger.
-  next_gate: Execute and retain the evidence required for promotion.
+  next_gate: Run the final-head Elasticsearch 9.4.2 integration job and retain the redaction-safe e2e-signal-path artifact.
   owner: unassigned
-  last_audited_at: '2026-07-21'
-  last_audited_commit: d8a04d0
+  last_audited_at: '2026-07-27'
+  last_audited_commit: 5164762a6337a44a76ad2c7574a78edc048a70b3
 - id: integration.optional
   name: OpenSearch, Grafana, and Alloy interoperability
-  summary: Evidence-led status for opensearch, grafana, and alloy interoperability.
-    Elasticsearch remains authoritative; this is export/interoperability only.
+  summary: Evidence-led status for opensearch, grafana, and alloy interoperability. Elasticsearch remains authoritative; this
+    is export/interoperability only.
   pillar: platform
   domain: integrations
   state: optional_integration
@@ -1394,8 +1504,8 @@ capabilities:
   - No product implementation is added by the ledger.
   next_gate: Execute and retain the evidence required for promotion.
   owner: unassigned
-  last_audited_at: '2026-07-21'
-  last_audited_commit: d8a04d0
+  last_audited_at: '2026-07-27'
+  last_audited_commit: 5164762a6337a44a76ad2c7574a78edc048a70b3
 - id: integration.cloud
   name: AWS, Azure, GCP, and Snowflake providers
   summary: Evidence-led status for aws, azure, gcp, and snowflake providers.
@@ -1432,8 +1542,8 @@ capabilities:
   - No product implementation is added by the ledger.
   next_gate: Execute and retain the evidence required for promotion.
   owner: unassigned
-  last_audited_at: '2026-07-21'
-  last_audited_commit: d8a04d0
+  last_audited_at: '2026-07-27'
+  last_audited_commit: 5164762a6337a44a76ad2c7574a78edc048a70b3
 migration_checksums:
   0001_product_foundation: 71d939094a97b4dd7c61de60542b60dd41cb238fd6bebfd75d53d723b00f3556
   0002_postgres_observability: c2098fa24ddae209fcf2ffeb369f7040d57018d58682a8513db9e943c749aa2d

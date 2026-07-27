@@ -6,11 +6,11 @@ No delivery dates are implied. The capability ledger, not issue or PR titles, de
 
 ### Migration/OCC/replay corrections, capability ledger, and CI enforcement
 - **Current state:** corrections are functional but unvalidated; the truth tooling is implemented in this milestone.
-- **Entry criteria:** migrations `0001`–`0012` remain checksum-identical.
+- **Entry criteria:** released migrations `0001`–`0019` remain checksum-identical.
 - **Deliverables:** authoritative ledger, deterministic docs, documentation truth gate.
 - **Evidence gate:** validators, focused tests, links, and generated-drift checks pass in retained hosted CI.
 - **Exit criteria:** reports and artifacts are retained and review links resolve.
-- **Dependencies:** PR #106 merged baseline and repository CI.
+- **Dependencies:** the audited implementation baseline through PR #168 and repository CI.
 - **Non-goals:** product features or migration edits.
 
 ## Phase B — Unified real-stack certification
@@ -27,7 +27,7 @@ No delivery dates are implied. The capability ledger, not issue or PR titles, de
 ## Phase C — Complete the existing core product
 
 ### Monitoring, Data Products/RCA, Job/Run Explorer, Asset/Pathway, and Stream 360
-- **Current state:** foundations exist; principal end-to-end workflows are incomplete.
+- **Current state:** runtime and Console foundations exist; final-head hosted certification remains incomplete.
 - **Entry criteria:** Phase B baseline is reproducible.
 - **Deliverables:** complete existing workflows and coherent Console navigation.
 - **Evidence gate:** focused integration plus browser/accessibility and security evidence.

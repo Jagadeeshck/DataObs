@@ -1,14 +1,15 @@
 # Product documentation
 
 ## Product status
-1. [Capability definitions](capability-status-definitions.md)
-2. [Machine-readable ledger](capability-ledger.yaml)
-3. [Generated ledger](capability-ledger.md)
-4. [Feature matrix](feature-matrix.md)
-5. [Evidence index](evidence-index.md)
-6. [Promotion policy](capability-promotion-policy.md)
-7. [Roadmap](roadmap-v1.md)
-8. [Issue triage](open-issue-triage.md)
+1. [Current product baseline](current-product-baseline.md)
+2. [Capability definitions](capability-status-definitions.md)
+3. [Machine-readable ledger](capability-ledger.yaml)
+4. [Generated ledger](capability-ledger.md)
+5. [Feature matrix](feature-matrix.md)
+6. [Evidence index](evidence-index.md)
+7. [Promotion policy](capability-promotion-policy.md)
+8. [Roadmap](roadmap-v1.md)
+9. [Issue triage](open-issue-triage.md)
 
 ## Architecture
 See [architecture documentation](../architecture/overview.md).

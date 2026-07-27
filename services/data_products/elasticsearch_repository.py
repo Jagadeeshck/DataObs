@@ -670,9 +670,7 @@ class ElasticsearchDataProductRepository:
 
     def get_product(self, tenant_id: str, environment: str, product_id: str) -> DataProduct | None:
         try:
-            hit = self.client.get(
-                index=PRODUCTS, id=scoped_id(tenant_id, environment, product_id)
-            )
+            hit = self.client.get(index=PRODUCTS, id=scoped_id(tenant_id, environment, product_id))
         except NotFoundError:
             return None
         source = hit["_source"]

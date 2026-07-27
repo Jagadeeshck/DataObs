@@ -153,7 +153,6 @@ class ElasticsearchDataProductRepository:
             hit = self.client.get(
                 index=OPERATIONS,
                 id=scoped_id(tenant_id, environment, f"state:{operation_id}"),
-                seq_no_primary_term=True,
             )
         except NotFoundError:
             return None
@@ -515,7 +514,7 @@ class ElasticsearchDataProductRepository:
     ) -> DataProductIdempotencyRecord:
         """OCC-bind an operation id after verifying every request dimension."""
         try:
-            hit = self.client.get(index=IDEMPOTENCY, id=record_id, seq_no_primary_term=True)
+            hit = self.client.get(index=IDEMPOTENCY, id=record_id)
         except NotFoundError as exc:
             raise ProductConsistencyError("idempotency reservation missing") from exc
         record = DataProductIdempotencyRecord.model_validate(hit["_source"])
@@ -563,7 +562,7 @@ class ElasticsearchDataProductRepository:
 
     def _transition_idempotency(self, record_id: str, **changes: Any) -> None:
         try:
-            hit = self.client.get(index=IDEMPOTENCY, id=record_id, seq_no_primary_term=True)
+            hit = self.client.get(index=IDEMPOTENCY, id=record_id)
         except NotFoundError as exc:
             raise ProductConsistencyError("idempotency reservation missing") from exc
         record = DataProductIdempotencyRecord.model_validate(hit["_source"])
@@ -672,7 +671,7 @@ class ElasticsearchDataProductRepository:
     def get_product(self, tenant_id: str, environment: str, product_id: str) -> DataProduct | None:
         try:
             hit = self.client.get(
-                index=PRODUCTS, id=scoped_id(tenant_id, environment, product_id), seq_no_primary_term=True
+                index=PRODUCTS, id=scoped_id(tenant_id, environment, product_id)
             )
         except NotFoundError:
             return None
@@ -728,7 +727,7 @@ class ElasticsearchDataProductRepository:
     def update_product(self, product: DataProduct, *, expected_etag: str) -> DataProduct:
         document_id = scoped_id(product.tenant_id, product.environment, product.id)
         try:
-            hit = self.client.get(index=PRODUCTS, id=document_id, seq_no_primary_term=True)
+            hit = self.client.get(index=PRODUCTS, id=document_id)
             if hit["_source"].get("etag") != expected_etag:
                 raise ProductVersionConflict("stale data product ETag")
             if int(hit["_source"].get("revision", 0)) >= product.revision:
@@ -834,7 +833,7 @@ class ElasticsearchDataProductRepository:
         from services.data_products.dependency_events import DependencyResultInconsistent
 
         try:
-            hit = self.client.get(index=OPERATIONS, id=result.operation.operation_id, seq_no_primary_term=True)
+            hit = self.client.get(index=OPERATIONS, id=result.operation.operation_id)
         except NotFoundError as exc:
             raise DependencyResultInconsistent("dependency_result_inconsistent") from exc
         source = hit["_source"]
@@ -912,7 +911,7 @@ class ElasticsearchDataProductRepository:
 
     def finish_operation(self, event: DataProductRevisionEvent) -> None:
         try:
-            pending = self.client.get(index=OPERATIONS, id=event.operation_id, seq_no_primary_term=True)
+            pending = self.client.get(index=OPERATIONS, id=event.operation_id)
             source = pending["_source"]
             if source.get("definition_checksum") != event.definition_checksum:
                 raise ProductConsistencyError("operation outcome has no matching pending operation")
@@ -1084,7 +1083,7 @@ class ElasticsearchDataProductRepository:
         expected_etag: str,
     ) -> DataProductMembership:
         document_id = scoped_id(tenant_id, environment, f"{product_id}:{membership_id}")
-        hit = self.client.get(index=MEMBERSHIPS, id=document_id, seq_no_primary_term=True)
+        hit = self.client.get(index=MEMBERSHIPS, id=document_id)
         current = DataProductMembership.model_validate(hit["_source"])
         if current.etag != expected_etag:
             raise ProductVersionConflict("stale membership ETag")
@@ -1359,7 +1358,7 @@ class ElasticsearchDataProductRepository:
             edge_id = scoped_id(tenant_id, environment, f"{product_id}:{edge.upstream_product_id}")
             document = edge.model_dump(mode="json")
             try:
-                hit = self.client.get(index=DEPENDENCIES, id=edge_id, seq_no_primary_term=True)
+                hit = self.client.get(index=DEPENDENCIES, id=edge_id)
             except NotFoundError:
                 try:
                     self.client.create(index=DEPENDENCIES, id=edge_id, document=document)
@@ -1430,7 +1429,7 @@ class ElasticsearchDataProductRepository:
             edge_id = scoped_id(tenant_id, environment, f"{product_id}:{edge.upstream_product_id}")
             document = edge.model_dump(mode="json")
             try:
-                hit = self.client.get(index=DEPENDENCIES, id=edge_id, seq_no_primary_term=True)
+                hit = self.client.get(index=DEPENDENCIES, id=edge_id)
             except NotFoundError:
                 try:
                     self.client.create(index=DEPENDENCIES, id=edge_id, document=document)

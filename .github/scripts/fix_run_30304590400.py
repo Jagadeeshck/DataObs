@@ -3,7 +3,13 @@ from __future__ import annotations
 import os
 import re
 import subprocess
+import sys
 from pathlib import Path
+
+# Running a file under .github/scripts makes that directory sys.path[0].
+# Add the repository root explicitly before importing DataObs packages.
+REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(REPOSITORY_ROOT))
 
 
 def replace_if_needed(path: str, old: str, new: str) -> None:

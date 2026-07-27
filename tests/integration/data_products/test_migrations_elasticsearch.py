@@ -7,7 +7,7 @@ from urllib.parse import urlparse
 
 from packages.elastic_store.manifest import MIGRATION_STATE_INDEX, migrations, registered_mutable_resources
 from packages.elastic_store.registry import apply, status
-from services.data_products.elasticsearch_repository import OPERATIONS, REQUIRED_RESOURCES
+from services.data_products.elasticsearch_repository import DECISIONS, OPERATIONS, REQUIRED_RESOURCES
 
 
 def _reset(client) -> None:
@@ -39,8 +39,8 @@ def test_clean_install_executes_all_released_migrations(elasticsearch_client, el
     applied = apply(elasticsearch_client)
     migration_status = status(elasticsearch_client)
     expected = migrations()
-    assert [item.migration_id[:4] for item in expected] == [f"{number:04d}" for number in range(1, 18)]
-    assert expected[-1].migration_id == "0017_data_product_reconciliation_retry_date"
+    assert [item.migration_id[:4] for item in expected] == [f"{number:04d}" for number in range(1, 19)]
+    assert expected[-1].migration_id == "0018_data_product_decision_reason_alias"
     assert len(applied) == len(expected)
     assert migration_status["ready"]
     assert set(migration_status["applied"]) == {item.migration_id for item in expected}
@@ -53,25 +53,32 @@ def test_clean_install_executes_all_released_migrations(elasticsearch_client, el
     recorder.passed(elasticsearch_version)
 
 
-def test_upgrade_from_0016_executes_0017_once(elasticsearch_client, elasticsearch_version, scenario_recorder):
+def test_upgrade_from_0017_executes_0018_once(elasticsearch_client, elasticsearch_version, scenario_recorder):
     _reset(elasticsearch_client)
-    through = "0016_data_product_membership_dependency_runtime"
+    through = "0017_data_product_reconciliation_retry_date"
     before = apply(elasticsearch_client, through_migration_id=through)
     assert before[-1]["migration_id"] == through
-    assert "next_attempt_at" not in _mapping(elasticsearch_client)["properties"]
-    legacy_id = "legacy-operation-before-0017"
+    decision_mapping = elasticsearch_client.indices.get_mapping(index=DECISIONS)[DECISIONS]["mappings"]
+    assert "decision_reason" not in decision_mapping["properties"]
+    legacy_id = "legacy-decision-before-0018"
     elasticsearch_client.index(
-        index=OPERATIONS,
+        index=DECISIONS,
         id=legacy_id,
         document={
             "tenant_id": "legacy",
             "environment": "test",
-            "operation_id": legacy_id,
+            "decision_id": legacy_id,
+            "proposal_id": "proposal",
             "product_id": "product",
-            "action": "manual_membership",
-            "outcome": "pending",
+            "decision": "accept",
+            "outcome": "applied",
+            "reason": "legacy reason",
+            "actor": "operator",
+            "idempotency_key_hash": "hash",
+            "request_fingerprint": "fingerprint",
+            "decided_at": "2026-01-01T00:00:00Z",
             "occurred_at": "2026-01-01T00:00:00Z",
-            "document": {"status": "pending"},
+            "schema_version": "v1",
         },
         refresh="wait_for",
     )
@@ -80,12 +87,14 @@ def test_upgrade_from_0016_executes_0017_once(elasticsearch_client, elasticsearc
     after = status(elasticsearch_client)
     latest = migrations()[-1]
     assert after["applied"][latest.migration_id]["checksum"] == latest.checksum
-    assert _mapping(elasticsearch_client)["properties"]["next_attempt_at"]["type"] == "date"
-    assert elasticsearch_client.get(index=OPERATIONS, id=legacy_id)["found"]
+    decision_mapping = elasticsearch_client.indices.get_mapping(index=DECISIONS)[DECISIONS]["mappings"]
+    assert decision_mapping["properties"]["decision_reason"]["type"] == "match_only_text"
+    legacy = elasticsearch_client.get(index=DECISIONS, id=legacy_id)["_source"]
+    assert legacy["reason"] == "legacy reason"
     assert all(after["applied"][key] == value for key, value in prior.items())
-    recorder = scenario_recorder("migration-upgrade.json", "released 0016 state upgraded through 0017")
-    recorder.assert_that(True, "0016 prefix applied and 0017 was initially absent")
-    recorder.assert_that(True, "0017 applied once without changing legacy evidence")
+    recorder = scenario_recorder("migration-upgrade.json", "released 0017 state upgraded through 0018")
+    recorder.assert_that(True, "0017 prefix applied and 0018 was initially absent")
+    recorder.assert_that(True, "0018 applied once without changing legacy decision evidence")
     recorder.reference(latest.checksum)
     recorder.passed(elasticsearch_version)
 

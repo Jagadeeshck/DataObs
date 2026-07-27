@@ -1,20 +1,25 @@
 from __future__ import annotations
 
-from pathlib import Path
+import os
 import re
+import subprocess
+from pathlib import Path
 
 
-def replace_once(path: str, old: str, new: str) -> None:
+def replace_if_needed(path: str, old: str, new: str) -> None:
     file = Path(path)
     text = file.read_text()
-    count = text.count(old)
-    if count != 1:
-        raise SystemExit(f"{path}: expected one match, found {count}: {old!r}")
+    if new in text:
+        print(f"{path}: already applied")
+        return
+    if old not in text:
+        raise SystemExit(f"{path}: neither old nor new contract found: {old!r}")
     file.write_text(text.replace(old, new, 1))
+    print(f"{path}: patched")
 
 
 repository = "services/data_products/elasticsearch_repository.py"
-replace_once(
+replace_if_needed(
     repository,
     '            "next_attempt_at": state.next_attempt_at.isoformat() if state.next_attempt_at else None,\n'
     '            "claim_expires_at": state.claim_expires_at.isoformat() if state.claim_expires_at else None,',
@@ -22,12 +27,12 @@ replace_once(
     '            "next_attempt_at_nanos": state.next_attempt_at.isoformat() if state.next_attempt_at else None,\n'
     '            "claim_expires_at": state.claim_expires_at.isoformat() if state.claim_expires_at else None,',
 )
-replace_once(
+replace_if_needed(
     repository,
     '{"range": {"next_attempt_at": {"lte": query_instant}}},',
     '{"range": {"next_attempt_at_nanos": {"lte": query_instant}}},',
 )
-replace_once(
+replace_if_needed(
     repository,
     '            sort=[{"occurred_at": "asc"}, {"operation_id": "asc"}],',
     '            sort=[\n'
@@ -35,12 +40,12 @@ replace_once(
     '                {"operation_id": "asc"},\n'
     '            ],',
 )
-replace_once(
+replace_if_needed(
     repository,
     '            sort=[{"occurred_at": "asc"}, {"_id": "asc"}],',
     '            sort=[{"occurred_at": "asc"}, {"document.event_id": "asc"}],',
 )
-replace_once(
+replace_if_needed(
     repository,
     '\n    @staticmethod\n    def _classify_dependency_edge',
     '\n        self.client.indices.refresh(index=DEPENDENCIES)\n\n'
@@ -48,11 +53,7 @@ replace_once(
 )
 
 manifest = Path("packages/elastic_store/manifest.py")
-text = manifest.read_text()
-pattern = re.compile(
-    r'DATA_PRODUCT_CLAIM_EXPIRES_DATE_MIGRATION = Migration\(.*?\n\)\n\n\ndef migrations',
-    re.DOTALL,
-)
+manifest_text = manifest.read_text()
 replacement = '''DATA_PRODUCT_CLAIM_EXPIRES_DATE_MIGRATION = Migration(
     "0019_data_product_operation_claim_expires_date",
     "Add nanosecond-safe claim expiry and retry scheduling fields to Data Product operation state",
@@ -71,13 +72,21 @@ replacement = '''DATA_PRODUCT_CLAIM_EXPIRES_DATE_MIGRATION = Migration(
 
 
 def migrations'''
-text, count = pattern.subn(replacement, text, count=1)
-if count != 1:
-    raise SystemExit(f"manifest migration block matches: {count}")
-manifest.write_text(text)
+if '"next_attempt_at_nanos": {"type": "date_nanos"}' not in manifest_text:
+    pattern = re.compile(
+        r'DATA_PRODUCT_CLAIM_EXPIRES_DATE_MIGRATION = Migration\(.*?\n\)\n\n\ndef migrations',
+        re.DOTALL,
+    )
+    manifest_text, count = pattern.subn(replacement, manifest_text, count=1)
+    if count != 1:
+        raise SystemExit(f"manifest migration block matches: {count}")
+    manifest.write_text(manifest_text)
+    print("packages/elastic_store/manifest.py: patched")
+else:
+    print("packages/elastic_store/manifest.py: already applied")
 
 mapping_test = "tests/integration/data_products/test_migrations_elasticsearch.py"
-replace_once(
+replace_if_needed(
     mapping_test,
     '        "next_attempt_at": "date",\n        "claim_expires_at": "date",',
     '        "next_attempt_at": "date",\n'
@@ -89,7 +98,9 @@ unit_test = Path("tests/data_products/test_elastic_migration_selection.py")
 unit_text = unit_test.read_text()
 marker = "def test_operation_schedule_precision_mapping_is_additive():"
 if marker not in unit_text:
-    unit_text += '''
+    unit_test.write_text(
+        unit_text
+        + '''
 
 
 def test_operation_schedule_precision_mapping_is_additive():
@@ -99,8 +110,12 @@ def test_operation_schedule_precision_mapping_is_additive():
     assert mapping["claim_expires_at"]["type"] == "date_nanos"
     assert mapping["next_attempt_at_nanos"]["type"] == "date_nanos"
 '''
-    unit_test.write_text(unit_text)
+    )
+    print(f"{unit_test}: patched")
+else:
+    print(f"{unit_test}: already applied")
 
+# Import after rewriting the manifest so the ledger records the exact new checksum.
 from packages.elastic_store.manifest import migrations
 
 migration = migrations()[-1]
@@ -112,3 +127,24 @@ if count != 1:
     raise SystemExit(f"capability ledger checksum matches: {count}")
 ledger.write_text(ledger_text)
 print(migration.migration_id, migration.checksum)
+
+changed = [
+    repository,
+    "packages/elastic_store/manifest.py",
+    "docs/product/capability-ledger.yaml",
+    mapping_test,
+    str(unit_test),
+]
+subprocess.run(["black", *changed], check=True)
+subprocess.run(["git", "config", "user.name", "dataobs-ci"], check=True)
+subprocess.run(["git", "config", "user.email", "dataobs-ci@users.noreply.github.com"], check=True)
+subprocess.run(["git", "add", *changed], check=True)
+if subprocess.run(["git", "diff", "--cached", "--quiet"], check=False).returncode == 0:
+    print("focused runtime fix already committed")
+else:
+    subprocess.run(
+        ["git", "commit", "-m", "fix: restore nanosecond scheduling and search visibility"],
+        check=True,
+    )
+    head_ref = os.environ.get("HEAD_REF", "codex/restore-hosted-certification-for-dataobs")
+    subprocess.run(["git", "push", "origin", f"HEAD:{head_ref}"], check=True)

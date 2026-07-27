@@ -134,17 +134,17 @@ if count != 1:
 ledger.write_text(ledger_text)
 print(migration.migration_id, migration.checksum)
 
-changed = [
+python_files = [
     repository,
     "packages/elastic_store/manifest.py",
-    "docs/product/capability-ledger.yaml",
     mapping_test,
     str(unit_test),
 ]
-subprocess.run(["black", *changed], check=True)
+commit_files = [*python_files, "docs/product/capability-ledger.yaml"]
+subprocess.run(["black", *python_files], check=True)
 subprocess.run(["git", "config", "user.name", "dataobs-ci"], check=True)
 subprocess.run(["git", "config", "user.email", "dataobs-ci@users.noreply.github.com"], check=True)
-subprocess.run(["git", "add", *changed], check=True)
+subprocess.run(["git", "add", *commit_files], check=True)
 if subprocess.run(["git", "diff", "--cached", "--quiet"], check=False).returncode == 0:
     print("focused runtime fix already committed")
 else:

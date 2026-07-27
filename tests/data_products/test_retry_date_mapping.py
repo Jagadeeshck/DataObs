@@ -19,8 +19,8 @@ class SearchClient:
 
 def test_0017_adds_only_the_mapped_retry_date():
     migration = DATA_PRODUCT_RECONCILIATION_RETRY_DATE_MIGRATION
-            assert migration in migrations()
-    assert migration.dependencies == ["0016_data_product_membership_dependency_runtime"]
+    assert migration in migrations()  
+      assert migration.dependencies == ["0016_data_product_membership_dependency_runtime"]
     assert migration.operations == {
         "mapping_updates": {"dataobs-data-product-operation-state-v1": {"next_attempt_at": {"type": "date"}}}
     }

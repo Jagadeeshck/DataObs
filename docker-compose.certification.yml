@@ -1,6 +1,6 @@
 name: dataobs-certification
 x-kafka: &kafka
-  image: bitnami/kafka:3.9.0
+  image: bitnami/kafka:3.9
   profiles: [kafka, cert-kafka, full]
   networks: [certification-data, certification-control]
   healthcheck: {test: [CMD-SHELL, "kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null"], interval: 10s, timeout: 5s, retries: 30}

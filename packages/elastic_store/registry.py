@@ -13,7 +13,6 @@ from .manifest import (
     migrations,
 )
 
-
 _DATA_PRODUCT_DECISION_INDEX = "dataobs-data-product-membership-decisions-v1"
 
 
@@ -243,9 +242,7 @@ def _apply_mapping_update(es: Elasticsearch, index: str, properties: Dict[str, A
     ]
     if conflicts:
         raise RuntimeError(f"Incompatible existing mapping on {index}: {', '.join(sorted(conflicts))}")
-    missing_properties = {
-        name: definition for name, definition in properties.items() if name not in current_properties
-    }
+    missing_properties = {name: definition for name, definition in properties.items() if name not in current_properties}
     if missing_properties:
         es.indices.put_mapping(index=index, dynamic="strict", properties=missing_properties)
     installed = es.indices.get_mapping(index=index)[index]["mappings"]

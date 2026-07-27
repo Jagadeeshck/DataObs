@@ -171,7 +171,9 @@ def main() -> int:
     counts = {s: sum(c["state"] == s for c in load()["capabilities"]) for s in sorted(STATES)}
     report = ROOT / "capability-validation-report.json"
     report.write_text(json.dumps({"status": "passed", "counts": counts}, indent=2) + "\n")
-    print(f"capability ledger valid: {sum(counts.values())} capabilities; migrations 0001-0012 immutable")
+    print(
+        f"capability ledger valid: {sum(counts.values())} capabilities; migration registry and checksums match executable plan"
+    )
     return 0
 
 

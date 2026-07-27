@@ -2,159 +2,187 @@ name: Release
 
 on:
   push:
-    tags:
-      - "v*.*.*"
+    tags: ["v*.*.*"]
 
 permissions:
-  contents: write       # for softprops/action-gh-release
-  packages: write       # for GHCR push
-  id-token: write       # for OIDC (future sigstore/cosign)
+  contents: write
+  packages: write
+  id-token: write
+  actions: read
+  checks: read
 
 env:
   REGISTRY: ghcr.io
-  OWNER: jagadeeshck
+  OWNER: ${{ github.repository_owner }}
+  PRODUCT_DESCRIPTION: Elasticsearch-native Data Observability and Data Streams Monitoring platform
 
 jobs:
-  # ─────────────────────────────────────────────
-  # 1. Build and push all three Docker images
-  # ─────────────────────────────────────────────
-  build-and-push:
-    name: Build & Push (${{ matrix.image }})
+  certification-gate:
+    name: Verify exact-commit certification
+    runs-on: ubuntu-latest
+    outputs:
+      runs: ${{ steps.verify.outputs.runs }}
+    steps:
+      - uses: actions/checkout@v6.0.2
+        with: {fetch-depth: 0}
+      - name: Validate tag and exact-commit hosted evidence
+        id: verify
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAGGED_SHA: ${{ github.sha }}
+        run: |
+          python - <<'PY'
+          import json, os, subprocess
+          sha = os.environ["TAGGED_SHA"]
+          required_workflows = {
+              "CI": "ci.yml",
+              "Data Product runtime certification": "data-product-runtime.yml",
+              "Data Product reconciliation certification": "data-product-membership.yml",
+          }
+          accepted = []
+          for label, workflow in required_workflows.items():
+              raw = subprocess.check_output([
+                  "gh", "api", f"repos/{os.environ['GITHUB_REPOSITORY']}/actions/workflows/{workflow}/runs",
+                  "-f", f"head_sha={sha}", "-f", "status=completed", "-f", "per_page=100",
+              ])
+              runs = json.loads(raw)["workflow_runs"]
+              successful = [r for r in runs if r["head_sha"] == sha and r["conclusion"] == "success"]
+              if not successful:
+                  raise SystemExit(f"release blocked: no successful {label} run for exact commit {sha}")
+              accepted.append({"workflow": label, "id": successful[0]["id"], "url": successful[0]["html_url"]})
+          value = json.dumps(accepted, separators=(",", ":"))
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              output.write(f"runs={value}\n")
+          PY
+
+  build-scan-push:
+    name: Build, scan & attest (${{ matrix.component }})
+    needs: certification-gate
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         include:
-          - image: dataobs-api
-            dockerfile: Dockerfile.api
-            context: .
-          - image: dataobs-quality
-            dockerfile: Dockerfile.quality
-            context: .
-          - image: dataobs-sample-app
-            dockerfile: integrations/grafana-alloy/app/Dockerfile
-            context: integrations/grafana-alloy/app
-
+          - {component: api, image: dataobs-api, dockerfile: Dockerfile.api, context: .}
+          - {component: console, image: dataobs-console, dockerfile: ui/dataobs-console/Dockerfile, context: ui/dataobs-console}
+          - {component: quality-worker, image: dataobs-quality-worker, dockerfile: Dockerfile.quality, context: .}
+          - {component: scanner-worker, image: dataobs-scanner-worker, dockerfile: Dockerfile.scanner, context: .}
+          - {component: monitor-runtime, image: dataobs-monitor-runtime, dockerfile: Dockerfile.monitor-runtime, context: .}
+          - {component: pathway-worker, image: dataobs-pathway-worker, dockerfile: Dockerfile.pathway-worker, context: .}
+          - {component: kafka-observer, image: dataobs-kafka-observer, dockerfile: Dockerfile.kafka-observer, context: .}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6.0.2
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4.0.0
-
-      - name: Log in to GHCR
-        uses: docker/login-action@v4.1.0
+      - uses: actions/checkout@v6.0.2
+      - uses: docker/setup-buildx-action@v4.0.0
+      - uses: docker/login-action@v4.1.0
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract Docker metadata
-        id: meta
+      - id: meta
         uses: docker/metadata-action@v6.0.0
         with:
           images: ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ matrix.image }}
           tags: |
-            # semver tag  →  :1.2.3  +  :1.2  +  :1
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
-            # always keep :latest pointing to newest release
-            type=raw,value=latest,enable=true
+            type=sha,format=long
           labels: |
-            org.opencontainers.image.title=${{ matrix.image }}
-            org.opencontainers.image.description=DataObs — Cloud-agnostic data observability platform
-            org.opencontainers.image.vendor=Jagadeesh Chandra
-            org.opencontainers.image.licenses=MIT
-
-      - name: Build and push
+            org.opencontainers.image.description=${{ env.PRODUCT_DESCRIPTION }}
+            org.opencontainers.image.vendor=KJC InfoTech Limited
+            org.opencontainers.image.licenses=LicenseRef-Proprietary
+            org.opencontainers.image.revision=${{ github.sha }}
+      - id: build
         uses: docker/build-push-action@v7.1.0
         with:
           context: ${{ matrix.context }}
-          file: ${{ matrix.context == '.' && matrix.dockerfile || format('{0}/{1}', matrix.context, matrix.dockerfile) }}
+          file: ${{ matrix.dockerfile }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          provenance: mode=max
+          sbom: true
           cache-from: type=gha,scope=${{ matrix.image }}
           cache-to: type=gha,mode=max,scope=${{ matrix.image }}
-          provenance: true
-          sbom: true
-
-  # ─────────────────────────────────────────────
-  # 2. Create GitHub Release with changelog notes
-  # ─────────────────────────────────────────────
-  create-release:
-    name: Create GitHub Release
-    runs-on: ubuntu-latest
-    needs: build-and-push
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6.0.2
+      - name: Generate downloadable SBOM
+        uses: anchore/sbom-action@v0.21.0
         with:
-          fetch-depth: 0   # full history for changelog generation
-
-      - name: Generate changelog since last tag
-        id: changelog
+          image: ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ matrix.image }}@${{ steps.build.outputs.digest }}
+          format: cyclonedx-json
+          output-file: ${{ matrix.component }}.sbom.cdx.json
+      - name: Fail on critical vulnerabilities
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ matrix.image }}@${{ steps.build.outputs.digest }}
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+      - name: Record immutable image result
+        env:
+          COMPONENT: ${{ matrix.component }}
+          IMAGE: ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ matrix.image }}
+          DIGEST: ${{ steps.build.outputs.digest }}
         run: |
-          PREV_TAG=$(git tag --sort=-creatordate | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sed -n '2p')
-          CURRENT_TAG=${GITHUB_REF_NAME}
-          echo "prev_tag=${PREV_TAG}" >> "$GITHUB_OUTPUT"
+          mkdir -p image-result
+          python - <<'PY'
+          import json, os
+          result = {"component": os.environ["COMPONENT"], "image": os.environ["IMAGE"], "digest": os.environ["DIGEST"], "sbom": f"{os.environ['COMPONENT']}.sbom.cdx.json"}
+          open("image-result/image.json", "w").write(json.dumps(result, indent=2) + "\n")
+          PY
+          cp "${COMPONENT}.sbom.cdx.json" image-result/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-image-${{ matrix.component }}
+          path: image-result
+          retention-days: 90
 
-          if [ -z "$PREV_TAG" ]; then
-            LOG=$(git log --pretty=format:"- %s (%h)" | head -30)
-          else
-            LOG=$(git log "${PREV_TAG}..${CURRENT_TAG}" --pretty=format:"- %s (%h)")
-          fi
-
-          # Write multiline output safely
-          {
-            echo "changelog<<EOF"
-            echo "$LOG"
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
-
-      - name: Create release
+  release-manifest:
+    name: Publish release manifest
+    needs: [certification-gate, build-scan-push]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6.0.2
+        with: {fetch-depth: 0}
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: release-image-*
+          path: release-images
+      - name: Generate machine-readable release manifest
+        env:
+          CERTIFICATION_RUNS: ${{ needs.certification-gate.outputs.runs }}
+        run: |
+          python - <<'PY'
+          import datetime, glob, json, os
+          images = [json.load(open(path)) for path in sorted(glob.glob("release-images/**/image.json", recursive=True))]
+          manifest = {
+              "product": "DataObs",
+              "product_version": os.environ["GITHUB_REF_NAME"].removeprefix("v"),
+              "git_commit_sha": os.environ["GITHUB_SHA"],
+              "build_timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+              "elastic_stack_compatibility": "9.4.2",
+              "migration_range": {"first": "0001_product_foundation", "latest": "0019_data_product_operation_claim_expires_date"},
+              "openapi_version": json.load(open("openapi.json"))["info"]["version"],
+              "console_version": json.load(open("ui/dataobs-console/package.json"))["version"],
+              "component_images": images,
+              "licence": "Proprietary - All Rights Reserved, KJC InfoTech Limited",
+              "certification_workflow_runs": json.loads(os.environ["CERTIFICATION_RUNS"]),
+              "certification_artifacts": ["incident-migration-occ-artifacts", "e2e-signal-path", "data-product-foundation", "data-product-reconciliation-evidence"],
+              "known_limitations": ["Not a production release", "Helm coverage is limited to API, quality worker, and OpenTelemetry Collector", "OIDC/RBAC, HA, and backup/restore remain incomplete"],
+          }
+          open("dataobs-release-manifest.json", "w").write(json.dumps(manifest, indent=2) + "\n")
+          PY
+      - name: Create GitHub release
         uses: softprops/action-gh-release@v3.0.0
         with:
-          name: "DataObs ${{ github.ref_name }}"
+          name: DataObs ${{ github.ref_name }}
           tag_name: ${{ github.ref_name }}
-          generate_release_notes: false
+          generate_release_notes: true
+          prerelease: true
+          files: |
+            dataobs-release-manifest.json
+            release-images/**/*.sbom.cdx.json
           body: |
-            ## What's Changed
-            ${{ steps.changelog.outputs.changelog }}
+            ## Proprietary release candidate
+            ${{ env.PRODUCT_DESCRIPTION }} — Copyright KJC InfoTech Limited. All Rights Reserved.
 
-            ## Docker Images
-
-            Pull the images for this release:
-
-            ```bash
-            docker pull ghcr.io/${{ env.OWNER }}/dataobs-api:${{ github.ref_name }}
-            docker pull ghcr.io/${{ env.OWNER }}/dataobs-quality:${{ github.ref_name }}
-            docker pull ghcr.io/${{ env.OWNER }}/dataobs-sample-app:${{ github.ref_name }}
-            ```
-
-            Or use `latest` for the most recent release:
-
-            ```bash
-            docker pull ghcr.io/${{ env.OWNER }}/dataobs-api:latest
-            docker pull ghcr.io/${{ env.OWNER }}/dataobs-quality:latest
-            docker pull ghcr.io/${{ env.OWNER }}/dataobs-sample-app:latest
-            ```
-
-            ## Helm / Kubernetes
-
-            Update `helm/dataobs/values.yaml` image tags to `${{ github.ref_name }}` or pin in your `helmfile.yaml`:
-
-            ```yaml
-            api:
-              image: ghcr.io/${{ env.OWNER }}/dataobs-api:${{ github.ref_name }}
-            quality:
-              image: ghcr.io/${{ env.OWNER }}/dataobs-quality:${{ github.ref_name }}
-            ```
-
-            > Images include [SBOM attestations](https://docs.docker.com/build/metadata/attestations/sbom/) and
-            > [build provenance](https://docs.docker.com/build/metadata/attestations/slsa-provenance/).
-          draft: false
-          prerelease: ${{ contains(github.ref_name, '-') }}
-          token: ${{ secrets.GITHUB_TOKEN }}
+            Pin every component to `${{ github.ref_name }}`, the immutable `sha-${{ github.sha }}` tag, or the digest recorded in `dataobs-release-manifest.json`. The Helm chart is a foundation and is not production-ready. Demo/sample applications are not production images.

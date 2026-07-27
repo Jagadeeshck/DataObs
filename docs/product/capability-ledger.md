@@ -2,12 +2,12 @@
 
 # Capability ledger
 
-Audited commit: `d8a04d0` · PR range: #82-#106
+Audited commit: `5164762a6337a44a76ad2c7574a78edc048a70b3` · PR range: #82-#168
 
 ## State counts
 
-- **foundation**: 20
-- **functional_unvalidated**: 6
+- **foundation**: 16
+- **functional_unvalidated**: 10
 - **not_started**: 7
 - **optional_integration**: 1
 - **scaffold**: 1
@@ -51,9 +51,9 @@ Evidence-led status for business reliability scorecards.
 
 Evidence-led status for data products, slos, product 360, and rca.
 
-- **State:** `foundation`
+- **State:** `functional_unvalidated`
 - **Release readiness:** `blocked`
-- **Next gate:** Execute and retain the evidence required for promotion.
+- **Next gate:** Run foundation and full reconciliation profiles for the final PR head and independently verify retained artifacts.
 
 ### `data.asset360` — Asset Catalog and Asset 360
 
@@ -75,15 +75,15 @@ Evidence-led status for postgresql discovery, schema, freshness, and profiling.
 
 Evidence-led status for quality and drift evidence.
 
-- **State:** `foundation`
+- **State:** `functional_unvalidated`
 - **Release readiness:** `blocked`
-- **Next gate:** Execute and retain the evidence required for promotion.
+- **Next gate:** Run the final-head Elasticsearch 9.4.2 integration job and retain the redaction-safe e2e-signal-path artifact.
 
 ### `monitoring.runtime` — Monitor runtime, baselines, and recommendations
 
 Evidence-led status for monitor runtime, baselines, and recommendations.
 
-- **State:** `foundation`
+- **State:** `functional_unvalidated`
 - **Release readiness:** `blocked`
 - **Next gate:** Execute and retain the evidence required for promotion.
 
@@ -181,7 +181,7 @@ Evidence-led status for finding ingest, correlation, lifecycle, and timeline.
 
 - **State:** `functional_unvalidated`
 - **Release readiness:** `blocked`
-- **Next gate:** Execute and retain the evidence required for promotion.
+- **Next gate:** Run the final-head Elasticsearch 9.4.2 integration job and retain the redaction-safe e2e-signal-path artifact.
 
 ### `incidents.replay` — Incident mapping, OCC, and bounded replay
 
@@ -227,9 +227,9 @@ Evidence-led status for opensearch, grafana, and alloy interoperability. Elastic
 
 Evidence-led status for opentelemetry ingestion standard.
 
-- **State:** `foundation`
+- **State:** `functional_unvalidated`
 - **Release readiness:** `blocked`
-- **Next gate:** Execute and retain the evidence required for promotion.
+- **Next gate:** Run the final-head Elasticsearch 9.4.2 integration job and retain the redaction-safe e2e-signal-path artifact.
 
 ### `platform.architecture` — Elasticsearch-native architecture
 
@@ -269,7 +269,7 @@ Evidence-led status for migration framework.
 
 - **State:** `functional_unvalidated`
 - **Release readiness:** `blocked`
-- **Next gate:** Execute and retain the evidence required for promotion.
+- **Next gate:** Retain final-head migration/OCC and rolling-upgrade evidence from Elasticsearch 9.4.2.
 
 ### `platform.self_observability` — Self-observability
 
@@ -285,7 +285,7 @@ Evidence-led status for rolling-upgrade correctness.
 
 - **State:** `functional_unvalidated`
 - **Release readiness:** `blocked`
-- **Next gate:** Execute and retain the evidence required for promotion.
+- **Next gate:** Retain final-head migration/OCC and rolling-upgrade evidence from Elasticsearch 9.4.2.
 
 ### `platform.iam` — OIDC and RBAC
 

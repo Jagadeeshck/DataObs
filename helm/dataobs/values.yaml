@@ -114,7 +114,7 @@ api:
   replicaCount: 2
   image:
     repository: ghcr.io/jagadeeshck/dataobs-api
-    tag: latest
+    tag: "0.1.0"
     pullPolicy: IfNotPresent
   service:
     type: ClusterIP
@@ -125,8 +125,8 @@ quality:
   enabled: true
   replicaCount: 1
   image:
-    repository: ghcr.io/jagadeeshck/dataobs-quality
-    tag: latest
+    repository: ghcr.io/jagadeeshck/dataobs-quality-worker
+    tag: "0.1.0"
     pullPolicy: IfNotPresent
   resources: {}
 

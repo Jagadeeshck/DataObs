@@ -28,8 +28,10 @@ RUN pip install --no-cache-dir --upgrade "setuptools>=70.0.0" "wheel>=0.46.2" "j
 # Copy installed packages from builder
 COPY --from=builder /install /usr/local
 
-# Copy source and config
+# Copy application source and shared packages
 COPY src ./src
+COPY packages ./packages
+COPY services ./services
 COPY config ./config
 
 # Non-root user for security

@@ -1,7 +1,7 @@
 name: Data Product reconciliation certification
 on: [pull_request, workflow_dispatch]
 permissions:
-  contents: write
+  contents: read
   actions: read
   pull-requests: read
 env:
@@ -21,22 +21,6 @@ jobs:
       - run: pip install -r requirements.txt
       - run: python scripts/check_migration_immutability.py --base-ref origin/main
       - run: pip install pytest ruff black mypy
-      - name: Apply one-time migration helper lint normalization
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
-        env:
-          HEAD_REF: ${{ github.event.pull_request.head.ref }}
-        run: |
-          ruff check --fix packages/elastic_store/registry.py
-          black packages/elastic_store/registry.py
-          if git diff --quiet -- packages/elastic_store/registry.py; then
-            echo "migration helper already normalized"
-            exit 0
-          fi
-          git config user.name "dataobs-ci"
-          git config user.email "dataobs-ci@users.noreply.github.com"
-          git add packages/elastic_store/registry.py
-          git commit -m "style: normalize migration compatibility helper"
-          git push origin "HEAD:${HEAD_REF}"
       - run: python scripts/check_generated_artifacts.py
       - run: python scripts/check_docs_links.py
       - run: python scripts/validate_capability_ledger.py

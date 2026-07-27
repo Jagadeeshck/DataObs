@@ -14,6 +14,9 @@ from .manifest import (
 )
 
 
+_DATA_PRODUCT_DECISION_INDEX = "dataobs-data-product-membership-decisions-v1"
+
+
 def plan() -> List[Dict[str, Any]]:
     return [
         {
@@ -192,6 +195,31 @@ def _mapping_type_matches(expected: Dict[str, Any], installed: Dict[str, Any]) -
     )
 
 
+def _mapping_update_type_matches(
+    index: str,
+    field: str,
+    expected: Dict[str, Any],
+    installed: Dict[str, Any],
+) -> bool:
+    """Accept exact mappings plus one released, additive compatibility case.
+
+    Migration 0015 installed the decision ``reason`` field as ``keyword`` and
+    released migration 0016 described it as ``match_only_text``. Elasticsearch
+    cannot change an existing field type. Migration 0018 therefore adds the
+    canonical ``decision_reason`` field instead. Preserve the immutable legacy
+    field while applying every other 0016 field and keep all unknown conflicts
+    fail-closed.
+    """
+    if _mapping_type_matches(expected, installed):
+        return True
+    return (
+        index == _DATA_PRODUCT_DECISION_INDEX
+        and field == "reason"
+        and expected.get("type") == "match_only_text"
+        and installed.get("type") == "keyword"
+    )
+
+
 def _apply_mapping_update(es: Elasticsearch, index: str, properties: Dict[str, Any]) -> None:
     """Add and verify explicit fields on a trusted concrete product index."""
     registered_targets = {
@@ -208,15 +236,18 @@ def _apply_mapping_update(es: Elasticsearch, index: str, properties: Dict[str, A
     conflicts = [
         name
         for name, definition in properties.items()
-        if name in current_properties and not _mapping_type_matches(definition, current_properties[name])
+        if name in current_properties
+        and not _mapping_update_type_matches(index, name, definition, current_properties[name])
     ]
     if conflicts:
         raise RuntimeError(f"Incompatible existing mapping on {index}: {', '.join(sorted(conflicts))}")
-    es.indices.put_mapping(index=index, dynamic="strict", properties=properties)
+    missing_properties = {name: definition for name, definition in properties.items() if name not in current_properties}
+    if missing_properties:
+        es.indices.put_mapping(index=index, dynamic="strict", properties=missing_properties)
     installed = es.indices.get_mapping(index=index)[index]["mappings"]
     if installed.get("dynamic") != "strict" or any(
         name not in installed.get("properties", {})
-        or not _mapping_type_matches(definition, installed["properties"][name])
+        or not _mapping_update_type_matches(index, name, definition, installed["properties"][name])
         for name, definition in properties.items()
     ):
         raise RuntimeError(f"Mapping verification failed for {index}")

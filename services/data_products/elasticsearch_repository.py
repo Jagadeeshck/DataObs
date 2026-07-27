@@ -183,7 +183,14 @@ class ElasticsearchDataProductRepository:
                 "bool": {
                     "should": [
                         {"term": {"outcome": "pending"}},
-                        {"range": {"document.claim_expires_at": {"lte": query_instant}}},
+                        {
+                            "range": {
+                                "document.claim_expires_at": {
+                                    "gte": "1970-01-01T00:00:00+00:00",
+                                    "lte": query_instant,
+                                }
+                            }
+                        },
                     ],
                     "minimum_should_match": 1,
                 }
@@ -208,7 +215,7 @@ class ElasticsearchDataProductRepository:
             size=limit,
             seq_no_primary_term=True,
             query={"bool": {"filter": filters}},
-            sort=[{"occurred_at": "asc"}, {"operation_id": "asc"}, {"_id": "asc"}],
+            sort=[{"occurred_at": "asc"}, {"operation_id": "asc"}],
         )
         return [
             self._state_from_hit(hit)
@@ -1488,7 +1495,6 @@ class ElasticsearchDataProductRepository:
                 {"removed": "asc"},
                 {"upstream_product_id": "asc"},
                 {"graph_version": "desc"},
-                {"_id": "asc"},
             ),
         )
         return DataProductDependencyPage(items=items, has_more=more, search_after=after)

@@ -216,7 +216,6 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
     app.state.store_bundle = resolved_bundle
     if resolved_settings.store_backend.lower() == "elasticsearch":
         repo = ElasticsearchCollectionRepository(make_es_client(resolved_settings))
-        repo.readiness()
     else:
         repo = InMemoryCollectionRepository()
     app.state.collection_manager = CollectionManagerService(repo)

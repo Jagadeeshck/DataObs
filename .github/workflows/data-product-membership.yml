@@ -4,13 +4,18 @@ permissions:
   contents: read
   actions: read
   pull-requests: read
+env:
+  DATA_PRODUCT_CERTIFICATION_SHA: >-
+    ${{ github.event_name == 'pull_request'
+        && github.event.pull_request.head.sha
+        || github.sha }}
 jobs:
   data-product-reconciliation-contracts:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-        with: {fetch-depth: 0}
+        with: {ref: '${{ env.DATA_PRODUCT_CERTIFICATION_SHA }}', fetch-depth: 0}
       - uses: actions/setup-python@v5
         with: {python-version: '3.11'}
       - run: pip install -r requirements.txt
@@ -38,6 +43,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+        with: {ref: '${{ env.DATA_PRODUCT_CERTIFICATION_SHA }}', fetch-depth: 0}
       - uses: actions/setup-python@v5
         with: {python-version: '3.11'}
       - run: pip install -r requirements.txt
@@ -59,6 +65,7 @@ jobs:
           --health-interval 10s --health-timeout 5s --health-retries 30
     steps:
       - uses: actions/checkout@v4
+        with: {ref: '${{ env.DATA_PRODUCT_CERTIFICATION_SHA }}', fetch-depth: 0}
       - uses: actions/setup-python@v5
         with: {python-version: '3.11'}
       - run: pip install -r requirements.txt
@@ -82,6 +89,7 @@ jobs:
           --health-interval 10s --health-timeout 5s --health-retries 30
     steps:
       - uses: actions/checkout@v4
+        with: {ref: '${{ env.DATA_PRODUCT_CERTIFICATION_SHA }}', fetch-depth: 0}
       - uses: actions/setup-python@v5
         with: {python-version: '3.11'}
       - run: pip install pytest
@@ -98,11 +106,12 @@ jobs:
     needs: [data-product-reconciliation-contracts, data-product-reconciliation-unit, data-product-reconciliation-elasticsearch, data-product-reconciliation-security]
     steps:
       - uses: actions/checkout@v4
+        with: {ref: '${{ env.DATA_PRODUCT_CERTIFICATION_SHA }}', fetch-depth: 0}
       - uses: actions/download-artifact@v4
         with: {path: artifacts/data-product-reconciliation/retained, merge-multiple: true}
       - name: Generate current-run evidence manifest
         env:
-          CERTIFICATION_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          CERTIFICATION_HEAD_SHA: ${{ env.DATA_PRODUCT_CERTIFICATION_SHA }}
           CERTIFICATION_RUN_ID: ${{ github.run_id }}
           CERTIFICATION_RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
           CERTIFICATION_JOB_RESULTS: >-

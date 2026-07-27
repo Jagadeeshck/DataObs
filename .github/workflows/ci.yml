@@ -210,14 +210,31 @@ jobs:
         run: |
           timeout 180 bash -c 'until curl -fsS http://localhost:8000/health; do sleep 5; done'
       - name: Run integration tests
-        run: RUN_INTEGRATION_TESTS=1 python -m pytest tests/integration -q --junitxml=integration-test-results.xml
+        env:
+          ELASTICSEARCH_URL: http://127.0.0.1:9200
+          OTEL_EXPORTER_OTLP_ENDPOINT: http://127.0.0.1:4317
+        run: |
+          mkdir -p artifacts/e2e-signal-path
+          RUN_INTEGRATION_TESTS=1 python -m pytest \
+            tests/integration/test_quality_signal_path.py \
+            tests/integration/test_api_e2e.py \
+            tests/integration/test_alert_delivery.py \
+            tests/integration/test_otel_pipeline.py -q \
+            --junitxml=artifacts/e2e-signal-path/junit.xml
+      - name: Upload signal path evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-signal-path
+          path: artifacts/e2e-signal-path
+          if-no-files-found: warn
       - name: Upload integration artifacts on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: integration-test-artifacts
           path: |
-            integration-test-results.xml
+            artifacts/e2e-signal-path/junit.xml
             tests/integration/*.yaml
       - name: Dump container logs on failure
         if: failure()

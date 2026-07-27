@@ -41,6 +41,7 @@ from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
 from src.quality.checks.registry import build_check, supported_check_types
 from src.quality.freshness import FreshnessMonitor
+from src.quality.runner import QualityRunner
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -122,15 +123,7 @@ def _run_checks_for_dataset(
 ) -> None:
     """Execute all configured checks for one dataset and index results to ES."""
     tracer = trace.get_tracer("dataobs.engine")
-    meter = metrics.get_meter("dataobs.engine")
-    check_counter = meter.create_counter(
-        "dataobs.quality.checks_run",
-        description="Total quality checks executed",
-    )
-    failure_counter = meter.create_counter(
-        "dataobs.quality.checks_failed",
-        description="Total quality checks that returned FAIL status",
-    )
+    runner = QualityRunner(es_client)
 
     with tracer.start_as_current_span(f"quality_run.{dataset}") as span:
         span.set_attribute("dataobs.dataset", dataset)
@@ -148,11 +141,15 @@ def _run_checks_for_dataset(
 
             try:
                 # Freshness checks are handled by FreshnessMonitor separately
-                result = check.run({"dataset": dataset, **check_cfg}, None)
-
-                check_counter.add(1, {"dataset": dataset, "check_type": check_type})
+                execution = runner.execute(
+                    check,
+                    {"dataset": dataset, **check_cfg},
+                    None,
+                    tenant_id=str(check_cfg.get("tenant_id", "default")),
+                    environment=str(check_cfg.get("environment", "default")),
+                )
+                result = execution.result
                 if result.status == "FAIL":
-                    failure_counter.add(1, {"dataset": dataset, "check_type": check_type, "severity": result.severity})
                     logger.warning(
                         "FAIL — dataset: %s  check: %s  severity: %s  details: %s",
                         dataset,
@@ -160,13 +157,6 @@ def _run_checks_for_dataset(
                         result.severity,
                         result.details,
                     )
-
-                # Index result to Elasticsearch
-                es_client.index(
-                    index="dataobs-quality-results",
-                    document=result.to_es_doc(),
-                )
-
             except Exception:
                 logger.exception("Error running check '%s' for dataset '%s'", check_type, dataset)
 

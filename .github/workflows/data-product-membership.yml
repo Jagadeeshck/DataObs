@@ -38,6 +38,11 @@ jobs:
           services/data_products/impact.py
           src/api/data_product_routes.py
       - run: ruff check services/data_products src/api/data_product_routes.py tests/data_products tests/integration/data_products tests/security/data_products
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pipeline-debug-elasticsearch-repository
+          path: services/data_products/elasticsearch_repository.py
+          retention-days: 1
   data-product-reconciliation-unit:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -72,7 +77,15 @@ jobs:
       - run: pip install pytest
       - run: ./bin/dataobs elastic apply
         env: {ELASTICSEARCH_URL: 'http://127.0.0.1:9200'}
-      - run: RUN_INTEGRATION_TESTS=1 ELASTICSEARCH_URL=http://127.0.0.1:9200 python -m pytest tests/integration/data_products -q --junitxml=elasticsearch.xml
+      - run: mkdir -p artifacts/data-product-reconciliation/elasticsearch
+      - name: Run real Elasticsearch reconciliation tests
+        env:
+          RUN_INTEGRATION_TESTS: '1'
+          DATA_PRODUCT_ALLOW_DESTRUCTIVE_TEST_RESET: '1'
+          DATA_PRODUCT_CERTIFICATION_PROFILE: data-product-runtime-foundation
+          DATA_PRODUCT_EVIDENCE_DIR: artifacts/data-product-reconciliation/elasticsearch
+          ELASTICSEARCH_URL: http://127.0.0.1:9200
+        run: python -m pytest tests/integration/data_products -q --junitxml=elasticsearch.xml
       - uses: actions/upload-artifact@v4
         if: always()
         with: {name: reconciliation-elasticsearch-results, path: elasticsearch.xml, retention-days: 30}
@@ -96,7 +109,14 @@ jobs:
       - run: pip install -r requirements.txt
       - run: ./bin/dataobs elastic apply
         env: {ELASTICSEARCH_URL: 'http://127.0.0.1:9200'}
-      - run: RUN_INTEGRATION_TESTS=1 ELASTICSEARCH_URL=http://127.0.0.1:9200 python -m pytest tests/security/data_products -q --junitxml=security.xml
+      - run: mkdir -p artifacts/data-product-reconciliation/security
+      - name: Run real Elasticsearch security tests
+        env:
+          RUN_INTEGRATION_TESTS: '1'
+          DATA_PRODUCT_CERTIFICATION_PROFILE: data-product-runtime-foundation
+          DATA_PRODUCT_EVIDENCE_DIR: artifacts/data-product-reconciliation/security
+          ELASTICSEARCH_URL: http://127.0.0.1:9200
+        run: python -m pytest tests/security/data_products -q --junitxml=security.xml
       - uses: actions/upload-artifact@v4
         if: always()
         with: {name: reconciliation-security-results, path: security.xml, retention-days: 30}

@@ -1,5 +1,8 @@
 from packages.elastic_store.manifest import migrations
-from packages.elastic_store.registry import _mapping_update_type_matches, _selected_migrations
+from packages.elastic_store.registry import (
+    _mapping_update_type_matches,
+    _selected_migrations,
+)
 
 
 def test_default_selection_is_full_and_stable():

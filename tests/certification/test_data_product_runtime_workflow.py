@@ -115,8 +115,8 @@ def test_certification_and_diagnostic_paths_are_event_isolated():
     evidence = jobs["data-product-foundation-evidence"]
     summary = jobs["data-product-foundation-summary"]
     diagnostic = jobs["data-product-foundation-diagnostic-summary"]
-    assert evidence["if"] == "github.event_name == 'pull_request'"
-    assert summary["if"] == "always() && github.event_name == 'pull_request'"
+    assert evidence["if"] == "github.event_name != 'workflow_dispatch'"
+    assert summary["if"] == "always() && github.event_name != 'workflow_dispatch'"
     assert diagnostic["if"] == "always() && github.event_name == 'workflow_dispatch'"
     assert set(diagnostic["needs"]) == producers
     assert set(summary["needs"]) == producers | {"data-product-foundation-evidence"}
@@ -126,16 +126,20 @@ def test_certification_and_diagnostic_paths_are_event_isolated():
     assert "not certification evidence" in diagnostic_commands
 
 
-def test_pull_request_evidence_receives_explicit_hosted_provenance():
+def test_certifying_events_receive_explicit_exact_sha_provenance():
     workflow = yaml.safe_load(Path(".github/workflows/data-product-runtime.yml").read_text())
     env = workflow["jobs"]["data-product-foundation-evidence"]["env"]
-    assert env["CERTIFICATION_EVENT_NAME"] == "pull_request"
-    assert env["CERTIFICATION_STARTED_AT"] == "${{ github.event.pull_request.created_at }}"
+    assert env["CERTIFICATION_EVENT_NAME"] == "${{ github.event_name }}"
+    assert env["CERTIFICATION_STARTED_AT"] == (
+        "${{ github.event.pull_request.created_at || github.event.head_commit.timestamp }}"
+    )
     assert env["CERTIFICATION_RUN_ID"] == "${{ github.run_id }}"
     assert env["CERTIFICATION_RUN_URL"] == (
         "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
     )
-    assert env["CERTIFICATION_HEAD_SHA"] == "${{ github.event.pull_request.head.sha }}"
+    assert env["CERTIFICATION_HEAD_SHA"] == (
+        "${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}"
+    )
     assert env["DATA_PRODUCT_CERTIFICATION_SHA"] == env["CERTIFICATION_HEAD_SHA"]
     assert env["EXPECTED_HOSTED_SHA"] == env["CERTIFICATION_HEAD_SHA"]
     assert "GITHUB_SHA" not in env

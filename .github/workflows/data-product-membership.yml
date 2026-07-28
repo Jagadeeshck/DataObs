@@ -1,5 +1,9 @@
 name: Data Product reconciliation certification
-on: [pull_request, workflow_dispatch]
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
 permissions:
   contents: read
   actions: read
@@ -31,6 +35,7 @@ jobs:
           services/data_products/repository.py
           services/data_products/memory_repository.py
           services/data_products/elasticsearch_repository.py
+          services/data_products/elasticsearch_repository_base.py
           services/data_products/reconciliation.py
           services/data_products/service.py
           services/data_products/membership_service.py
@@ -116,7 +121,7 @@ jobs:
         if: always()
         with: {name: reconciliation-security-results, path: security.xml, retention-days: 30}
   data-product-reconciliation-evidence:
-    if: github.event_name == 'pull_request'
+    if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
     needs: [data-product-reconciliation-contracts, data-product-reconciliation-unit, data-product-reconciliation-elasticsearch, data-product-reconciliation-security]
     steps:
@@ -147,7 +152,7 @@ jobs:
               raise SystemExit("required reconciliation JUnit inventory is incomplete")
           manifest = {
               "schema_version": "1.0",
-              "workflow_event": "pull_request",
+              "workflow_event": os.environ["GITHUB_EVENT_NAME"],
               "commit_sha": os.environ["CERTIFICATION_HEAD_SHA"],
               "workflow_run_id": int(os.environ["CERTIFICATION_RUN_ID"]),
               "workflow_run_url": os.environ["CERTIFICATION_RUN_URL"],
@@ -165,7 +170,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with: {name: data-product-reconciliation-evidence, path: artifacts/data-product-reconciliation, retention-days: 30}
   data-product-reconciliation-summary:
-    if: always() && github.event_name == 'pull_request'
+    if: always() && github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
     needs: [data-product-reconciliation-contracts, data-product-reconciliation-unit, data-product-reconciliation-elasticsearch, data-product-reconciliation-security, data-product-reconciliation-evidence]
     steps:

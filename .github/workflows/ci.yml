@@ -122,7 +122,7 @@ jobs:
       - name: Reject tracked generated dependency and browser artifacts
         run: python scripts/check_generated_artifacts.py
       - name: Type check product foundations
-        run: mypy packages/domain_model packages/elastic_store services/collection_manager packages/agent_sdk services/scanner_worker
+        run: mypy packages/domain_model packages/elastic_store services/data_products/elasticsearch_repository.py services/data_products/elasticsearch_repository_base.py services/collection_manager packages/agent_sdk services/scanner_worker
       - name: Migration plan artifact
         run: python -m packages.elastic_store.cli plan > migration-plan.json
       - name: OpenAPI generation consistency check

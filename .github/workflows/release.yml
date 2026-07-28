@@ -25,35 +25,29 @@ jobs:
     steps:
       - uses: actions/checkout@v6.0.2
         with: {fetch-depth: 0}
-      - name: Validate tag and exact-commit hosted evidence
+      - name: Validate semantic tag target on protected main
+        run: |
+          [[ "$GITHUB_REF_NAME" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$ ]]
+          tagged_sha="$(git rev-list -n 1 "${GITHUB_REF_NAME}^{commit}")"
+          test -n "$tagged_sha"
+          test "$tagged_sha" = "$GITHUB_SHA"
+          git fetch origin main --no-tags
+          git merge-base --is-ancestor "$tagged_sha" origin/main
+          test "$(git show "$tagged_sha:.github/workflows/release.yml" | sha256sum | cut -d' ' -f1)" = "$(sha256sum .github/workflows/release.yml | cut -d' ' -f1)"
+      - name: Validate exact-commit hosted evidence
         id: verify
         env:
           GH_TOKEN: ${{ github.token }}
-          TAGGED_SHA: ${{ github.sha }}
         run: |
-          python - <<'PY'
-          import json, os, subprocess
-          sha = os.environ["TAGGED_SHA"]
-          required_workflows = {
-              "CI": "ci.yml",
-              "Data Product runtime certification": "data-product-runtime.yml",
-              "Data Product reconciliation certification": "data-product-membership.yml",
-          }
-          accepted = []
-          for label, workflow in required_workflows.items():
-              raw = subprocess.check_output([
-                  "gh", "api", f"repos/{os.environ['GITHUB_REPOSITORY']}/actions/workflows/{workflow}/runs",
-                  "-f", f"head_sha={sha}", "-f", "status=completed", "-f", "per_page=100",
-              ])
-              runs = json.loads(raw)["workflow_runs"]
-              successful = [r for r in runs if r["head_sha"] == sha and r["conclusion"] == "success"]
-              if not successful:
-                  raise SystemExit(f"release blocked: no successful {label} run for exact commit {sha}")
-              accepted.append({"workflow": label, "id": successful[0]["id"], "url": successful[0]["html_url"]})
-          value = json.dumps(accepted, separators=(",", ":"))
-          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
-              output.write(f"runs={value}\n")
-          PY
+          python scripts/release/verify_certification.py \
+            --repository "$GITHUB_REPOSITORY" \
+            --expected-sha "$GITHUB_SHA" \
+            --output certification-runs.json
+          {
+            printf 'runs='
+            cat certification-runs.json
+          } >> "$GITHUB_OUTPUT"
+
 
   build-scan-push:
     name: Build, scan & attest (${{ matrix.component }})
@@ -73,11 +67,6 @@ jobs:
     steps:
       - uses: actions/checkout@v6.0.2
       - uses: docker/setup-buildx-action@v4.0.0
-      - uses: docker/login-action@v4.1.0
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
       - id: meta
         uses: docker/metadata-action@v6.0.0
         with:
@@ -97,31 +86,51 @@ jobs:
         with:
           context: ${{ matrix.context }}
           file: ${{ matrix.dockerfile }}
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
+          load: true
+          tags: dataobs-release-candidate:${{ matrix.component }}
           labels: ${{ steps.meta.outputs.labels }}
           provenance: mode=max
           sbom: true
           cache-from: type=gha,scope=${{ matrix.image }}
           cache-to: type=gha,mode=max,scope=${{ matrix.image }}
-      - name: Generate downloadable SBOM
+      - name: Generate candidate SBOM
         uses: anchore/sbom-action@v0.21.0
         with:
-          image: ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ matrix.image }}@${{ steps.build.outputs.digest }}
+          image: dataobs-release-candidate:${{ matrix.component }}
           format: cyclonedx-json
           output-file: ${{ matrix.component }}.sbom.cdx.json
-      - name: Fail on critical vulnerabilities
+      - name: Fail on critical vulnerabilities before publication
         uses: aquasecurity/trivy-action@0.33.1
         with:
-          image-ref: ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ matrix.image }}@${{ steps.build.outputs.digest }}
+          image-ref: dataobs-release-candidate:${{ matrix.component }}
           severity: CRITICAL
           ignore-unfixed: true
           exit-code: "1"
+      - uses: docker/login-action@v4.1.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish scanned candidate and resolve immutable digest
+        id: publish
+        env:
+          TAGS: ${{ steps.meta.outputs.tags }}
+          CANDIDATE: dataobs-release-candidate:${{ matrix.component }}
+        run: |
+          while IFS= read -r tag; do
+            test -n "$tag" || continue
+            docker tag "$CANDIDATE" "$tag"
+            docker push "$tag"
+          done <<< "$TAGS"
+          image="${REGISTRY}/${OWNER}/${{ matrix.image }}"
+          digest="$(docker buildx imagetools inspect "$image:sha-${GITHUB_SHA}" --format '{{json .Manifest.Digest}}' | tr -d '"')"
+          test -n "$digest"
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
       - name: Record immutable image result
         env:
           COMPONENT: ${{ matrix.component }}
           IMAGE: ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ matrix.image }}
-          DIGEST: ${{ steps.build.outputs.digest }}
+          DIGEST: ${{ steps.publish.outputs.digest }}
         run: |
           mkdir -p image-result
           python - <<'PY'
@@ -154,6 +163,12 @@ jobs:
           python - <<'PY'
           import datetime, glob, json, os
           images = [json.load(open(path)) for path in sorted(glob.glob("release-images/**/image.json", recursive=True))]
+          expected = {"api", "console", "quality-worker", "scanner-worker", "monitor-runtime", "pathway-worker", "kafka-observer"}
+          components = [image.get("component") for image in images]
+          if set(components) != expected or len(components) != len(expected):
+              raise SystemExit(f"release image inventory must contain every component exactly once: {components}")
+          if any(not image.get("digest", "").startswith("sha256:") for image in images):
+              raise SystemExit("release image inventory contains a missing or invalid digest")
           manifest = {
               "product": "DataObs",
               "product_version": os.environ["GITHUB_REF_NAME"].removeprefix("v"),

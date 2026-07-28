@@ -34,6 +34,7 @@ def test_focused_type_gate_covers_authoritative_data_product_modules():
         "services/data_products/repository.py",
         "services/data_products/memory_repository.py",
         "services/data_products/elasticsearch_repository.py",
+        "services/data_products/elasticsearch_repository_base.py",
         "services/data_products/reconciliation.py",
         "services/data_products/service.py",
         "services/data_products/membership_service.py",
@@ -47,8 +48,8 @@ def test_focused_type_gate_covers_authoritative_data_product_modules():
 
 def test_diagnostic_dispatch_cannot_produce_or_validate_hosted_evidence():
     jobs = _workflow()["jobs"]
-    assert jobs["data-product-reconciliation-evidence"]["if"] == "github.event_name == 'pull_request'"
-    assert jobs["data-product-reconciliation-summary"]["if"] == ("always() && github.event_name == 'pull_request'")
+    assert jobs["data-product-reconciliation-evidence"]["if"] == "github.event_name != 'workflow_dispatch'"
+    assert jobs["data-product-reconciliation-summary"]["if"] == ("always() && github.event_name != 'workflow_dispatch'")
     diagnostic = jobs["data-product-reconciliation-diagnostic-summary"]
     assert diagnostic["if"] == "always() && github.event_name == 'workflow_dispatch'"
     assert "not certification evidence" in str(diagnostic["steps"])

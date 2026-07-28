@@ -8,6 +8,7 @@ import { ProductContextProvider } from "../state/context";
 import { AssetCatalog } from "../features/assets/AssetCatalog";
 import { Asset360 } from "../features/assets/Asset360";
 import { PathwayExplorer } from "../features/pathways/PathwayExplorer";
+import { Callback, Login, Logout, Unauthorised } from "../auth/AuthPages";
 const StreamsInventory = lazy(() =>
   import("../features/streams/StreamsInventory").then((m) => ({
     default: m.StreamsInventory,
@@ -34,6 +35,10 @@ export function App() {
       <BrowserRouter>
         <Suspense fallback={<p role="status">Loading Stream evidence…</p>}>
           <Routes>
+            <Route path="login" element={<Login />} />
+            <Route path="auth/callback" element={<Callback />} />
+            <Route path="logout" element={<Logout />} />
+            <Route path="unauthorised" element={<Unauthorised />} />
             <Route element={<AppShell />}>
               <Route index element={<CommandCenter />} />
               <Route path="flow" element={<FlowMap />} />

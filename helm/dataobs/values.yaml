@@ -112,7 +112,13 @@ config:
 api:
   enabled: true
   replicaCount: 2
-  image:
+  oidc:
+    issuer: "https://identity.example.invalid/realms/dataobs"
+    audience: "dataobs-api"
+    clientId: "dataobs-console"
+    allowedAlgorithms: ["RS256"]
+    groupRoleMappings: '{}'
+image:
     repository: ghcr.io/jagadeeshck/dataobs-api
     tag: "0.1.0"
     pullPolicy: IfNotPresent

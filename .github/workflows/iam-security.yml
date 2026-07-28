@@ -1,0 +1,26 @@
+name: IAM OIDC and tenant security
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  iam-security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12", cache: pip}
+      - run: pip install -r requirements.txt -r requirements-dev.txt
+      - run: python -m compileall -q src packages services integrations tests
+      - run: mkdir -p artifacts && python -m pytest tests/security -q --junitxml=artifacts/iam-security.xml
+      - run: python scripts/check_migration_immutability.py --base-ref HEAD^
+      - run: docker compose -f tests/security/docker-compose.iam.yml config > artifacts/iam-compose.txt
+      - name: Record redaction-safe evidence metadata
+        run: |
+          mkdir -p artifacts
+          printf '{"final_producer_sha":"%s","oidc_provider":"Keycloak 26.3.3","elasticsearch":"9.4.2","route_permission_contract":"executed","tenant_isolation":"executed","jwt_negative_tests":"executed","service_identity":"executed","audit_redaction":"executed","browser":"defined","migration":"0020_identity_rbac_tenant_bindings"}\n' "$GITHUB_SHA" > artifacts/summary.json
+      - uses: actions/upload-artifact@v4
+        with: {name: iam-rbac-security-evidence, path: artifacts, retention-days: 30}

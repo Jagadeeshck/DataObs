@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import json
 import logging
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal
 from urllib.parse import urlsplit
@@ -49,8 +50,31 @@ class ElasticsearchSettings:
 @dataclass(frozen=True)
 class AuthSettings:
     api_token: str | None = None
-    allow_unauthenticated_dev: bool = True
-    provider: str = "token"
+    allow_unauthenticated_dev: bool = False
+    provider: str = "local"
+    oidc: "OIDCSettings" = field(default_factory=lambda: OIDCSettings())
+
+
+@dataclass(frozen=True)
+class OIDCSettings:
+    issuer: str = ""
+    audience: str = ""
+    jwks_url: str | None = None
+    allowed_algorithms: tuple[str, ...] = ("RS256",)
+    client_id: str = ""
+    subject_claim: str = "sub"
+    username_claim: str = "preferred_username"
+    groups_claim: str = "groups"
+    tenants_claim: str = "dataobs_access"
+    environments_claim: str = "environments"
+    roles_claim: str = "dataobs_roles"
+    clock_skew_seconds: int = 30
+    discovery_timeout_seconds: float = 5.0
+    jwks_cache_ttl_seconds: int = 300
+    required_scopes: tuple[str, ...] = ()
+    platform_admin_groups: frozenset[str] = frozenset()
+    group_role_mappings: dict[str, tuple[str, ...]] = field(default_factory=dict)
+    maximum_token_bytes: int = 16384
 
 
 @dataclass(frozen=True)
@@ -128,6 +152,17 @@ def _deep_get(d: dict[str, Any], *path: str, default: Any = None) -> Any:
     return cur
 
 
+def _structured(value: Any, default: Any) -> Any:
+    if value is None:
+        return default
+    if isinstance(value, (dict, list, tuple)):
+        return value
+    try:
+        return json.loads(str(value))
+    except json.JSONDecodeError:
+        return [item.strip() for item in str(value).split(",") if item.strip()]
+
+
 def load_settings() -> AppSettings:
     env = os.getenv("DATAOBS_ENV", "development").strip().lower()
     if env not in {"development", "test", "poc", "production"}:
@@ -165,9 +200,70 @@ def load_settings() -> AppSettings:
             allow_unauthenticated_dev=_to_bool(
                 os.getenv(
                     "DATAOBS_ALLOW_UNAUTHENTICATED_DEV",
-                    _deep_get(config, "auth", "allow_unauthenticated_dev", default=True),
+                    _deep_get(config, "auth", "allow_unauthenticated_dev", default=False),
                 ),
-                default=True,
+                default=False,
+            ),
+            provider=str(os.getenv("DATAOBS_AUTH_PROVIDER", _deep_get(config, "auth", "provider", default="local"))),
+            oidc=OIDCSettings(
+                issuer=str(
+                    os.getenv("DATAOBS_OIDC_ISSUER", _deep_get(config, "auth", "oidc", "issuer", default=""))
+                ).rstrip("/"),
+                audience=str(
+                    os.getenv("DATAOBS_OIDC_AUDIENCE", _deep_get(config, "auth", "oidc", "audience", default=""))
+                ),
+                jwks_url=os.getenv(
+                    "DATAOBS_OIDC_JWKS_URL", _deep_get(config, "auth", "oidc", "jwks_url", default=None)
+                ),
+                allowed_algorithms=tuple(
+                    _structured(
+                        os.getenv(
+                            "DATAOBS_OIDC_ALLOWED_ALGORITHMS",
+                            _deep_get(config, "auth", "oidc", "allowed_algorithms", default=["RS256"]),
+                        ),
+                        ["RS256"],
+                    )
+                ),
+                client_id=str(
+                    os.getenv("DATAOBS_OIDC_CLIENT_ID", _deep_get(config, "auth", "oidc", "client_id", default=""))
+                ),
+                subject_claim=str(os.getenv("DATAOBS_OIDC_SUBJECT_CLAIM", "sub")),
+                username_claim=str(os.getenv("DATAOBS_OIDC_USERNAME_CLAIM", "preferred_username")),
+                groups_claim=str(os.getenv("DATAOBS_OIDC_GROUPS_CLAIM", "groups")),
+                tenants_claim=str(os.getenv("DATAOBS_OIDC_TENANTS_CLAIM", "dataobs_access")),
+                environments_claim=str(os.getenv("DATAOBS_OIDC_ENVIRONMENTS_CLAIM", "environments")),
+                roles_claim=str(os.getenv("DATAOBS_OIDC_ROLES_CLAIM", "dataobs_roles")),
+                clock_skew_seconds=int(os.getenv("DATAOBS_OIDC_CLOCK_SKEW_SECONDS", "30")),
+                discovery_timeout_seconds=float(os.getenv("DATAOBS_OIDC_DISCOVERY_TIMEOUT_SECONDS", "5")),
+                jwks_cache_ttl_seconds=int(os.getenv("DATAOBS_OIDC_JWKS_CACHE_TTL_SECONDS", "300")),
+                required_scopes=tuple(
+                    _structured(
+                        os.getenv(
+                            "DATAOBS_OIDC_REQUIRED_SCOPES",
+                            _deep_get(config, "auth", "oidc", "required_scopes", default=[]),
+                        ),
+                        [],
+                    )
+                ),
+                platform_admin_groups=frozenset(
+                    _structured(
+                        os.getenv(
+                            "DATAOBS_OIDC_PLATFORM_ADMIN_GROUPS",
+                            _deep_get(config, "auth", "oidc", "platform_admin_groups", default=[]),
+                        ),
+                        [],
+                    )
+                ),
+                group_role_mappings={
+                    str(k): tuple(v)
+                    for k, v in _structured(
+                        os.getenv(
+                            "DATAOBS_OIDC_GROUP_ROLE_MAPPINGS",
+                            _deep_get(config, "auth", "oidc", "group_role_mappings", default={}),
+                        ),
+                        {},
+                    ).items()
+                },
             ),
         ),
         tenant=TenantSettings(
@@ -197,8 +293,8 @@ def load_settings() -> AppSettings:
 def _validate(settings: AppSettings) -> None:
     banned = {"changeme", "dataobs_poc_elastic", "dataobs_poc_kibana"}
     if settings.runtime.env == "production":
-        if not settings.auth.api_token:
-            raise ConfigurationError("Production requires API_TOKEN or stronger auth provider.")
+        if settings.auth.provider != "oidc" and not settings.auth.api_token:
+            raise ConfigurationError("Legacy API_TOKEN is absent; production now requires DATAOBS_AUTH_PROVIDER=oidc.")
         if settings.auth.allow_unauthenticated_dev:
             raise ConfigurationError("Production forbids unauthenticated dev mode.")
         if settings.store_backend != "elasticsearch":
@@ -211,8 +307,17 @@ def _validate(settings: AppSettings) -> None:
             raise ConfigurationError("Production requires Elasticsearch credentials or API key.")
         if settings.elasticsearch.password and settings.elasticsearch.password.lower() in banned:
             raise ConfigurationError("Production forbids default/changeme Elasticsearch passwords.")
-        if settings.tenant_id == "default":
-            raise ConfigurationError("Production requires explicit DATAOBS_TENANT_ID.")
+        if settings.auth.provider != "oidc":
+            raise ConfigurationError("Production requires DATAOBS_AUTH_PROVIDER=oidc; shared tokens are forbidden.")
+        oidc = settings.auth.oidc
+        if not oidc.issuer.startswith("https://") or not oidc.audience:
+            raise ConfigurationError("Production OIDC requires an HTTPS issuer and explicit audience.")
+        if not oidc.allowed_algorithms or any(
+            not alg.startswith(("RS", "ES", "PS", "Ed")) for alg in oidc.allowed_algorithms
+        ):
+            raise ConfigurationError("Production OIDC algorithms must be an explicit asymmetric allowlist.")
+        if not oidc.group_role_mappings and not oidc.platform_admin_groups:
+            raise ConfigurationError("Production requires at least one trusted OIDC authorisation mapping.")
         if not settings.elasticsearch.verify_tls:
             raise ConfigurationError("Production requires TLS verification.")
 

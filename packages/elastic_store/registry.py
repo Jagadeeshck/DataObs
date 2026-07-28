@@ -10,6 +10,7 @@ from .manifest import (
     INCIDENT_AUTOMATION_PROPERTIES,
     KAFKA_PROPERTIES,
     MIGRATION_STATE_INDEX,
+    SECURITY_PROPERTIES,
     migrations,
 )
 
@@ -47,7 +48,8 @@ def _mapping() -> Dict[str, Any]:
         | INCIDENT_AUTOMATION_PROPERTIES
         | KAFKA_PROPERTIES
         | MONITORING_PROPERTIES
-        | JOB_RUN_PROPERTIES,
+        | JOB_RUN_PROPERTIES
+        | SECURITY_PROPERTIES,
     }
 
 
@@ -157,6 +159,7 @@ def _ensure_data_stream_template(es: Elasticsearch, pattern: str) -> None:
         | {
             **MONITORING_PROPERTIES,
             **JOB_RUN_PROPERTIES,
+            **SECURITY_PROPERTIES,
             "event_type": {"type": "keyword"},
             "message": {"type": "match_only_text"},
             "metricset": {"type": "keyword"},

@@ -25,6 +25,20 @@ spec:
           ports:
             - containerPort: {{ .Values.api.service.port }}
           env:
+            - name: DATAOBS_ENV
+              value: production
+            - name: DATAOBS_AUTH_PROVIDER
+              value: oidc
+            - name: DATAOBS_OIDC_ISSUER
+              value: {{ .Values.api.oidc.issuer | quote }}
+            - name: DATAOBS_OIDC_AUDIENCE
+              value: {{ .Values.api.oidc.audience | quote }}
+            - name: DATAOBS_OIDC_CLIENT_ID
+              value: {{ .Values.api.oidc.clientId | quote }}
+            - name: DATAOBS_OIDC_ALLOWED_ALGORITHMS
+              value: {{ .Values.api.oidc.allowedAlgorithms | toJson | quote }}
+            - name: DATAOBS_OIDC_GROUP_ROLE_MAPPINGS
+              value: {{ .Values.api.oidc.groupRoleMappings | quote }}
             - name: DATAOBS_CONFIG
               value: /app/config/dataobs.yaml
             - name: OTEL_EXPORTER_OTLP_ENDPOINT

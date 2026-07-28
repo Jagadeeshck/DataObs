@@ -1,0 +1,47 @@
+name: dataobs-iam-certification
+services:
+  oidc:
+    image: quay.io/keycloak/keycloak:26.3.3
+    command: [start-dev, --import-realm]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: fixture-admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: fixture-only-not-production
+    volumes:
+      - ./fixtures/dataobs-realm.json:/opt/keycloak/data/import/dataobs-realm.json:ro
+    ports: ["127.0.0.1:18090:8080"]
+    healthcheck:
+      test: [CMD-SHELL, "exec 3<>/dev/tcp/127.0.0.1/8080"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.4.2
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS: -Xms512m -Xmx512m
+    ports: ["127.0.0.1:19210:9200"]
+    healthcheck:
+      test: [CMD-SHELL, "curl -fsS localhost:9200/_cluster/health?wait_for_status=yellow >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+  api:
+    build: {context: ../.., dockerfile: Dockerfile.api}
+    environment:
+      DATAOBS_ENV: test
+      DATAOBS_AUTH_PROVIDER: oidc
+      DATAOBS_OIDC_ISSUER: http://oidc:8080/realms/dataobs
+      DATAOBS_OIDC_AUDIENCE: dataobs-api
+      DATAOBS_OIDC_CLIENT_ID: dataobs-console
+      DATAOBS_OIDC_GROUP_ROLE_MAPPINGS: '{"platform-admins":["platform_admin"],"tenant-admins":["tenant_admin"],"operators":["operator"],"viewers":["viewer"],"investigators":["investigator"],"approvers":["workflow_approver"],"collectors":["collector"]}'
+      DATAOBS_STORE_BACKEND: elasticsearch
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+    depends_on:
+      oidc: {condition: service_healthy}
+      elasticsearch: {condition: service_healthy}
+    ports: ["127.0.0.1:18010:8080"]
+  console:
+    build: {context: ../../ui/dataobs-console}
+    depends_on: [api]
+    ports: ["127.0.0.1:18011:8080"]

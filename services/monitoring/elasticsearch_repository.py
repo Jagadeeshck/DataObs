@@ -10,6 +10,7 @@ import json
 from datetime import datetime, timezone
 from hashlib import sha256
 from typing import Any, Iterable
+from uuid import uuid4
 
 from elasticsearch import ConflictError, Elasticsearch, NotFoundError
 
@@ -364,6 +365,39 @@ class ElasticsearchMonitorRepository:
 
     def save_finding(self, finding, *, idempotency_key):
         return self._create_model(FINDINGS, idempotency_key, finding)
+
+    def list_findings(self, tenant_id, environment, monitor_id, *, limit):
+        return [
+            MonitorFinding.model_validate(hit["_source"])
+            for hit in self._search(
+                FINDINGS,
+                tenant_id,
+                environment,
+                limit=limit,
+                extra=[{"term": {"monitor_id": monitor_id}}],
+                sort=[{"finding_id": "asc"}],
+            )
+        ]
+
+    def request_execution(self, tenant_id, environment, monitor_id, *, scheduled_for, idempotency_key=None):
+        token = idempotency_key or str(uuid4())
+        if len(token) > 200:
+            raise ValueError("idempotency key is too long")
+        execution_id = sha256(f"{tenant_id}\0{environment}\0{monitor_id}\0{token}".encode()).hexdigest()
+        existing = self._get_dict(SCHEDULES, tenant_id, environment, monitor_id) or {}
+        document = {
+            **existing,
+            "monitor_id": monitor_id,
+            "state": "enabled",
+            "next_scheduled_for": scheduled_for.isoformat(),
+            "execution_id": execution_id,
+            "execution_request": True,
+            "idempotency_key_hash": sha256(token.encode()).hexdigest(),
+        }
+        if existing and existing.get("execution_id") == execution_id:
+            return execution_id
+        self._upsert(SCHEDULES, tenant_id, environment, monitor_id, document)
+        return execution_id
 
     def create_suppression(self, suppression):
         return self._upsert(

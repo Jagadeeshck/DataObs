@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from contextlib import closing
+from datetime import datetime
 
 from services.monitoring.providers.base import CapabilityState, ProviderResult
 from services.monitoring.providers.postgres_aggregate import AggregateExpression, compile_expression
@@ -31,6 +32,8 @@ class PostgresAggregateExecutor:
                 row = cursor.fetchone()
                 connection.rollback()
             value = row[0] if row else None
+            if isinstance(value, datetime):
+                value = value.timestamp()
             return ProviderResult(
                 CapabilityState.SUPPORTED,
                 value=float(value) if value is not None else None,

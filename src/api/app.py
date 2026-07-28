@@ -51,6 +51,10 @@ _bearer = HTTPBearer(auto_error=False)
 def _permission_for_request(method: str, path: str) -> Permission:
     """Deny-by-default route policy; high-risk actions are matched before domains."""
     write = method.upper() not in {"GET", "HEAD", "OPTIONS"}
+    if path.startswith("/api/v1/quality") and (path.endswith("/run") or "/executions" in path):
+        return Permission.QUALITY_EXECUTE
+    if path.startswith("/api/v1/monitors") and path.endswith("/run"):
+        return Permission.MONITORS_EXECUTE
     if path.startswith("/api/v1/iam"):
         return Permission.IAM_WRITE if write else Permission.IAM_READ
     if path == "/api/v1/auth/me":
@@ -299,6 +303,7 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
         from services.data_products.memory_repository import MemoryDataProductRepository
 
         app.state.data_product_repository = MemoryDataProductRepository()
+
     @app.middleware("http")
     async def request_context_middleware(request: Request, call_next):
         request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())

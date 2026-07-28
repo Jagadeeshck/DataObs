@@ -1,0 +1,22 @@
+{
+  "realm": "dataobs",
+  "enabled": true,
+  "clients": [
+    {"clientId":"dataobs-console","publicClient":true,"standardFlowEnabled":true,"redirectUris":["http://localhost:18011/auth/callback"],"webOrigins":["http://localhost:18011"]},
+    {"clientId":"collector-service","serviceAccountsEnabled":true,"publicClient":false,"secret":"fixture-collector-secret"}
+  ],
+  "groups": [
+    {"name":"platform-admins"},{"name":"tenant-admins"},{"name":"operators"},{"name":"viewers"},
+    {"name":"investigators"},{"name":"approvers"},{"name":"collectors"}
+  ],
+  "users": [
+    {"username":"platform-admin","enabled":true,"groups":["platform-admins"]},
+    {"username":"tenant-a-admin","enabled":true,"groups":["tenant-admins"]},
+    {"username":"tenant-a-operator","enabled":true,"groups":["operators"]},
+    {"username":"tenant-a-viewer","enabled":true,"groups":["viewers"]},
+    {"username":"tenant-b-viewer","enabled":true,"groups":["viewers"]},
+    {"username":"multi-tenant-investigator","enabled":true,"groups":["investigators"]},
+    {"username":"workflow-approver","enabled":true,"groups":["approvers"]},
+    {"username":"unmapped-user","enabled":true}
+  ]
+}

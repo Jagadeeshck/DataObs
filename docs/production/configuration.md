@@ -25,3 +25,8 @@ In `DATAOBS_ENV=production`:
 
 ## Docker / Kubernetes
 Use the same environment variables in Docker Compose, Helm values, and Terraform-managed runtime env.
+# OIDC and trusted tenancy
+
+Production must set `DATAOBS_AUTH_PROVIDER=oidc`, `DATAOBS_OIDC_ISSUER`, `DATAOBS_OIDC_AUDIENCE`, `DATAOBS_OIDC_CLIENT_ID`, `DATAOBS_OIDC_ALLOWED_ALGORITHMS`, the configured group and tenant claims, and a trusted group-role/platform-admin mapping. Configure Console redirect and post-logout URIs at the provider and use an explicit CORS origin allowlist. Store provider client credentials for collector client-credentials grants in Kubernetes Secrets; the Console is a public PKCE client and has no client secret. The API needs outbound HTTPS/DNS access to issuer discovery and JWKS endpoints.
+
+`API_TOKEN`, wildcard credentialed CORS, insecure issuers, unauthenticated mode, missing mappings, and symmetric/unsigned algorithms are forbidden in production. See [OIDC configuration](../security/oidc-configuration.md) and [tenant enforcement](../security/tenant-enforcement.md).

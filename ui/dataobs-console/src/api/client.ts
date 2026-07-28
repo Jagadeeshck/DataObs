@@ -1,4 +1,5 @@
 import type { CommandCenter, Topology } from "./types";
+import { accessToken } from "../auth/oidc";
 const requestId = () => crypto.randomUUID();
 export class ApiError extends Error {
   constructor(
@@ -14,10 +15,15 @@ async function read<T>(
   tenant: string,
   signal?: AbortSignal,
 ): Promise<T> {
+  const token = await accessToken();
   const response = await fetch(path, {
     signal,
     credentials: "include",
-    headers: { "X-DataObs-Tenant": tenant, "X-Request-ID": requestId() },
+    headers: {
+      "X-DataObs-Tenant": tenant,
+      "X-Request-ID": requestId(),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
   });
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
@@ -35,6 +41,7 @@ async function write<T>(
   body: unknown,
   signal?: AbortSignal,
 ): Promise<T> {
+  const token = await accessToken();
   const response = await fetch(path, {
     method: "POST",
     signal,
@@ -43,6 +50,7 @@ async function write<T>(
       "Content-Type": "application/json",
       "X-DataObs-Tenant": tenant,
       "X-Request-ID": requestId(),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: JSON.stringify(body),
   });

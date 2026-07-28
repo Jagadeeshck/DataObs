@@ -364,6 +364,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Auth Config */
+        get: operations["auth_config_api_v1_auth_config_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Auth Me */
+        get: operations["auth_me_api_v1_auth_me_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/collectors": {
         parameters: {
             query?: never;
@@ -960,6 +994,42 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/iam/role-bindings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Role Bindings */
+        get: operations["list_role_bindings_api_v1_iam_role_bindings_get"];
+        put?: never;
+        /** Create Role Binding */
+        post: operations["create_role_binding_api_v1_iam_role_bindings_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/iam/role-bindings/{binding_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Role Binding */
+        get: operations["get_role_binding_api_v1_iam_role_bindings__binding_id__get"];
+        put?: never;
+        post?: never;
+        /** Delete Role Binding */
+        delete: operations["delete_role_binding_api_v1_iam_role_bindings__binding_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -2948,6 +3018,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/quality/results/{result_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Quality Result */
+        get: operations["get_quality_result_quality_results__result_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/readyz": {
         parameters: {
             query?: never;
@@ -3810,6 +3897,29 @@ export interface components {
                 [key: string]: unknown;
             }[];
         };
+        /** RoleBindingRequest */
+        RoleBindingRequest: {
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /** Environments */
+            environments: string[];
+            /** Issuer */
+            issuer: string;
+            /** Principal Id */
+            principal_id: string;
+            /**
+             * Principal Type
+             * @enum {string}
+             */
+            principal_type: "user" | "service" | "group";
+            /** Roles */
+            roles: string[];
+            /** Tenant Id */
+            tenant_id: string;
+        };
         /** RuleCreateResponse */
         RuleCreateResponse: {
             /** Rule Id */
@@ -3930,6 +4040,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -3963,6 +4075,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -4000,6 +4114,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 asset_id: string;
@@ -4035,6 +4151,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 asset_id: string;
@@ -4074,6 +4192,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 asset_id: string;
@@ -4109,6 +4229,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 asset_id: string;
@@ -4150,6 +4272,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -4183,6 +4307,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -4220,6 +4346,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -4257,6 +4385,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -4300,6 +4430,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -4333,6 +4465,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -4370,6 +4504,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 approval_id: string;
@@ -4409,6 +4545,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 approval_id: string;
@@ -4456,6 +4594,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -4489,6 +4629,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 asset_id: string;
@@ -4524,6 +4666,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 asset_id: string;
@@ -4559,6 +4703,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 asset_id: string;
@@ -4594,6 +4740,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 asset_id: string;
@@ -4629,6 +4777,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 asset_id: string;
@@ -4664,6 +4814,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 asset_id: string;
@@ -4699,6 +4851,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 asset_id: string;
@@ -4734,6 +4888,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 asset_id: string;
@@ -4771,6 +4927,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 asset_id: string;
@@ -4802,11 +4960,70 @@ export interface operations {
             };
         };
     };
+    auth_config_api_v1_auth_config_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    auth_me_api_v1_auth_me_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_collectors_api_v1_collectors_get: {
         parameters: {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -4840,6 +5057,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -4877,6 +5096,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 collector_id: string;
@@ -4920,6 +5141,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -4958,6 +5181,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -4994,6 +5219,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 resource_id: string;
@@ -5033,6 +5260,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 resource_id: string;
@@ -5072,6 +5301,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 resource_id: string;
@@ -5110,6 +5341,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 resource_id: string;
@@ -5153,6 +5386,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 resource_id: string;
@@ -5192,6 +5427,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 resource_id: string;
@@ -5231,6 +5468,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 resource_id: string;
@@ -5270,6 +5509,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 resource_id: string;
@@ -5309,6 +5550,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 resource_id: string;
@@ -5348,6 +5591,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 resource_id: string;
@@ -5387,6 +5632,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 resource_id: string;
@@ -5426,6 +5673,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 resource_id: string;
@@ -5465,6 +5714,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 resource_id: string;
@@ -5509,6 +5760,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -5547,6 +5800,8 @@ export interface operations {
                 "X-DataObs-Reason": string;
                 "Idempotency-Key": string;
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -5584,6 +5839,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 product_id: string;
@@ -5623,6 +5880,8 @@ export interface operations {
                 "X-DataObs-Reason": string;
                 "Idempotency-Key": string;
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 product_id: string;
@@ -5664,6 +5923,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 product_id: string;
@@ -5703,6 +5964,8 @@ export interface operations {
                 "If-Match": string;
                 "Idempotency-Key": string;
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 product_id: string;
@@ -5746,6 +6009,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 product_id: string;
@@ -5785,6 +6050,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 product_id: string;
@@ -5824,6 +6091,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 product_id: string;
@@ -5862,6 +6131,8 @@ export interface operations {
             header: {
                 "Idempotency-Key": string;
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 product_id: string;
@@ -5905,6 +6176,8 @@ export interface operations {
                 "If-Match": string;
                 "Idempotency-Key": string;
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 product_id: string;
@@ -5949,6 +6222,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 product_id: string;
@@ -5988,6 +6263,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 product_id: string;
@@ -6025,6 +6302,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 product_id: string;
@@ -6067,6 +6346,8 @@ export interface operations {
             header: {
                 "Idempotency-Key": string;
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 product_id: string;
@@ -6112,6 +6393,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 product_id: string;
@@ -6151,6 +6434,8 @@ export interface operations {
                 "If-Match": string;
                 "Idempotency-Key": string;
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 product_id: string;
@@ -6189,6 +6474,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 namespace: string;
@@ -6227,6 +6514,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 node_id: string;
@@ -6264,6 +6553,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -6300,6 +6591,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -6333,6 +6626,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -6368,6 +6663,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 finding_id: string;
@@ -6398,11 +6695,158 @@ export interface operations {
             };
         };
     };
+    list_role_bindings_api_v1_iam_role_bindings_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_role_binding_api_v1_iam_role_bindings_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RoleBindingRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_role_binding_api_v1_iam_role_bindings__binding_id__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                binding_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_role_binding_api_v1_iam_role_bindings__binding_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                "if-match"?: string | null;
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                binding_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_incidents_api_v1_incidents_get: {
         parameters: {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -6436,6 +6880,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 incident_id: string;
@@ -6471,6 +6917,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 incident_id: string;
@@ -6510,6 +6958,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 incident_id: string;
@@ -6546,6 +6996,8 @@ export interface operations {
             header?: {
                 "Idempotency-Key"?: string | null;
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 incident_id: string;
@@ -6585,6 +7037,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 incident_id: string;
@@ -6624,6 +7078,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 incident_id: string;
@@ -6663,6 +7119,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 incident_id: string;
@@ -6698,6 +7156,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 incident_id: string;
@@ -6733,6 +7193,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 incident_id: string;
@@ -6768,6 +7230,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 incident_id: string;
@@ -6807,6 +7271,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 incident_id: string;
@@ -6846,6 +7312,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 incident_id: string;
@@ -6885,6 +7353,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 incident_id: string;
@@ -6924,6 +7394,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -6957,6 +7429,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -6994,6 +7468,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 namespace: string;
@@ -7033,6 +7509,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -7064,6 +7542,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 cluster_id: string;
@@ -7097,6 +7577,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -7134,6 +7616,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 asset_id: string;
@@ -7172,6 +7656,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 asset_id: string;
@@ -7209,6 +7695,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 asset_id: string;
@@ -7246,6 +7734,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 asset_id: string;
@@ -7281,6 +7771,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -7312,7 +7804,11 @@ export interface operations {
     coverage_api_v1_monitor_coverage_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -7327,6 +7823,15 @@ export interface operations {
                     "application/json": unknown;
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     recommendations_api_v1_monitor_recommendations_get: {
@@ -7334,7 +7839,11 @@ export interface operations {
             query?: {
                 limit?: number;
             };
-            header?: never;
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -7363,7 +7872,11 @@ export interface operations {
     recommendation_transition_api_v1_monitor_recommendations__recommendation_id___action__post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
             path: {
                 recommendation_id: string;
                 action: "accept" | "reject" | "defer";
@@ -7399,7 +7912,11 @@ export interface operations {
     backlog_api_v1_monitor_runtime_backlog_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -7414,12 +7931,25 @@ export interface operations {
                     "application/json": unknown;
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     runtime_health_api_v1_monitor_runtime_health_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -7432,6 +7962,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -7442,7 +7981,11 @@ export interface operations {
                 limit?: number;
                 cursor?: string | null;
             };
-            header?: never;
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -7471,7 +8014,11 @@ export interface operations {
     create_monitor_api_v1_monitors_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -7504,7 +8051,11 @@ export interface operations {
     get_monitor_api_v1_monitors__monitor_id__get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
             path: {
                 monitor_id: string;
             };
@@ -7537,6 +8088,9 @@ export interface operations {
             query?: never;
             header?: {
                 "if-match"?: string | null;
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 monitor_id: string;
@@ -7574,6 +8128,9 @@ export interface operations {
             query?: never;
             header?: {
                 "if-match"?: string | null;
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 monitor_id: string;
@@ -7607,7 +8164,11 @@ export interface operations {
             query?: {
                 limit?: number;
             };
-            header?: never;
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
             path: {
                 monitor_id: string;
             };
@@ -7640,7 +8201,11 @@ export interface operations {
             query: {
                 reason: string;
             };
-            header?: never;
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
             path: {
                 monitor_id: string;
             };
@@ -7677,6 +8242,9 @@ export interface operations {
             query?: never;
             header?: {
                 "if-match"?: string | null;
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 monitor_id: string;
@@ -7710,6 +8278,9 @@ export interface operations {
             query?: never;
             header?: {
                 "if-match"?: string | null;
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 monitor_id: string;
@@ -7743,7 +8314,11 @@ export interface operations {
             query?: {
                 limit?: number;
             };
-            header?: never;
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
             path: {
                 monitor_id: string;
             };
@@ -7774,7 +8349,11 @@ export interface operations {
     findings_api_v1_monitors__monitor_id__findings_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
             path: {
                 monitor_id: string;
             };
@@ -7807,7 +8386,11 @@ export interface operations {
             query?: {
                 limit?: number;
             };
-            header?: never;
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
             path: {
                 monitor_id: string;
             };
@@ -7840,7 +8423,11 @@ export interface operations {
             query?: {
                 limit?: number;
             };
-            header?: never;
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
             path: {
                 monitor_id: string;
             };
@@ -7871,7 +8458,11 @@ export interface operations {
     suppressions_api_v1_monitors__monitor_id__suppressions_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
             path: {
                 monitor_id: string;
             };
@@ -7906,6 +8497,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -7943,6 +8536,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -7974,6 +8569,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -8011,6 +8608,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 slo_id: string;
@@ -8043,6 +8642,8 @@ export interface operations {
             header?: {
                 "if-match"?: string | null;
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 slo_id: string;
@@ -8082,6 +8683,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -8113,6 +8716,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -8146,6 +8751,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 run_id: string;
@@ -8181,6 +8788,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -8214,6 +8823,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -8251,6 +8862,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -8284,6 +8897,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -8321,6 +8936,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 scanner_id: string;
@@ -8360,6 +8977,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 scanner_id: string;
@@ -8395,6 +9014,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 scanner_id: string;
@@ -8431,6 +9052,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 scanner_id: string;
@@ -8467,6 +9090,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 scanner_id: string;
@@ -8507,6 +9132,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 scanner_id: string;
@@ -8544,6 +9171,8 @@ export interface operations {
             header?: {
                 "Idempotency-Key"?: string | null;
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 scanner_id: string;
@@ -8589,6 +9218,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -8625,6 +9256,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 resource_id: string;
@@ -8664,6 +9297,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 resource_id: string;
@@ -8703,6 +9338,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 resource_id: string;
@@ -8742,6 +9379,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 resource_id: string;
@@ -8781,6 +9420,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 resource_id: string;
@@ -8820,6 +9461,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 resource_id: string;
@@ -8855,6 +9498,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -8888,6 +9533,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -8930,6 +9577,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -8966,6 +9615,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 resource_id: string;
@@ -9005,6 +9656,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 resource_id: string;
@@ -9044,6 +9697,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 resource_id: string;
@@ -9082,6 +9737,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 resource_id: string;
@@ -9125,6 +9782,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 resource_id: string;
@@ -9164,6 +9823,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 resource_id: string;
@@ -9203,6 +9864,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 resource_id: string;
@@ -9242,6 +9905,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 resource_id: string;
@@ -9281,6 +9946,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 resource_id: string;
@@ -9321,6 +9988,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -9357,6 +10026,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 resource_id: string;
@@ -9396,6 +10067,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 resource_id: string;
@@ -9433,6 +10106,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 resource_id: string;
@@ -9471,6 +10146,8 @@ export interface operations {
             header?: {
                 "Idempotency-Key"?: string | null;
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 resource_id: string;
@@ -9514,6 +10191,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 resource_id: string;
@@ -9553,6 +10232,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 resource_id: string;
@@ -9592,6 +10273,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 resource_id: string;
@@ -9631,6 +10314,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 resource_id: string;
@@ -9669,6 +10354,8 @@ export interface operations {
             header?: {
                 "Last-Event-ID"?: number;
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -9700,6 +10387,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -9731,6 +10420,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -9762,6 +10453,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -9798,6 +10491,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -9834,6 +10529,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 resource_id: string;
@@ -9873,6 +10570,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 resource_id: string;
@@ -9912,6 +10611,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 resource_id: string;
@@ -9950,6 +10651,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 resource_id: string;
@@ -9993,6 +10696,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 resource_id: string;
@@ -10032,6 +10737,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 resource_id: string;
@@ -10071,6 +10778,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 resource_id: string;
@@ -10110,6 +10819,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 resource_id: string;
@@ -10149,6 +10860,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 resource_id: string;
@@ -10184,6 +10897,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 resource_id: string;
@@ -10217,6 +10932,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 resource_id: string;
@@ -10256,6 +10973,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 resource_id: string;
@@ -10295,6 +11014,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 resource_id: string;
@@ -10334,6 +11055,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 resource_id: string;
@@ -10373,6 +11096,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 resource_id: string;
@@ -10412,6 +11137,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 resource_id: string;
@@ -10451,6 +11178,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 resource_id: string;
@@ -10490,6 +11219,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 resource_id: string;
@@ -10529,6 +11260,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 resource_id: string;
@@ -10568,6 +11301,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 resource_id: string;
@@ -10603,6 +11338,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -10636,6 +11373,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -10678,6 +11417,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -10713,6 +11454,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 node_id: string;
@@ -10775,6 +11518,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -10806,6 +11551,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 node_id: string;
@@ -10845,6 +11592,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -10907,6 +11656,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -10938,6 +11689,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -10955,6 +11708,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["QualityResultCreateResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_quality_result_quality_results__result_id__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                result_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
             /** @description Validation Error */
@@ -11002,6 +11792,8 @@ export interface operations {
             };
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -11033,6 +11825,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path?: never;
             cookie?: never;
@@ -11068,6 +11862,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path: {
                 rule_id: string;
@@ -11101,6 +11897,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
             };
             path?: never;
             cookie?: never;

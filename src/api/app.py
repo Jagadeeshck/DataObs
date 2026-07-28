@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import logging
 import uuid
 from dataclasses import dataclass
@@ -37,9 +38,44 @@ from src.core.enterprise_blueprint import enterprise_backlog
 from src.core.pillars import PILLAR_REGISTRY, canonical_pillar_value
 from src.data_observability.openlineage import OpenLineageValidationError
 from src.data_observability.service import DataObservabilityService
+from src.security.authentication import Authenticator
+from src.security.authorization import authorize
+from src.security.errors import SecurityError
+from src.security.permissions import Permission
+from src.security.tenant_context import resolve_tenant_context
 
 logger = logging.getLogger(__name__)
 _bearer = HTTPBearer(auto_error=False)
+
+
+def _permission_for_request(method: str, path: str) -> Permission:
+    """Deny-by-default route policy; high-risk actions are matched before domains."""
+    write = method.upper() not in {"GET", "HEAD", "OPTIONS"}
+    if path.startswith("/api/v1/iam"):
+        return Permission.IAM_WRITE if write else Permission.IAM_READ
+    if path == "/api/v1/auth/me":
+        return Permission.AUTH_READ
+    if "/approvals/" in path or path.endswith(("/approve", "/reject")):
+        return Permission.WORKFLOWS_APPROVE
+    if "workflow" in path or "/actions/" in path:
+        return Permission.WORKFLOWS_EXECUTE if write else Permission.WORKFLOWS_READ
+    domains = (
+        (("asset", "command-center", "topology", "pillar"), Permission.ASSETS_READ, Permission.ASSETS_WRITE),
+        (("lineage", "pathway"), Permission.LINEAGE_READ, Permission.LINEAGE_WRITE),
+        (("quality", "rule"), Permission.QUALITY_READ, Permission.QUALITY_WRITE),
+        (("monitor", "baseline"), Permission.MONITORS_READ, Permission.MONITORS_WRITE),
+        (("data-product",), Permission.DATA_PRODUCTS_READ, Permission.DATA_PRODUCTS_WRITE),
+        (("job", "run"), Permission.JOBS_READ, Permission.JOBS_EXECUTE),
+        (("stream", "kafka", "topic", "connector", "schema"), Permission.STREAMS_READ, Permission.STREAMS_EXECUTE),
+        (("incident", "finding"), Permission.INCIDENTS_READ, Permission.INCIDENTS_WRITE),
+        (("integration", "source"), Permission.INTEGRATIONS_READ, Permission.INTEGRATIONS_WRITE),
+        (("collector", "scanner", "scan-", "tenant"), Permission.COLLECTION_MANAGE, Permission.COLLECTION_MANAGE),
+    )
+    for tokens, read_permission, write_permission in domains:
+        if any(token in path for token in tokens):
+            return write_permission if write else read_permission
+    # No route silently inherits broad administration rights.
+    return Permission.PLATFORM_ADMIN
 
 
 class DataObsModel(BaseModel):
@@ -158,6 +194,23 @@ class DataObservabilityRequest(DataObsModel):
     pass
 
 
+class RoleBindingRequest(BaseModel):
+    issuer: str
+    principal_type: Literal["user", "service", "group"]
+    principal_id: str
+    tenant_id: str
+    environments: List[str]
+    roles: List[str]
+    description: str = ""
+
+
+class RoleBindingPatch(BaseModel):
+    environments: List[str] | None = None
+    roles: List[str] | None = None
+    active: bool | None = None
+    description: str | None = None
+
+
 @dataclass(frozen=True)
 class StoreBundle:
     store: StoreProtocol
@@ -213,6 +266,7 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
     resolved_bundle = store_bundle or create_store_bundle(resolved_settings)
     app = FastAPI(title="DataObs API", version="1.1.0")
     app.state.settings = resolved_settings
+    app.state.authenticator = Authenticator(resolved_settings.auth)
     app.state.store_bundle = resolved_bundle
     if resolved_settings.store_backend.lower() == "elasticsearch":
         repo = ElasticsearchCollectionRepository(make_es_client(resolved_settings))
@@ -235,6 +289,8 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
         if resolved_settings.store_backend.lower() == "elasticsearch"
         else None
     )
+    app.state.role_bindings = {}
+    app.state.security_audit_events = []
     if resolved_settings.store_backend.lower() == "elasticsearch":
         from services.data_products.elasticsearch_repository import ElasticsearchDataProductRepository
 
@@ -243,16 +299,15 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
         from services.data_products.memory_repository import MemoryDataProductRepository
 
         app.state.data_product_repository = MemoryDataProductRepository()
-    app.include_router(monitor_router)
-
     @app.middleware("http")
     async def request_context_middleware(request: Request, call_next):
         request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
         request.state.request_id = request_id
-        request.state.tenant_id = request.headers.get("X-DataObs-Tenant") or resolved_settings.tenant_id
-        request.state.principal = {"subject": "local-dev", "scopes": ["dataobs:admin"]}
         response = await call_next(request)
         response.headers["X-Request-ID"] = request_id
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["Referrer-Policy"] = "no-referrer"
+        response.headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'"
         return response
 
     def get_settings(request: Request) -> AppSettings:
@@ -274,21 +329,160 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
         return request.app.state.data_product_repository
 
     async def require_auth(
+        request: Request,
         settings: AppSettings = Depends(get_settings),
         credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
         authorization: str | None = Header(default=None),
+        tenant_selector: str | None = Header(default=None, alias="X-DataObs-Tenant"),
+        environment_selector: str | None = Header(default=None, alias="X-DataObs-Environment"),
     ) -> None:
-        if settings.api_token is None and settings.auth.allow_unauthenticated_dev:
-            return
+        if authorization and len(authorization) > settings.auth.oidc.maximum_token_bytes + 16:
+            raise HTTPException(
+                status_code=401, detail={"code": "token_malformed", "message": "Authorization header is too large"}
+            )
         token = credentials.credentials if credentials and credentials.scheme.lower() == "bearer" else None
         if token is None and authorization and authorization.startswith("Bearer "):
             token = authorization[len("Bearer ") :].strip()
-        if token != settings.api_token:
-            raise HTTPException(
-                status_code=401,
-                detail="Unauthorized - valid Bearer token required",
-                headers={"WWW-Authenticate": 'Bearer realm="DataObs API"'},
+        try:
+            principal = request.app.state.authenticator.authenticate(token)
+            principal, context = resolve_tenant_context(
+                principal,
+                tenant_selector,
+                environment_selector or request.query_params.get("environment"),
+                _request_id(request),
+                request.headers.get("traceparent"),
             )
+            permission = _permission_for_request(request.method, request.url.path)
+            authorize(principal, permission)
+            request.state.principal = principal
+            request.state.tenant_context = context
+            request.state.tenant_id = context.tenant_id
+            request.state.environment = context.environment
+        except SecurityError as exc:
+            raise HTTPException(
+                status_code=exc.status_code,
+                detail={"code": exc.reason_code, "message": str(exc)},
+                headers={"WWW-Authenticate": 'Bearer realm="DataObs API"'} if exc.status_code == 401 else None,
+            ) from exc
+
+    app.include_router(monitor_router, dependencies=[Depends(require_auth)])
+
+    @app.get("/api/v1/auth/config", tags=["auth"])
+    async def auth_config() -> Dict[str, Any]:
+        oidc = resolved_settings.auth.oidc
+        return {
+            "provider": resolved_settings.auth.provider,
+            "issuer": oidc.issuer or None,
+            "client_id": oidc.client_id or None,
+            "authorization_endpoint": f"{oidc.issuer}/protocol/openid-connect/auth" if oidc.issuer else None,
+            "logout_supported": bool(oidc.issuer),
+            "scopes": ["openid", *oidc.required_scopes],
+        }
+
+    @app.get("/api/v1/auth/me", tags=["auth"], dependencies=[Depends(require_auth)])
+    async def auth_me(request: Request) -> Dict[str, Any]:
+        principal = request.state.principal
+        return {
+            "subject": principal.subject,
+            "display_name": principal.display_name,
+            "principal_type": principal.principal_type,
+            "roles": sorted(principal.roles),
+            "permissions": sorted(permission.value for permission in principal.permissions),
+            "authorised_access": [
+                {"tenant_id": item.tenant_id, "environments": sorted(item.environments)}
+                for item in sorted(principal.tenant_access)
+            ],
+            "active_tenant": principal.active_tenant,
+            "active_environment": principal.active_environment,
+            "authentication_provider": resolved_settings.auth.provider,
+            "token_expiry": principal.expires_at.isoformat() if principal.expires_at else None,
+        }
+
+    def _binding_document(payload: RoleBindingRequest, request: Request) -> Dict[str, Any]:
+        principal = request.state.principal
+        if "platform_admin" in payload.roles and "platform_admin" not in principal.roles:
+            raise HTTPException(
+                status_code=403,
+                detail={"code": "role_escalation_denied", "message": "Cannot grant platform administrator"},
+            )
+        if payload.tenant_id != request.state.tenant_id and "platform_admin" not in principal.roles:
+            raise HTTPException(
+                status_code=403, detail={"code": "tenant_access_denied", "message": "Cannot manage another tenant"}
+            )
+        binding_id = hashlib.sha256(
+            f"{payload.issuer}\0{payload.principal_type}\0{payload.principal_id}\0{payload.tenant_id}".encode()
+        ).hexdigest()[:32]
+        now = datetime.utcnow().isoformat() + "Z"
+        return {
+            "binding_id": binding_id,
+            **payload.model_dump(),
+            "active": True,
+            "created_at": now,
+            "created_by": principal.subject,
+            "updated_at": now,
+            "updated_by": principal.subject,
+            "revision": 1,
+            "etag": hashlib.sha256(f"{binding_id}:1".encode()).hexdigest(),
+            "schema_version": "v1",
+        }
+
+    @app.get("/api/v1/iam/role-bindings", tags=["iam"], dependencies=[Depends(require_auth)])
+    async def list_role_bindings(request: Request) -> Dict[str, Any]:
+        return {
+            "items": [v for v in request.app.state.role_bindings.values() if v["tenant_id"] == request.state.tenant_id]
+        }
+
+    @app.post("/api/v1/iam/role-bindings", status_code=201, tags=["iam"], dependencies=[Depends(require_auth)])
+    async def create_role_binding(payload: RoleBindingRequest, request: Request) -> Dict[str, Any]:
+        document = _binding_document(payload, request)
+        existing = request.app.state.role_bindings.get(document["binding_id"])
+        if existing:
+            return existing
+        request.app.state.role_bindings[document["binding_id"]] = document
+        request.app.state.security_audit_events.append(
+            {
+                "event_action": "binding_created",
+                "principal_subject": request.state.principal.subject,
+                "tenant_id": request.state.tenant_id,
+                "binding_id": document["binding_id"],
+            }
+        )
+        return document
+
+    @app.get("/api/v1/iam/role-bindings/{binding_id}", tags=["iam"], dependencies=[Depends(require_auth)])
+    async def get_role_binding(binding_id: str, request: Request) -> Dict[str, Any]:
+        document = request.app.state.role_bindings.get(binding_id)
+        if not document or document["tenant_id"] != request.state.tenant_id:
+            raise HTTPException(status_code=404, detail="Role binding not found")
+        return document
+
+    @app.delete(
+        "/api/v1/iam/role-bindings/{binding_id}", status_code=204, tags=["iam"], dependencies=[Depends(require_auth)]
+    )
+    async def delete_role_binding(
+        binding_id: str, request: Request, if_match: str | None = Header(default=None)
+    ) -> Response:
+        document = request.app.state.role_bindings.get(binding_id)
+        if not document or document["tenant_id"] != request.state.tenant_id:
+            raise HTTPException(status_code=404, detail="Role binding not found")
+        if if_match != document["etag"]:
+            raise HTTPException(status_code=409, detail="Role binding ETag mismatch")
+        if (
+            "platform_admin" in document["roles"]
+            and sum("platform_admin" in d["roles"] and d["active"] for d in request.app.state.role_bindings.values())
+            <= 1
+        ):
+            raise HTTPException(status_code=409, detail="Cannot remove the last platform administrator")
+        document["active"] = False
+        request.app.state.security_audit_events.append(
+            {
+                "event_action": "binding_disabled",
+                "principal_subject": request.state.principal.subject,
+                "tenant_id": request.state.tenant_id,
+                "binding_id": binding_id,
+            }
+        )
+        return Response(status_code=204)
 
     @app.exception_handler(HTTPException)
     async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:

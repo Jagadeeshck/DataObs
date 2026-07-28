@@ -256,6 +256,37 @@ BASE_PROPERTIES: Dict[str, Any] = {
     "metadata": {"type": "flattened"},
 }
 
+SECURITY_PROPERTIES: Dict[str, Any] = {
+    **{
+        key: {"type": "keyword"}
+        for key in [
+            "binding_id",
+            "issuer",
+            "principal_type",
+            "principal_id",
+            "created_by",
+            "updated_by",
+            "etag",
+            "event_type",
+            "event_action",
+            "event_outcome",
+            "reason_code",
+            "principal_subject",
+            "required_permission",
+            "resource_type",
+            "resource_id",
+            "source_address",
+            "user_agent_classification",
+            "authorisation_source",
+        ]
+    },
+    "environments": {"type": "keyword"},
+    "roles": {"type": "keyword"},
+    "active": {"type": "boolean"},
+    "description": {"type": "match_only_text"},
+    "revision": {"type": "long"},
+}
+
 INCIDENT_AUTOMATION_MUTABLE_INDICES = [
     "dataobs-findings-v1",
     "dataobs-incidents-v1",
@@ -1558,6 +1589,18 @@ DATA_PRODUCT_CLAIM_EXPIRES_DATE_MIGRATION = Migration(
     operations={"mapping_updates": {"dataobs-data-product-operation-state-v1": {"claim_expires_at": {"type": "date"}}}},
 )
 
+IDENTITY_RBAC_TENANT_BINDINGS_MIGRATION = Migration(
+    "0020_identity_rbac_tenant_bindings",
+    "Add strict role-binding and security-policy state plus append-only redaction-safe security events",
+    "v1",
+    dependencies=["0019_data_product_operation_claim_expires_date"],
+    rollback_strategy="disable IAM writers; retain additive role bindings and append-only security events for audit continuity",
+    operations={
+        "mutable_indices": ["dataobs-role-bindings-v1", "dataobs-security-policy-state-v1"],
+        "data_streams": ["logs-dataobs.security-event-*"],
+    },
+)
+
 
 def migrations() -> List[Migration]:
     return [
@@ -1580,6 +1623,7 @@ def migrations() -> List[Migration]:
         DATA_PRODUCT_RECONCILIATION_RETRY_DATE_MIGRATION,
         DATA_PRODUCT_DECISION_REASON_ALIAS_MIGRATION,
         DATA_PRODUCT_CLAIM_EXPIRES_DATE_MIGRATION,
+        IDENTITY_RBAC_TENANT_BINDINGS_MIGRATION,
     ]
 
 

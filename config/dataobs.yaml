@@ -1,0 +1,12 @@
+auth:
+  provider: local
+  # This repository-local file is for development only; production must override false.
+  allow_unauthenticated_dev: true
+  oidc:
+    issuer: ""
+    audience: ""
+    client_id: ""
+    allowed_algorithms: [RS256]
+    required_scopes: [dataobs]
+    platform_admin_groups: []
+    group_role_mappings: {}

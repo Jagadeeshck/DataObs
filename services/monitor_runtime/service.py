@@ -26,12 +26,24 @@ class MonitorRuntime:
         )
         self.health.backlog = len(due)
         with ThreadPoolExecutor(max_workers=self.concurrency) as pool:
-            list(pool.map(self.worker.execute, due))
+            outcomes = list(pool.map(self.worker.execute, due))
         self.health.last_successful_cycle = datetime.now(timezone.utc)
-        return len(due)
+        counts = {
+            key: outcomes.count(key)
+            for key in ("succeeded", "breached", "recovered", "suppressed", "retrying", "failed", "contended")
+        }
+        return {
+            "due_monitors": len(due),
+            "claimed_monitors": len(due) - counts["contended"],
+            "executed_monitors": len(outcomes) - counts["contended"],
+            **counts,
+        }
 
     def run(self, interval=5):
         signal.signal(signal.SIGTERM, lambda *_: setattr(self, "stopping", True))
+        signal.signal(signal.SIGINT, lambda *_: setattr(self, "stopping", True))
         while not self.stopping:
             self.once()
-            time.sleep(interval)
+            deadline = time.monotonic() + interval
+            while not self.stopping and time.monotonic() < deadline:
+                time.sleep(min(0.25, deadline - time.monotonic()))

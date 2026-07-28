@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Literal
 
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from .base import DomainModel, ProductEntity, utc_now
 
@@ -74,6 +74,13 @@ class MonitorTarget(DomainModel):
     pathway_id: str | None = None
     pipeline_id: str | None = None
     service_id: str | None = None
+    source_type: Literal["postgresql", "deterministic_test"] = "postgresql"
+    connection_ref: str | None = None
+    schema_name: str | None = None
+    table_name: str | None = None
+    columns: List[str] = Field(default_factory=list)
+    timestamp_column: str | None = None
+    parameters: Dict[str, Any] = Field(default_factory=dict)
 
 
 class MonitorSelector(DomainModel):
@@ -87,6 +94,18 @@ class MonitorSchedule(DomainModel):
     timezone: str = "UTC"
     maintenance_windows: List[str] = Field(default_factory=list)
     business_calendar_exclusions: List[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_interval(self):
+        import re
+
+        match = re.fullmatch(r"([1-9][0-9]*)(m|h|d)", self.interval)
+        if not match:
+            raise ValueError("schedule interval must use a bounded m, h, or d duration")
+        seconds = int(match.group(1)) * {"m": 60, "h": 3600, "d": 86400}[match.group(2)]
+        if seconds < 60 or seconds > 31 * 86400:
+            raise ValueError("schedule interval must be between 1m and 31d")
+        return self
 
 
 class MonitorThresholdPolicy(DomainModel):
@@ -141,6 +160,7 @@ class MonitorDefinition(ProductEntity):
 
 
 class MonitorObservation(DomainModel):
+    execution_id: str = "legacy"
     monitor_id: str
     tenant_id: str
     environment: str
@@ -149,6 +169,13 @@ class MonitorObservation(DomainModel):
     sample_count: int = 0
     missing_data: bool = False
     dimensions: Dict[str, str] = Field(default_factory=dict)
+    definition_revision: int = 1
+    unit: str = "count"
+    provider: str = "unknown"
+    source_evidence_refs: List[str] = Field(default_factory=list)
+    collection_duration_ms: int = Field(default=0, ge=0)
+    trace_id: str | None = None
+    schema_version: str = "v1"
 
 
 class MonitorEvaluation(DomainModel):

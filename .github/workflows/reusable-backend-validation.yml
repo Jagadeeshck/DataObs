@@ -37,7 +37,7 @@ jobs:
       - run: mkdir -p evidence && python -m compileall -q src packages services integrations tests scripts
       - run: ruff check . && black --check . && mypy ${{ inputs.mypy-scope }}
       - run: python -m pytest ${{ inputs.test-path }} -q --junitxml=evidence/junit.xml
-      - run: python scripts/check_generated_artifacts.py && python scripts/check_docs_links.py && python scripts/validate_capability_ledger.py
+      - run: python scripts/check_merge_conflict_markers.py && python scripts/check_generated_artifacts.py && python scripts/check_docs_links.py && python scripts/validate_capability_ledger.py
       - run: python scripts/check_migration_immutability.py --base-ref origin/main
       - name: Exact-commit evidence
         run: |

@@ -4,13 +4,15 @@ The Incident Workbench is a Team 3 capability behind `/api/v1/incident-workbench
 
 ## Read model and lifecycle
 
-Inbox reads are bounded to 100 records, deterministically sorted, and paged with an opaque cursor bound to tenant, environment, filters, sort and page size. Detail responses distinguish absent evidence (`unknown` plus a missing input) from measured values including zero. Findings are represented by bounded references and evidence is recursively size-limited and secret-key redacted.
+Inbox predicates execute in Elasticsearch rather than against a 200-item candidate list. Each deterministic sort includes the incident `id` tiebreaker. The repository opens a two-minute point-in-time view and advances it with `search_after`; the signed, versioned cursor binds the PIT and final sort tuple to tenant, environment, complete filters, sort and page size and expires after 15 minutes. Severity uses a fixed runtime keyword-to-rank projection because the released strict mapping has no numeric severity rank; no migration is changed.
 
 The existing legal lifecycle graph remains authoritative. Mutations require the `seq_no:primary_term` revision returned by detail. A stale revision returns HTTP 409 and clients must refresh rather than retry silently. Transitions requiring a reason continue to fail without one.
 
 ## Timeline and collaboration
 
-State, assignment and comment mutations append immutable events containing scope, incident/event identity, UTC timestamp, actor, safe summary, revision and request correlation. Event IDs make retryable comments idempotent. Timeline order is timestamp then event ID. Production events use the released `logs-dataobs.incident_comment-*` resource; history is never updated in place.
+The API event is not indexed directly. The storage adapter maps `timestamp` to `@timestamp`, `event_id` to `correlation_id`, the numeric sequence to mapped `revision`, and actor/event type to bounded `metadata` (with mapped `event_type` also populated). It retains tenant, environment, incident and request IDs and a redacted bounded summary. Elasticsearch `_id` is the deterministic event identity. Reads reverse this translation and sort by mapped `@timestamp` and `correlation_id`, using bounded `search_after` pages.
+
+Protected mutations attribute events only to `request.state.principal.subject`; absence of that validated identity fails closed. Mutations require an idempotency key and use OCC. Before the timeline append, the resulting deterministic event is saved in the released durable action-idempotency resource. If the append fails after the incident update, retrying the same key finds that operation, appends the missing event idempotently, and returns current state without applying the transition again. Elasticsearch still provides no cross-document transaction; a failure before the durable operation record remains an honest error and needs operator investigation.
 
 ## Safe actions and approvals
 

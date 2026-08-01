@@ -23,6 +23,14 @@ class ActionPreview(BaseModel):
     payload: dict[str, Any] = Field(default_factory=dict)
 
 
+def authenticated_actor(request: Request) -> str:
+    principal = getattr(request.state, "principal", None)
+    subject = getattr(principal, "subject", None)
+    if not isinstance(subject, str) or not subject.strip():
+        raise HTTPException(status_code=401, detail="Authenticated principal is required")
+    return subject
+
+
 def create_incident_workbench_router(auth_dependency: Callable[..., Any]) -> APIRouter:
     router = APIRouter(
         prefix="/api/v1/incident-workbench", tags=["incident-workbench"], dependencies=[Depends(auth_dependency)]
@@ -78,10 +86,17 @@ def create_incident_workbench_router(auth_dependency: Callable[..., Any]) -> API
 
     @router.get("/{incident_id}/timeline")
     async def timeline(
-        incident_id: str, request: Request, environment: str, workbench: IncidentWorkbenchService = Depends(service)
+        incident_id: str,
+        request: Request,
+        environment: str,
+        page_size: int = Query(50, ge=1, le=100),
+        cursor: str | None = Query(None, max_length=2048),
+        workbench: IncidentWorkbenchService = Depends(service),
     ) -> dict[str, Any]:
         try:
-            return workbench.timeline(request.state.tenant_id, environment, incident_id)
+            return workbench.timeline(
+                request.state.tenant_id, environment, incident_id, page_size=page_size, cursor=cursor
+            )
         except KeyError as exc:
             raise HTTPException(status_code=404, detail="Incident not found") from exc
 
@@ -100,7 +115,7 @@ def create_incident_workbench_router(auth_dependency: Callable[..., Any]) -> API
                 environment,
                 incident_id,
                 revision=body.revision,
-                actor=getattr(request.state, "subject", "authenticated-user"),
+                actor=authenticated_actor(request),
                 request_id=request.state.request_id,
                 state=body.state,
                 reason=body.reason,

@@ -40,9 +40,15 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium && pnpm playwright
       - name: Produce exact-commit evidence
         run: |
-          printf '{"final_sha":"%s","elasticsearch_version":"9.4.2","terminal_migration":"0021_lineage_analysis_explorer","api_contract":true,"filters_and_cursor":true,"topic_360":true,"consumer_group_360":true,"playwright":true,"accessibility":true,"tenant_isolation":true,"junit_results":["api.xml","api-security.xml","console-junit.xml"]}\n' "$(git rev-parse HEAD)" > evidence/stream-360-core-console-v1.json
+          printf '{"final_sha":"%s","elasticsearch_version":"9.4.2","api_contract":true,"filters_and_cursor":true,"topic_360":true,"consumer_group_360":true,"playwright":true,"accessibility":true,"tenant_isolation":true,"junit_results":["api.xml","api-security.xml","console-junit.xml"]}\n' "$(git rev-parse HEAD)" > evidence/stream-360-core-console-v1.json
       - name: Independently verify evidence
         run: python scripts/certification/verify_stream_360_console_evidence.py evidence/stream-360-core-console-v1.json
+      - name: Write standard certification envelope
+        run: |
+          python scripts/certification/write_evidence_envelope.py --output evidence/evidence.json \
+            --repository "$GITHUB_REPOSITORY" --producer-sha "$GITHUB_SHA" --workflow-file stream-360-core-console.yml \
+            --workflow-run-id "$GITHUB_RUN_ID" --workflow-run-attempt "$GITHUB_RUN_ATTEMPT" --event "$GITHUB_EVENT_NAME" --status pass \
+            --test-category api --test-category browser --test-category accessibility --tool-version "python=$(python --version | cut -d' ' -f2)"
       - uses: actions/upload-artifact@v4
         with:
           name: stream-360-core-console-v1-evidence

@@ -6,7 +6,7 @@ import json
 import re
 from pathlib import Path
 
-import yaml
+import yaml  # type: ignore[import-untyped]
 
 REQUIRED = {
     "api",

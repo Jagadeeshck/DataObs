@@ -47,6 +47,12 @@ jobs:
           required = {"watermark", "late_arrival", "fencing", "nodes", "edges", "pathways", "health", "latency", "bottlenecks", "comparison", "slos", "tenant_isolation"}
           assert all(evidence.get(key) is True for key in required)
           PY
+      - name: Write standard certification envelope
+        run: |
+          python scripts/certification/write_evidence_envelope.py --output evidence/evidence.json \
+            --repository "$GITHUB_REPOSITORY" --producer-sha "$GITHUB_SHA" --workflow-file pathway-intelligence-backend.yml \
+            --workflow-run-id "$GITHUB_RUN_ID" --workflow-run-attempt "$GITHUB_RUN_ATTEMPT" --event "$GITHUB_EVENT_NAME" --status pass \
+            --test-category pathways --test-category tenant-isolation --tool-version "python=$(python --version | cut -d' ' -f2)"
       - uses: actions/upload-artifact@v4
         with:
           name: pathway-intelligence-backend-v1-evidence

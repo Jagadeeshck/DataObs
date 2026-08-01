@@ -45,5 +45,11 @@ jobs:
           pnpm playwright
       - name: Exact commit evidence
         run: printf '{"repository":"Jagadeeshck/DataObs","final_sha":"%s","elasticsearch_version":"9.4.2","tenant_environment_isolation":true,"non_causal_semantics":true,"migration_added":false}\n' "$(git rev-parse HEAD)" > evidence/result.json
+      - name: Write standard certification envelope
+        run: |
+          python scripts/certification/write_evidence_envelope.py --output evidence/evidence.json \
+            --repository "$GITHUB_REPOSITORY" --producer-sha "$GITHUB_SHA" --workflow-file pathway-explorer-console.yml \
+            --workflow-run-id "$GITHUB_RUN_ID" --workflow-run-attempt "$GITHUB_RUN_ATTEMPT" --event "$GITHUB_EVENT_NAME" --status pass \
+            --test-category pathways --test-category browser --test-category tenant-isolation --tool-version "python=$(python --version | cut -d' ' -f2)"
       - uses: actions/upload-artifact@v4
         with: {name: pathway-explorer-console-v1-evidence, path: evidence/, retention-days: 30}

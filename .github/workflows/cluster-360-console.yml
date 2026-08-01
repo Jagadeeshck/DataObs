@@ -54,8 +54,14 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium && pnpm playwright
       - name: Produce and independently verify exact-commit evidence
         run: |
-          printf '{"final_sha":"%s","elasticsearch_version":"9.4.2","terminal_migration":"0021_lineage_analysis_explorer","cluster_overview":true,"broker_result":true,"topic_result":true,"consumer_group_result":true,"connector_result":true,"health_aggregation":true,"cursor_result":true,"tenant_isolation":true,"playwright":true,"accessibility":true,"junit_results":["elasticsearch.xml","api-security.xml","console-junit.xml"]}\n' "$(git rev-parse HEAD)" > evidence/cluster-360-console-v1.json
+          printf '{"final_sha":"%s","elasticsearch_version":"9.4.2","cluster_overview":true,"broker_result":true,"topic_result":true,"consumer_group_result":true,"connector_result":true,"health_aggregation":true,"cursor_result":true,"tenant_isolation":true,"playwright":true,"accessibility":true,"junit_results":["elasticsearch.xml","api-security.xml","console-junit.xml"]}\n' "$(git rev-parse HEAD)" > evidence/cluster-360-console-v1.json
           python scripts/certification/verify_cluster_360_console_evidence.py evidence/cluster-360-console-v1.json
+      - name: Write standard certification envelope
+        run: |
+          python scripts/certification/write_evidence_envelope.py --output evidence/evidence.json \
+            --repository "$GITHUB_REPOSITORY" --producer-sha "$GITHUB_SHA" --workflow-file cluster-360-console.yml \
+            --workflow-run-id "$GITHUB_RUN_ID" --workflow-run-attempt "$GITHUB_RUN_ATTEMPT" --event "$GITHUB_EVENT_NAME" --status pass \
+            --test-category api --test-category browser --test-category accessibility --tool-version "python=$(python --version | cut -d' ' -f2)"
       - uses: actions/upload-artifact@v4
         with:
           name: cluster-360-console-v1-evidence

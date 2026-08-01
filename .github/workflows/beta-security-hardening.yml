@@ -38,8 +38,13 @@ jobs:
       - name: Exact-commit evidence
         run: |
           mkdir -p beta-security-hardening-evidence
-          printf 'repository=%s\nfinal_sha=%s\nbase_sha=%s\nelasticsearch_version=9.4.2\noidc_provider_version=repository-test-provider\nterminal_migration=0021_lineage_analysis_explorer\nstatus=functional_unvalidated\n' "$GITHUB_REPOSITORY" "$GITHUB_SHA" "${{ github.event.pull_request.base.sha || github.event.before }}" > beta-security-hardening-evidence/manifest.txt
+          printf 'repository=%s\nfinal_sha=%s\nbase_sha=%s\nelasticsearch_version=9.4.2\noidc_provider_version=repository-test-provider\nterminal_migration=%s\nstatus=functional_unvalidated\n' "$GITHUB_REPOSITORY" "$GITHUB_SHA" "${{ github.event.pull_request.base.sha || github.event.before }}" "$(python scripts/release/release_metadata.py)" > beta-security-hardening-evidence/manifest.txt
           cp security-junit.xml beta-security-hardening-evidence/
+          python scripts/certification/write_evidence_envelope.py --output beta-security-hardening-evidence/evidence.json \
+            --repository "$GITHUB_REPOSITORY" --producer-sha "$GITHUB_SHA" --workflow-file beta-security-hardening.yml \
+            --workflow-run-id "$GITHUB_RUN_ID" --workflow-run-attempt "$GITHUB_RUN_ATTEMPT" --event "$GITHUB_EVENT_NAME" \
+            --status pass --test-category security --test-category rbac --test-category tenant-isolation \
+            --supporting-file security-junit.xml --tool-version "python=$(python --version | cut -d' ' -f2)"
           find beta-security-hardening-evidence -type f -printf '%P\n' | sort > beta-security-hardening-evidence/inventory.txt
           sha256sum beta-security-hardening-evidence/* > beta-security-hardening-evidence/SHA256SUMS
       - name: Independent evidence verification

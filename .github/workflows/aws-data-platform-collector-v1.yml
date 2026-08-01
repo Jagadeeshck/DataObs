@@ -29,12 +29,17 @@ jobs:
           files=['config/integrations/aws-data-platform.example.yaml']
           json.dump({'repository':os.getenv('GITHUB_REPOSITORY'),'commit_sha':os.getenv('GITHUB_SHA'),'workflow_run_id':os.getenv('GITHUB_RUN_ID'),
           'python_version':platform.python_version(),'boto3_version':__import__('boto3').__version__,'botocore_version':__import__('botocore').__version__,
-          'Elasticsearch_version':'9.4.2','terminal_migration':'0022','supported_services':['rds','glue','athena','emr-serverless','cloudwatch'],
+          'Elasticsearch_version':'9.4.2','terminal_migration':__import__('packages.elastic_store.manifest',fromlist=['migrations']).migrations()[-1].migration_id,'supported_services':['rds','glue','athena','emr-serverless','cloudwatch'],
           'supported_capabilities':['resource_discovery','metadata_collection','metric_collection','health_check','incremental_collection'],
           'unsupported_capabilities':['logs','lineage','profiling','sql','cost','event_driven','remediation'],
           'fixture_manifest':{f:hashlib.sha256(open(f,'rb').read()).hexdigest() for f in files},'redaction_verification':'passed',
-          'tenant_isolation_result':'passed','checkpoint_persistence_verification':'passed','known_limitations':['no live AWS certification']},open('evidence/evidence.json','w'),indent=2)
+          'tenant_isolation_result':'passed','checkpoint_persistence_verification':'passed','known_limitations':['no live AWS certification']},open('evidence/aws-report.json','w'),indent=2)
           PY
+          python scripts/certification/write_evidence_envelope.py --output evidence/evidence.json \
+            --repository "$GITHUB_REPOSITORY" --producer-sha "$GITHUB_SHA" --workflow-file aws-data-platform-collector-v1.yml \
+            --workflow-run-id "$GITHUB_RUN_ID" --workflow-run-attempt "$GITHUB_RUN_ATTEMPT" --event "$GITHUB_EVENT_NAME" \
+            --status pass --test-category unit --test-category redaction --test-category tenant-isolation \
+            --supporting-file evidence/aws-report.json --tool-version "python=$(python --version | cut -d' ' -f2)"
       - uses: actions/upload-artifact@v4
         with: {name: aws-data-platform-collector-v1-evidence, path: evidence}
   verify-evidence:
@@ -43,4 +48,4 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with: {name: aws-data-platform-collector-v1-evidence, path: evidence}
-      - run: python -c "import json; d=json.load(open('evidence/evidence.json')); assert d['commit_sha'] and d['tenant_isolation_result']=='passed'"
+      - run: python -c "import json; d=json.load(open('evidence/aws-report.json')); assert d['commit_sha'] and d['tenant_isolation_result']=='passed'"

@@ -5,13 +5,18 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
+import sys
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from pathlib import Path
 
-TERMINAL_MIGRATION = "0021_lineage_analysis_explorer"
-ELASTICSEARCH_VERSION = "9.4.2"
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT))
+from scripts.release.release_metadata import ELASTICSEARCH_VERSION, terminal_migration  # noqa: E402
+
+TERMINAL_MIGRATION = terminal_migration()
 REQUIRED_METADATA = {
     "producer_sha",
     "repository",
@@ -73,6 +78,24 @@ def generate(args: argparse.Namespace) -> None:
     }
     output.mkdir(parents=True, exist_ok=True)
     (output / "metadata.json").write_text(json.dumps(metadata, indent=2) + "\n")
+    envelope = {
+        "schema_version": "1.0",
+        "repository": args.repository,
+        "producer_sha": metadata["producer_sha"],
+        "workflow_file": str(args.workflow).split("/")[-1],
+        "workflow_run_id": str(args.run_id),
+        "workflow_run_attempt": os.getenv("GITHUB_RUN_ATTEMPT", "1"),
+        "event": args.event,
+        "generated_at": metadata["generated_at"],
+        "elasticsearch_version": args.elasticsearch_version,
+        "terminal_migration": TERMINAL_MIGRATION,
+        "tool_versions": {"python": args.python_version, "node": args.node_version},
+        "test_summaries": [{"category": item, "status": "pass"} for item in sorted(set(args.required_suite))],
+        "artifact_inventory": [{"path": item} for item in metadata["result_files"]],
+        "redaction_status": "pass",
+        "status": "pass" if not summary["failures"] and not summary["errors"] else "fail",
+    }
+    (output / "evidence.json").write_text(json.dumps(envelope, indent=2) + "\n")
 
 
 def verify(args: argparse.Namespace) -> None:

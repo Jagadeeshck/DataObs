@@ -12,6 +12,7 @@ jobs:
       run-playwright: true
       run-accessibility: true
       artifact-name: console-product-experience-v1-evidence
+      workflow-file: console-product-experience.yml
   repository-policy:
     runs-on: ubuntu-latest
     steps:

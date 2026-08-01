@@ -34,7 +34,7 @@ Certification definitions pin Elasticsearch and Kibana **9.4.2**. Compatibility 
 
 ## 3. Storage migrations
 
-The released forward migration registry spans `0001_product_foundation` through `0021_lineage_analysis_explorer`. Existing migrations remain immutable. The registry checksum ledger and the comparison against the branch base are mandatory gates.
+The released forward migration registry spans `0001_product_foundation` through the executable terminal migration (`0022_aws_data_platform_collector` at this audit). Existing migrations remain immutable. The registry checksum ledger and the comparison against the branch base are mandatory gates.
 
 Focused hosted certification is defined by `data-quality-monitoring`, `job-run-backend`, and `lineage-analysis-console`. Their exact-commit artifacts must pass a separate download-and-verification job; until a successful final-head run exists, the related capabilities remain functional but unvalidated.
 
@@ -64,11 +64,11 @@ Defined retained artifacts include `incident-migration-occ-artifacts`, Python te
 
 ## 10. Deployment and package coverage
 
-The release inventory is limited to components with Dockerfiles and supported entrypoints: API, Console, quality worker, scanner worker, monitor runtime, pathway worker, and Kafka observer. The Helm foundation currently deploys only API, quality worker, and OpenTelemetry Collector; it is not production-ready. Images must be pinned by semantic version, Git SHA, or digest. Grafana Alloy and other sample applications are excluded from the production inventory.
+The release inventory is limited to components with Dockerfiles and supported entrypoints: API, Console, quality worker, scanner worker, monitor runtime, pathway worker, and Kafka observer. The Helm package maps the supported API, Console, quality/scanner/monitor/pathway/Kafka components and migration job; Collection Manager remains unsupported for packaging. Images must be pinned by semantic version, Git SHA, or digest. Grafana Alloy and other sample applications are excluded from the production inventory.
 
 ## 11. Security posture
 
-Services and repositories contain tenant-scoping, strict Elasticsearch mappings, OCC/idempotency controls, redaction tests, dependency auditing, image scanning, and SBOM gates. OIDC/RBAC and comprehensive production tenant enforcement, HA, backup/restore, and a release rehearsal remain incomplete. Evidence bundles must exclude tokens, webhooks, authorization headers, and raw sensitive payloads.
+Services and repositories contain tenant-scoping, strict Elasticsearch mappings, OCC/idempotency controls, redaction tests, dependency auditing, image scanning, and SBOM gates. OIDC/RBAC and tenant route enforcement are implemented and locally validated. HA, hosted backup/restore, and the exact-commit release rehearsal remain pending hosted validation. Evidence bundles must exclude tokens, webhooks, authorization headers, and raw sensitive payloads.
 
 ## 12. Known blockers
 

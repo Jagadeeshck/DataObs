@@ -1,0 +1,23 @@
+name: Integration SDK certification
+on:
+  workflow_dispatch:
+  push: {branches: [main]}
+permissions: {contents: read}
+jobs:
+  certify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install -r requirements.txt pytest
+      - run: mkdir -p evidence/results && python -m pytest tests/integrations -q --junitxml=evidence/results/sdk.xml
+      - run: |
+          python scripts/certification/write_evidence_envelope.py --output evidence/evidence.json \
+            --repository "$GITHUB_REPOSITORY" --producer-sha "$GITHUB_SHA" \
+            --workflow-file integration-sdk-certification.yml --workflow-run-id "$GITHUB_RUN_ID" \
+            --workflow-run-attempt "$GITHUB_RUN_ATTEMPT" --event "$GITHUB_EVENT_NAME" --status pass \
+            --test-category unit --test-category redaction --test-category tenant-isolation \
+            --supporting-file evidence/results/sdk.xml --tool-version "python=$(python --version | cut -d' ' -f2)"
+      - uses: actions/upload-artifact@v4
+        with: {name: integration-sdk-v1-evidence, path: evidence, retention-days: 30}

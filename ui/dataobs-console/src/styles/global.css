@@ -1671,6 +1671,7 @@ progress {
   .quality-filters label {
     width: 100%;
   }
+}
 .pathway-filters {
   flex-wrap: wrap;
 }
@@ -1727,5 +1728,4 @@ progress {
 .table-scroll {
   max-width: 100%;
   overflow: auto;
-
 }

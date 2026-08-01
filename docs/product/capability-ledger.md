@@ -7,7 +7,7 @@ Audited commit: `5164762a6337a44a76ad2c7574a78edc048a70b3` · PR range: #82-#168
 ## State counts
 
 - **foundation**: 12
-- **functional_unvalidated**: 14
+- **functional_unvalidated**: 17
 - **not_started**: 7
 - **optional_integration**: 1
 - **scaffold**: 1
@@ -16,10 +16,10 @@ Audited commit: `5164762a6337a44a76ad2c7574a78edc048a70b3` · PR range: #82-#168
 
 - **ai_agent**: 2
 - **business**: 2
-- **data**: 4
-- **data_pipeline**: 8
+- **data**: 5
+- **data_pipeline**: 9
 - **finops_cost**: 1
-- **platform**: 18
+- **platform**: 19
 
 ## Capabilities
 
@@ -79,6 +79,14 @@ Evidence-led status for quality and drift evidence.
 - **Release readiness:** `blocked`
 - **Next gate:** Run the focused workflow for the final PR head and independently verify its retained exact-commit artifact.
 
+### `monitoring.data_quality_console_v1` — Data Quality Console v1
+
+Read-only quality overview, inventory, findings and Monitor 360 evidence.
+
+- **State:** `functional_unvalidated`
+- **Release readiness:** `blocked`
+- **Next gate:** Retain and independently verify exact-commit hosted evidence.
+
 ### `monitoring.runtime` — Monitor runtime, baselines, and recommendations
 
 Evidence-led status for monitor runtime, baselines, and recommendations.
@@ -134,6 +142,14 @@ Evidence-led status for kafka connect and schema registry.
 - **State:** `foundation`
 - **Release readiness:** `blocked`
 - **Next gate:** Execute and retain the evidence required for promotion.
+
+### `streams.connector_schema_360` — Connector and Schema 360 Console v1
+
+Durable safe projections and read-only operational investigation.
+
+- **State:** `functional_unvalidated`
+- **Release readiness:** `blocked`
+- **Next gate:** Execute and independently verify the hosted workflow.
 
 ### `streams.kafka` — Kafka Observer and inventory
 
@@ -246,6 +262,14 @@ Evidence-led status for backup and restore.
 - **State:** `not_started`
 - **Release readiness:** `blocked`
 - **Next gate:** Execute and retain the evidence required for promotion.
+
+### `platform.beta_deployment_package` — Beta deployment package
+
+Digest-pinned Kubernetes packaging for runnable Beta components against external Elasticsearch.
+
+- **State:** `functional_unvalidated`
+- **Release readiness:** `blocked`
+- **Next gate:** Retain and independently verify exact-commit hosted packaging evidence.
 
 ### `platform.collection` — Collection manager
 

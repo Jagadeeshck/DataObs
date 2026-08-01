@@ -11,7 +11,7 @@ Required privileges include cluster monitor, snapshot create/status/restore, rep
 ## Ordering
 
 1. Quiesce or fence writers and record the exact terminal migration.
-2. Run `backup_dataobs.py`; it checks connectivity and migration `0021_lineage_analysis_explorer`, creates the optional test repository, waits for the named snapshot, and emits a redaction-safe report.
+2. Run `backup_dataobs.py`; it checks connectivity and the dynamically resolved executable terminal migration, registers the optional test repository, waits for the named snapshot, and emits a redaction-safe report.
 3. Test restores only in an isolated recovery cluster. Close/delete conflicting target resources according to Elasticsearch restore requirements.
 4. Run `restore_dataobs.py`, then run migrations forward if the restoring binary has a newer compatible terminal migration.
 5. Verify document counts and deterministic tenant fixtures, cross-tenant denial, append-only streams, current projections, aliases/transforms, and application reads before reopening writers.

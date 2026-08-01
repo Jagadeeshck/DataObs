@@ -14,19 +14,35 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from packages.elastic_store.manifest import migrations  # noqa: E402
+from scripts.operations.snapshot_common import snapshot_resources  # noqa: E402
 
 
-def backup(es: Elasticsearch, repository: str, snapshot: str) -> dict:
+def backup(
+    es: Elasticsearch,
+    repository: str,
+    snapshot: str,
+    *,
+    repository_location: str | None = None,
+    register_repository: bool = False,
+) -> dict:
     terminal = migrations()[-1].migration_id
     if not es.ping():
         raise RuntimeError("Elasticsearch is unavailable")
     status = es.get(index="dataobs-system-migrations-v1", id=terminal)
     if not status.get("found", True):
         raise RuntimeError(f"terminal migration {terminal} is not applied")
+    if register_repository:
+        if not repository_location:
+            raise ValueError("--repository-location is required with --register-repository")
+        es.snapshot.create_repository(
+            name=repository,
+            repository={"type": "fs", "settings": {"location": repository_location}},
+        )
+    es.snapshot.verify_repository(name=repository)
     response = es.snapshot.create(
         repository=repository,
         snapshot=snapshot,
-        indices="dataobs-*,logs-dataobs.*,metrics-dataobs.*,traces-dataobs.*",
+        indices=",".join(snapshot_resources()),
         wait_for_completion=True,
         include_global_state=False,
     )
@@ -52,8 +68,16 @@ def main() -> int:
     p.add_argument("--repository", required=True)
     p.add_argument("--snapshot", required=True)
     p.add_argument("--output", type=Path, required=True)
+    p.add_argument("--repository-location")
+    p.add_argument("--register-repository", action="store_true")
     args = p.parse_args()
-    report = backup(Elasticsearch(args.url, request_timeout=30), args.repository, args.snapshot)
+    report = backup(
+        Elasticsearch(args.url, request_timeout=30),
+        args.repository,
+        args.snapshot,
+        repository_location=args.repository_location,
+        register_repository=args.register_repository,
+    )
     args.output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     return 0
 

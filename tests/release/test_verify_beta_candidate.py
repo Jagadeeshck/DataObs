@@ -24,6 +24,7 @@ def run(**changes):
         "status": "completed",
         "conclusion": "success",
         "event": "workflow_dispatch",
+        "run_attempt": 1,
         "path": ".github/workflows/beta-1-release-candidate.yml",
         "repository": {"full_name": "owner/repo"},
     }
@@ -39,6 +40,12 @@ def evidence(**changes):
         "elasticsearch_version": "9.4.2",
         "test_summaries": [{"category": "security", "passed": 10}],
         "tool_versions": {"python": "3.13"},
+        "workflow_file": "beta-1-release-candidate.yml",
+        "workflow_run_id": "7",
+        "workflow_run_attempt": "1",
+        "event": "workflow_dispatch",
+        "redaction_status": "pass",
+        "status": "pass",
     }
     value.update(changes)
     return value
@@ -99,7 +106,7 @@ def test_evidence_schema_sha_migration_and_summary_are_enforced(changes, message
 
 def test_optional_capability_failure_is_pending_not_passing():
     optional = {**ENTRY, "mandatory_for_beta": False}
-    assert verify(runs=[], entry=optional)["status"] == "pending"
+    assert verify(runs=[], entry=optional)["status"] == "optional_failed"
 
 
 def test_invalid_evidence_object_is_reported_without_token_or_payload_content():

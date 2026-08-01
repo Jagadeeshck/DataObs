@@ -56,6 +56,10 @@ class RouteRule:
     read: Permission
     write: Permission
 
+    @property
+    def name(self) -> str:
+        return f"{','.join(sorted(self.methods))}:{self.pattern.pattern}"
+
 
 def _rule(methods: str, pattern: str, read: Permission, write: Permission | None = None) -> RouteRule:
     return RouteRule(frozenset(methods.split()), re.compile(r"^" + pattern + r"$"), read, write or read)
@@ -156,16 +160,31 @@ RULES = (
     ),
 )
 
+# Stable public name consumed by repository-policy checks.
+ROUTE_RULES = RULES
+
+
+def matching_rule(method: str, route_template: str) -> RouteRule | None:
+    """Return the single classification rule, including explicit legacy routes."""
+    method = method.upper()
+    explicit = EXPLICIT_ROUTES.get((method, route_template))
+    if explicit is not None:
+        return _rule(method, re.escape(route_template), explicit)
+    matches = [rule for rule in RULES if method in rule.methods and rule.pattern.fullmatch(route_template)]
+    return matches[0] if len(matches) == 1 else None
+
 
 def permission_for_route(method: str, route_template: str) -> Permission | None:
     method = method.upper()
     if (method, route_template) in PUBLIC_ROUTES:
-        return None
+        raise LookupError(f"public routes have no permission: {method} {route_template}")
     if (method, route_template) in EXPLICIT_ROUTES:
         return EXPLICIT_ROUTES[(method, route_template)]
     matches = [rule for rule in RULES if method in rule.methods and rule.pattern.fullmatch(route_template)]
     if len(matches) != 1:
-        raise LookupError(f"route permission policy has {len(matches)} matches for {method} {route_template}")
+        if not matches:
+            raise LookupError(f"no permission policy for {method} {route_template}")
+        raise LookupError(f"ambiguous permission policy for {method} {route_template}")
     return matches[0].read if method in {"GET", "HEAD"} else matches[0].write
 
 

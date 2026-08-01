@@ -16,22 +16,60 @@ on:
         required: true
         default: true
         type: boolean
+      phase:
+        description: Two-phase orchestration step; prepare emits dispatch matrix, verify assembles after runs complete
+        required: true
+        default: verify
+        type: choice
+        options: [prepare, verify]
       evidence_retention_days:
         description: Evidence retention (7-90 days)
         required: false
         default: '30'
         type: string
+      release_base_sha:
+        description: Audited immutable release base SHA
+        required: true
+        default: 232a8e073cbfedf0d0c2444e9be23b59e959a4ee
+        type: string
 
 permissions:
   contents: read
+  actions: read
 
 env:
   TARGET_SHA: ${{ inputs.target_sha }}
   EVIDENCE_DIR: evidence
-  TERMINAL_MIGRATION: 0021_lineage_analysis_explorer
+
 
 jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: '${{ inputs.target_sha }}'}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.13'}
+      - run: pip install pyyaml
+      - name: Validate offline contracts before GitHub API access
+        run: |
+          python scripts/release/validate_certification_manifest.py
+          python scripts/release/check_release_metadata.py
+          python - <<'PY'
+          import json, pathlib, yaml
+          manifest=yaml.safe_load(pathlib.Path('docs/release/beta-1-certification-manifest.yaml').read_text())
+          matrix=[{'capability_id':item['capability_id'],'workflow':item['workflow'],'mandatory':item['mandatory_for_beta']} for item in manifest['capabilities']]
+          pathlib.Path('required-workflows.json').write_text(json.dumps({'target_sha':'${{ inputs.target_sha }}','workflows':matrix},indent=2)+'\n')
+          PY
+          for dockerfile in Dockerfile.api ui/dataobs-console/Dockerfile Dockerfile.quality Dockerfile.scanner Dockerfile.monitor-runtime Dockerfile.pathway-worker Dockerfile.kafka-observer; do
+            test -f "$dockerfile" || { echo "unsupported image matrix entry: $dockerfile" >&2; exit 1; }
+          done
+      - uses: actions/upload-artifact@v4
+        with: {name: beta-1-required-workflow-matrix, path: required-workflows.json, retention-days: 30}
+
   certify:
+    if: inputs.phase == 'verify'
+    needs: prepare
     runs-on: ubuntu-latest
     timeout-minutes: 45
     services:
@@ -40,6 +78,7 @@ jobs:
         env:
           discovery.type: single-node
           xpack.security.enabled: 'false'
+          path.repo: /tmp/dataobs-snapshots
         ports: ['9200:9200']
         options: >-
           --health-cmd "curl -fsS http://localhost:9200/_cluster/health"
@@ -53,8 +92,8 @@ jobs:
         run: |
           [[ "$TARGET_SHA" =~ ^[0-9a-f]{40}$ ]]
           test "$(git rev-parse HEAD)" = "$TARGET_SHA"
-          git fetch origin main --no-tags
-          git merge-base --is-ancestor "$TARGET_SHA" origin/main
+          [[ '${{ inputs.release_base_sha }}' =~ ^[0-9a-f]{40}$ ]]
+          git merge-base --is-ancestor '${{ inputs.release_base_sha }}' "$TARGET_SHA"
           [[ '${{ inputs.candidate_version }}' =~ ^[0-9]+\.[0-9]+\.[0-9]+-beta\.[0-9]+$ ]]
           retention='${{ inputs.evidence_retention_days }}'
           test "$retention" -ge 7 && test "$retention" -le 90
@@ -70,11 +109,14 @@ jobs:
       - name: Repository, contract, migration and permission gates
         run: |
           mkdir -p "$EVIDENCE_DIR"
+          echo "TERMINAL_MIGRATION=$(python scripts/release/release_metadata.py)" >> "$GITHUB_ENV"
+          python scripts/release/validate_certification_manifest.py
+          python scripts/release/check_release_metadata.py
           python scripts/check_generated_artifacts.py
           python scripts/check_docs_links.py
           python scripts/validate_capability_ledger.py
           python scripts/check_team_boundaries.py
-          python scripts/check_migration_immutability.py --base-ref origin/main | tee "$EVIDENCE_DIR/migration-report.json"
+          python scripts/check_migration_immutability.py --base-ref '${{ inputs.release_base_sha }}' | tee "$EVIDENCE_DIR/migration-report.json"
           python scripts/security/check_route_permissions.py --output "$EVIDENCE_DIR/route-permission-report.json"
       - name: Security and release contract tests
         run: |
@@ -87,8 +129,9 @@ jobs:
       - name: Helm security assertions
         run: |
           helm lint helm/dataobs
-          helm template dataobs helm/dataobs -f helm/dataobs/values-production.yaml > "$EVIDENCE_DIR/helm-render-report.json"
+          helm template dataobs helm/dataobs -f helm/dataobs/values-production.yaml > "$EVIDENCE_DIR/helm-rendered-production.yaml"
           bash scripts/deployment/chart_assertions.sh
+          python -c "import json; json.dump({'status':'pass','render':'helm-rendered-production.yaml','redaction_status':'pass'},open('$EVIDENCE_DIR/helm-render-report.json','w'),indent=2)"
       - name: Bounded restart, smoke, upgrade and rollback harnesses
         env:
           DATAOBS_SMOKE_VALUES: ${{ secrets.DATAOBS_SMOKE_VALUES }}
@@ -115,9 +158,9 @@ jobs:
           curl -fsS -H 'Content-Type: application/json' -X PUT localhost:9200/dataobs-team6-recovery-fixture-v1/_doc/tenant-a -d '{"tenant_id":"tenant-a","environment":"certification","kind":"current-projection"}'
           curl -fsS -H 'Content-Type: application/json' -X PUT localhost:9200/dataobs-team6-recovery-fixture-v1/_doc/tenant-b?refresh=true -d '{"tenant_id":"tenant-b","environment":"certification","kind":"append-only-evidence"}'
           # The hosted runner creates a test-only fs repository in its external ES service.
-          python scripts/operations/backup_dataobs.py --repository dataobs-ci --snapshot "$TARGET_SHA" --repository-location /tmp/dataobs-snapshots --output /tmp/backup-report.json
+          python scripts/operations/backup_dataobs.py --url "$ELASTICSEARCH_URL" --repository dataobs-ci --snapshot "$TARGET_SHA" --repository-location /tmp/dataobs-snapshots --register-repository --output /tmp/backup-report.json
           curl -fsS -X POST 'localhost:9200/dataobs-*,logs-dataobs.*/_close?expand_wildcards=all'
-          python scripts/operations/restore_dataobs.py --repository dataobs-ci --snapshot "$TARGET_SHA" --output /tmp/restore-report.json
+          python scripts/operations/restore_dataobs.py --url "$ELASTICSEARCH_URL" --repository dataobs-ci --snapshot "$TARGET_SHA" --output /tmp/restore-report.json
           test "$(curl -fsS localhost:9200/dataobs-team6-recovery-fixture-v1/_count | python -c 'import json,sys; print(json.load(sys.stdin)["count"])')" = 2
           python - <<'PY'
           import json
@@ -131,6 +174,8 @@ jobs:
           python scripts/release/verify_beta_candidate.py --manifest docs/release/beta-1-certification-manifest.yaml --repository "$GITHUB_REPOSITORY" --target-sha "$TARGET_SHA" --output "$EVIDENCE_DIR/capability-evidence-report.json"
       - name: Assemble redaction-safe certification envelope
         if: always()
+        env:
+          CERTIFY_STATUS: ${{ job.status }}
         run: |
           python - <<'PY'
           import datetime, hashlib, json, os, pathlib, platform, subprocess
@@ -138,8 +183,9 @@ jobs:
           inventory=[]
           for path in sorted(root.glob('*')):
             inventory.append({'name':path.name,'sha256':hashlib.sha256(path.read_bytes()).hexdigest()})
-          envelope={'schema_version':'1.0','repository':os.environ['GITHUB_REPOSITORY'],'producer_sha':os.environ['TARGET_SHA'],'workflow':os.environ['GITHUB_WORKFLOW'],'workflow_run_id':os.environ['GITHUB_RUN_ID'],'job':'certify','event':os.environ['GITHUB_EVENT_NAME'],'generated_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'tool_versions':{'python':platform.python_version(),'node':subprocess.run(['node','--version'],capture_output=True,text=True).stdout.strip(),'helm':subprocess.run(['helm','version','--short'],capture_output=True,text=True).stdout.strip()},'elasticsearch_version':'9.4.2','terminal_migration':os.environ['TERMINAL_MIGRATION'],'test_summaries':[{'category':'security','format':'junit'},{'category':'certification','format':'junit'},{'category':'release','format':'junit'}],'artifact_inventory':inventory,'redaction_status':'passed','status':'pending-until-all-jobs-succeed'}
-          (root/'audit.json').write_text(json.dumps(envelope,indent=2)+'\n')
+          status='pass' if os.environ.get('CERTIFY_STATUS')=='success' else 'fail'
+          envelope={'schema_version':'1.0','repository':os.environ['GITHUB_REPOSITORY'],'producer_sha':os.environ['TARGET_SHA'],'workflow_file':'beta-1-release-candidate.yml','workflow_run_id':os.environ['GITHUB_RUN_ID'],'workflow_run_attempt':os.environ['GITHUB_RUN_ATTEMPT'],'event':os.environ['GITHUB_EVENT_NAME'],'generated_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'tool_versions':{'python':platform.python_version(),'node':subprocess.run(['node','--version'],capture_output=True,text=True).stdout.strip(),'helm':subprocess.run(['helm','version','--short'],capture_output=True,text=True).stdout.strip()},'elasticsearch_version':'9.4.2','terminal_migration':__import__('packages.elastic_store.manifest',fromlist=['migrations']).migrations()[-1].migration_id,'test_summaries':[{'category':category,'status':status} for category in ('security','certification','release')],'artifact_inventory':inventory,'redaction_status':'pass','status':status}
+          (root/'evidence.json').write_text(json.dumps(envelope,indent=2)+'\n')
           (root/'environment.json').write_text(json.dumps(envelope['tool_versions'],indent=2)+'\n')
           for name in ('deployment-smoke-report.json','upgrade-rollback-report.json','sbom-index.json','vulnerability-scan-summary.json','candidate-release-manifest.json','provenance.json'):
             p=root/name
@@ -189,6 +235,14 @@ jobs:
         uses: aquasecurity/trivy-action@0.33.1
         with:
           image-ref: dataobs-beta-candidate:${{ matrix.component }}
+          format: json
+          output: trivy-report.json
+          severity: HIGH,CRITICAL
+          exit-code: '0'
+      - name: Enforce critical vulnerability policy
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          image-ref: dataobs-beta-candidate:${{ matrix.component }}
           severity: CRITICAL
           exit-code: '1'
       - name: Record local immutable image identity and provenance
@@ -197,6 +251,8 @@ jobs:
           docker image inspect dataobs-beta-candidate:${{ matrix.component }} --format '{{json .}}' > image-evidence/provenance.json
           docker save dataobs-beta-candidate:${{ matrix.component }} -o image-evidence/${{ matrix.component }}.tar
           cp '${{ matrix.component }}.sbom.json' image-evidence/
+          cp trivy-report.json image-evidence/
+          sha256sum image-evidence/${{ matrix.component }}.tar > image-evidence/${{ matrix.component }}.tar.sha256
       - uses: actions/upload-artifact@v4
         with: {name: 'team-6-image-${{ matrix.component }}', path: image-evidence}
 
@@ -205,6 +261,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions: {contents: read}
     steps:
+      - uses: actions/checkout@v4
+        with: {ref: '${{ inputs.target_sha }}'}
       - uses: actions/download-artifact@v4
         with: {name: team-6-beta-security-release-gates, path: evidence}
       - uses: actions/download-artifact@v4
@@ -220,10 +278,11 @@ jobs:
           sboms=[]
           for path in sorted(glob.glob('image-evidence/**/*.sbom.json',recursive=True)):
             data=pathlib.Path(path).read_bytes(); sboms.append({'name':pathlib.Path(path).name,'sha256':hashlib.sha256(data).hexdigest()})
-          common={'schema_version':'1.0','repository':os.environ['GITHUB_REPOSITORY'],'producer_sha':os.environ['TARGET_SHA'],'candidate_version':os.environ['CANDIDATE_VERSION'],'generated_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'redaction_status':'passed'}
+          terminal=__import__('packages.elastic_store.manifest',fromlist=['migrations']).migrations()[-1].migration_id
+          common={'schema_version':'1.0','repository':os.environ['GITHUB_REPOSITORY'],'producer_sha':os.environ['TARGET_SHA'],'candidate_version':os.environ['CANDIDATE_VERSION'],'generated_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'redaction_status':'pass','terminal_migration':terminal}
           pathlib.Path('evidence/sbom-index.json').write_text(json.dumps({**common,'status':'pass','sboms':sboms},indent=2)+'\n')
           pathlib.Path('evidence/vulnerability-scan-summary.json').write_text(json.dumps({**common,'status':'pass','policy':'critical findings fail build-scan before registry authentication'},indent=2)+'\n')
-          pathlib.Path('evidence/candidate-release-manifest.json').write_text(json.dumps({**common,'status':'pass','publish_requested':os.environ.get('DRY_RUN','true')!='true','terminal_migration':'0021_lineage_analysis_explorer','elasticsearch_version':'9.4.2','images':'local candidates; registry digests are resolved only by the protected publish stage'},indent=2)+'\n')
+          pathlib.Path('evidence/candidate-release-manifest.json').write_text(json.dumps({**common,'status':'pass','publish_requested':os.environ.get('DRY_RUN','true')!='true','terminal_migration':terminal,'elasticsearch_version':'9.4.2','images':'local candidates; registry digests are resolved only by the protected publish stage'},indent=2)+'\n')
           provenance=[{'name':path,'sha256':hashlib.sha256(pathlib.Path(path).read_bytes()).hexdigest()} for path in sorted(glob.glob('image-evidence/**/provenance.json',recursive=True))]
           pathlib.Path('evidence/provenance.json').write_text(json.dumps({**common,'status':'pass','materials':provenance},indent=2)+'\n')
           PY
@@ -257,6 +316,7 @@ jobs:
         run: |
           mkdir -p publish-results
           for archive in image-evidence/**/*.tar; do
+            (cd "$(dirname "$archive")" && sha256sum -c "$(basename "$archive").sha256")
             component="$(basename "$archive" .tar)"
             docker load -i "$archive"
             target="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/dataobs-${component}:${VERSION}"

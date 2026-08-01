@@ -78,6 +78,9 @@ def compose() -> MonitorRuntime:
 
 
 def main() -> int:
+    from src.telemetry import init_telemetry
+
+    init_telemetry()
     parser = argparse.ArgumentParser()
     parser.add_argument("command", choices=["run", "once", "health", "reconcile-definitions"])
     parser.add_argument("--file", type=Path)

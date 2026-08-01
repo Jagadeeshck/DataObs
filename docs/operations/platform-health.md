@@ -1,0 +1,3 @@
+# Platform health
+
+`/livez` only proves the process can answer. `/startupz` reports local initialization. `/readyz` gates serving dependencies and must use safe bounded reason codes; remote checks are timeout/cached where implemented. Operator detail is authenticated at `/api/v1/platform/*`. Detect via probe state; assess user impact; verify configuration and route policy; inspect bounded dependency state; mitigate by restoring the dependency or rolling back; verify sustained recovery; escalate to Team 0; retain exact-SHA health evidence. Never disable authentication, bypass migrations, disclose raw exceptions, or mark unknown evidence healthy.

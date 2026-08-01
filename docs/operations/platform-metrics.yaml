@@ -1,0 +1,161 @@
+version: 1
+metrics:
+- name: dataobs_api_requests_total
+  type: counter
+  unit: '{request}'
+  description: Eligible API requests by stable route and outcome.
+  owner: team-0
+  emitting_components:
+  - api
+  allowed_attributes:
+  - http.route
+  - http.request.method
+  - http.response.status_code_family
+  - dataobs.outcome
+  cardinality_expectation: bounded-below-500-series
+  stability: beta
+  beta_required: true
+  slos:
+  - api-serving-availability
+  alerts:
+  - api-elevated-error-rate
+- name: dataobs_api_request_duration_seconds
+  type: histogram
+  unit: s
+  description: API request duration by stable route class.
+  owner: team-0
+  emitting_components:
+  - api
+  allowed_attributes:
+  - http.route
+  - http.request.method
+  - http.response.status_code_family
+  cardinality_expectation: bounded-below-500-series
+  boundaries:
+  - 0.005
+  - 0.01
+  - 0.025
+  - 0.05
+  - 0.1
+  - 0.25
+  - 0.5
+  - 1
+  - 2.5
+  - 5
+  stability: beta
+  beta_required: true
+  slos:
+  - api-read-latency
+  - api-mutation-latency
+  alerts:
+  - api-latency-burn
+- name: dataobs_worker_terminal_outcomes_total
+  type: counter
+  unit: '{item}'
+  description: Terminal work outcomes, excluding intermediate retries.
+  owner: team-0
+  emitting_components:
+  - quality-worker
+  - scanner-worker
+  - monitor-runtime
+  - pathway-worker
+  - kafka-observer
+  allowed_attributes:
+  - dataobs.worker.type
+  - dataobs.operation
+  - dataobs.outcome
+  - dataobs.error.category
+  cardinality_expectation: bounded-below-100-series
+  stability: beta
+  beta_required: true
+  slos:
+  - worker-execution-reliability
+  alerts:
+  - worker-terminal-failure-rate
+- name: dataobs_worker_checkpoint_age_seconds
+  type: gauge
+  unit: s
+  description: Age of the last authoritative checkpoint where one exists.
+  owner: team-0
+  emitting_components:
+  - scanner-worker
+  - monitor-runtime
+  - pathway-worker
+  - kafka-observer
+  allowed_attributes:
+  - dataobs.worker.type
+  cardinality_expectation: one-series-per-worker-type
+  stability: beta
+  beta_required: true
+  slos:
+  - worker-freshness
+  alerts:
+  - worker-checkpoint-stale
+- name: dataobs_telemetry_export_dropped_total
+  type: counter
+  unit: '{item}'
+  description: Telemetry items dropped by bounded exporters.
+  owner: team-0
+  emitting_components:
+  - api
+  - quality-worker
+  - scanner-worker
+  - monitor-runtime
+  - pathway-worker
+  - kafka-observer
+  allowed_attributes:
+  - dataobs.component
+  - dataobs.outcome
+  - dataobs.error.category
+  cardinality_expectation: bounded-below-50-series
+  stability: beta
+  beta_required: true
+  slos: []
+  alerts:
+  - telemetry-exporter-backlog
+- name: dataobs_api_response_size_bytes
+  type: histogram
+  unit: By
+  description: Safe response size from Content-Length.
+  owner: team-0
+  emitting_components:
+  - api
+  allowed_attributes:
+  - http.route
+  - http.request.method
+  - http.response.status_code_family
+  cardinality_expectation: bounded
+  stability: beta
+  beta_required: true
+  slos: []
+  alerts: []
+- name: dataobs_api_in_flight_requests
+  type: up_down_counter
+  unit: '{request}'
+  description: Current in-flight API requests.
+  owner: team-0
+  emitting_components:
+  - api
+  allowed_attributes:
+  - http.route
+  - http.request.method
+  cardinality_expectation: bounded
+  stability: beta
+  beta_required: true
+  slos: []
+  alerts: []
+- name: dataobs_api_unhandled_exceptions_total
+  type: counter
+  unit: '{exception}'
+  description: Unhandled API exceptions by bounded category.
+  owner: team-0
+  emitting_components:
+  - api
+  allowed_attributes:
+  - dataobs.error.category
+  - dataobs.component
+  cardinality_expectation: bounded
+  stability: beta
+  beta_required: true
+  slos: []
+  alerts: []

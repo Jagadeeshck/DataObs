@@ -15,7 +15,8 @@
     "kafkaObserver",
     "otelCollector",
     "migrationJob",
-    "networkPolicy"
+    "networkPolicy",
+    "monitoring"
   ],
   "definitions": {
     "resources": {
@@ -119,9 +120,90 @@
           ]
         },
         "tls": {
-          "type": "object"
+          "type": "object",
+          "required": [
+            "enabled",
+            "caSecretName",
+            "caKey",
+            "clientSecretName",
+            "authHeaderSecretName",
+            "authHeaderSecretKey"
+          ],
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "caSecretName": {
+              "type": "string"
+            },
+            "caKey": {
+              "type": "string"
+            },
+            "clientSecretName": {
+              "type": "string"
+            },
+            "authHeaderSecretName": {
+              "type": "string"
+            },
+            "authHeaderSecretKey": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "exportTimeoutMs": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 30000
+        },
+        "queueSize": {
+          "type": "integer",
+          "minimum": 64,
+          "maximum": 8192
+        },
+        "batchSize": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8192
+        },
+        "traceSampleRatio": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "metricExportIntervalMs": {
+          "type": "integer",
+          "minimum": 1000
+        },
+        "logCorrelation": {
+          "type": "boolean"
+        },
+        "environment": {
+          "type": "string"
+        },
+        "releaseSha": {
+          "type": "string"
         }
-      }
+      },
+      "additionalProperties": false,
+      "required": [
+        "enabled",
+        "mode",
+        "endpoint",
+        "protocol",
+        "exportTimeoutMs",
+        "queueSize",
+        "batchSize",
+        "traceSampleRatio",
+        "metricExportIntervalMs",
+        "logCorrelation",
+        "environment",
+        "releaseSha",
+        "tls"
+      ]
     },
     "networkPolicy": {
       "type": "object"
@@ -204,24 +286,85 @@
         "observability": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["enabled", "serviceName", "serviceVersion", "deploymentEnvironment", "otlpHttpEndpoint", "traceSampleRatio", "exportIntervalMs", "maxQueuedSpans", "maxQueuedMetrics"],
+          "required": [
+            "enabled",
+            "serviceName",
+            "serviceVersion",
+            "deploymentEnvironment",
+            "otlpHttpEndpoint",
+            "traceSampleRatio",
+            "exportIntervalMs",
+            "maxQueuedSpans",
+            "maxQueuedMetrics"
+          ],
           "properties": {
-            "enabled": { "type": "boolean" },
-            "serviceName": { "type": "string", "minLength": 1, "maxLength": 64 },
-            "serviceVersion": { "type": "string", "minLength": 1, "maxLength": 64 },
-            "deploymentEnvironment": { "type": "string", "minLength": 1, "maxLength": 32 },
-            "otlpHttpEndpoint": { "type": "string", "minLength": 1 },
-            "traceSampleRatio": { "type": "number", "minimum": 0, "maximum": 1 },
-            "captureWebVitals": { "type": "boolean" },
-            "captureLongTasks": { "type": "boolean" },
-            "captureResourceSummary": { "type": "boolean" },
-            "propagateTraceHeaders": { "type": "boolean" },
-            "tracePropagationAllowlist": { "type": "array", "items": { "type": "string" }, "maxItems": 16 },
-            "diagnosticsEnabled": { "type": "boolean" },
-            "debug": { "type": "boolean" },
-            "exportIntervalMs": { "type": "integer", "minimum": 1000, "maximum": 60000 },
-            "maxQueuedSpans": { "type": "integer", "minimum": 16, "maximum": 2048 },
-            "maxQueuedMetrics": { "type": "integer", "minimum": 16, "maximum": 2048 }
+            "enabled": {
+              "type": "boolean"
+            },
+            "serviceName": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "serviceVersion": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "deploymentEnvironment": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            },
+            "otlpHttpEndpoint": {
+              "type": "string",
+              "minLength": 1
+            },
+            "traceSampleRatio": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "captureWebVitals": {
+              "type": "boolean"
+            },
+            "captureLongTasks": {
+              "type": "boolean"
+            },
+            "captureResourceSummary": {
+              "type": "boolean"
+            },
+            "propagateTraceHeaders": {
+              "type": "boolean"
+            },
+            "tracePropagationAllowlist": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 16
+            },
+            "diagnosticsEnabled": {
+              "type": "boolean"
+            },
+            "debug": {
+              "type": "boolean"
+            },
+            "exportIntervalMs": {
+              "type": "integer",
+              "minimum": 1000,
+              "maximum": 60000
+            },
+            "maxQueuedSpans": {
+              "type": "integer",
+              "minimum": 16,
+              "maximum": 2048
+            },
+            "maxQueuedMetrics": {
+              "type": "integer",
+              "minimum": 16,
+              "maximum": 2048
+            }
           }
         },
         "service": {
@@ -1061,6 +1204,22 @@
           "const": "0021_lineage_analysis_explorer"
         }
       }
+    },
+    "monitoring": {
+      "type": "object",
+      "required": [
+        "serviceMonitor",
+        "prometheusRule"
+      ],
+      "properties": {
+        "serviceMonitor": {
+          "type": "object"
+        },
+        "prometheusRule": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
     }
   }
 }

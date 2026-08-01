@@ -220,6 +220,9 @@ def _install_signal_handlers(scheduler: BlockingScheduler) -> None:
 
 
 def main() -> None:
+    from src.telemetry import init_telemetry
+
+    init_telemetry()
     config_path = os.getenv("DATAOBS_CONFIG", "config/dataobs.yaml")
     otlp_endpoint = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4317")
     service_name = os.getenv("OTEL_SERVICE_NAME", "dataobs-quality")

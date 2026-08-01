@@ -25,4 +25,20 @@ app.kubernetes.io/component: {{ .component }}
   valueFrom: {secretKeyRef: {name: {{ .Values.external.elasticsearch.secretName | quote }}, key: {{ .Values.external.elasticsearch.passwordKey | quote }}}}
 - name: OTEL_EXPORTER_OTLP_ENDPOINT
   value: {{ ternary (printf "http://%s-otel-collector:4317" (include "dataobs.fullname" .)) .Values.telemetry.endpoint (eq .Values.telemetry.mode "bundled") | quote }}
+- name: OTEL_SDK_DISABLED
+  value: {{ not .Values.telemetry.enabled | quote }}
+- name: OTEL_EXPORTER_OTLP_PROTOCOL
+  value: {{ .Values.telemetry.protocol | quote }}
+- name: OTEL_EXPORTER_OTLP_TIMEOUT_MS
+  value: {{ .Values.telemetry.exportTimeoutMs | quote }}
+- name: DATAOBS_OTEL_QUEUE_SIZE
+  value: {{ .Values.telemetry.queueSize | quote }}
+- name: DATAOBS_OTEL_BATCH_SIZE
+  value: {{ .Values.telemetry.batchSize | quote }}
+- name: OTEL_TRACES_SAMPLER_ARG
+  value: {{ .Values.telemetry.traceSampleRatio | quote }}
+- name: DATAOBS_RELEASE_SHA
+  value: {{ .Values.telemetry.releaseSha | quote }}
+- name: DATAOBS_CHART_VERSION
+  value: {{ .Chart.Version | quote }}
 {{- end }}

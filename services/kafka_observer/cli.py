@@ -147,6 +147,9 @@ def _emit(command: str, result: Any) -> None:
 
 
 def main() -> int:
+    from src.telemetry import init_telemetry
+
+    init_telemetry()
     parser = argparse.ArgumentParser(prog="dataobs-kafka-observer")
     parser.add_argument(
         "command",

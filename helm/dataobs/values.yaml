@@ -39,12 +39,25 @@ external:
     clientId: dataobs-console
     secretName: dataobs-oidc
 telemetry:
+  enabled: false
   mode: bundled
   endpoint: ''
   protocol: grpc
+  exportTimeoutMs: 5000
+  queueSize: 2048
+  batchSize: 256
+  traceSampleRatio: 0.1
+  metricExportIntervalMs: 30000
+  logCorrelation: true
+  environment: production
+  releaseSha: unknown
   tls:
-    enabled: false
-    secretName: ''
+    enabled: true
+    caSecretName: ''
+    caKey: ca.crt
+    clientSecretName: ''
+    authHeaderSecretName: ''
+    authHeaderSecretKey: authorization
 networkPolicy:
   enabled: true
   additionalEgressCIDRs: []
@@ -510,3 +523,10 @@ migrationJob:
     limits:
       cpu: 500m
       memory: 512Mi
+
+monitoring:
+  serviceMonitor:
+    enabled: false
+    namespaceSelector: {}
+  prometheusRule:
+    enabled: false

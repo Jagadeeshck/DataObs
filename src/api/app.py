@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import time
 import uuid
 from dataclasses import dataclass
 from datetime import datetime
@@ -12,6 +13,8 @@ from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, Res
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from opentelemetry import metrics, trace
+from opentelemetry.trace import SpanKind, Status, StatusCode
 from pydantic import BaseModel, ConfigDict
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.cors import CORSMiddleware
@@ -42,6 +45,8 @@ from src.core.enterprise_blueprint import enterprise_backlog
 from src.core.pillars import PILLAR_REGISTRY, canonical_pillar_value
 from src.data_observability.openlineage import OpenLineageValidationError
 from src.data_observability.service import DataObservabilityService, OpenLineageConflictError
+from src.platform_operations.health import Criticality, HealthCheck, HealthState, aggregate
+from src.platform_operations.slo import evaluate_error_budget
 from src.security.audit import security_event
 from src.security.authentication import Authenticator
 from src.security.authorization import authorize
@@ -49,6 +54,7 @@ from src.security.errors import SecurityError
 from src.security.permissions import Permission
 from src.security.route_policy import permission_for_route, validate_policy
 from src.security.tenant_context import resolve_tenant_context
+from src.telemetry import telemetry_status
 
 logger = logging.getLogger(__name__)
 _bearer = HTTPBearer(auto_error=False)
@@ -274,6 +280,13 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
     app.state.settings = resolved_settings
     app.state.authenticator = Authenticator(resolved_settings.auth)
     app.state.store_bundle = resolved_bundle
+    meter = metrics.get_meter("dataobs.platform.api")
+    request_count = meter.create_counter("dataobs_api_requests_total", unit="{request}")
+    request_duration = meter.create_histogram("dataobs_api_request_duration_seconds", unit="s")
+    response_size = meter.create_histogram("dataobs_api_response_size_bytes", unit="By")
+    in_flight = meter.create_up_down_counter("dataobs_api_in_flight_requests", unit="{request}")
+    unhandled = meter.create_counter("dataobs_api_unhandled_exceptions_total", unit="{exception}")
+    tracer = trace.get_tracer("dataobs.platform.api")
     if resolved_settings.store_backend.lower() == "elasticsearch":
         repo = ElasticsearchCollectionRepository(make_es_client(resolved_settings))
     else:
@@ -329,7 +342,44 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
             else str(uuid.uuid4())
         )
         request.state.request_id = request_id
-        response = await call_next(request)
+        route = request.scope.get("route")
+        template = getattr(route, "path", "unmatched")
+        method = request.method.upper()
+        started = time.monotonic()
+        in_flight_attrs = {"http.route": template, "http.request.method": method}
+        in_flight.add(1, in_flight_attrs)
+        try:
+            with tracer.start_as_current_span(f"{method} {template}", kind=SpanKind.SERVER) as span:
+                span.set_attribute("http.route", template)
+                span.set_attribute("http.request.method", method)
+                span.set_attribute("dataobs.request.id", request_id)
+                response = await call_next(request)
+                matched_route = request.scope.get("route")
+                template = getattr(matched_route, "path", "unmatched")
+                span.update_name(f"{method} {template}")
+                span.set_attribute("http.route", template)
+                span.set_attribute("http.response.status_code", response.status_code)
+                if response.status_code >= 500:
+                    span.set_status(Status(StatusCode.ERROR, "server_error"))
+        except Exception:
+            unhandled.add(1, {"dataobs.error.category": "unhandled", "dataobs.component": "api"})
+            raise
+        finally:
+            in_flight.add(-1, in_flight_attrs)
+        family = f"{response.status_code // 100}xx"
+        attrs = {
+            "http.route": template,
+            "http.request.method": method,
+            "http.response.status_code_family": family,
+            "dataobs.outcome": "success" if response.status_code < 500 else "failure",
+        }
+        request_count.add(1, attrs)
+        request_duration.record(time.monotonic() - started, {k: v for k, v in attrs.items() if k != "dataobs.outcome"})
+        if response.headers.get("content-length", "").isdigit():
+            response_size.record(
+                int(response.headers["content-length"]),
+                {"http.route": template, "http.request.method": method, "http.response.status_code_family": family},
+            )
         response.headers["X-Request-ID"] = request_id
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["Referrer-Policy"] = "no-referrer"
@@ -499,9 +549,7 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
             raise HTTPException(status_code=404, detail="Role binding not found")
         return document
 
-    @app.patch(
-        "/api/v1/iam/role-bindings/{binding_id}", tags=["iam"], dependencies=[Depends(require_auth)]
-    )
+    @app.patch("/api/v1/iam/role-bindings/{binding_id}", tags=["iam"], dependencies=[Depends(require_auth)])
     async def patch_role_binding(
         binding_id: str,
         payload: RoleBindingPatch,
@@ -514,12 +562,17 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
             )
         document = request.app.state.role_bindings.get(binding_id)
         if not document or document["tenant_id"] != request.state.tenant_id:
-            raise HTTPException(status_code=404, detail={"code": "role_binding_not_found", "message": "Role binding not found"})
+            raise HTTPException(
+                status_code=404, detail={"code": "role_binding_not_found", "message": "Role binding not found"}
+            )
         if if_match != document["etag"]:
-            raise HTTPException(status_code=409, detail={"code": "etag_mismatch", "message": "Role binding ETag mismatch"})
+            raise HTTPException(
+                status_code=409, detail={"code": "etag_mismatch", "message": "Role binding ETag mismatch"}
+            )
         updates = payload.model_dump(exclude_none=True)
         document.update(updates)
         import hashlib as _hashlib
+
         document["revision"] = document.get("revision", 1) + 1
         document["etag"] = '"' + _hashlib.sha256(f"{binding_id}:{document['revision']}".encode()).hexdigest() + '"'
         request.app.state.security_audit_events.append(
@@ -618,7 +671,37 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
 
     @app.get("/livez", tags=["health"])
     async def livez() -> Dict[str, Any]:
-        return {"status": "ok", "service": "dataobs-api"}
+        return {"status": "ok", "state": "healthy", "component": "api"}
+
+    @app.get("/startupz", tags=["health"])
+    async def startupz() -> JSONResponse:
+        checks = [
+            HealthCheck(
+                "configuration",
+                HealthState.HEALTHY,
+                Criticality.STARTUP,
+                "configuration_valid",
+                datetime.utcnow().isoformat() + "Z",
+                0.0,
+            ),
+            HealthCheck(
+                "route_policy",
+                HealthState.HEALTHY,
+                Criticality.STARTUP,
+                "route_policy_valid",
+                datetime.utcnow().isoformat() + "Z",
+                0.0,
+            ),
+            HealthCheck(
+                "telemetry",
+                HealthState.HEALTHY,
+                Criticality.OPTIONAL,
+                "initialization_attempted",
+                datetime.utcnow().isoformat() + "Z",
+                0.0,
+            ),
+        ]
+        return JSONResponse(aggregate("api", checks).as_dict())
 
     @app.get("/readyz", tags=["health"])
     async def readyz(settings: AppSettings = Depends(get_settings)) -> Dict[str, Any]:
@@ -627,13 +710,71 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
         try:
             st = elastic_migration_status(make_es_client(settings))
         except Exception as exc:
-            raise HTTPException(status_code=503, detail=f"Elasticsearch readiness check failed: {exc}") from exc
+            raise HTTPException(
+                status_code=503,
+                detail={"state": "unhealthy", "component": "api", "reason_code": "elasticsearch_unavailable"},
+            ) from exc
         if not st.get("ready"):
             raise HTTPException(
                 status_code=503,
                 detail={"message": "Required Elasticsearch migrations are not applied", "migration_status": st},
             )
         return {"status": "ok", "store_backend": settings.store_backend, "migration_status": st}
+
+    def _platform_view(request: Request, section: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+        request.app.state.security_audit_events.append(
+            security_event(
+                event_type="platform.operations.viewed",
+                outcome="success",
+                reason_code=f"{section}_viewed",
+                principal_id=request.state.principal.subject,
+                tenant_id=request.state.tenant_id,
+                environment=request.state.environment,
+                request_id=_request_id(request),
+                route_template=f"/api/v1/platform/{section}",
+            )
+        )
+        return payload
+
+    @app.get("/api/v1/platform/{section}", dependencies=[Depends(require_auth)], tags=["platform-operations"])
+    async def platform_operations(section: str, request: Request) -> Dict[str, Any]:
+        if section not in {
+            "health",
+            "components",
+            "workers",
+            "migrations",
+            "backups",
+            "release",
+            "slos",
+            "error-budgets",
+        }:
+            raise HTTPException(status_code=404, detail="Platform operations view not found")
+        unknown = {"state": "unknown", "reason_code": "authoritative_evidence_unavailable"}
+        if section == "health":
+            status = telemetry_status()
+            payload = {
+                "state": "unknown",
+                "component": "platform",
+                "telemetry_exporter": {"state": status.exporter_state, "reason_code": status.reason_code},
+                "support_matrix": {"state": "unvalidated"},
+            }
+        elif section == "components":
+            payload = {"items": [{"component": "api", "state": "healthy"}, {"component": "elasticsearch", **unknown}]}
+        elif section == "error-budgets":
+            payload = {
+                "items": [
+                    evaluate_error_budget(
+                        good_events=None,
+                        total_events=None,
+                        objective=0.995,
+                        window_seconds=30 * 86400,
+                        data_completeness=0.0,
+                    ).as_dict()
+                ]
+            }
+        else:
+            payload = {"items": [], **unknown}
+        return _platform_view(request, section, payload)
 
     @app.get("/health", response_model=HealthResponse)
     async def health(settings: AppSettings = Depends(get_settings)) -> JSONResponse:

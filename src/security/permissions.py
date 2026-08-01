@@ -4,6 +4,7 @@ from enum import StrEnum
 class Permission(StrEnum):
     AUTH_READ = "auth:read"
     PLATFORM_ADMIN = "platform:admin"
+    PLATFORM_OPERATIONS_READ = "platform_operations:read"
     TENANT_ADMIN = "tenant:admin"
     IAM_READ = "iam:read"
     IAM_WRITE = "iam:write"

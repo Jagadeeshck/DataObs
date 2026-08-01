@@ -16,6 +16,9 @@ from .service import PathwayWorkerService
 
 
 def main() -> int:
+    from src.telemetry import init_telemetry
+
+    init_telemetry()
     parser = argparse.ArgumentParser(prog="dataobs-pathway-worker")
     parser.add_argument("command", choices=["run", "process-once", "replay", "status"])
     parser.add_argument("--config", default=os.getenv("DATAOBS_PATHWAY_CONFIG", "config/pathway-worker.example.yaml"))

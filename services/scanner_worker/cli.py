@@ -93,6 +93,9 @@ def registry(cfg: dict):
 
 
 def main(argv=None):
+    from src.telemetry import init_telemetry
+
+    init_telemetry()
     p = argparse.ArgumentParser(prog="dataobs-scanner")
     p.add_argument("--config", default="config/postgres-scanner.example.yaml")
     sub = p.add_subparsers(dest="cmd", required=True)

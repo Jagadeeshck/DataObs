@@ -1,0 +1,31 @@
+{{- if .Values.monitoring.serviceMonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "dataobs.fullname" . }}-otel
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: otel-collector
+  namespaceSelector: {{ toYaml .Values.monitoring.serviceMonitor.namespaceSelector | nindent 4 }}
+  endpoints:
+    - port: metrics
+      path: /metrics
+{{- end }}
+{{- if .Values.monitoring.prometheusRule.enabled }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ include "dataobs.fullname" . }}-platform
+spec:
+  groups:
+    - name: dataobs-platform
+      rules:
+        - alert: DataObsTelemetryExporterDrops
+          expr: increase(dataobs_telemetry_export_dropped_total[10m]) > 10
+          for: 10m
+          labels: {owner: team-0, severity: warning}
+          annotations: {runbook: telemetry-exporter-outage.md}
+{{- end }}

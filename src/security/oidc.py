@@ -15,7 +15,11 @@ class OIDCValidator:
     def __init__(self, settings: OIDCSettings):
         self.settings = settings
         self.jwks = JWKSClient(
-            settings.issuer, settings.jwks_url, settings.discovery_timeout_seconds, settings.jwks_cache_ttl_seconds
+            settings.issuer,
+            settings.jwks_url,
+            settings.discovery_timeout_seconds,
+            settings.jwks_cache_ttl_seconds,
+            settings.jwks_last_known_good_seconds,
         )
 
     def validate(self, token: str) -> dict[str, Any]:
@@ -38,7 +42,7 @@ class OIDCValidator:
                 issuer=self.settings.issuer,
                 audience=self.settings.audience,
                 leeway=self.settings.clock_skew_seconds,
-                options={"require": ["exp", "iat", self.settings.subject_claim]},
+                options={"require": ["exp", "iat", "iss", "aud", self.settings.subject_claim]},
             )
         except jwt.ExpiredSignatureError as exc:
             raise SecurityError("token_expired", "Access token has expired") from exc

@@ -40,10 +40,12 @@ from src.core.enterprise_blueprint import enterprise_backlog
 from src.core.pillars import PILLAR_REGISTRY, canonical_pillar_value
 from src.data_observability.openlineage import OpenLineageValidationError
 from src.data_observability.service import DataObservabilityService, OpenLineageConflictError
+from src.security.audit import security_event
 from src.security.authentication import Authenticator
 from src.security.authorization import authorize
 from src.security.errors import SecurityError
 from src.security.permissions import Permission
+from src.security.route_policy import permission_for_route
 from src.security.tenant_context import resolve_tenant_context
 
 logger = logging.getLogger(__name__)
@@ -51,39 +53,8 @@ _bearer = HTTPBearer(auto_error=False)
 
 
 def _permission_for_request(method: str, path: str) -> Permission:
-    """Deny-by-default route policy; high-risk actions are matched before domains."""
-    write = method.upper() not in {"GET", "HEAD", "OPTIONS"}
-    if write and path in {"/api/v1/openlineage/events", "/api/v1/lineage", "/api/data-observability/lineage/events"}:
-        return Permission.COLLECTION_INGEST
-    if path.startswith("/api/v1/quality") and (path.endswith("/run") or "/executions" in path):
-        return Permission.QUALITY_EXECUTE
-    if path.startswith("/api/v1/monitors") and path.endswith("/run"):
-        return Permission.MONITORS_EXECUTE
-    if path.startswith("/api/v1/iam"):
-        return Permission.IAM_WRITE if write else Permission.IAM_READ
-    if path == "/api/v1/auth/me":
-        return Permission.AUTH_READ
-    if "/approvals/" in path or path.endswith(("/approve", "/reject")):
-        return Permission.WORKFLOWS_APPROVE
-    if "workflow" in path or "/actions/" in path:
-        return Permission.WORKFLOWS_EXECUTE if write else Permission.WORKFLOWS_READ
-    domains = (
-        (("asset", "command-center", "topology", "pillar"), Permission.ASSETS_READ, Permission.ASSETS_WRITE),
-        (("lineage", "pathway"), Permission.LINEAGE_READ, Permission.LINEAGE_WRITE),
-        (("quality", "rule"), Permission.QUALITY_READ, Permission.QUALITY_WRITE),
-        (("monitor", "baseline"), Permission.MONITORS_READ, Permission.MONITORS_WRITE),
-        (("data-product",), Permission.DATA_PRODUCTS_READ, Permission.DATA_PRODUCTS_WRITE),
-        (("job", "run"), Permission.JOBS_READ, Permission.JOBS_EXECUTE),
-        (("stream", "kafka", "topic", "connector", "schema"), Permission.STREAMS_READ, Permission.STREAMS_EXECUTE),
-        (("incident", "finding"), Permission.INCIDENTS_READ, Permission.INCIDENTS_WRITE),
-        (("integration", "source"), Permission.INTEGRATIONS_READ, Permission.INTEGRATIONS_WRITE),
-        (("collector", "scanner", "scan-", "tenant"), Permission.COLLECTION_MANAGE, Permission.COLLECTION_MANAGE),
-    )
-    for tokens, read_permission, write_permission in domains:
-        if any(token in path for token in tokens):
-            return write_permission if write else read_permission
-    # No route silently inherits broad administration rights.
-    return Permission.PLATFORM_ADMIN
+    """Compatibility wrapper around the authoritative explicit route policy."""
+    return permission_for_route(method, path)
 
 
 class DataObsModel(BaseModel):
@@ -361,12 +332,19 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
                 _request_id(request),
                 request.headers.get("traceparent"),
             )
-            permission = _permission_for_request(request.method, request.url.path)
+            route = request.scope.get("route")
+            route_template = getattr(route, "path", request.url.path)
+            permission = _permission_for_request(request.method, route_template)
             authorize(principal, permission)
             request.state.principal = principal
             request.state.tenant_context = context
             request.state.tenant_id = context.tenant_id
             request.state.environment = context.environment
+        except LookupError as exc:
+            raise HTTPException(
+                status_code=403,
+                detail={"code": "permission_policy_missing", "message": "Route access is not configured"},
+            ) from exc
         except SecurityError as exc:
             raise HTTPException(
                 status_code=exc.status_code,
@@ -449,12 +427,16 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
             return existing
         request.app.state.role_bindings[document["binding_id"]] = document
         request.app.state.security_audit_events.append(
-            {
-                "event_action": "binding_created",
-                "principal_subject": request.state.principal.subject,
-                "tenant_id": request.state.tenant_id,
-                "binding_id": document["binding_id"],
-            }
+            security_event(
+                event_type="iam.binding.created",
+                outcome="success",
+                reason_code="binding_created",
+                principal_id=request.state.principal.subject,
+                tenant_id=request.state.tenant_id,
+                environment=request.state.environment,
+                request_id=_request_id(request),
+                route_template="/api/v1/iam/role-bindings",
+            )
         )
         return document
 
@@ -484,12 +466,16 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
             raise HTTPException(status_code=409, detail="Cannot remove the last platform administrator")
         document["active"] = False
         request.app.state.security_audit_events.append(
-            {
-                "event_action": "binding_disabled",
-                "principal_subject": request.state.principal.subject,
-                "tenant_id": request.state.tenant_id,
-                "binding_id": binding_id,
-            }
+            security_event(
+                event_type="iam.binding.disabled",
+                outcome="success",
+                reason_code="binding_disabled",
+                principal_id=request.state.principal.subject,
+                tenant_id=request.state.tenant_id,
+                environment=request.state.environment,
+                request_id=_request_id(request),
+                route_template="/api/v1/iam/role-bindings/{binding_id}",
+            )
         )
         return Response(status_code=204)
 

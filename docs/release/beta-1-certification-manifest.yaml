@@ -1,0 +1,61 @@
+schema_version: '1.0'
+release: beta-1
+repository: Jagadeeshck/DataObs
+target_elasticsearch_version: 9.4.2
+terminal_migration: 0021_lineage_analysis_explorer
+capabilities:
+  - capability_id: platform.security
+    owning_team: Team 6
+    workflow: beta-deployment-packaging.yml
+    artifact: beta-deployment-packaging-evidence
+    required_conclusion: success
+    mandatory_for_beta: true
+    evidence_schema_version: '1.0'
+    expected_elasticsearch_version: 9.4.2
+    required_test_categories: [security, certification, release]
+  - capability_id: streams.pathways
+    owning_team: Team 1
+    workflow: stream-observer-backend.yml
+    artifact: stream-observer-backend-v1-evidence
+    required_conclusion: success
+    mandatory_for_beta: true
+    evidence_schema_version: '1.0'
+    expected_elasticsearch_version: 9.4.2
+    required_test_categories: [unit, integration, security]
+  - capability_id: quality.jobs.lineage
+    owning_team: Team 2
+    workflow: data-quality-monitoring.yml
+    artifact: data-quality-monitoring-evidence
+    required_conclusion: success
+    mandatory_for_beta: true
+    evidence_schema_version: '1.0'
+    expected_elasticsearch_version: 9.4.2
+    required_test_categories: [unit, integration]
+  - capability_id: incidents.workflows
+    owning_team: Team 3
+    workflow: iam-security.yml
+    artifact: iam-security-evidence
+    required_conclusion: success
+    mandatory_for_beta: true
+    evidence_schema_version: '1.0'
+    expected_elasticsearch_version: 9.4.2
+    required_test_categories: [unit, security]
+  - capability_id: provider.integrations
+    owning_team: Team 4
+    workflow: team-delivery-foundation.yml
+    artifact: integration-sdk-v1-evidence
+    required_conclusion: success
+    mandatory_for_beta: false
+    evidence_schema_version: '1.0'
+    expected_elasticsearch_version: 9.4.2
+    required_test_categories: [unit]
+    exclusion: Optional providers are not Beta release blockers.
+  - capability_id: console.experience
+    owning_team: Team 5
+    workflow: reusable-console-validation.yml
+    artifact: console-validation-evidence
+    required_conclusion: success
+    mandatory_for_beta: true
+    evidence_schema_version: '1.0'
+    expected_elasticsearch_version: 9.4.2
+    required_test_categories: [typecheck, test, build]

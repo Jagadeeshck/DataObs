@@ -10,13 +10,18 @@ from .errors import SecurityError
 
 
 class JWKSClient:
-    def __init__(self, issuer: str, jwks_url: str | None, timeout: float, ttl: int):
+    MAX_RESPONSE_BYTES = 1_000_000
+    MAX_KEYS = 100
+
+    def __init__(self, issuer: str, jwks_url: str | None, timeout: float, ttl: int, last_known_good: int = 60):
         self.issuer = issuer.rstrip("/")
         self.jwks_url = jwks_url
         self.timeout = timeout
         self.ttl = ttl
+        self.last_known_good = last_known_good
         self._keys: dict[str, dict] = {}
         self._expires = 0.0
+        self._stale_until = 0.0
         self._lock = threading.Lock()
 
     def _safe_url(self, url: str) -> str:
@@ -30,9 +35,15 @@ class JWKSClient:
             with urlopen(
                 Request(self._safe_url(url), headers={"Accept": "application/json"}), timeout=self.timeout
             ) as r:
-                if int(r.headers.get("Content-Length", "0") or 0) > 1_000_000:
+                if int(r.headers.get("Content-Length", "0") or 0) > self.MAX_RESPONSE_BYTES:
                     raise ValueError("response too large")
-                return json.loads(r.read(1_000_001))
+                payload = r.read(self.MAX_RESPONSE_BYTES + 1)
+                if len(payload) > self.MAX_RESPONSE_BYTES:
+                    raise ValueError("response too large")
+                document = json.loads(payload)
+                if not isinstance(document, dict):
+                    raise ValueError("response is not an object")
+                return document
         except SecurityError:
             raise
         except Exception as exc:
@@ -50,14 +61,34 @@ class JWKSClient:
                 raise SecurityError("jwks_unavailable", "OIDC JWKS URL is missing")
             document = self._json(url)
             keys = document.get("keys")
-            if not isinstance(keys, list):
+            if not isinstance(keys, list) or not keys or len(keys) > self.MAX_KEYS:
                 raise SecurityError("jwks_unavailable", "OIDC JWKS document is malformed")
-            self._keys = {str(k["kid"]): k for k in keys if isinstance(k, dict) and k.get("kid")}
-            self._expires = time.monotonic() + self.ttl
+            accepted: dict[str, dict] = {}
+            for key in keys:
+                if not isinstance(key, dict) or not isinstance(key.get("kid"), str) or not key["kid"]:
+                    raise SecurityError("jwks_unavailable", "OIDC JWKS document is malformed")
+                if key["kid"] in accepted or key.get("kty") not in {"RSA", "EC", "OKP"}:
+                    raise SecurityError("jwks_unavailable", "OIDC JWKS document is malformed")
+                if key.get("use") not in {None, "sig"}:
+                    continue
+                accepted[key["kid"]] = key
+            if not accepted:
+                raise SecurityError("jwks_unavailable", "OIDC JWKS contains no signing keys")
+            now = time.monotonic()
+            self._keys = accepted
+            self._expires = now + max(1, self.ttl)
+            self._stale_until = self._expires + max(0, self.last_known_good)
 
     def get(self, kid: str) -> dict:
-        if time.monotonic() >= self._expires:
-            self.refresh()
+        now = time.monotonic()
+        if now >= self._expires:
+            try:
+                self.refresh()
+            except SecurityError:
+                # A known key may bridge a bounded provider outage. Unknown keys
+                # never use this path and every request retries after expiry.
+                if kid not in self._keys or now > self._stale_until:
+                    raise
         key = self._keys.get(kid)
         if key is None:  # exactly one controlled refresh for rotation/unknown kid
             self.refresh()

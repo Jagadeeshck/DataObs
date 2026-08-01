@@ -33,7 +33,7 @@ jobs:
           python - <<'PY'
           import json, os, subprocess
           def cmd(x): return subprocess.run(x,shell=True,text=True,capture_output=True).stdout.strip()
-          json.dump({'repository':os.environ['GITHUB_REPOSITORY'],'final_sha':os.environ['GITHUB_SHA'],'base_sha':cmd('git merge-base HEAD origin/main'),'chart_version':'0.2.0','application_version':'0.2.0','terminal_migration':'0021_lineage_analysis_explorer','helm_version':cmd('helm version --short'),'kubernetes_version':cmd('kubectl version --client -o json'),'render_results':'see job steps','schema_validation':'passed','secret_redaction':'passed','image_pinning':'passed','kind_smoke_test':'see job conclusion; skipped is not passed','upgrade_result':'see job conclusion','rollback_result':'see job conclusion','migration_result':'immutable','junit_summaries':[],'artifact_inventory':['evidence.json'],'independent_verification':'pending separate job'},open('evidence/evidence.json','w'),indent=2)
+          json.dump({'schema_version':'1.0','repository':os.environ['GITHUB_REPOSITORY'],'producer_sha':os.environ['GITHUB_SHA'],'commit_sha':os.environ['GITHUB_SHA'],'base_sha':cmd('git merge-base HEAD origin/main'),'workflow':os.environ['GITHUB_WORKFLOW'],'workflow_run_id':os.environ['GITHUB_RUN_ID'],'job':'validate','event':os.environ['GITHUB_EVENT_NAME'],'chart_version':'0.2.0','application_version':'0.2.0','terminal_migration':'0021_lineage_analysis_explorer','elasticsearch_version':'9.4.2','tool_versions':{'python':cmd('python --version'),'helm':cmd('helm version --short'),'kubernetes':cmd('kubectl version --client -o json')},'render_results':'see job steps','schema_validation':'passed','redaction_status':'passed','image_pinning':'passed','kind_smoke_test':'see job conclusion; skipped is not passed','upgrade_result':'see job conclusion','rollback_result':'see job conclusion','migration_result':'immutable','test_summaries':[{'category':'helm','status':'see job conclusion'},{'category':'deployment','status':'see job conclusion'}],'artifact_inventory':['evidence.json'],'independent_verification':'pending separate job'},open('evidence/evidence.json','w'),indent=2)
           PY
       - uses: actions/upload-artifact@v4
         if: always()
@@ -45,4 +45,4 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with: {name: beta-deployment-packaging-evidence, path: evidence}
-      - run: python -c "import json; d=json.load(open('evidence/evidence.json')); assert d['final_sha']=='${{ github.sha }}'; assert d['terminal_migration']=='0021_lineage_analysis_explorer'; print('independently verified exact commit')"
+      - run: python -c "import json; d=json.load(open('evidence/evidence.json')); assert d['producer_sha']=='${{ github.sha }}'; assert d['terminal_migration']=='0021_lineage_analysis_explorer'; assert d['schema_version']=='1.0'; print('independently verified exact commit')"

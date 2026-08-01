@@ -71,6 +71,7 @@ class OIDCSettings:
     clock_skew_seconds: int = 30
     discovery_timeout_seconds: float = 5.0
     jwks_cache_ttl_seconds: int = 300
+    jwks_last_known_good_seconds: int = 60
     required_scopes: tuple[str, ...] = ()
     platform_admin_groups: frozenset[str] = frozenset()
     group_role_mappings: dict[str, tuple[str, ...]] = field(default_factory=dict)
@@ -236,6 +237,7 @@ def load_settings() -> AppSettings:
                 clock_skew_seconds=int(os.getenv("DATAOBS_OIDC_CLOCK_SKEW_SECONDS", "30")),
                 discovery_timeout_seconds=float(os.getenv("DATAOBS_OIDC_DISCOVERY_TIMEOUT_SECONDS", "5")),
                 jwks_cache_ttl_seconds=int(os.getenv("DATAOBS_OIDC_JWKS_CACHE_TTL_SECONDS", "300")),
+                jwks_last_known_good_seconds=int(os.getenv("DATAOBS_OIDC_JWKS_LAST_KNOWN_GOOD_SECONDS", "60")),
                 required_scopes=tuple(
                     _structured(
                         os.getenv(

@@ -16,6 +16,10 @@ The console baseline includes tenant-scoped Jobs inventory, Job 360, Run 360, ru
 
 > Audit date: 2026-07-27. Implementation baseline: local commit `5164762a6337a44a76ad2c7574a78edc048a70b3`, including merged PR history through #168. Final pull-request-head hosted run identifiers remain pending and no local result is presented as hosted evidence.
 
+## Data Quality Console v1
+
+The Console implements read-only `/quality` and `/quality/monitors/:monitorId` routes for overview, monitor inventory, findings, recommendation proposals, coverage, runtime, observations, evaluations, baselines, incident relationships, suppressions, history and evidence. Missing evidence is not converted to zero, runtime absence is unavailable, and target display is allowlisted. Authoring and all monitor mutations remain deferred. The capability is `functional_unvalidated` pending exact-commit hosted Elasticsearch, browser, accessibility and independent-verification evidence.
+
 ## Kafka Stream Observer backend v1
 
 The backend composes bounded Kafka inventory, assigned consumer-group offsets, optional Kafka Connect, and optional Schema Registry collection. Capability-aware scheduling, Elasticsearch leases/checkpoints, canonical top-level projections, and explainable lag/retention intelligence are implemented. The `stream-observer-backend-v1-evidence` hosted artifact is defined but remains pending for the final commit; therefore this baseline does not claim real-stack certification.
@@ -40,7 +44,7 @@ The checked-in OpenAPI contract exposes health and migration status; assets, qua
 
 ## 5. Implemented Console routes
 
-Implemented routes are `/`, `/flow`, `/assets`, `/assets/:assetId`, `/pathways`, `/pathways/:pathwayId`, `/incidents/:incidentId`, `/streams`, `/data-products`, `/data-products/:productId`, plus stream cluster, topic, consumer-group, connector, and schema detail routes. Final-head browser and accessibility evidence remains a blocker.
+Implemented routes are `/`, `/flow`, `/assets`, `/assets/:assetId`, `/pathways`, `/pathways/:pathwayId`, `/incidents/:incidentId`, `/streams`, `/data-products`, `/data-products/:productId`, `/quality`, `/quality/monitors/:monitorId`, plus stream cluster, topic, consumer-group, connector, and schema detail routes. Final-head browser and accessibility evidence remains a blocker.
 
 ## 6. Workers and services
 

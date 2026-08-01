@@ -1,5 +1,6 @@
 import type { CommandCenter, Topology } from "./types";
 import { read, write } from "./transport";
+export * from "./quality";
 export { ApiError } from "./common";
 export const api = {
   jobs: (tenant: string, env: string, search = "", signal?: AbortSignal) =>

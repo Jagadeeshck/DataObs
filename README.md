@@ -7,7 +7,7 @@ processing and canonical Elasticsearch APIs. See
 [`docs/operations/pathway-replay.md`](docs/operations/pathway-replay.md) for the
 evidence, confidence, health, latency, and late-arrival contracts.
 
-The console includes tenant-scoped Jobs inventory, Job 360, Run 360, run comparison, and a bounded dataset/column Lineage Explorer. Architecture and rebuild details are documented in `docs/architecture/lineage-projections.md` and `docs/operations/lineage-rebuild.md`.
+The console includes tenant-scoped Jobs inventory, Job 360, Run 360, run comparison, a bounded dataset/column Lineage Explorer, and a read-only Data Quality Console at `/quality` with Monitor 360 investigations. Quality semantics are documented in [`docs/architecture/data-quality-console.md`](docs/architecture/data-quality-console.md) and [`docs/operations/data-quality-console.md`](docs/operations/data-quality-console.md).
 
 ## Status
 

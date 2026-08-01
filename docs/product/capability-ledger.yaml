@@ -1711,6 +1711,46 @@ capabilities:
   certification_status: functional_unvalidated
   last_audited_at: '2026-08-01'
   last_audited_commit: pending-final-sha
+- id: monitoring.data_quality_console_v1
+  name: Data Quality Console v1
+  summary: Read-only quality overview, inventory, findings and Monitor 360 evidence.
+  pillar: data
+  domain: monitoring
+  state: functional_unvalidated
+  release_readiness: blocked
+  implementation:
+    code_paths: [src/api/monitor_routes.py, services/monitoring/staleness.py, ui/dataobs-console/src/features/quality]
+    api_paths: [/api/v1/quality/overview, /api/v1/quality/monitors, /api/v1/quality/findings]
+    ui_routes: ['/quality/*']
+    storage_resources: []
+    migrations: []
+  validation:
+    unit: defined_not_run
+    integration: defined_not_run
+    real_stack: defined_not_run
+    hosted_ci: missing
+    browser: defined_not_run
+    accessibility: defined_not_run
+    security: defined_not_run
+    scale: defined_not_run
+    upgrade: not_applicable
+    release: defined_not_run
+  evidence:
+    tests: [tests/monitoring/test_staleness.py]
+    workflow_jobs: [data-quality-console-v1.yml:validate, data-quality-console-v1.yml:independent-verification]
+    audit_docs: [docs/development/data-quality-console-audit.md]
+    runbooks: [docs/operations/data-quality-console.md]
+    artifacts: [data-quality-console-v1-evidence (defined; final-head hosted run pending)]
+  blockers: [Final-head real-stack browser accessibility and independent evidence are not retained.]
+  non_goals: [Monitor authoring execution and remediation are deferred.]
+  next_gate: Retain and independently verify exact-commit hosted evidence.
+  owner: team:quality-jobs
+  owner_team: team:quality-jobs
+  release_target: beta-1
+  implementation_status: implemented
+  certification_status: functional_unvalidated
+  last_audited_at: '2026-08-01'
+  last_audited_commit: pending-final-sha
 migration_checksums:
   0001_product_foundation: 71d939094a97b4dd7c61de60542b60dd41cb238fd6bebfd75d53d723b00f3556
   0002_postgres_observability: c2098fa24ddae209fcf2ffeb369f7040d57018d58682a8513db9e943c749aa2d

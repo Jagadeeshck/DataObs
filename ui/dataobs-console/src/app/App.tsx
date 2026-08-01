@@ -62,6 +62,7 @@ const DataProduct360 = lazy(() =>
     default: m.DataProduct360,
   })),
 );
+const QualityRoutes = lazy(() => import("../features/quality/QualityRoutes"));
 export function App() {
   return (
     <ProductContextProvider>
@@ -101,6 +102,7 @@ export function App() {
                 element={<Monitor360 />}
               />
               <Route path="incidents" element={<IncidentInbox />} />
+              <Route path="quality/*" element={<QualityRoutes />} />
               <Route
                 path="incidents/:incidentId"
                 element={<IncidentDetail />}

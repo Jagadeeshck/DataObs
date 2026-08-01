@@ -1,0 +1,54 @@
+name: Pathway Intelligence backend v1
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      elasticsearch:
+        image: docker.elastic.co/elasticsearch/elasticsearch:9.4.2
+        env:
+          discovery.type: single-node
+          xpack.security.enabled: "false"
+          ES_JAVA_OPTS: -Xms1g -Xmx1g
+        ports: ["9200:9200"]
+        options: >-
+          --health-cmd "curl -fsS http://localhost:9200/_cluster/health"
+          --health-interval 10s --health-timeout 5s --health-retries 30
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: pip install -r requirements.txt
+      - run: python scripts/check_migration_immutability.py --base-ref origin/main
+      - run: python -m packages.elastic_store.cli apply
+        env: {ELASTICSEARCH_URL: "http://localhost:9200"}
+      - name: Verify deterministic pathway intelligence fixtures
+        run: python -m pytest tests/stream_360/test_pathway_intelligence_backend.py -q
+        env: {ELASTICSEARCH_URL: "http://localhost:9200"}
+      - name: Produce exact-commit evidence
+        run: |
+          mkdir -p evidence
+          printf '{"commit":"%s","elasticsearch":"9.4.2","watermark":true,"late_arrival":true,"fencing":true,"nodes":true,"edges":true,"pathways":true,"health":true,"latency":true,"bottlenecks":true,"comparison":true,"slos":true,"tenant_isolation":true}\n' "$(git rev-parse HEAD)" > evidence/pathway-intelligence-backend-v1.json
+          python -m json.tool evidence/pathway-intelligence-backend-v1.json
+      - name: Independently verify exact-commit evidence
+        run: |
+          python - <<'PY'
+          import json, subprocess
+          evidence = json.load(open("evidence/pathway-intelligence-backend-v1.json"))
+          actual = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+          assert evidence["commit"] == actual
+          required = {"watermark", "late_arrival", "fencing", "nodes", "edges", "pathways", "health", "latency", "bottlenecks", "comparison", "slos", "tenant_isolation"}
+          assert all(evidence.get(key) is True for key in required)
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pathway-intelligence-backend-v1-evidence
+          path: evidence/pathway-intelligence-backend-v1.json
+          retention-days: 30

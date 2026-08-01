@@ -1,0 +1,2 @@
+# Security operations
+Monitor authentication, authorization, JWKS and last-administrator events. Alert on repeated unknown keys and store failures. Rotate OIDC and Elasticsearch credentials, preserve audit retention, and test tenant isolation regularly. During an incident disable affected bindings and clients, rotate secrets, retain evidence, and validate the route policy. Certification is `functional_unvalidated` until the hosted Elasticsearch 9.4.2/OIDC workflow and independent evidence verification succeed.

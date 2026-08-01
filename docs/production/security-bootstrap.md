@@ -1,0 +1,2 @@
+# Security bootstrap
+Configure a narrow trusted OIDC `platform_admin_groups` entry and enable bootstrap. Authenticate a member, create at least two durable platform-administrator bindings, verify audit events and restart persistence, then disable bootstrap and roll the API. There is no default account or password. Final-administrator protection prevents lockout; recovery requires restoring Elasticsearch policy state or temporarily re-enabling the reviewed trusted group under incident controls.

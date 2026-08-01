@@ -23,10 +23,22 @@ class JWKSClient:
         self._expires = 0.0
         self._stale_until = 0.0
         self._lock = threading.Lock()
+        self._negative: dict[str, float] = {}
+        self._last_refresh = 0.0
 
     def _safe_url(self, url: str) -> str:
         parsed, issuer = urlsplit(url), urlsplit(self.issuer)
-        if parsed.scheme != issuer.scheme or parsed.hostname != issuer.hostname or parsed.username or parsed.password:
+
+        def port(value):
+            return value.port or (443 if value.scheme == "https" else 80)
+
+        if (
+            parsed.scheme != issuer.scheme
+            or parsed.hostname != issuer.hostname
+            or port(parsed) != port(issuer)
+            or parsed.username
+            or parsed.password
+        ):
             raise SecurityError("oidc_endpoint_untrusted", "OIDC endpoint is outside the configured issuer")
         return url
 
@@ -37,6 +49,9 @@ class JWKSClient:
             ) as r:
                 if int(r.headers.get("Content-Length", "0") or 0) > self.MAX_RESPONSE_BYTES:
                     raise ValueError("response too large")
+                final = self._safe_url(r.geturl())
+                if final != r.geturl():
+                    raise ValueError("untrusted redirect")
                 payload = r.read(self.MAX_RESPONSE_BYTES + 1)
                 if len(payload) > self.MAX_RESPONSE_BYTES:
                     raise ValueError("response too large")
@@ -67,9 +82,11 @@ class JWKSClient:
             for key in keys:
                 if not isinstance(key, dict) or not isinstance(key.get("kid"), str) or not key["kid"]:
                     raise SecurityError("jwks_unavailable", "OIDC JWKS document is malformed")
-                if key["kid"] in accepted or key.get("kty") not in {"RSA", "EC", "OKP"}:
-                    raise SecurityError("jwks_unavailable", "OIDC JWKS document is malformed")
+                if key["kid"] in accepted:
+                    raise SecurityError("jwks_duplicate_kid", "OIDC JWKS contains duplicate key identifiers")
                 if key.get("use") not in {None, "sig"}:
+                    continue
+                if key.get("kty") not in {"RSA", "EC", "OKP"}:
                     continue
                 accepted[key["kid"]] = key
             if not accepted:
@@ -78,9 +95,12 @@ class JWKSClient:
             self._keys = accepted
             self._expires = now + max(1, self.ttl)
             self._stale_until = self._expires + max(0, self.last_known_good)
+            self._last_refresh = now
 
     def get(self, kid: str) -> dict:
         now = time.monotonic()
+        if self._negative.get(kid, 0) > now:
+            raise SecurityError("signing_key_unknown", "Token signing key is unknown")
         if now >= self._expires:
             try:
                 self.refresh()
@@ -94,5 +114,6 @@ class JWKSClient:
             self.refresh()
             key = self._keys.get(kid)
         if key is None:
+            self._negative[kid] = time.monotonic() + 30
             raise SecurityError("signing_key_unknown", "Token signing key is unknown")
         return key

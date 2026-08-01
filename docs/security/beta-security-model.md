@@ -1,13 +1,23 @@
 # Beta security model
 
-DataObs Beta uses an OIDC resource-server boundary. Production requires an HTTPS issuer, explicit audience and asymmetric signing-algorithm allowlist. JWT issuer, audience, expiration, issued-at, optional not-before and subject are validated with bounded skew. Malformed tokens, `none`, unexpected algorithms, unknown keys and missing mandatory claims fail closed without returning token content.
+DataObs is an OIDC resource server. It accepts only configured algorithms,
+requires issuer, audience, subject, issue time and expiry, applies bounded clock
+skew, and fails closed for malformed tokens and unknown signing keys. JWKS
+discovery is same-origin with the issuer, bounded to a 30-second-style configured
+timeout and 1 MB response, cached, and refreshed once for an unknown `kid`.
+Production configuration requires HTTPS. Errors contain reason codes, not token
+or claim contents.
 
-JWKS discovery is issuer-origin constrained, uses bounded timeouts and a 1 MB/100-key response ceiling, rejects malformed or duplicate key identifiers, caches keys, and performs at most one controlled refresh for an unknown `kid`. A known signing key may remain usable for the configured short last-known-good interval during provider failure; an unknown key never does. Production URL validation requires HTTPS.
+Tenant and environment selectors only narrow authenticated bindings. The API
+route policy separates collector ingestion from operator and IAM permissions;
+the live registry checker fails on a protected route without authentication or
+on drift in the explicit public allowlist. The sole public `/api/v1` contract is
+OIDC configuration. Security evidence may contain identifiers, scope, route,
+request ID, outcome, timestamp and schema version, but never authorization
+headers, tokens, credentials, cookies, claims, or bodies.
 
-Every registered `/api/v1` operation is either the explicitly public authentication configuration endpoint or maps through `src/security/route_policy.py` to one permission. The registry checker rejects uncovered routes, stale rules and accidental public routes. Tenant and environment selectors only narrow authenticated bindings; they never create access. Collection ingestion, operational access, IAM administration, workflow approval and platform administration remain separate permissions.
-
-Security events use a fixed v1 allowlist: type, outcome, reason, principal identifier, authorised tenant/environment, request ID, route template, timestamp, source and schema. Token/header/cookie/credential/claims/body fields cannot be supplied to this constructor. Append-only persistence remains the target semantics.
-
-The Console contract remains Authorization Code with PKCE S256, state validation, nonce validation where applicable, safe callbacks, and memory/session-scoped token handling rather than local-storage bearer persistence. Hosted browser/OIDC evidence for the candidate commit is required before Beta certification.
-
-These controls are implemented and locally testable. They are not a production-readiness claim; hosted negative-path, Keycloak and exact-commit evidence remains a release gate.
+The Console uses `oidc-client-ts` Authorization Code flow with S256 PKCE and its
+library-managed state/nonce callback validation. Tokens are held by in-memory
+web storage rather than local storage. These implemented controls require exact-
+commit hosted negative-path evidence before Beta certification and are not a
+production-readiness claim.

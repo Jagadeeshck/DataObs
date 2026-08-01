@@ -1,8 +1,10 @@
-schema_version: '1.0'
+schema_version: "1.1"
 release: beta-1
+release_candidate: rc1
 repository: Jagadeeshck/DataObs
 target_elasticsearch_version: 9.4.2
 terminal_migration: 0022_aws_data_platform_collector
+<<<<<<< HEAD
 orchestration_model: two-phase
 capabilities:
   - {capability_id: team6.identity-security, owning_team: Team 6, workflow: beta-security-hardening.yml, artifact: beta-security-hardening-evidence, required_conclusion: success, mandatory_for_beta: true, evidence_schema_version: '1.0', expected_elasticsearch_version: 9.4.2, accepted_events: [workflow_dispatch], required_test_categories: [security, rbac, tenant-isolation]}
@@ -21,14 +23,51 @@ capabilities:
   - {capability_id: team3.incident-workbench, owning_team: Team 3, workflow: incident-workbench-certification.yml, artifact: incident-workbench-v1-evidence, required_conclusion: success, mandatory_for_beta: true, evidence_schema_version: '1.0', expected_elasticsearch_version: 9.4.2, accepted_events: [workflow_dispatch], required_test_categories: [occ, append-semantics, redaction, tenant-isolation]}
   - {capability_id: team4.integration-sdk, owning_team: Team 4, workflow: integration-sdk-certification.yml, artifact: integration-sdk-v1-evidence, required_conclusion: success, mandatory_for_beta: true, evidence_schema_version: '1.0', expected_elasticsearch_version: 9.4.2, accepted_events: [workflow_dispatch], required_test_categories: [unit, redaction, tenant-isolation]}
   - capability_id: team4.aws-collector
+=======
+capabilities:
+  - capability_id: beta.integrated
+    owning_team: Team 0
+    workflow: beta-1-release-candidate.yml
+    artifact: dataobs-beta-1-rc1-integrated-certification
+    required_conclusion: success
+    mandatory_for_beta: true
+    evidence_schema_version: "1.1"
+    expected_elasticsearch_version: 9.4.2
+    required_test_categories:
+      - platform_deployment_packaging
+      - identity_tenant_security
+      - kafka_stream_observer
+      - connector_schema_360
+      - pathway_intelligence_explorer
+      - data_quality_console
+      - job_run_observability
+      - lineage_explorer
+      - incident_workbench
+      - console_cross_team_integration
+      - backup_restore
+      - upgrade_rollback
+      - image_sbom_vulnerability_scan
+    required_evidence_fields: [schema_version, repository, producer_sha, base_sha, workflow, workflow_path, workflow_run_id, workflow_run_attempt, job, event, branch, generated_at, tool_versions, elasticsearch_version, terminal_migration, migration_count, test_summaries, skipped_test_summary, security_scan_summary, tenant_isolation_result, migration_immutability_result, artifact_inventory, redaction_status, independent_verification_result, status]
+    reason_for_inclusion: One integrated exact-commit envelope covers every mandatory Beta capability and platform gate.
+  - capability_id: provider.aws_collector
+>>>>>>> origin/main
     owning_team: Team 4
     workflow: aws-data-platform-collector-v1.yml
     artifact: aws-data-platform-collector-v1-evidence
     required_conclusion: success
     mandatory_for_beta: false
+<<<<<<< HEAD
     optional_reason: AWS provider collection is implemented but live AWS certification and Collection Manager packaging are outside the supported Beta package.
     evidence_schema_version: '1.0'
     expected_elasticsearch_version: 9.4.2
     accepted_events: [workflow_dispatch]
     required_test_categories: [unit, redaction, tenant-isolation]
   - {capability_id: team5.console-experience, owning_team: Team 5, workflow: console-product-experience.yml, artifact: console-product-experience-v1-evidence, required_conclusion: success, mandatory_for_beta: true, evidence_schema_version: '1.0', expected_elasticsearch_version: 9.4.2, accepted_events: [workflow_dispatch], required_test_categories: [typecheck, browser, accessibility, build]}
+=======
+    evidence_schema_version: "1.1"
+    expected_elasticsearch_version: 9.4.2
+    required_test_categories: [provider_contract]
+    required_evidence_fields: [schema_version, repository, producer_sha, terminal_migration, status]
+    reason_for_inclusion: AWS collection and migration 0022 exist, but Collection Manager is not a supported packaged Helm workload for Beta 1.
+    exclusion: Optional until a supported packaged Collection Manager runtime is included.
+>>>>>>> origin/main

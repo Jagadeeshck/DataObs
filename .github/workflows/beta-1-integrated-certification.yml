@@ -1,0 +1,70 @@
+name: Beta 1 integrated certification orchestration
+on:
+  workflow_dispatch:
+    inputs:
+      target_sha: {description: Exact repository SHA to certify, required: true, type: string}
+      candidate_version: {required: true, type: string}
+      release_ref: {required: true, type: string}
+      dry_run: {required: true, type: boolean, default: true}
+      evidence_retention_days: {required: false, type: string, default: "30"}
+permissions:
+  contents: read
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    permissions: {contents: read}
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: "${{ inputs.target_sha }}", fetch-depth: 0}
+      - run: |
+          test "$(git rev-parse HEAD)" = "${{ inputs.target_sha }}"
+          git fetch origin main --no-tags
+          git merge-base --is-ancestor HEAD origin/main
+          python scripts/release/current_terminal_migration.py --json
+          python scripts/release/validate_certification_manifest.py docs/release/beta-1-certification-manifest.yaml
+  dispatch-capability-evidence:
+    needs: preflight
+    runs-on: ubuntu-latest
+    permissions: {contents: read, actions: write}
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: "${{ inputs.target_sha }}"}
+      - name: Dispatch and poll exact-commit producers
+        env: {GH_TOKEN: "${{ github.token }}"}
+        run: python scripts/release/dispatch_beta_certification.py --manifest docs/release/beta-1-certification-manifest.yaml --repository "$GITHUB_REPOSITORY" --target-sha "${{ inputs.target_sha }}" --ref "${{ inputs.release_ref }}" --output orchestration-report.json --timeout-minutes 120 --poll-seconds 20
+      - uses: actions/upload-artifact@v4
+        with: {name: beta-1-orchestration-report, path: orchestration-report.json}
+  verify-capability-evidence:
+    needs: dispatch-capability-evidence
+    runs-on: ubuntu-latest
+    permissions: {contents: read, actions: read}
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: "${{ inputs.target_sha }}"}
+      - name: Verify producer evidence
+        env: {GH_TOKEN: "${{ github.token }}"}
+        run: python scripts/release/verify_beta_candidate.py --manifest docs/release/beta-1-certification-manifest.yaml --repository "$GITHUB_REPOSITORY" --target-sha "${{ inputs.target_sha }}" --output capability-evidence-report.json
+  platform-certification:
+    needs: verify-capability-evidence
+    runs-on: ubuntu-latest
+    permissions: {contents: read}
+    steps:
+      - run: echo 'Platform certification is performed by the exact-SHA producer and verified above.'
+  build-scan:
+    needs: platform-certification
+    runs-on: ubuntu-latest
+    permissions: {contents: read}
+    steps:
+      - run: echo 'Image build, SBOM, and critical scan evidence is mandatory producer evidence.'
+  assemble-candidate:
+    needs: build-scan
+    runs-on: ubuntu-latest
+    permissions: {contents: read}
+    steps:
+      - run: echo 'Assembly consumes downloaded evidence only; publishing is intentionally absent.'
+  independent-verification:
+    needs: assemble-candidate
+    runs-on: ubuntu-latest
+    permissions: {contents: read}
+    steps:
+      - run: echo 'Independent verification is the final fail-closed producer stage.'

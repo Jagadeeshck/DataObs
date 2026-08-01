@@ -1,0 +1,50 @@
+name: Stream and Pathway Reliability Runtime v1
+on:
+  pull_request:
+  workflow_dispatch:
+jobs:
+  exact-commit-evidence:
+    runs-on: ubuntu-latest
+    services:
+      elasticsearch:
+        image: docker.elastic.co/elasticsearch/elasticsearch:9.4.2
+        env: {discovery.type: single-node, xpack.security.enabled: "false", ES_JAVA_OPTS: -Xms1g -Xmx1g}
+        ports: ["9200:9200"]
+        options: --health-cmd "curl -fsS http://localhost:9200/_cluster/health" --health-interval 10s --health-timeout 5s --health-retries 30
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - uses: pnpm/action-setup@v4
+        with: {version: 10.28.1}
+      - uses: actions/setup-node@v4
+        with: {node-version: "22"}
+      - run: pip install -r requirements.txt
+      - name: Boundaries, generated files, docs, ledger, migrations
+        run: |
+          python scripts/check_team_boundaries.py
+          python scripts/check_generated_artifacts.py
+          python scripts/check_docs_links.py
+          python scripts/validate_capability_ledger.py
+          python scripts/check_migration_immutability.py --base-ref origin/main
+      - name: Elasticsearch migration and deterministic runtime tests
+        env: {ELASTICSEARCH_URL: http://localhost:9200}
+        run: |
+          mkdir -p evidence
+          python -m packages.elastic_store.cli apply
+          python -m pytest tests/stream_360 tests/pathways tests/security -q --junitxml=evidence/backend.xml
+      - name: Console and accessibility
+        working-directory: ui/dataobs-console
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm api:generate
+          pnpm typecheck && pnpm lint && pnpm format:check && pnpm test
+          pnpm build && pnpm bundle:check
+          pnpm exec playwright install --with-deps chromium
+          pnpm playwright
+      - name: Exact-commit evidence
+        run: |
+          printf '{"producer_sha":"%s","repository":"%s","workflow":"%s","run_id":"%s","elasticsearch_version":"9.4.2","terminal_migration":"0023_stream_pathway_reliability_runtime","runtime_states":["healthy","breaching","recovering","no_data","stale"],"tenant_isolation":true,"browser_accessibility":"tested","generated_at":"%s"}\n' "$GITHUB_SHA" "$GITHUB_REPOSITORY" "$GITHUB_WORKFLOW" "$GITHUB_RUN_ID" "$(date -u +%FT%TZ)" > evidence/result.json
+      - uses: actions/upload-artifact@v4
+        with: {name: stream-pathway-reliability-runtime-v1-evidence, path: evidence/, retention-days: 30}

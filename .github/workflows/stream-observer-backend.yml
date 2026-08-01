@@ -54,7 +54,11 @@ jobs:
         run: python -m pytest tests/stream_360 tests/security -q --junitxml=stream-observer-backend-v1-evidence/results/observer.xml
       - name: Record bounded certification results
         run: |
+<<<<<<< HEAD
           python scripts/release/release_metadata.py > stream-observer-backend-v1-evidence/terminal-migration.txt
+=======
+          printf '%s\n' 0022_aws_data_platform_collector > stream-observer-backend-v1-evidence/terminal-migration.txt
+>>>>>>> origin/main
           printf '%s\n' '{"kafka_admin":"available","consumer_groups":"available","offsets":"available","kafka_connect":"partial","schema_registry":"partial","broker_metrics":"not_configured"}' > stream-observer-backend-v1-evidence/capability-matrix.json
           printf '%s\n' '{"lag_messages":90,"retention_risk":"safe","replication_health":"healthy"}' > stream-observer-backend-v1-evidence/intelligence.json
           printf '%s\n' '{"lease_contention":"pass","expiry":"pass","fencing":"pass"}' > stream-observer-backend-v1-evidence/lease-fencing.json

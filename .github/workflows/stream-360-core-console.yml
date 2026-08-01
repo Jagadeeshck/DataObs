@@ -40,7 +40,11 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium && pnpm playwright
       - name: Produce exact-commit evidence
         run: |
+<<<<<<< HEAD
           printf '{"final_sha":"%s","elasticsearch_version":"9.4.2","api_contract":true,"filters_and_cursor":true,"topic_360":true,"consumer_group_360":true,"playwright":true,"accessibility":true,"tenant_isolation":true,"junit_results":["api.xml","api-security.xml","console-junit.xml"]}\n' "$(git rev-parse HEAD)" > evidence/stream-360-core-console-v1.json
+=======
+          printf '{"final_sha":"%s","elasticsearch_version":"9.4.2","terminal_migration":"0022_aws_data_platform_collector","api_contract":true,"filters_and_cursor":true,"topic_360":true,"consumer_group_360":true,"playwright":true,"accessibility":true,"tenant_isolation":true,"junit_results":["api.xml","api-security.xml","console-junit.xml"]}\n' "$(git rev-parse HEAD)" > evidence/stream-360-core-console-v1.json
+>>>>>>> origin/main
       - name: Independently verify evidence
         run: python scripts/certification/verify_stream_360_console_evidence.py evidence/stream-360-core-console-v1.json
       - name: Write standard certification envelope

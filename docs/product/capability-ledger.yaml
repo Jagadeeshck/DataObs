@@ -1681,7 +1681,7 @@ capabilities:
     ui_routes: []
     storage_resources: []
     migrations:
-    - 0021_lineage_analysis_explorer
+    - 0022_aws_data_platform_collector
   validation:
     unit: defined_not_run
     integration: defined_not_run
@@ -1758,6 +1758,60 @@ capabilities:
   certification_status: functional_unvalidated
   last_audited_at: '2026-08-01'
   last_audited_commit: pending-final-sha
+- id: data_pipeline.stream_pathway_reliability
+  name: Stream and pathway reliability runtime v1
+  summary: Tenant-scoped bounded reliability evaluation without root-cause or remediation claims.
+  pillar: data_pipeline
+  domain: streams
+  state: functional_unvalidated
+  release_readiness: blocked
+  implementation:
+    code_paths:
+    - packages/streaming/reliability.py
+    - services/kafka_observer/reliability_runtime.py
+    api_paths: []
+    ui_routes: []
+    storage_resources:
+    - dataobs-stream-slo-definitions-v1
+    - dataobs-reliability-status-v1
+    - metrics-dataobs.stream-slo-evaluation-*
+    - metrics-dataobs.pathway-slo-evaluation-*
+    migrations:
+    - 0023_stream_pathway_reliability_runtime
+  validation:
+    unit: passed
+    integration: defined_not_run
+    real_stack: defined_not_run
+    hosted_ci: missing
+    browser: defined_not_run
+    accessibility: defined_not_run
+    security: defined_not_run
+    scale: defined_not_run
+    upgrade: defined_not_run
+    release: missing
+  evidence:
+    tests:
+    - tests/stream_360/test_reliability_runtime.py
+    workflow_jobs:
+    - stream-pathway-reliability-runtime-v1.yml:exact-commit-evidence
+    audit_docs:
+    - docs/development/stream-pathway-reliability-runtime-v1-audit.md
+    runbooks:
+    - docs/operations/stream-pathway-reliability-runtime.md
+    artifacts:
+    - stream-pathway-reliability-runtime-v1-evidence (defined; final-head hosted run pending)
+  blockers:
+  - Exact-commit hosted Elasticsearch, browser, accessibility, and security evidence is not retained.
+  non_goals:
+  - Root-cause inference, Team 3 incident lifecycle, and remediation are excluded.
+  next_gate: Retain and verify the focused workflow artifact for the final commit.
+  owner: team:streams
+  owner_team: team:streams
+  release_target: beta-1
+  implementation_status: implemented
+  certification_status: functional_unvalidated
+  last_audited_at: '2026-08-01'
+  last_audited_commit: pending-final-sha
 migration_checksums:
   0001_product_foundation: 71d939094a97b4dd7c61de60542b60dd41cb238fd6bebfd75d53d723b00f3556
   0002_postgres_observability: c2098fa24ddae209fcf2ffeb369f7040d57018d58682a8513db9e943c749aa2d
@@ -1781,3 +1835,4 @@ migration_checksums:
   0020_identity_rbac_tenant_bindings: 4b0505ec6d2e1f9db0edc19d6e7d808cff36ae2de3789dc921770b7ea3390d33
   0021_lineage_analysis_explorer: 48708bb08b183788d378f5666c19ab9d4294d073fca6df44ef1849b7af2bcd7e
   0022_aws_data_platform_collector: adb36e8f60ffe41e85bbc910de537a6b1b415da362a9b79eda6f13f69f9f50f8
+  0023_stream_pathway_reliability_runtime: 04f5ec259ee4187c4ee423b0944d7b026e27f92f20755bb71330175bfec26149

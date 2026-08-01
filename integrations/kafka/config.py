@@ -72,6 +72,13 @@ class KafkaObserverConfig(BaseModel):
     connect_interval_seconds: float = Field(default=60, ge=5)
     schema_interval_seconds: float = Field(default=300, ge=5)
     metric_interval_seconds: float = Field(default=30, ge=5)
+    kafka_connect_url: str | None = None
+    kafka_connect_allowed_hosts: set[str] = Field(default_factory=set)
+    schema_registry_url: str | None = None
+    schema_registry_allowed_hosts: set[str] = Field(default_factory=set)
+    maximum_connectors: int = Field(default=1000, ge=1, le=10_000)
+    maximum_subjects: int = Field(default=1000, ge=1, le=10_000)
+    maximum_schema_versions: int = Field(default=100, ge=1, le=1000)
     security: KafkaSecurityConfig = Field(default_factory=KafkaSecurityConfig)
 
     @field_validator("bootstrap_servers")
@@ -87,4 +94,8 @@ class KafkaObserverConfig(BaseModel):
             raise ValueError("bootstrap server is not allowlisted")
         if self.lease_renewal_seconds >= self.lease_duration_seconds:
             raise ValueError("lease renewal must occur before lease expiry")
+        if bool(self.kafka_connect_url) != bool(self.kafka_connect_allowed_hosts):
+            raise ValueError("Kafka Connect URL and allowed hosts must be configured together")
+        if bool(self.schema_registry_url) != bool(self.schema_registry_allowed_hosts):
+            raise ValueError("Schema Registry URL and allowed hosts must be configured together")
         return self

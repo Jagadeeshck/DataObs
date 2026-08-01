@@ -49,11 +49,7 @@ def retention_risk(
         state = "data_loss_suspected"
     else:
         ratio = oldest_unconsumed_age_seconds / retention_seconds if retention_seconds > 0 else 1
-        state = (
-            "critical"
-            if ratio >= 0.9
-            else "high" if ratio >= 0.75 else "medium" if ratio >= 0.5 else "low" if ratio >= 0.25 else "none"
-        )
+        state = "at_risk" if ratio >= 0.75 else "warning" if ratio >= 0.5 else "safe"
     return {
         "state": state,
         "time_remaining_seconds": max(0, remaining),

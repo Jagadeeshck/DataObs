@@ -81,6 +81,8 @@ def drain_time(lag: int | None, consume_rate: float | None, produce_rate: float 
             "method": "lag/(consume_rate-produce_rate)",
             "missing_inputs": missing,
             "confidence": 0.0,
+            "input_rate": produce_rate,
+            "processing_rate": consume_rate,
         }
     assert lag is not None and consume_rate is not None and produce_rate is not None
     net = consume_rate - produce_rate
@@ -92,6 +94,8 @@ def drain_time(lag: int | None, consume_rate: float | None, produce_rate: float 
             "method": "lag/(consume_rate-produce_rate)",
             "missing_inputs": [],
             "confidence": 0.8,
+            "input_rate": produce_rate,
+            "processing_rate": consume_rate,
         }
     return {
         "state": "converging",
@@ -100,4 +104,6 @@ def drain_time(lag: int | None, consume_rate: float | None, produce_rate: float 
         "method": "lag/(consume_rate-produce_rate)",
         "missing_inputs": [],
         "confidence": 0.8,
+        "input_rate": produce_rate,
+        "processing_rate": consume_rate,
     }

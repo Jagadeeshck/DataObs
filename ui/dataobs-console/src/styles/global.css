@@ -1660,7 +1660,8 @@ header {
   .quick-find {
     max-height: calc(100dvh - 2rem);
   }
-}.tabs {
+}
+.tabs {
   display: flex;
   flex-wrap: wrap;
   gap: 0.4rem;
@@ -1768,7 +1769,9 @@ progress {
   }
   .quality-filters label {
     width: 100%;
-  }.pathway-filters {
+  }
+}
+.pathway-filters {
   flex-wrap: wrap;
 }
 .pathway-tabs {

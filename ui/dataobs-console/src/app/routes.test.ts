@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  breadcrumbsForPath,
   buildRoutePath,
   consoleRoutes,
+  matchRoute,
+  resolveRouteState,
   routeForPath,
+  titleForPath,
   visibleRoutes,
 } from "./routes";
 describe("console route registry", () => {
@@ -41,5 +45,42 @@ describe("console route registry", () => {
     expect(
       buildRoutePath("topic-360", { streamId: "orders/private value" }),
     ).toBe("/streams/topics/orders%2Fprivate%20value");
+  });
+  it("resolves permission, availability, and configuration separately", () => {
+    const incidents = consoleRoutes.find((r) => r.id === "incidents")!;
+    expect(
+      resolveRouteState(incidents, [], { incidents: "configured" }),
+    ).toMatchObject({
+      authorised: false,
+      availability: "available",
+      configuration: "configured",
+      actionable: false,
+    });
+    expect(
+      resolveRouteState(incidents, ["incidents:read"], {
+        incidents: "required",
+      }).actionable,
+    ).toBe(false);
+    expect(
+      resolveRouteState(incidents, ["incidents:read"], {
+        incidents: "configured",
+      }).actionable,
+    ).toBe(true);
+    expect(
+      resolveRouteState(incidents, ["incidents:read"]).configuration,
+    ).toBe("configured");
+    expect(visibleRoutes([]).some((r) => r.id === "incidents")).toBe(false);
+  });
+  it("matches dynamic routes and creates safe metadata", () => {
+    expect(matchRoute("/assets/:assetId", "/assets/%E0%A4%A")).toBeNull();
+    expect(
+      breadcrumbsForPath("/quality/monitors/orders%20freshness").map(
+        (c) => c.label,
+      ),
+    ).toEqual(["Data Quality", "Monitors", "orders freshness"]);
+    expect(titleForPath("/incidents/INC-123")).toBe(
+      "DataObs — Incidents INC-123",
+    );
+    expect(titleForPath("/missing")).toBe("DataObs — Page not found");
   });
 });

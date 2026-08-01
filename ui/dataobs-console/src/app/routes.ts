@@ -464,6 +464,35 @@ export const consoleRoutes: readonly ConsoleRoute[] = [
   }),
 ] as const;
 
+export interface EffectiveRouteState {
+  availability: CapabilityAvailability;
+  authorised: boolean;
+  configuration: ConfigurationState;
+  actionable: boolean;
+}
+export function resolveRouteState(
+  route: ConsoleRoute,
+  permissions: readonly string[],
+  capabilities?: Record<string, ConfigurationState>,
+): EffectiveRouteState {
+  const authorised =
+    !route.requiredPermission ||
+    route.requiredPermission === "console:read" ||
+    permissions.includes(route.requiredPermission);
+  const configuration =
+    capabilities?.[route.id] ??
+    capabilities?.[route.parentId ?? ""] ??
+    route.configuration;
+  return {
+    availability: route.availability,
+    authorised,
+    configuration,
+    actionable:
+      authorised &&
+      ["available", "preview"].includes(route.availability) &&
+      (configuration === "configured" || configuration === "optional"),
+  };
+}
 export function visibleRoutes(permissions: readonly string[]) {
   return consoleRoutes.filter(
     (item) =>
@@ -495,4 +524,58 @@ export function buildRoutePath(
       throw new Error(`Missing safe route parameter: ${name}`);
     return definition.encode(parameters[name]);
   });
+}
+const escapeRegex = (value: string) =>
+  value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+export function matchRoute(
+  pattern: string,
+  pathname: string,
+): Record<string, string> | null {
+  const names: string[] = [];
+  const source = pattern
+    .split("/")
+    .map((part) =>
+      part.startsWith(":")
+        ? (names.push(part.slice(1)), "([^/]+)")
+        : escapeRegex(part),
+    )
+    .join("/");
+  const match = new RegExp(`^${source}/?$`).exec(pathname);
+  if (!match) return null;
+  try {
+    return Object.fromEntries(
+      names.map((name, index) => [name, decodeURIComponent(match[index + 1])]),
+    );
+  } catch {
+    return null;
+  }
+}
+export function breadcrumbsForPath(pathname: string) {
+  const current = routeForPath(pathname);
+  if (!current) return [];
+  const chain: ConsoleRoute[] = [];
+  let item: ConsoleRoute | undefined = current;
+  while (item) {
+    chain.unshift(item);
+    item = item.parentId
+      ? consoleRoutes.find((candidate) => candidate.id === item!.parentId)
+      : undefined;
+  }
+  const params = matchRoute(current.path, pathname) ?? {};
+  return chain.map((entry) => ({
+    id: entry.id,
+    path: entry === current ? pathname : entry.path,
+    label:
+      entry === current && entry.entityParameters?.length
+        ? params[entry.entityParameters[0].name] || entry.breadcrumb
+        : entry.breadcrumb,
+  }));
+}
+export function titleForPath(pathname: string) {
+  const current = routeForPath(pathname);
+  if (!current) return "DataObs — Page not found";
+  const params = matchRoute(current.path, pathname) ?? {};
+  const entityParam = current.entityParameters?.[0];
+  const label = entityParam ? params[entityParam.name] || current.name : current.name;
+  return `DataObs — ${current.name}${entityParam && label !== current.name ? ` ${label}` : ""}`;
 }

@@ -1,9 +1,5 @@
-import {
-  qualityCoverage,
-  qualityRecommendations,
-  qualityRuntimeBacklog,
-  qualityRuntimeHealth,
-} from "../../api/quality";
+import { qualityApi, type Recommendation } from "../../api/quality";
+import { useCallback, useEffect, useState } from "react";
 import { useProductContext } from "../../state/context";
 import {
   display,
@@ -25,19 +21,66 @@ export function QualityAuxiliary({
   return <Runtime tenant={tenant} env={environment} />;
 }
 function Recommendations({ tenant, env }: { tenant: string; env: string }) {
-  const r = useQualityRequest(
-    (s) => qualityRecommendations(tenant, env, undefined, s),
+  const [items, setItems] = useState<Recommendation[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [pending, setPending] = useState<string>();
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+  const load = useCallback(
+    (signal?: AbortSignal) =>
+      qualityApi.recommendations(tenant, env, signal).then((result) => {
+        setItems(result.data.items);
+        setLoading(false);
+      }),
     [tenant, env],
   );
+  useEffect(() => {
+    const controller = new AbortController();
+    void load(controller.signal).catch((e: Error) => {
+      if (e.name !== "AbortError") {
+        setError(e.message);
+        setLoading(false);
+      }
+    });
+    return () => controller.abort();
+  }, [load]);
+  const decide = async (
+    item: Recommendation,
+    action: "accept" | "reject" | "defer",
+  ) => {
+    if (pending || !confirm(`${action} recommendation ${item.id}?`)) return;
+    setPending(item.id);
+    setError("");
+    setMessage("");
+    try {
+      const result = await qualityApi.mutate<{ state?: string }>(
+        tenant,
+        env,
+        `/recommendations/${encodeURIComponent(item.id)}/${action}`,
+        {},
+      );
+      setMessage(
+        `Decision recorded${result.data.state ? `: ${result.data.state}` : ""}. No monitor creation is implied.`,
+      );
+      await load();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setPending(undefined);
+    }
+  };
   return (
     <section>
       <h2>Recommendations</h2>
-      <p>Read-only proposals; they are not active monitors.</p>
-      {r.loading ? (
+      <p>
+        Proposals are not active monitors. Decisions do not imply monitor
+        creation.
+      </p>
+      {message && <p role="status">{message}</p>}
+      {error && <p role="alert">{error}</p>}
+      {loading ? (
         <p role="status">Loading recommendations…</p>
-      ) : r.error ? (
-        <p role="alert">{r.error}</p>
-      ) : r.data?.items.length ? (
+      ) : items.length ? (
         <div className="table-scroll">
           <table>
             <caption>Monitor proposals</caption>
@@ -53,14 +96,17 @@ function Recommendations({ tenant, env }: { tenant: string; env: string }) {
                   "Expected compute cost",
                   "Required permissions",
                   "Coverage gap",
+                  "Duplicate analysis",
+                  "Proposed baseline / safety threshold",
                   "State",
+                  "Decision",
                 ].map((x) => (
                   <th key={x}>{x}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {r.data.items.map((x) => (
+              {items.map((x) => (
                 <tr key={x.id}>
                   <td>{x.monitor_type}</td>
                   <td>{x.target_display_name}</td>
@@ -71,7 +117,32 @@ function Recommendations({ tenant, env }: { tenant: string; env: string }) {
                   <td>{x.expected_compute_cost}</td>
                   <td>{x.expected_collection_permissions.join(", ")}</td>
                   <td>{x.coverage_gap_closed.join(", ")}</td>
+                  <td>{x.duplication_analysis}</td>
+                  <td>
+                    <code>
+                      {JSON.stringify(
+                        x.proposed_baseline ??
+                          x.proposed_fixed_safety_threshold ??
+                          "Not proposed",
+                      )}
+                    </code>
+                  </td>
                   <td>{x.state}</td>
+                  <td>
+                    {(["accepted", "rejected"] as string[]).includes(x.state)
+                      ? "Terminal"
+                      : (["accept", "reject", "defer"] as const).map(
+                          (action) => (
+                            <button
+                              key={action}
+                              disabled={Boolean(pending)}
+                              onClick={() => void decide(x, action)}
+                            >
+                              {action}
+                            </button>
+                          ),
+                        )}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -85,7 +156,7 @@ function Recommendations({ tenant, env }: { tenant: string; env: string }) {
 }
 function Coverage({ tenant, env }: { tenant: string; env: string }) {
   const r = useQualityRequest(
-    (s) => qualityCoverage(tenant, env, s),
+    (s) => qualityApi.coverage(tenant, env, s).then((x) => x.data),
     [tenant, env],
   );
   if (r.loading) return <p role="status">Loading coverage…</p>;
@@ -140,11 +211,11 @@ function Coverage({ tenant, env }: { tenant: string; env: string }) {
 }
 function Runtime({ tenant, env }: { tenant: string; env: string }) {
   const health = useQualityRequest(
-    (s) => qualityRuntimeHealth(tenant, env, s),
+    (s) => qualityApi.runtime(tenant, env, "health", s).then((x) => x.data),
     [tenant, env],
   );
   const backlog = useQualityRequest(
-    (s) => qualityRuntimeBacklog(tenant, env, s),
+    (s) => qualityApi.runtime(tenant, env, "backlog", s).then((x) => x.data),
     [tenant, env],
   );
   if (health.loading || backlog.loading)

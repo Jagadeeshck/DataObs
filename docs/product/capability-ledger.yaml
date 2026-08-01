@@ -1713,7 +1713,7 @@ capabilities:
   last_audited_commit: pending-final-sha
 - id: monitoring.data_quality_console_v1
   name: Data Quality Console v1
-  summary: Read-only quality overview, inventory, findings and Monitor 360 evidence.
+  summary: Evidence-aware quality investigation with bounded authoring and safe mutations.
   pillar: data
   domain: monitoring
   state: functional_unvalidated
@@ -1742,7 +1742,7 @@ capabilities:
     runbooks: [docs/operations/data-quality-console.md]
     artifacts: [data-quality-console-v1-evidence (defined; final-head hosted run pending)]
   blockers: [Final-head real-stack browser accessibility and independent evidence are not retained.]
-  non_goals: [Monitor authoring execution and remediation are deferred.]
+  non_goals: [Autonomous remediation, credentials, and unrestricted SQL are excluded.]
   next_gate: Retain and independently verify exact-commit hosted evidence.
   owner: team:quality-jobs
   owner_team: team:quality-jobs

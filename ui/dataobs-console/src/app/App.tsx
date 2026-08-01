@@ -23,10 +23,6 @@ import {
   RunComparison,
 } from "../features/jobs/JobRunExplorer";
 import { LineageExplorer } from "../features/lineage/LineageExplorer";
-import { QualityOverview } from "../features/quality/QualityOverview";
-import { MonitorInventory } from "../features/quality/MonitorInventory";
-import { MonitorAuthoring } from "../features/quality/MonitorAuthoring";
-import { Monitor360 } from "../features/quality/Monitor360";
 const StreamsInventory = lazy(() =>
   import("../features/streams/StreamsInventory").then((m) => ({
     default: m.StreamsInventory,
@@ -91,16 +87,6 @@ export function App() {
                 element={<IntegrationDetail />}
               />
               <Route path="onboarding" element={<Onboarding />} />
-              <Route path="quality" element={<QualityOverview />} />
-              <Route path="quality/monitors" element={<MonitorInventory />} />
-              <Route
-                path="quality/monitors/new"
-                element={<MonitorAuthoring />}
-              />
-              <Route
-                path="quality/monitors/:monitorId"
-                element={<Monitor360 />}
-              />
               <Route path="incidents" element={<IncidentInbox />} />
               <Route path="quality/*" element={<QualityRoutes />} />
               <Route

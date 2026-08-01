@@ -18,7 +18,7 @@ The console baseline includes tenant-scoped Jobs inventory, Job 360, Run 360, ru
 
 ## Data Quality Console v1
 
-The Console implements read-only `/quality` and `/quality/monitors/:monitorId` routes for overview, monitor inventory, findings, recommendation proposals, coverage, runtime, observations, evaluations, baselines, incident relationships, suppressions, history and evidence. Missing evidence is not converted to zero, runtime absence is unavailable, and target display is allowlisted. Authoring and all monitor mutations remain deferred. The capability is `functional_unvalidated` pending exact-commit hosted Elasticsearch, browser, accessibility and independent-verification evidence.
+The Console implements canonical `/quality`, `/quality/monitors`, `/quality/monitors/new` and `/quality/monitors/:monitorId` routes for overview, monitor inventory, findings, recommendation proposals, coverage, runtime, observations, evaluations, baselines, incident relationships, suppressions, history and evidence. Missing evidence is not converted to zero, runtime absence is unavailable, and target display is allowlisted. Capability-driven draft authoring, confirmed lifecycle operations, queued runs, baseline reset, suppression creation and recommendation decisions are implemented; autonomous remediation remains excluded. The capability is `functional_unvalidated` pending exact-commit hosted Elasticsearch, browser, accessibility and independent-verification evidence.
 
 ## Kafka Stream Observer backend v1
 

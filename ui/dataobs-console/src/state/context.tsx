@@ -15,6 +15,10 @@ export type AuthenticatedContext = {
   subject: string;
   displayName?: string;
   email?: string;
+  principalType?: "user" | "group" | "service";
+  roles?: string[];
+  authenticationProvider?: string;
+  tokenExpiry?: string;
   tenants: Array<{ id: string; name?: string; environments: string[] }>;
   permissions: string[];
   capabilities?: Record<
@@ -75,6 +79,17 @@ async function authenticatedContext(
     displayName:
       typeof body.display_name === "string" ? body.display_name : undefined,
     email: typeof body.email === "string" ? body.email : undefined,
+    principalType:
+      body.principal_type === "group" || body.principal_type === "service"
+        ? body.principal_type
+        : "user",
+    roles: Array.isArray(body.roles) ? body.roles.map(String) : [],
+    authenticationProvider:
+      typeof body.authentication_provider === "string"
+        ? body.authentication_provider
+        : undefined,
+    tokenExpiry:
+      typeof body.token_expiry === "string" ? body.token_expiry : undefined,
     permissions: Array.isArray(body.permissions)
       ? body.permissions.map(String)
       : [],

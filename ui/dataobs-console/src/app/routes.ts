@@ -43,6 +43,8 @@ export interface ConsoleRoute {
   navigation: boolean;
   quickFind: boolean;
   searchEligible: boolean;
+  documentTitle: string;
+  loadingLabel: string;
   featureFlag?: string;
   onboardingDependency?: string;
   loader: () => RouteModule;
@@ -88,6 +90,8 @@ const route = (
   navigation: false,
   quickFind: true,
   searchEligible: true,
+  documentTitle: `DataObs — ${value.name}`,
+  loadingLabel: `Loading ${value.name}…`,
   ...value,
 });
 
@@ -422,6 +426,110 @@ export const consoleRoutes: readonly ConsoleRoute[] = [
     owner: "team-5",
     navigation: true,
     loader: load("../features/onboarding/Onboarding", "Onboarding"),
+  }),
+  route({
+    id: "administration",
+    path: "/administration",
+    name: "Administration",
+    group: "Configure",
+    capabilityId: "administration-access",
+    icon: "⚙",
+    owner: "team-5",
+    requiredPermission: "iam:read",
+    navigation: true,
+    loader: load(
+      "../features/administration/Administration",
+      "AdministrationOverview",
+    ),
+  }),
+  route({
+    id: "administration-my-access",
+    path: "/administration/my-access",
+    name: "My access",
+    group: "Configure",
+    capabilityId: "administration-access",
+    owner: "team-5",
+    requiredPermission: "auth:read",
+    parentId: "administration",
+    navigation: true,
+    loader: load("../features/administration/Administration", "MyAccess"),
+  }),
+  route({
+    id: "administration-access",
+    path: "/administration/access",
+    name: "Role bindings",
+    group: "Configure",
+    capabilityId: "administration-access",
+    owner: "team-5",
+    requiredPermission: "iam:read",
+    parentId: "administration",
+    loader: load(
+      "../features/administration/Administration",
+      "AccessInventory",
+    ),
+  }),
+  route({
+    id: "administration-access-new",
+    path: "/administration/access/new",
+    name: "Create role binding",
+    group: "Configure",
+    capabilityId: "administration-access",
+    owner: "team-5",
+    requiredPermission: "iam:write",
+    parentId: "administration-access",
+    quickFind: false,
+    searchEligible: false,
+    loader: load("../features/administration/Administration", "CreateBinding"),
+  }),
+  route({
+    id: "administration-access-detail",
+    path: "/administration/access/:bindingId",
+    name: "Role binding",
+    group: "Configure",
+    capabilityId: "administration-access",
+    owner: "team-5",
+    requiredPermission: "iam:read",
+    parentId: "administration-access",
+    entityParameters: [parameter("bindingId", "role-binding")],
+    loader: load("../features/administration/Administration", "BindingDetail"),
+  }),
+  route({
+    id: "administration-audit",
+    path: "/administration/audit",
+    name: "Access audit",
+    group: "Configure",
+    capabilityId: "administration-access",
+    owner: "team-5",
+    requiredPermission: "audit:read",
+    parentId: "administration",
+    quickFind: false,
+    searchEligible: false,
+    loader: load("../features/administration/Administration", "AccessAudit"),
+  }),
+  route({
+    id: "administration-system",
+    path: "/administration/system",
+    name: "System information",
+    group: "Configure",
+    capabilityId: "administration-access",
+    owner: "team-5",
+    requiredPermission: "auth:read",
+    parentId: "administration",
+    loader: load(
+      "../features/administration/Administration",
+      "SystemInformation",
+    ),
+  }),
+  route({
+    id: "administration-preferences",
+    path: "/administration/preferences",
+    name: "Console preferences",
+    group: "Configure",
+    capabilityId: "administration-access",
+    owner: "team-5",
+    requiredPermission: "auth:read",
+    parentId: "administration",
+    loader: load("../features/administration/Administration", "Preferences"),
   }),
   route({
     id: "console-diagnostics",

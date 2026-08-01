@@ -425,6 +425,132 @@ dd {
     animation: none !important;
   }
 }
+.admin-page {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 22px 28px 60px;
+}
+.admin-page-header {
+  position: static;
+  height: auto;
+  padding: 0 0 18px;
+  background: transparent;
+  border: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+}
+.admin-page-header h1 {
+  margin: 2px 0;
+  font-size: 30px;
+}
+.eyebrow {
+  margin: 0;
+  color: var(--cyan);
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+.admin-lede {
+  max-width: 760px;
+  color: var(--muted);
+  font-size: 16px;
+}
+.admin-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+  margin: 18px 0;
+}
+.admin-grid article,
+.mutation-review,
+.admin-notice {
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface2);
+}
+.admin-grid article h2 {
+  margin-top: 0;
+}
+.admin-grid a,
+.admin-page a {
+  color: var(--cyan);
+}
+.admin-facts {
+  display: grid;
+  grid-template-columns: minmax(140px, 220px) 1fr;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+}
+.safe-identifier {
+  overflow-wrap: anywhere;
+  color: #c4d4e7;
+}
+.badge-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin: 10px 0 20px;
+}
+.admin-badge {
+  display: inline-block;
+  padding: 5px 9px;
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  background: var(--surface2);
+}
+.risk-high {
+  border-color: var(--yellow);
+}
+.admin-notice {
+  border-left: 4px solid var(--cyan);
+  margin: 12px 0;
+}
+.admin-notice.danger {
+  border-left-color: var(--red);
+}
+.admin-form {
+  display: grid;
+  gap: 16px;
+  max-width: 680px;
+}
+.admin-form label,
+.admin-filter {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+}
+.admin-form input,
+.admin-form select,
+.admin-filter select {
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface2);
+}
+.danger-action {
+  padding: 9px 13px;
+  border: 1px solid var(--red);
+  border-radius: 6px;
+  background: transparent;
+  color: #ff9ba4;
+}
+@media (max-width: 650px) {
+  .admin-page {
+    padding-inline: 14px;
+  }
+  .admin-facts {
+    grid-template-columns: 1fr;
+  }
+  .admin-page-header {
+    align-items: start;
+    flex-direction: column;
+    gap: 8px;
+  }
+}
 header {
   position: fixed;
   z-index: 10;

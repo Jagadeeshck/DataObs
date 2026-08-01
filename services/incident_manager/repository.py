@@ -6,6 +6,8 @@ from typing import Any, Protocol
 
 from packages.domain_model.incident import Finding, Incident
 
+from .workbench_contracts import IncidentInboxFilters, IncidentInboxPage, TimelinePage
+
 
 def finding_projection(finding: Finding) -> dict[str, Any]:
     """Comparable durable finding content, excluding write bookkeeping."""
@@ -32,6 +34,21 @@ class IncidentRepository(Protocol):
     def get_incident(self, tenant_id: str, incident_id: str, environment: str | None = None) -> Incident | None: ...
     def append_event(self, event: dict[str, Any]) -> None: ...
     def list_events(self, tenant_id: str, environment: str, incident_id: str) -> list[dict[str, Any]]: ...
+    def search_incidents(
+        self,
+        tenant_id: str,
+        environment: str,
+        filters: IncidentInboxFilters,
+        sort: str,
+        page_size: int,
+        search_after: list[Any] | None,
+        pit_id: str | None,
+    ) -> IncidentInboxPage: ...
+    def search_events(
+        self, tenant_id: str, environment: str, incident_id: str, page_size: int, search_after: list[Any] | None
+    ) -> TimelinePage: ...
+    def get_operation(self, operation_id: str) -> dict[str, Any] | None: ...
+    def save_operation(self, operation_id: str, fingerprint: str, event: dict[str, Any]) -> None: ...
 
 
 class InMemoryIncidentRepository:
@@ -41,6 +58,7 @@ class InMemoryIncidentRepository:
         self.events: list[dict[str, Any]] = []
         self.actions: dict[str, dict[str, Any]] = {}
         self.approvals: dict[str, dict[str, Any]] = {}
+        self.operations: dict[str, dict[str, Any]] = {}
 
     def save_finding(self, finding: Finding) -> Finding:
         current = self.findings.get(finding.id)
@@ -142,3 +160,70 @@ class InMemoryIncidentRepository:
                 key=lambda item: (item["timestamp"], item["event_id"]),
             )
         )
+
+    def search_incidents(
+        self,
+        tenant_id: str,
+        environment: str,
+        filters: IncidentInboxFilters,
+        sort: str,
+        page_size: int,
+        search_after: list[Any] | None,
+        pit_id: str | None,
+    ) -> IncidentInboxPage:
+        values = [i for i in self.list_incidents(tenant_id, environment) if _matches(i, filters)]
+        values.sort(key=lambda item: _incident_sort(item, sort))
+        if search_after is not None:
+            values = [item for item in values if list(_incident_sort(item, sort)) > search_after]
+        page = values[: page_size + 1]
+        more = len(page) > page_size
+        page = page[:page_size]
+        return IncidentInboxPage(page, list(_incident_sort(page[-1], sort)) if more else None, pit_id or "memory-pit")
+
+    def search_events(
+        self, tenant_id: str, environment: str, incident_id: str, page_size: int, search_after: list[Any] | None
+    ) -> TimelinePage:
+        events = self.list_events(tenant_id, environment, incident_id)
+        if search_after:
+            events = [event for event in events if [event["timestamp"], event["event_id"]] > search_after]
+        page = events[: page_size + 1]
+        more = len(page) > page_size
+        page = page[:page_size]
+        return TimelinePage(page, [page[-1]["timestamp"], page[-1]["event_id"]] if more else None)
+
+    def get_operation(self, operation_id: str) -> dict[str, Any] | None:
+        return deepcopy(self.operations.get(operation_id))
+
+    def save_operation(self, operation_id: str, fingerprint: str, event: dict[str, Any]) -> None:
+        existing = self.operations.get(operation_id)
+        if existing and existing["fingerprint"] != fingerprint:
+            raise VersionConflict("idempotency key was used for another operation")
+        self.operations[operation_id] = {"fingerprint": fingerprint, "event": deepcopy(event)}
+
+
+def _matches(item: Incident, f: IncidentInboxFilters) -> bool:
+    text = f.search.casefold()
+    return (
+        (not f.state or str(item.incident_state) == f.state)
+        and (not f.severity or str(item.severity) == f.severity)
+        and (not f.owner or item.owner_team == f.owner)
+        and (not f.business_service or item.business_service == f.business_service)
+        and (not f.asset or f.asset in item.affected_assets)
+        and (not f.unassigned or not item.owner_team)
+        and (not f.opened_from or bool(item.opened_at and item.opened_at >= f.opened_from))
+        and (not f.opened_to or bool(item.opened_at and item.opened_at <= f.opened_to))
+        and (not f.observed_from or bool(item.last_observed_at and item.last_observed_at >= f.observed_from))
+        and (not f.observed_to or bool(item.last_observed_at and item.last_observed_at <= f.observed_to))
+        and (not text or text in " ".join([item.title, item.impact_summary or "", *item.affected_assets]).casefold())
+    )
+
+
+def _incident_sort(item: Incident, sort: str) -> tuple[Any, ...]:
+    epoch = datetime.min.replace(tzinfo=timezone.utc)
+    if sort == "severity":
+        return ({"critical": 0, "high": 1, "medium": 2, "low": 3}[str(item.severity)], item.id)
+    if sort == "newest_opened":
+        return (-(item.opened_at or epoch).timestamp(), item.id)
+    if sort == "occurrence_count":
+        return (-item.occurrence_count, item.id)
+    return (-(item.last_observed_at or epoch).timestamp(), item.id)

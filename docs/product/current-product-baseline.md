@@ -18,7 +18,7 @@ The console baseline includes tenant-scoped Jobs inventory, Job 360, Run 360, ru
 
 ## Data Quality Console v1
 
-The Console implements read-only `/quality` and `/quality/monitors/:monitorId` routes for overview, monitor inventory, findings, recommendation proposals, coverage, runtime, observations, evaluations, baselines, incident relationships, suppressions, history and evidence. Missing evidence is not converted to zero, runtime absence is unavailable, and target display is allowlisted. Authoring and all monitor mutations remain deferred. The capability is `functional_unvalidated` pending exact-commit hosted Elasticsearch, browser, accessibility and independent-verification evidence.
+The Console implements canonical `/quality`, `/quality/monitors`, `/quality/monitors/new` and `/quality/monitors/:monitorId` routes for overview, monitor inventory, findings, recommendation proposals, coverage, runtime, observations, evaluations, baselines, incident relationships, suppressions, history and evidence. Missing evidence is not converted to zero, runtime absence is unavailable, and target display is allowlisted. Capability-driven draft authoring, confirmed lifecycle operations, queued runs, baseline reset, suppression creation and recommendation decisions are implemented; autonomous remediation remains excluded. The capability is `functional_unvalidated` pending exact-commit hosted Elasticsearch, browser, accessibility and independent-verification evidence.
 
 ## Kafka Stream Observer backend v1
 
@@ -114,8 +114,9 @@ identity, and checkpoint contracts. The SDK does not add a supported cloud provi
 providers remain future work. Status is `functional_unvalidated` pending exact-commit hosted evidence and independent
 verification.
 
-## AWS data platform collector v1
+## AWS data platform collector v2
 
 The Team 4 Integration SDK now has a bounded, tenant/environment-scoped AWS provider for RDS/Aurora, Glue, Athena,
-EMR Serverless and their allowlisted CloudWatch metrics. Its durable evidence workflow is defined, but exact-commit
+EMR Serverless, S3, Lambda, SageMaker, MWAA, Redshift and Redshift Serverless and allowlisted CloudWatch metrics. V1
+configuration remains valid. Its durable v2 evidence workflow is defined, but exact-commit
 hosted evidence is pending; status remains `functional_unvalidated`, not production-ready or certified.

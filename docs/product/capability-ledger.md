@@ -7,8 +7,8 @@ Audited commit: `5164762a6337a44a76ad2c7574a78edc048a70b3` · PR range: #82-#168
 ## State counts
 
 - **foundation**: 12
-- **functional_unvalidated**: 17
-- **not_started**: 7
+- **functional_unvalidated**: 18
+- **not_started**: 6
 - **optional_integration**: 1
 - **scaffold**: 1
 
@@ -81,7 +81,7 @@ Evidence-led status for quality and drift evidence.
 
 ### `monitoring.data_quality_console_v1` — Data Quality Console v1
 
-Read-only quality overview, inventory, findings and Monitor 360 evidence.
+Evidence-aware quality investigation with bounded authoring and safe mutations.
 
 - **State:** `functional_unvalidated`
 - **Release readiness:** `blocked`
@@ -217,11 +217,11 @@ Evidence-led status for cases, workflows, approvals, actions, and verification.
 
 ### `integration.cloud` — AWS, Azure, GCP, and Snowflake providers
 
-Evidence-led status for aws, azure, gcp, and snowflake providers.
+AWS collector v2 is bounded and functional_unvalidated; Azure, GCP, and Snowflake remain deferred.
 
-- **State:** `not_started`
+- **State:** `functional_unvalidated`
 - **Release readiness:** `blocked`
-- **Next gate:** Execute and retain the evidence required for promotion.
+- **Next gate:** Retain and independently verify exact-commit hosted AWS v2 evidence.
 
 ### `integration.elastic` — Elasticsearch and Kibana authoritative plane
 

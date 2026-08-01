@@ -124,6 +124,8 @@ export interface Recommendation {
   id: string;
   monitor_type: string;
   target: MonitorTarget;
+  target_display_name?: string;
+  business_priority?: string;
   rationale: string;
   confidence: number;
   expected_compute_cost: string;

@@ -196,11 +196,23 @@ export function ProductContextProvider({
   );
   useEffect(() => {
     if (!autoRefreshSeconds) return;
-    const id = window.setInterval(
-      () => setRefreshGeneration((value) => value + 1),
-      autoRefreshSeconds * 1000,
-    );
-    return () => clearInterval(id);
+    let id: number | undefined;
+    const schedule = () => {
+      if (id !== undefined) clearInterval(id);
+      id = undefined;
+      if (document.visibilityState === "visible") {
+        id = window.setInterval(
+          () => setRefreshGeneration((value) => value + 1),
+          autoRefreshSeconds * 1000,
+        );
+      }
+    };
+    schedule();
+    document.addEventListener("visibilitychange", schedule);
+    return () => {
+      if (id !== undefined) clearInterval(id);
+      document.removeEventListener("visibilitychange", schedule);
+    };
   }, [autoRefreshSeconds]);
   const value = useMemo<ContextValue>(
     () => ({

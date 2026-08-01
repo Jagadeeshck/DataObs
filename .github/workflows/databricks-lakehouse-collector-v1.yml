@@ -1,0 +1,30 @@
+name: Databricks Lakehouse Collector v1
+on: [pull_request, workflow_dispatch]
+permissions: {contents: read}
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: pip install -r requirements.txt -r requirements-databricks.txt ruff black mypy pip-audit
+      - run: python scripts/release/current_terminal_migration.py
+      - run: python -m compileall integrations/databricks services/collection_manager
+      - run: ruff check integrations/databricks tests/integrations/test_databricks_provider.py
+      - run: black --check integrations/databricks tests/integrations/test_databricks_provider.py
+      - run: mypy --ignore-missing-imports integrations/databricks
+      - run: pytest -q tests/packages/collectors tests/services/collection_manager tests/integrations/test_databricks_provider.py tests/integrations/test_aws_provider.py tests/integrations/test_aws_provider_v2.py tests/integrations/test_snowflake_provider.py tests/integrations/databases/postgres
+      - run: pip-audit -r requirements-databricks.txt
+      - run: git diff --check && ! git grep -nE '^(<<<<<<<|=======|>>>>>>>)'
+      - run: python scripts/release/check_release_metadata.py
+      - run: python scripts/product/validate_capability_ledger.py
+      - run: python scripts/docs/check_links.py
+      - name: Evidence envelope
+        run: |
+          mkdir -p evidence-out
+          printf '{"status":"functional_unvalidated","repository":"%s","commit_sha":"%s","workflow_file":".github/workflows/databricks-lakehouse-collector-v1.yml","workflow_run_id":"%s","workflow_run_attempt":"%s","event":"%s","python_version":"3.11","databricks_sdk_version":"0.60-or-later","provider_version":"1","live_databricks_test_status":"not_run","known_limitations":["hosted proof absent","query history preview"]}\n' "$GITHUB_REPOSITORY" "$GITHUB_SHA" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" "$GITHUB_EVENT_NAME" > evidence-out/envelope.json
+          sha256sum evidence-out/envelope.json > evidence-out/SHA256SUMS
+          sha256sum -c evidence-out/SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with: {name: databricks-lakehouse-collector-v1-evidence, path: evidence-out}

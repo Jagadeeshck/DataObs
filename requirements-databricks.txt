@@ -1,0 +1,2 @@
+# Optional Team 4 Databricks collector dependency; never imported by unrelated workers.
+databricks-sdk>=0.60,<1

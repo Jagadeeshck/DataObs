@@ -10,6 +10,8 @@ See the factual [current product baseline](docs/product/current-product-baseline
 
 Elasticsearch and Kibana are the authoritative storage and analysis platform. OpenTelemetry and OpenLineage are ingestion standards. Elastic Agent/Fleet/EDOT, the DataObs Scanner, PostgreSQL scanning, and Kafka observation provide implemented collection foundations; this does not imply universal connector support.
 
+The backend exposes a bounded, tenant-authorized [OpenLineage ingestion contract](docs/architecture/openlineage-ingestion.md) and [canonical job/run projections](docs/architecture/job-run-observability.md). Platform normalizers reflect only the fixtures and evidence covered by this repository; they are not claims of universal Airflow, dbt, or Spark certification.
+
 A React Console exists as the standalone **DataObs Console** and is the opinionated operational UI. Its implemented routes include Command Center, Flow, Assets, Pathways, Incidents, Streams, and Data Product list/detail views. A route is an implemented surface, not browser or accessibility certification.
 
 The canonical target remains six pillars: **Platform**, **Data Pipeline**, **Data**, **FinOps and Cost**, **Business**, and **AI and Agent**. The latter differentiating pillars remain future scope unless the ledger records evidence otherwise.

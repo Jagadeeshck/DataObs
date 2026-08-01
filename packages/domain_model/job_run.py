@@ -172,6 +172,8 @@ class RunFailure(DomainModel):
     fingerprint: str
     source_category: Optional[str] = None
     stack_trace_reference: Optional[str] = None
+    safe_evidence_reference: Optional[str] = None
+    confidence: float = 0
 
 
 class RunDatasetIO(DomainModel):
@@ -229,6 +231,14 @@ class JobRun(Scoped):
     ended_at: Optional[datetime] = None
     duration_ms: Optional[int] = None
     attempt_count: int = 1
+    inputs: List[RunDatasetIO] = Field(default_factory=list)
+    outputs: List[RunDatasetIO] = Field(default_factory=list)
+    resource_usage: Optional[RunResourceUsage] = None
+    trace_id: Optional[str] = None
+    logs_reference: Optional[str] = None
+    code_version: Optional[JobCodeVersion] = None
+    deployment_version: Optional[JobDeployment] = None
+    evidence_coverage: List[str] = Field(default_factory=list)
     failure: Optional[RunFailure] = None
     airflow: Optional[AirflowDagFacet] = None
     dbt: Optional[DbtInvocationFacet] = None
@@ -236,13 +246,16 @@ class JobRun(Scoped):
     unknown_facets: Dict[str, Any] = Field(default_factory=dict)
 
 
-class JobRunAttempt(DomainModel):
+class JobRunAttempt(Scoped):
     attempt_id: str
     run_id: str
     number: int
     state: RunState
     started_at: Optional[datetime] = None
     ended_at: Optional[datetime] = None
+    duration_ms: Optional[int] = None
+    failure: Optional[RunFailure] = None
+    retry_reason: Optional[str] = None
 
 
 class TaskDefinition(DomainModel):
@@ -252,12 +265,15 @@ class TaskDefinition(DomainModel):
     dependencies: List[str] = Field(default_factory=list)
 
 
-class TaskRun(DomainModel):
+class TaskRun(Scoped):
     task_id: str
     run_id: str
     state: RunState
     source_state: Optional[str] = None
     duration_ms: Optional[int] = None
+    attempt: int = 1
+    upstream_tasks: List[str] = Field(default_factory=list)
+    failure: Optional[RunFailure] = None
     airflow: Optional[AirflowTaskFacet] = None
     dbt: Optional[DbtNodeFacet] = None
 
@@ -270,17 +286,21 @@ class StageTaskSummary(DomainModel):
     complete: bool = False
 
 
-class StageRun(DomainModel):
+class StageRun(Scoped):
     stage_id: str
     run_id: str
     attempt: int = 0
     state: RunState
     duration_ms: Optional[int] = None
     tasks: StageTaskSummary = Field(default_factory=StageTaskSummary)
+    shuffle_read_bytes: Optional[int] = None
+    shuffle_write_bytes: Optional[int] = None
+    spill_bytes: Optional[int] = None
+    failure: Optional[RunFailure] = None
     spark: Optional[SparkStageFacet] = None
 
 
-class StreamingQueryRun(DomainModel):
+class StreamingQueryRun(Scoped):
     query_id: str
     run_id: str
     state: RunState

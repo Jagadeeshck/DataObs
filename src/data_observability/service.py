@@ -21,6 +21,10 @@ FAIL_STATUSES = {"fail", "failed", "error", "critical"}
 WARN_STATUSES = {"warn", "warning"}
 
 
+class OpenLineageConflictError(RuntimeError):
+    """An explicit event identity was reused for different content."""
+
+
 def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -84,8 +88,10 @@ def calculate_asset_health(
 
 
 class DataObservabilityService:
-    def __init__(self, store: Any) -> None:
+    def __init__(self, store: Any, tenant_id: str = "default", environment: str = "default") -> None:
         self.store = store
+        self.tenant_id = tenant_id
+        self.environment = environment
 
     def create_or_update_asset(self, asset: Dict[str, Any]) -> Dict[str, Any]:
         return self.store.upsert_dataobs_asset(normalize_asset(asset))
@@ -139,7 +145,14 @@ class DataObservabilityService:
         return self.store.get_dataobs_job_run(run_id)
 
     def get_job(self, namespace: str, name: str) -> Optional[Dict[str, Any]]:
-        return self.store.get_dataobs_job(stable_id("job", namespace, name))
+        platform = infer_job_type(namespace)
+        scoped = self.store.get_dataobs_job(
+            stable_id("job", self.tenant_id, self.environment, platform, namespace, name)
+        )
+        if scoped:
+            return scoped
+        jobs = getattr(self.store, "_dataobs_jobs", {}).values()
+        return next((job for job in jobs if job.get("namespace") == namespace and job.get("name") == name), None)
 
     def ingest_lineage_edge(self, edge: Dict[str, Any]) -> Dict[str, Any]:
         edge_id = edge.get("edge_id") or stable_id(
@@ -206,42 +219,62 @@ class DataObservabilityService:
         document = {
             **existing,
             "job_id": parsed["job_id"],
+            "tenant_id": parsed["tenant_id"],
+            "environment": parsed["environment"],
             "qualified_name": parsed["job_qualified_name"],
             "namespace": parsed["job_namespace"],
             "name": parsed["job_name"],
-            "job_type": infer_job_type(parsed["job_namespace"]),
+            "job_type": parsed["platform"],
+            "platform": parsed["platform"],
             "producer": parsed["producer"],
             "facets": {**(existing.get("facets") or {}), **parsed["job_facets"]},
             "first_seen": existing.get("first_seen", parsed["event_time"]),
             "last_seen": parsed["event_time"],
+            "inputs": _unique(list(existing.get("inputs", [])) + parsed["input_assets"]),
+            "outputs": _unique(list(existing.get("outputs", [])) + parsed["output_assets"]),
+            "source_integration": parsed["producer"],
+            "evidence_coverage": ["openlineage"],
         }
         return self.store.upsert_dataobs_job(document)
 
     def _project_job_run(self, parsed: Dict[str, Any]) -> Dict[str, Any]:
-        existing = self.get_job_run(parsed["run_id"]) or {}
-        started_at = (
-            parsed["event_time"]
-            if parsed["event_type"] == "START"
-            else existing.get("started_at") or parsed["event_time"]
-        )
-        finished_at = parsed["event_time"] if parsed["terminal"] else existing.get("finished_at")
+        existing = self.get_job_run(parsed["canonical_run_id"]) or {}
+        precedence = {"OTHER": 0, "START": 1, "RUNNING": 2, "COMPLETE": 3, "FAIL": 3, "ABORT": 3}
+        current_type = existing.get("last_event_type")
+        current_precedence = precedence.get(str(current_type), -1)
+        incoming_wins = current_type is None or precedence[parsed["event_type"]] > current_precedence
+        if precedence[parsed["event_type"]] == current_precedence:
+            incoming_wins = parsed["event_time"] > existing.get("last_event_time", "")
+        started_at = existing.get("started_at")
+        if parsed["event_type"] == "START":
+            started_at = min(filter(None, [started_at, parsed["event_time"]]), default=parsed["event_time"])
+        finished_at = existing.get("ended_at") or existing.get("finished_at")
+        if parsed["terminal"] and (not finished_at or parsed["event_time"] < finished_at):
+            finished_at = parsed["event_time"]
         error_facet = parsed["run_facets"].get("errorMessage") or {}
         nominal_facet = parsed["run_facets"].get("nominalTime") or {}
         inputs = _unique(list(existing.get("input_assets", [])) + parsed["input_assets"])
         outputs = _unique(list(existing.get("output_assets", [])) + parsed["output_assets"])
         document = {
             **existing,
-            "job_run_id": parsed["run_id"],
+            "run_id": parsed["canonical_run_id"],
+            "job_run_id": parsed["canonical_run_id"],
+            "source_run_id": parsed["source_run_id"],
+            "tenant_id": parsed["tenant_id"],
+            "environment": parsed["environment"],
             "job_id": parsed["job_id"],
             "job_namespace": parsed["job_namespace"],
             "job_name": parsed["job_name"],
             "job_type": infer_job_type(parsed["job_namespace"]),
             "source_system": parsed["job_namespace"],
-            "status": parsed["status"],
-            "last_event_type": parsed["event_type"],
-            "last_event_time": parsed["event_time"],
+            "platform": parsed["platform"],
+            "state": parsed["status"] if incoming_wins else existing.get("state", existing.get("status")),
+            "status": parsed["status"] if incoming_wins else existing.get("status"),
+            "last_event_type": parsed["event_type"] if incoming_wins else current_type,
+            "last_event_time": parsed["event_time"] if incoming_wins else existing.get("last_event_time"),
             "started_at": started_at,
             "finished_at": finished_at,
+            "ended_at": finished_at,
             "duration_ms": duration_ms(started_at, finished_at),
             "input_assets": inputs,
             "output_assets": outputs,
@@ -251,39 +284,44 @@ class DataObservabilityService:
             "producer": parsed["producer"],
             "facets": {**(existing.get("facets") or {}), **parsed["run_facets"]},
             "event_count": int(existing.get("event_count", 0)) + 1,
+            "evidence_coverage": ["openlineage"],
         }
         return self.create_job_run(document)
 
     def ingest_openlineage_event(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        parsed = parse_openlineage_event(payload)
-        raw_event = {
+        parsed = parse_openlineage_event(payload, tenant_id=self.tenant_id, environment=self.environment)
+        evidence = {
             "@timestamp": parsed["event_time"],
             "ingested_at": now_iso(),
             "event_id": parsed["event_id"],
+            "content_fingerprint": parsed["content_fingerprint"],
+            "source_event_time": parsed["event_time"],
             "event_type": parsed["event_type"],
             "producer": parsed["producer"],
             "schema_url": parsed["schema_url"],
-            "run_id": parsed["run_id"],
+            "run_id": parsed["canonical_run_id"],
+            "tenant_id": parsed["tenant_id"],
+            "environment": parsed["environment"],
             "job_id": parsed["job_id"],
             "job_namespace": parsed["job_namespace"],
             "job_name": parsed["job_name"],
             "input_assets": parsed["input_assets"],
             "output_assets": parsed["output_assets"],
-            "facets": {
-                "run": parsed["run_facets"],
-                "job": parsed["job_facets"],
-                "inputs": [dataset.get("facets", {}) for dataset in parsed["inputs"]],
-                "outputs": [dataset.get("facets", {}) for dataset in parsed["outputs"]],
-            },
-            "raw_event": payload,
+            "safe_facets": parsed["safe_facets"],
+            "unknown_facets": parsed["unknown_facets"],
+            "request_id": payload.get("requestId"),
+            "trace_id": payload.get("traceId"),
+            "schema_version": "v1",
         }
-        persisted = self.store.append_dataobs_lineage_event(raw_event)
+        persisted = self.store.append_dataobs_lineage_event(evidence)
         if not persisted["created"]:
+            if persisted["event"].get("content_fingerprint") != parsed["content_fingerprint"]:
+                raise OpenLineageConflictError("event ID already exists with different content")
             return {
                 "event_id": parsed["event_id"],
                 "event_type": parsed["event_type"],
                 "deduplicated": True,
-                "job_run": self.get_job_run(parsed["run_id"]),
+                "job_run": self.get_job_run(parsed["canonical_run_id"]),
                 "lineage_edges": [],
                 "column_lineage_edges": [],
                 "quality_runs": [],

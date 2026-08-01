@@ -1,17 +1,7 @@
-# Job and run observability
+# Job and run observability backend
 
-> OpenLineage provides the portable job and lineage event contract. Platform-native metadata provides deeper operational evidence. DataObs combines both without exposing source credentials or raw business data.
+The backend projects canonical tenant-scoped jobs and runs from append-only OpenLineage evidence. Stable identifiers include tenant, environment, platform, namespace, name, and source run identity. Unfinished runs have a null duration.
 
-```mermaid
-flowchart LR
- A[Airflow provider] --> I[Authenticated OpenLineage ingress]
- D[dbt artifacts/events] --> I
- S[Spark listener] --> I
- E[Spark replayable event log] --> O[Spark observer]
- I --> H[(Append-only evidence)] --> P[Job observer projections]
- O --> P --> M[Shared monitors] --> C[Incidents and explainable RCA]
- P --> API[Scoped bounded API] --> UI[Pipelines / Job 360 / Run Explorer]
- API --> K[Safe Kibana deep links]
-```
+Authoritative projections reuse migration `0008_job_run_observability`: fixed job, run, attempt, task, stage, and streaming-query indices plus the corresponding append-only data streams. Index names are selected by server code; callers cannot provide them. Every query is tenant and environment bound.
 
-Canonical identity includes tenant, environment, platform, namespace and name; source run IDs are integration-namespaced. Platform facets remain optional typed objects. Append-only evidence is never replaced by current-state projection. Raw SQL, rows, Kafka payloads, offsets, stack traces and credentials are excluded or reduced to redacted fingerprints/references.
+Canonical APIs under `/api/v1/jobs` and `/api/v1/runs` provide bounded lists and detail/evidence collections. The implementation is backend-only and does not provide a Console explorer, critical-path visualization, or comparison UI.

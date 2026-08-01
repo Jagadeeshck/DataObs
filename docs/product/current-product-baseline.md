@@ -114,8 +114,9 @@ identity, and checkpoint contracts. The SDK does not add a supported cloud provi
 providers remain future work. Status is `functional_unvalidated` pending exact-commit hosted evidence and independent
 verification.
 
-## AWS data platform collector v1
+## AWS data platform collector v2
 
 The Team 4 Integration SDK now has a bounded, tenant/environment-scoped AWS provider for RDS/Aurora, Glue, Athena,
-EMR Serverless and their allowlisted CloudWatch metrics. Its durable evidence workflow is defined, but exact-commit
+EMR Serverless, S3, Lambda, SageMaker, MWAA, Redshift and Redshift Serverless and allowlisted CloudWatch metrics. V1
+configuration remains valid. Its durable v2 evidence workflow is defined, but exact-commit
 hosted evidence is pending; status remains `functional_unvalidated`, not production-ready or certified.

@@ -14,6 +14,151 @@ RDS_METRICS = {
     "WriteIOPS": ("count/second", "Average"),
 }
 
+METRIC_REGISTRY = {
+    "rds": ("AWS/RDS", ("DBInstanceIdentifier",), RDS_METRICS, 300, 100),
+    "glue": ("Glue", ("JobName", "Type"), {}, 300, 100),
+    "athena": ("AWS/Athena", ("WorkGroup",), {}, 300, 100),
+    "emr-serverless": ("AWS/EMRServerless", ("ApplicationId", "JobId"), {}, 300, 100),
+    "s3": (
+        "AWS/S3",
+        ("BucketName", "StorageType", "FilterId"),
+        {
+            "BucketSizeBytes": ("bytes", "Average"),
+            "NumberOfObjects": ("count", "Average"),
+            "AllRequests": ("count", "Sum"),
+            "GetRequests": ("count", "Sum"),
+            "PutRequests": ("count", "Sum"),
+            "4xxErrors": ("count", "Sum"),
+            "5xxErrors": ("count", "Sum"),
+            "FirstByteLatency": ("milliseconds", "Average"),
+            "TotalRequestLatency": ("milliseconds", "Average"),
+        },
+        86400,
+        50,
+    ),
+    "lambda": (
+        "AWS/Lambda",
+        ("FunctionName", "Resource", "ExecutedVersion"),
+        {
+            name: (
+                "milliseconds" if name == "Duration" else "count",
+                "Average" if name in {"Duration", "ConcurrentExecutions"} else "Sum",
+            )
+            for name in (
+                "Invocations",
+                "Errors",
+                "Throttles",
+                "Duration",
+                "ConcurrentExecutions",
+                "ProvisionedConcurrencyInvocations",
+                "ProvisionedConcurrencySpilloverInvocations",
+                "DeadLetterErrors",
+                "IteratorAge",
+            )
+        },
+        300,
+        100,
+    ),
+    "sagemaker": (
+        "AWS/SageMaker",
+        ("EndpointName", "VariantName", "Host", "TrainingJobName"),
+        {
+            name: (
+                "milliseconds" if "Latency" in name else "percent" if "Utilization" in name else "count",
+                "Average" if "Latency" in name or "Utilization" in name else "Sum",
+            )
+            for name in (
+                "Invocations",
+                "Invocation4XXErrors",
+                "Invocation5XXErrors",
+                "ModelLatency",
+                "OverheadLatency",
+                "CPUUtilization",
+                "MemoryUtilization",
+                "GPUUtilization",
+                "DiskUtilization",
+            )
+        },
+        300,
+        100,
+    ),
+    "mwaa": (
+        "AmazonMWAA",
+        ("Environment", "Function", "Dimension"),
+        {
+            name: ("percent" if "Utilization" in name else "count", "Average")
+            for name in (
+                "SchedulerHeartbeat",
+                "TotalParseTime",
+                "DagBagSize",
+                "ImportErrors",
+                "QueuedTasks",
+                "RunningTasks",
+                "OpenSlots",
+                "TasksPending",
+                "TasksRunning",
+                "SchedulerTasks",
+                "CPUUtilization",
+                "MemoryUtilization",
+            )
+        },
+        300,
+        100,
+    ),
+    "redshift": (
+        "AWS/Redshift",
+        ("ClusterIdentifier", "NodeID", "service class"),
+        {
+            name: (
+                "percent" if name in {"CPUUtilization", "HealthStatus", "PercentageDiskSpaceUsed"} else "count",
+                "Average",
+            )
+            for name in (
+                "CPUUtilization",
+                "DatabaseConnections",
+                "HealthStatus",
+                "PercentageDiskSpaceUsed",
+                "ReadIOPS",
+                "WriteIOPS",
+                "ReadLatency",
+                "WriteLatency",
+                "NetworkReceiveThroughput",
+                "NetworkTransmitThroughput",
+                "QueryDuration",
+                "QueryRuntimeBreakdown",
+            )
+        },
+        300,
+        100,
+    ),
+    "redshift-serverless": (
+        "AWS/Redshift-Serverless",
+        ("Workgroup", "Database"),
+        {
+            name: ("count", "Average")
+            for name in (
+                "ComputeCapacity",
+                "ComputeSeconds",
+                "DatabaseConnections",
+                "QueriesCompletedPerSecond",
+                "QueryDuration",
+                "QueriesQueued",
+                "RunningQueries",
+            )
+        },
+        300,
+        100,
+    ),
+}
+
+
+def metric_definition(service, metric_name):
+    """Resolve only registry-backed metrics; arbitrary caller definitions are rejected."""
+    namespace, dimensions, definitions, expected_period, query_limit = METRIC_REGISTRY[service]
+    if metric_name not in definitions:
+        raise ValueError("metric is not allowlisted")
+    return namespace, dimensions, definitions[metric_name], expected_period, query_limit
+
 
 class CloudWatchAdapter:
     def __init__(
@@ -24,7 +169,17 @@ class CloudWatchAdapter:
 
     def collect(self, resource_id, namespace, dimensions, definitions, now=None):
         now = now or datetime.now(timezone.utc)
-        definitions = dict(list(definitions.items())[: self.maximum_queries])
+        allowed_namespaces = {entry[0] for entry in METRIC_REGISTRY.values()}
+        if namespace not in allowed_namespaces:
+            raise ValueError("CloudWatch namespace is not allowlisted")
+        registry_entries = [entry for entry in METRIC_REGISTRY.values() if entry[0] == namespace]
+        allowed_metrics = set().union(*(entry[2] for entry in registry_entries))
+        allowed_dimensions = set().union(*(entry[1] for entry in registry_entries))
+        if not set(definitions) <= allowed_metrics:
+            raise ValueError("CloudWatch metric is not allowlisted")
+        if not set(dimensions) <= allowed_dimensions:
+            raise ValueError("CloudWatch dimension is not allowlisted")
+        definitions = dict(sorted(definitions.items())[: self.maximum_queries])
         queries = [
             {
                 "Id": f"m{i}",

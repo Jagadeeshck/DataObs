@@ -6,7 +6,9 @@ from typing import Any, Mapping
 
 from packages.collectors.sdk.errors import InvalidConfigurationError
 
-SERVICES = frozenset({"rds", "glue", "athena", "emr-serverless"})
+SERVICES = frozenset(
+    {"rds", "glue", "athena", "emr-serverless", "s3", "lambda", "sagemaker", "mwaa", "redshift", "redshift-serverless"}
+)
 REGION = re.compile(r"^[a-z]{2}(?:-gov)?-[a-z]+-\d$")
 ACCOUNT = re.compile(r"^\d{12}$")
 ROLE = re.compile(r"^arn:aws(?:-us-gov)?:iam::\d{12}:role/[A-Za-z0-9+=,.@_/-]{1,512}$")
@@ -20,6 +22,7 @@ ALLOWED = {
     "ownership_tag_keys",
     "limits",
     "history_overlap_seconds",
+    "service_options",
     "sts_endpoint_url",
 }
 
@@ -67,6 +70,70 @@ def parse_configuration(raw: Mapping[str, Any]) -> AwsConfiguration:
         raise InvalidConfigurationError("too many tag filters")
     if len(raw.get("ownership_tag_keys") or ()) > 20:
         raise InvalidConfigurationError("too many ownership tag keys")
+    options = raw.get("service_options") or {}
+    if not isinstance(options, Mapping) or not set(options) <= SERVICES:
+        raise InvalidConfigurationError("unsupported service_options service")
+    allowed_options = {
+        "s3": {
+            "include_buckets",
+            "prefix_assets",
+            "maximum_prefix_samples",
+            "maximum_prefix_pages",
+            "stale_after_seconds",
+        },
+        "lambda": {"include_function_patterns"},
+        "sagemaker": {
+            "include_training_jobs",
+            "include_processing_jobs",
+            "include_transform_jobs",
+            "include_pipeline_executions",
+            "include_endpoints",
+            "history_lookback_seconds",
+            "history_overlap_seconds",
+            "maximum_history_items",
+        },
+        "mwaa": {"collect_environment_metrics"},
+        "redshift": {
+            "include_query_summaries",
+            "query_history_lookback_seconds",
+            "history_overlap_seconds",
+            "maximum_query_summaries",
+        },
+        "redshift-serverless": {
+            "include_query_summaries",
+            "query_history_lookback_seconds",
+            "history_overlap_seconds",
+            "maximum_query_summaries",
+        },
+    }
+    for service, value in options.items():
+        if not isinstance(value, Mapping) or set(value) - allowed_options.get(service, set()):
+            raise InvalidConfigurationError(f"unknown {service} service option")
+    s3 = options.get("s3", {})
+    if len(s3.get("include_buckets", ())) > 100 or len(s3.get("prefix_assets", ())) > 100:
+        raise InvalidConfigurationError("too many S3 selections")
+    if not 1 <= int(s3.get("maximum_prefix_samples", 100)) <= 1000:
+        raise InvalidConfigurationError("S3 prefix sample limit is out of bounds")
+    if not 1 <= int(s3.get("maximum_prefix_pages", 10)) <= 100:
+        raise InvalidConfigurationError("S3 prefix page limit is out of bounds")
+    for asset in s3.get("prefix_assets", ()):
+        if (
+            not isinstance(asset, Mapping)
+            or set(asset) != {"bucket", "prefix"}
+            or not asset.get("bucket")
+            or not asset.get("prefix")
+        ):
+            raise InvalidConfigurationError("S3 prefix assets require only bucket and non-empty prefix")
+    lam = options.get("lambda", {})
+    if len(lam.get("include_function_patterns", ())) > 100:
+        raise InvalidConfigurationError("too many Lambda function patterns")
+    for service in ("sagemaker", "redshift", "redshift-serverless"):
+        value = options.get(service, {})
+        lookback = int(value.get("history_lookback_seconds", value.get("query_history_lookback_seconds", 86400)))
+        if not 300 <= lookback <= 2592000:
+            raise InvalidConfigurationError(f"{service} history lookback is out of bounds")
+        if not 1 <= int(value.get("maximum_history_items", value.get("maximum_query_summaries", 200))) <= 1000:
+            raise InvalidConfigurationError(f"{service} history item limit is out of bounds")
     endpoint = raw.get("sts_endpoint_url")
     if endpoint and not str(endpoint).startswith(("http://localhost", "http://127.0.0.1")):
         raise InvalidConfigurationError("custom STS endpoints are test-only")

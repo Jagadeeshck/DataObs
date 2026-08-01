@@ -1648,6 +1648,27 @@ AWS_DATA_PLATFORM_COLLECTOR_MIGRATION = Migration(
     },
 )
 
+STREAM_PATHWAY_RELIABILITY_MIGRATION = Migration(
+    "0023_stream_pathway_reliability_runtime",
+    "Add Team 1 reliability definitions, status, coordination, append-only evaluations and signals",
+    "v1",
+    dependencies=["0022_aws_data_platform_collector"],
+    rollback_strategy="stop Team 1 reliability workers; retain evaluation and signal evidence; snapshot status before removing 0023 aliases and templates",
+    operations={
+        "mutable_indices": [
+            "dataobs-stream-slo-definitions-v1",
+            "dataobs-reliability-status-v1",
+            "dataobs-reliability-runtime-state-v1",
+        ],
+        "data_streams": [
+            "metrics-dataobs.stream-slo-evaluation-*",
+            "metrics-dataobs.pathway-slo-evaluation-*",
+            "logs-dataobs.reliability-signal-*",
+        ],
+        "retention_defaults": {"evaluations": "90d operational evidence", "signals": "365d audit evidence"},
+    },
+)
+
 
 def migrations() -> List[Migration]:
     return [
@@ -1673,6 +1694,7 @@ def migrations() -> List[Migration]:
         IDENTITY_RBAC_TENANT_BINDINGS_MIGRATION,
         LINEAGE_ANALYSIS_EXPLORER_MIGRATION,
         AWS_DATA_PLATFORM_COLLECTOR_MIGRATION,
+        STREAM_PATHWAY_RELIABILITY_MIGRATION,
     ]
 
 

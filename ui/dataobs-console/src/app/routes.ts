@@ -174,6 +174,16 @@ export const consoleRoutes: readonly ConsoleRoute[] = [
     loader: load("../features/streams/StreamsInventory", "StreamsInventory"),
   }),
   route({
+    id: "streams-reliability",
+    path: "/streams/reliability",
+    name: "Stream Reliability",
+    group: "Observe",
+    capabilityId: "streams",
+    owner: "team-1",
+    parentId: "streams",
+    loader: load("../features/streams/StreamsReliability", "StreamsReliability"),
+  }),
+  route({
     id: "cluster-360",
     path: "/streams/clusters/:clusterId",
     name: "Kafka cluster",

@@ -1,17 +1,18 @@
 from __future__ import annotations
 
-import base64
 import hashlib
 import json
+import os
 import re
-import uuid
 from datetime import datetime, timezone
 from typing import Any
 
 from packages.domain_model.incident import Incident, IncidentState
+from services.data_products.cursors import CursorContext, InvalidCursor, SignedCursorCodec
 
 from .lifecycle import transition
 from .repository import IncidentRepository, VersionConflict
+from .workbench_contracts import IncidentInboxFilters
 
 MAX_PAGE_SIZE = 100
 SECRET_KEY = re.compile(
@@ -40,10 +41,6 @@ def _fingerprint(context: dict[str, Any]) -> str:
     return hashlib.sha256(raw).hexdigest()
 
 
-def _cursor(index: int, fingerprint: str) -> str:
-    return base64.urlsafe_b64encode(json.dumps({"i": index, "q": fingerprint}, separators=(",", ":")).encode()).decode()
-
-
 class CursorMismatch(ValueError):
     pass
 
@@ -51,6 +48,9 @@ class CursorMismatch(ValueError):
 class IncidentWorkbenchService:
     def __init__(self, repository: IncidentRepository) -> None:
         self.repo = repository
+        self.cursor_codec = SignedCursorCodec(
+            os.environ.get("DATAOBS_CURSOR_SECRET", "development-only-cursor-secret-32-bytes").encode()
+        )
 
     def inbox(
         self,
@@ -63,33 +63,29 @@ class IncidentWorkbenchService:
         cursor: str | None,
     ) -> dict[str, Any]:
         page_size = min(max(page_size, 1), MAX_PAGE_SIZE)
-        context = {"tenant": tenant_id, "environment": environment, "filters": filters, "sort": sort, "size": page_size}
-        fingerprint = _fingerprint(context)
-        start = 0
+        typed_filters = IncidentInboxFilters.from_dict(filters)
+        context = CursorContext(
+            "incident-inbox",
+            tenant_id,
+            environment,
+            {"filters": typed_filters.fingerprint_value(), "sort": sort, "page_size": page_size},
+        )
+        search_after = None
+        pit_id = None
         if cursor:
             try:
-                decoded = json.loads(base64.urlsafe_b64decode(cursor.encode()))
-                if decoded["q"] != fingerprint:
-                    raise CursorMismatch("cursor does not match the current incident query")
-                start = int(decoded["i"])
-            except CursorMismatch:
-                raise
-            except (ValueError, KeyError, TypeError, json.JSONDecodeError) as exc:
+                values = self.cursor_codec.decode(cursor, context)
+                if len(values) < 2 or not isinstance(values[0], str):
+                    raise InvalidCursor("cursor sort values are invalid")
+                pit_id, search_after = values[0], values[1:]
+            except InvalidCursor as exc:
                 raise CursorMismatch("invalid incident cursor") from exc
-        items = self.repo.list_incidents(tenant_id, environment)
-        items = [item for item in items if self._matches(item, filters)]
-        reverse = sort != "severity"
-        keys = {
-            "newest_opened": lambda i: (i.opened_at or datetime.min.replace(tzinfo=timezone.utc), i.id),
-            "recently_observed": lambda i: (i.last_observed_at or datetime.min.replace(tzinfo=timezone.utc), i.id),
-            "occurrence_count": lambda i: (i.occurrence_count, i.id),
-            "severity": lambda i: ({"critical": 0, "high": 1, "medium": 2, "low": 3}[str(i.severity)], i.id),
-        }
-        items.sort(key=keys.get(sort, keys["recently_observed"]), reverse=reverse)
-        page = items[start : start + page_size]
+        page = self.repo.search_incidents(tenant_id, environment, typed_filters, sort, page_size, search_after, pit_id)
         return {
-            "items": [self._summary(item) for item in page],
-            "next_cursor": _cursor(start + len(page), fingerprint) if start + len(page) < len(items) else None,
+            "items": [self._summary(item) for item in page.items],
+            "next_cursor": (
+                self.cursor_codec.encode(context, [page.pit_id, *page.sort_values]) if page.sort_values else None
+            ),
             "data_status": "available",
             "warnings": [],
         }
@@ -161,6 +157,35 @@ class IncidentWorkbenchService:
         comment: str | None = None,
         idempotency_key: str | None = None,
     ) -> dict[str, Any]:
+        if not idempotency_key or len(idempotency_key) > 200:
+            # Preserve stale-revision precedence for callers that have not supplied a key.
+            missing_key = True
+        else:
+            missing_key = False
+        operation_id = (
+            "incident-operation-"
+            + hashlib.sha256(f"{tenant_id}:{environment}:{incident_id}:{idempotency_key}".encode()).hexdigest()[:24]
+        )
+        operation_fingerprint = _fingerprint(
+            {
+                "tenant": tenant_id,
+                "environment": environment,
+                "incident": incident_id,
+                "revision": revision,
+                "state": str(state) if state else None,
+                "reason": reason,
+                "owner": owner,
+                "comment": comment,
+                "actor": actor,
+            }
+        )
+        if not missing_key:
+            existing = self.repo.get_operation(operation_id)
+            if existing:
+                if existing["fingerprint"] != operation_fingerprint:
+                    raise VersionConflict("idempotency key was used for another operation")
+                self.repo.append_event(existing["event"])
+                return self.detail(tenant_id, environment, incident_id, request_id)
         item = self.repo.get_incident(tenant_id, incident_id, environment)
         if not item:
             raise KeyError(incident_id)
@@ -176,32 +201,47 @@ class IncidentWorkbenchService:
             event_type, summary = "assignment_changed", "Incident assignment changed"
         elif not comment or not comment.strip():
             raise ValueError("comment is required")
+        if missing_key:
+            raise ValueError("Idempotency-Key is required and must be at most 200 characters")
         if state is not None or owner is not None:
             item = self.repo.update_incident(item)
         event_id = (
             "incident-event-"
-            + hashlib.sha256(f"{tenant_id}:{incident_id}:{idempotency_key or uuid.uuid4()}".encode()).hexdigest()[:24]
+            + hashlib.sha256(f"{tenant_id}:{environment}:{incident_id}:{idempotency_key}".encode()).hexdigest()[:24]
         )
-        self.repo.append_event(
-            {
-                "tenant_id": tenant_id,
-                "environment": environment,
-                "incident_id": incident_id,
-                "event_id": event_id,
-                "event_type": event_type,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-                "actor": actor,
-                "summary": summary,
-                "revision": f"{item.seq_no}:{item.primary_term}",
-                "request_id": request_id,
-            }
-        )
+        event = {
+            "tenant_id": tenant_id,
+            "environment": environment,
+            "incident_id": incident_id,
+            "event_id": event_id,
+            "event_type": event_type,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "actor": actor,
+            "summary": summary,
+            "revision": int(item.seq_no or 0),
+            "request_id": request_id,
+        }
+        self.repo.save_operation(operation_id, operation_fingerprint, event)
+        self.repo.append_event(event)
         return self.detail(tenant_id, environment, incident_id, request_id)
 
-    def timeline(self, tenant_id: str, environment: str, incident_id: str) -> dict[str, Any]:
+    def timeline(
+        self, tenant_id: str, environment: str, incident_id: str, *, page_size: int = 50, cursor: str | None = None
+    ) -> dict[str, Any]:
         if not self.repo.get_incident(tenant_id, incident_id, environment):
             raise KeyError(incident_id)
-        return {"items": self.repo.list_events(tenant_id, environment, incident_id), "next_cursor": None}
+        context = CursorContext(
+            "incident-timeline", tenant_id, environment, {"incident_id": incident_id, "page_size": page_size}
+        )
+        try:
+            search_after = self.cursor_codec.decode(cursor, context) if cursor else None
+        except InvalidCursor as exc:
+            raise CursorMismatch("invalid timeline cursor") from exc
+        page = self.repo.search_events(tenant_id, environment, incident_id, page_size, search_after)
+        return {
+            "items": page.items,
+            "next_cursor": self.cursor_codec.encode(context, page.sort_values) if page.sort_values else None,
+        }
 
     def preview(
         self, tenant_id: str, environment: str, incident_id: str, action_type: str, payload: dict[str, Any]

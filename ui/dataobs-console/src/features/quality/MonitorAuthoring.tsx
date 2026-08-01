@@ -12,6 +12,7 @@ export function MonitorAuthoring() {
     name: "",
     description: "",
     monitor_type: "",
+    source_type: "",
     asset_id: "",
     connection_ref: "",
     schema_name: "",
@@ -27,6 +28,7 @@ export function MonitorAuthoring() {
     severity: "medium",
     consecutive: "1",
   });
+  const [parameters, setParameters] = useState<Record<string, string>>({});
   useEffect(() => {
     const c = new AbortController();
     qualityApi
@@ -50,7 +52,7 @@ export function MonitorAuthoring() {
     monitor_type: form.monitor_type,
     target: {
       asset_id: form.asset_id || undefined,
-      source_type: "postgresql",
+      source_type: form.source_type,
       connection_ref: form.connection_ref || undefined,
       schema_name: form.schema_name || undefined,
       table_name: form.table_name || undefined,
@@ -60,9 +62,7 @@ export function MonitorAuthoring() {
         .filter(Boolean)
         .slice(0, 100),
       timestamp_column: form.timestamp_column || undefined,
-      parameters: Object.fromEntries(
-        (cap?.required_parameters ?? []).map((x) => [x, "configured"]),
-      ),
+      parameters,
     },
     selector: { asset_ids: [], field_ids: [], labels: {} },
     schedule: { interval: form.interval, timezone: form.timezone },
@@ -94,6 +94,12 @@ export function MonitorAuthoring() {
   const validate = () => {
     if (!form.name || !cap)
       return "Name and an executable monitor type are required.";
+    if (!cap.supported_data_sources?.includes(form.source_type))
+      return "Select a backend-advertised source type.";
+    if (
+      (cap.required_parameters ?? []).some((name) => !parameters[name]?.trim())
+    )
+      return "Every required provider parameter must have a real value.";
     if (!form.asset_id && (!form.schema_name || !form.table_name))
       return "Provide an asset or schema and table.";
     if (required("timestamp_column") && !form.timestamp_column)
@@ -189,6 +195,23 @@ export function MonitorAuthoring() {
               ))}
             </select>
           </label>
+          {cap && (
+            <label>
+              Source type
+              <select
+                required
+                value={form.source_type}
+                onChange={(e) => set("source_type", e.target.value)}
+              >
+                <option value="">Select source</option>
+                {cap.supported_data_sources?.map((source) => (
+                  <option key={source} value={source}>
+                    {source}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <fieldset>
             <legend>Target</legend>
             <label>
@@ -238,6 +261,22 @@ export function MonitorAuthoring() {
               </label>
             )}
           </fieldset>
+          {(cap?.required_parameters ?? []).map((name) => (
+            <label key={name}>
+              {name.replaceAll("_", " ")}
+              <input
+                required
+                maxLength={200}
+                value={parameters[name] ?? ""}
+                onChange={(e) =>
+                  setParameters((current) => ({
+                    ...current,
+                    [name]: e.target.value,
+                  }))
+                }
+              />
+            </label>
+          ))}
           <label>
             Interval
             <input

@@ -7,7 +7,7 @@ import hashlib
 import hmac
 import json
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Literal
 from uuid import uuid4
 
@@ -134,7 +134,9 @@ class SuppressionRequest(BaseModel):
 
 
 class TransitionRequest(BaseModel):
-    actor: str = Field(min_length=1, max_length=200)
+    # Retained only for old clients.  It is never authoritative.
+    actor: str | None = Field(default=None, min_length=1, max_length=200)
+    reason: str | None = Field(default=None, min_length=1, max_length=500)
 
 
 class RunRequest(BaseModel):
@@ -150,6 +152,14 @@ def repo(request: Request):
 
 def scope(request):
     return request.state.tenant_id, getattr(request.app.state.settings, "environment", "default")
+
+
+def trusted_actor(request: Request, supplied: str | None = None) -> str:
+    """Return the authenticated subject and fail closed on spoof attempts."""
+    subject = str(request.state.principal.subject)
+    if supplied is not None and supplied != subject:
+        raise HTTPException(403, "actor override is forbidden")
+    return subject
 
 
 def translate(exc):
@@ -406,9 +416,18 @@ def baselines(monitor_id: str, request: Request, limit: int = Query(50, ge=1, le
 @router.post("/quality/monitors/{monitor_id}/baselines/reset")
 @router.post("/monitors/{monitor_id}/baselines/reset", deprecated=True)
 def reset_baseline(
-    monitor_id: str, body: TransitionRequest, request: Request, reason: str = Query(..., min_length=1, max_length=500)
+    monitor_id: str,
+    body: TransitionRequest,
+    request: Request,
+    reason: str | None = Query(None, min_length=1, max_length=500),
 ):
-    return repo(request).reset_baseline(*scope(request), monitor_id, actor=body.actor, reason=reason)
+    reset_reason = body.reason or reason
+    if not reset_reason or not reset_reason.strip():
+        raise HTTPException(422, "a non-empty baseline reset reason is required")
+    require_monitor(request, monitor_id)
+    return repo(request).reset_baseline(
+        *scope(request), monitor_id, actor=trusted_actor(request, body.actor), reason=reset_reason.strip()
+    )
 
 
 @router.get("/quality/monitors/{monitor_id}/evaluations")
@@ -484,10 +503,15 @@ def suppressions(monitor_id: str, request: Request):
 @router.post("/quality/monitors/{monitor_id}/suppressions", status_code=201)
 def create_suppression(monitor_id: str, body: SuppressionRequest, request: Request):
     tenant, environment = scope(request)
-    starts_at, ends_at = datetime.fromisoformat(body.starts_at), datetime.fromisoformat(body.ends_at)
-    if ends_at <= starts_at or (ends_at - starts_at).days > 31:
+    require_monitor(request, monitor_id)
+    try:
+        starts_at, ends_at = datetime.fromisoformat(body.starts_at), datetime.fromisoformat(body.ends_at)
+    except ValueError as exc:
+        raise HTTPException(422, "suppression timestamps must be valid ISO 8601 values") from exc
+    if starts_at.tzinfo is None or ends_at.tzinfo is None:
+        raise HTTPException(422, "suppression timestamps must include timezone offsets")
+    if ends_at <= starts_at or ends_at - starts_at > timedelta(days=31):
         raise HTTPException(422, "suppression must have a positive duration of at most 31 days")
-    principal = request.state.principal
     return repo(request).create_suppression(
         {
             "id": str(uuid4()),
@@ -498,7 +522,7 @@ def create_suppression(monitor_id: str, body: SuppressionRequest, request: Reque
             "ends_at": ends_at.isoformat(),
             "reason": body.reason,
             "approved_by": body.approval_reference,
-            "created_by": principal.subject,
+            "created_by": trusted_actor(request),
             "created_at": datetime.now(timezone.utc).isoformat(),
             "revision": 1,
             "state": "active",
@@ -661,7 +685,7 @@ def recommendation_transition(
         *scope(request),
         recommendation_id,
         {"accept": "accepted", "reject": "rejected", "defer": "deferred"}[action],
-        actor=body.actor,
+        actor=trusted_actor(request, body.actor),
     )
 
 

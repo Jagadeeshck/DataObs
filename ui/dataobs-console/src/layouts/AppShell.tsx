@@ -7,6 +7,8 @@ import {
 } from "../app/routes";
 import { DataStatusBanner, LoadingSkeleton } from "../components/Evidence";
 import { useProductContext } from "../state/context";
+import { QuickFind } from "../features/quick-find/QuickFind";
+import { useEffect } from "react";
 
 export function ProductContextSelector() {
   const { tenant, environment, availableTenants, setTenant, setEnvironment } =
@@ -120,6 +122,7 @@ export function AppHeader() {
         </div>
       </div>
       <div className="context">
+        <QuickFind />
         <ProductContextSelector />
         <TimeRangeSelector />
         <GlobalRefreshControl />
@@ -174,10 +177,19 @@ export function PrimaryNavigation() {
 export function Breadcrumbs() {
   const location = useLocation();
   const route = routeForPath(location.pathname);
+  const parent = route?.parentId
+    ? consoleRoutes.find((candidate) => candidate.id === route.parentId)
+    : undefined;
   return (
     <nav className="breadcrumbs" aria-label="Breadcrumb">
       <NavLink to="/">DataObs</NavLink>
-      <span aria-hidden="true">/</span>
+      {parent && (
+        <>
+          <span aria-hidden="true">/</span>
+          <NavLink to={parent.path}>{parent.breadcrumb}</NavLink>
+        </>
+      )}
+      {route?.id !== "command-center" && <span aria-hidden="true">/</span>}
       <span aria-current="page">{route?.breadcrumb ?? "Unknown route"}</span>
     </nav>
   );
@@ -196,6 +208,10 @@ export function ConnectivityBanner() {
 }
 export function AppShell() {
   const { status, retryAuthentication } = useProductContext();
+  const location = useLocation();
+  useEffect(() => {
+    document.title = `${routeForPath(location.pathname)?.name ?? "Page not found"} · DataObs`;
+  }, [location.pathname]);
   if (status === "loading")
     return (
       <main className="route-state">
@@ -231,6 +247,7 @@ export function AppShell() {
       <AppHeader />
       <aside>
         <PrimaryNavigation />
+      </aside>
       <main id="main-content" tabIndex={-1}>
         <Breadcrumbs />
         <ConnectivityBanner />

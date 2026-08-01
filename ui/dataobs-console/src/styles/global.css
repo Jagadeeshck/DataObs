@@ -1554,12 +1554,111 @@ header {
   word-break: break-word;
 }
 @media (prefers-reduced-motion: reduce) {
-  .cluster-360 *,
-  .cluster-360 *::before,
-  .cluster-360 *::after {
+  *,
+  *::before,
+  *::after {
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
+  }
+}
+.quick-find-trigger {
+  min-width: 9rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+.quick-find-trigger kbd {
+  color: var(--muted);
+}
+.quick-find-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: start center;
+  padding: min(12vh, 6rem) 1rem 1rem;
+  background: #020814cc;
+}
+.quick-find {
+  position: relative;
+  width: min(42rem, 100%);
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+  padding: 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--surface);
+  box-shadow: 0 1rem 4rem #000a;
+}
+.quick-find h2 {
+  margin-top: 0;
+}
+.quick-find input {
+  width: 100%;
+  padding: 0.8rem;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+}
+.quick-find ul {
+  margin: 0.75rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+.quick-find li button {
+  width: 100%;
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.75rem;
+  text-align: left;
+  border: 0;
+  background: transparent;
+}
+.quick-find li[aria-selected="true"] button {
+  background: #18304b;
+}
+.quick-find li small {
+  color: var(--muted);
+}
+.quick-find-close {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+}
+.route-loading {
+  min-height: 12rem;
+  display: grid;
+  place-items: center;
+}
+@media (max-width: 767px) {
+  .app-header,
+  .context,
+  .context-selectors,
+  .refresh-controls {
+    flex-wrap: wrap;
+  }
+  .app-header {
+    height: auto;
+    min-height: 64px;
+  }
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+  .app-shell > aside {
+    position: static;
+    width: 100%;
+    overflow-x: auto;
+  }
+  .app-shell > main {
+    min-width: 0;
+  }
+  .breadcrumbs {
+    overflow-x: auto;
+    white-space: nowrap;
+    padding-inline: 1rem;
+  }
+  .quick-find {
+    max-height: calc(100dvh - 2rem);
   }
 }
 .tabs {
@@ -1671,6 +1770,7 @@ progress {
   .quality-filters label {
     width: 100%;
   }
+}
 .pathway-filters {
   flex-wrap: wrap;
 }

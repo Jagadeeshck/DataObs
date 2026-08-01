@@ -1,11 +1,8 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, type ComponentType } from "react";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { AppShell } from "../layouts/AppShell";
-import { CommandCenter } from "../features/command-center/CommandCenter";
-import { FlowMap } from "../features/flow-map/FlowMap";
-import { IncidentDetail } from "../features/incidents/IncidentDetail";
-import { IncidentInbox } from "../features/incidents/IncidentInbox";
 import { ProductContextProvider } from "../state/context";
+<<<<<<< HEAD
 import { AssetCatalog } from "../features/assets/AssetCatalog";
 import { Asset360 } from "../features/assets/Asset360";
 import { PathwayExplorer } from "../features/pathways/PathwayExplorer";
@@ -23,10 +20,6 @@ import {
   RunComparison,
 } from "../features/jobs/JobRunExplorer";
 import { LineageExplorer } from "../features/lineage/LineageExplorer";
-import { QualityOverview } from "../features/quality/QualityOverview";
-import { MonitorInventory } from "../features/quality/MonitorInventory";
-import { MonitorAuthoring } from "../features/quality/MonitorAuthoring";
-import { Monitor360 } from "../features/quality/Monitor360";
 const StreamsInventory = lazy(() =>
   import("../features/streams/StreamsInventory").then((m) => ({
     default: m.StreamsInventory,
@@ -63,44 +56,57 @@ const DataProduct360 = lazy(() =>
   })),
 );
 const QualityRoutes = lazy(() => import("../features/quality/QualityRoutes"));
+=======
+import { NotFound, RouteBoundary } from "./RouteStates";
+import { consoleRoutes } from "./routes";
+
+const lazyComponents = new Map<string, ComponentType>();
+function componentFor(route: (typeof consoleRoutes)[number]) {
+  let component = lazyComponents.get(route.id);
+  if (!component) {
+    component = lazy(route.loader);
+    lazyComponents.set(route.id, component);
+  }
+  const Component = component;
+  return (
+    <RouteBoundary routeName={route.name}>
+      <Suspense
+        fallback={
+          <p className="route-loading" role="status">
+            Loading {route.name}…
+          </p>
+        }
+      >
+        <Component />
+      </Suspense>
+    </RouteBoundary>
+  );
+}
+
+>>>>>>> origin/main
 export function App() {
+  const publicRoutes = consoleRoutes.filter((route) => !route.protected);
+  const protectedRoutes = consoleRoutes.filter((route) => route.protected);
   return (
     <ProductContextProvider>
       <BrowserRouter>
-        <Suspense fallback={<p role="status">Loading Stream evidence…</p>}>
-          <Routes>
-            <Route path="login" element={<Login />} />
-            <Route path="auth/callback" element={<Callback />} />
-            <Route path="logout" element={<Logout />} />
-            <Route path="unauthorised" element={<Unauthorised />} />
-            <Route element={<AppShell />} errorElement={<RouteError />}>
-              <Route index element={<CommandCenter />} />
-              <Route path="flow" element={<FlowMap />} />
-              <Route path="assets" element={<AssetCatalog />} />
-              <Route path="assets/:assetId" element={<Asset360 />} />
-              <Route path="pathways" element={<PathwayExplorer />} />
-              <Route path="pathways/:pathwayId" element={<PathwayExplorer />} />
-              <Route path="jobs" element={<JobsInventory />} />
-              <Route path="jobs/:jobId" element={<Job360 />} />
-              <Route path="runs/:runId" element={<Run360 />} />
-              <Route path="runs/compare" element={<RunComparison />} />
-              <Route path="lineage" element={<LineageExplorer />} />
-              <Route path="integrations" element={<Integrations />} />
+        <Routes>
+          {publicRoutes.map((route) => (
+            <Route
+              key={route.id}
+              path={route.path}
+              element={componentFor(route)}
+            />
+          ))}
+          <Route element={<AppShell />}>
+            {protectedRoutes.map((route) => (
               <Route
-                path="integrations/:integrationId"
-                element={<IntegrationDetail />}
+                key={route.id}
+                path={route.path}
+                element={componentFor(route)}
               />
+<<<<<<< HEAD
               <Route path="onboarding" element={<Onboarding />} />
-              <Route path="quality" element={<QualityOverview />} />
-              <Route path="quality/monitors" element={<MonitorInventory />} />
-              <Route
-                path="quality/monitors/new"
-                element={<MonitorAuthoring />}
-              />
-              <Route
-                path="quality/monitors/:monitorId"
-                element={<Monitor360 />}
-              />
               <Route path="incidents" element={<IncidentInbox />} />
               <Route path="quality/*" element={<QualityRoutes />} />
               <Route
@@ -137,6 +143,12 @@ export function App() {
             </Route>
           </Routes>
         </Suspense>
+=======
+            ))}
+            <Route path="*" element={<NotFound />} />
+          </Route>
+        </Routes>
+>>>>>>> origin/main
       </BrowserRouter>
     </ProductContextProvider>
   );

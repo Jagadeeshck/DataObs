@@ -1,4 +1,4 @@
-name: Team 6 Beta 1 release candidate
+name: Team 0 Beta 1 release candidate
 
 on:
   workflow_dispatch:
@@ -154,14 +154,14 @@ jobs:
         env: {ELASTICSEARCH_URL: 'http://localhost:9200'}
         run: |
           bash scripts/certification/apply_migrations.sh
-          curl -fsS -X PUT localhost:9200/dataobs-team6-recovery-fixture-v1
-          curl -fsS -H 'Content-Type: application/json' -X PUT localhost:9200/dataobs-team6-recovery-fixture-v1/_doc/tenant-a -d '{"tenant_id":"tenant-a","environment":"certification","kind":"current-projection"}'
-          curl -fsS -H 'Content-Type: application/json' -X PUT localhost:9200/dataobs-team6-recovery-fixture-v1/_doc/tenant-b?refresh=true -d '{"tenant_id":"tenant-b","environment":"certification","kind":"append-only-evidence"}'
+          curl -fsS -X PUT localhost:9200/dataobs-team0-recovery-fixture-v1
+          curl -fsS -H 'Content-Type: application/json' -X PUT localhost:9200/dataobs-team0-recovery-fixture-v1/_doc/tenant-a -d '{"tenant_id":"tenant-a","environment":"certification","kind":"current-projection"}'
+          curl -fsS -H 'Content-Type: application/json' -X PUT localhost:9200/dataobs-team0-recovery-fixture-v1/_doc/tenant-b?refresh=true -d '{"tenant_id":"tenant-b","environment":"certification","kind":"append-only-evidence"}'
           # The hosted runner creates a test-only fs repository in its external ES service.
           python scripts/operations/backup_dataobs.py --url "$ELASTICSEARCH_URL" --repository dataobs-ci --snapshot "$TARGET_SHA" --repository-location /tmp/dataobs-snapshots --register-repository --output /tmp/backup-report.json
           curl -fsS -X POST 'localhost:9200/dataobs-*,logs-dataobs.*/_close?expand_wildcards=all'
           python scripts/operations/restore_dataobs.py --url "$ELASTICSEARCH_URL" --repository dataobs-ci --snapshot "$TARGET_SHA" --output /tmp/restore-report.json
-          test "$(curl -fsS localhost:9200/dataobs-team6-recovery-fixture-v1/_count | python -c 'import json,sys; print(json.load(sys.stdin)["count"])')" = 2
+          test "$(curl -fsS localhost:9200/dataobs-team0-recovery-fixture-v1/_count | python -c 'import json,sys; print(json.load(sys.stdin)["count"])')" = 2
           python - <<'PY'
           import json
           backup=json.load(open('/tmp/backup-report.json')); restore=json.load(open('/tmp/restore-report.json'))
@@ -194,7 +194,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: team-6-beta-security-release-gates
+          name: team-0-beta-security-release-gates
           path: evidence
           retention-days: ${{ fromJSON(inputs.evidence_retention_days) }}
 
@@ -254,7 +254,7 @@ jobs:
           cp trivy-report.json image-evidence/
           sha256sum image-evidence/${{ matrix.component }}.tar > image-evidence/${{ matrix.component }}.tar.sha256
       - uses: actions/upload-artifact@v4
-        with: {name: 'team-6-image-${{ matrix.component }}', path: image-evidence}
+        with: {name: 'team-0-image-${{ matrix.component }}', path: image-evidence}
 
   assemble-candidate:
     needs: [certify, build-scan]
@@ -264,9 +264,9 @@ jobs:
       - uses: actions/checkout@v4
         with: {ref: '${{ inputs.target_sha }}'}
       - uses: actions/download-artifact@v4
-        with: {name: team-6-beta-security-release-gates, path: evidence}
+        with: {name: team-0-beta-security-release-gates, path: evidence}
       - uses: actions/download-artifact@v4
-        with: {pattern: 'team-6-image-*', path: image-evidence}
+        with: {pattern: 'team-0-image-*', path: image-evidence}
       - name: Assemble candidate manifest, SBOM index and provenance
         env:
           TARGET_SHA: ${{ inputs.target_sha }}
@@ -288,7 +288,7 @@ jobs:
           PY
       - uses: actions/upload-artifact@v4
         with:
-          name: team-6-beta-security-release-certification-v1-evidence
+          name: team-0-beta-security-release-certification-v1-evidence
           path: evidence
           retention-days: ${{ fromJSON(inputs.evidence_retention_days) }}
 
@@ -305,7 +305,7 @@ jobs:
       - uses: actions/checkout@v4
         with: {ref: '${{ inputs.target_sha }}'}
       - uses: actions/download-artifact@v4
-        with: {pattern: 'team-6-image-*', path: image-evidence}
+        with: {pattern: 'team-0-image-*', path: image-evidence}
       - uses: docker/login-action@v3
         with:
           registry: ghcr.io

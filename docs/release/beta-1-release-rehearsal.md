@@ -2,7 +2,7 @@
 
 1. Select a full commit SHA reachable from `main` and a version such as `0.2.0-beta.1`.
 2. Confirm all mandatory Team 1–5 workflows completed for that exact SHA and retained their uniquely named evidence.
-3. Dispatch **Team 6 Beta 1 release candidate** with `dry_run=true`.
+3. Dispatch **Team 0 Beta 1 release candidate** with `dry_run=true`.
 4. Review every report status, checksum, producer SHA, workflow identity, terminal migration, environment version, SBOM and vulnerability summary. Pending is not passing.
 5. Exercise Kind restart/upgrade/rollback and isolated snapshot restore. Mandatory skips fail certification and must be resolved before promotion.
 6. Repeat from the same immutable SHA after evidence defects are corrected only when rerun ambiguity has been explicitly resolved; never copy evidence from an older SHA.

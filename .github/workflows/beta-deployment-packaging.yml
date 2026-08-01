@@ -1,4 +1,4 @@
-name: Beta deployment packaging
+name: Team 0 deployment packaging
 on:
   pull_request:
   push: {branches: [main]}
@@ -36,12 +36,12 @@ jobs:
             --tool-version "python=$(python --version | cut -d' ' -f2)" --tool-version "helm=$(helm version --short)"
       - uses: actions/upload-artifact@v4
         if: always()
-        with: {name: beta-deployment-packaging-evidence, path: evidence, retention-days: 30}
+        with: {name: team-0-deployment-packaging-evidence, path: evidence, retention-days: 30}
   independent-verification:
     needs: validate
     if: always()
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
-        with: {name: beta-deployment-packaging-evidence, path: evidence}
+        with: {name: team-0-deployment-packaging-evidence, path: evidence}
       - run: python -c "import json; d=json.load(open('evidence/evidence.json')); assert d['producer_sha']=='${{ github.sha }}'; assert d['workflow_run_attempt']=='${{ github.run_attempt }}'; assert d['schema_version']=='1.0'; print('independently verified exact commit')"

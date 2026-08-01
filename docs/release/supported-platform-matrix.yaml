@@ -1,0 +1,16 @@
+schema_version: "1.0"
+supported: []
+unvalidated:
+  - kubernetes_version: "1.30.x"
+    helm_version: "pending hosted capture"
+    elasticsearch_version: "9.4.2"
+    python_version: "3.13"
+    node_version: "22"
+    browser_console_test_environment: "pending Playwright hosted capture"
+    oidc_profile: "Authorization Code + PKCE S256; pending hosted conformance"
+    installation_topology: "Kind; external secured Elasticsearch and disposable test IdP"
+    upgrade_source_version: "immediately previous retained release; not yet selected"
+    certification_workflow: team-0-release-candidate.yml
+    evidence_artifact: team-0-release-orchestration-v1
+    evidence_sha: null
+    certification_status: unvalidated

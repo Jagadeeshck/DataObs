@@ -1,0 +1,89 @@
+name: Team 0 production release authority v1
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_sha: {description: Exact lowercase 40-character SHA, required: true, type: string}
+      candidate_version: {description: SemVer release candidate, required: true, type: string}
+      dry_run: {description: Certify without registry authentication or mutation, required: true, default: true, type: boolean}
+      release_base_sha: {description: Immutable audited release base SHA, required: true, type: string}
+      evidence_retention_days: {description: Retention from 7 through 90 days, required: true, default: '30', type: string}
+      orchestration_timeout_minutes: {description: Bounded producer timeout from 15 through 240 minutes, required: true, default: '90', type: string}
+
+concurrency:
+  group: team-0-release-${{ inputs.candidate_version || inputs.target_sha }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  certify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 250
+    permissions: {contents: read, actions: read}
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: '${{ inputs.target_sha }}', fetch-depth: 0}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.13'}
+      - run: pip install pyyaml jsonschema pytest
+      - name: Validate exact-SHA inputs and ancestry
+        env: {TARGET_SHA: '${{ inputs.target_sha }}', RELEASE_BASE_SHA: '${{ inputs.release_base_sha }}'}
+        run: |
+          [[ "$TARGET_SHA" =~ ^[0-9a-f]{40}$ ]] && test "$(git rev-parse HEAD)" = "$TARGET_SHA"
+          [[ "$RELEASE_BASE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ '${{ inputs.candidate_version }}' =~ ^[0-9]+\.[0-9]+\.[0-9]+-(beta|rc)\.[0-9]+$ ]]
+          test '${{ inputs.evidence_retention_days }}' -ge 7 && test '${{ inputs.evidence_retention_days }}' -le 90
+          test '${{ inputs.orchestration_timeout_minutes }}' -ge 15 && test '${{ inputs.orchestration_timeout_minutes }}' -le 240
+          git fetch origin main --no-tags
+          git merge-base --is-ancestor "$RELEASE_BASE_SHA" "$TARGET_SHA"
+          git merge-base --is-ancestor "$TARGET_SHA" origin/main
+      - name: Offline fail-closed repository contracts
+        run: |
+          python scripts/check_migration_immutability.py --base-ref '${{ inputs.release_base_sha }}'
+          python scripts/check_generated_artifacts.py
+          python scripts/check_team_boundaries.py
+          python scripts/validate_capability_ledger.py
+          python scripts/release/check_release_metadata.py
+          python scripts/release/validate_certification_manifest.py
+          python scripts/release/validate_team0_naming.py
+          ! git grep -nE '^(<<<<<<<|>>>>>>>)'
+      - name: Dispatch and boundedly correlate manifest producers
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          args=(--manifest docs/release/beta-1-certification-manifest.yaml --repository "$GITHUB_REPOSITORY" --target-sha '${{ inputs.target_sha }}' --ref "$GITHUB_REF_NAME" --output orchestration-report.json --timeout-minutes '${{ inputs.orchestration_timeout_minutes }}')
+          if [[ '${{ inputs.dry_run }}' == true ]]; then args+=(--dry-run); fi
+          python scripts/release/dispatch_beta_certification.py "${args[@]}"
+      - uses: actions/upload-artifact@v4
+        with: {name: team-0-release-orchestration-v1, path: orchestration-report.json, retention-days: '${{ fromJSON(inputs.evidence_retention_days) }}'}
+
+  # This job is the only registry-authenticated/OIDC-enabled boundary. Environment
+  # protection supplies the human approval after all exact-SHA evidence succeeds.
+  publish-sign-verify:
+    if: ${{ !inputs.dry_run }}
+    needs: certify
+    runs-on: ubuntu-latest
+    environment: production-release
+    permissions: {contents: write, packages: write, id-token: write, actions: read}
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: '${{ inputs.target_sha }}'}
+      - uses: sigstore/cosign-installer@v3
+      - uses: azure/setup-helm@v4
+      - name: Revalidate chart before authentication
+        run: helm lint helm/dataobs && helm template dataobs helm/dataobs -f helm/dataobs/values-production.yaml >/tmp/rendered.yaml && bash scripts/deployment/chart_assertions.sh
+      - uses: docker/login-action@v3
+        with: {registry: ghcr.io, username: '${{ github.actor }}', password: '${{ secrets.GITHUB_TOKEN }}'}
+      - name: Publish immutable Helm OCI package, sign, and verify
+        env: {VERSION: '${{ inputs.candidate_version }}'}
+        run: |
+          helm package helm/dataobs --version "$VERSION" --app-version "$VERSION" --destination /tmp
+          output="$(helm push "/tmp/dataobs-${VERSION}.tgz" "oci://ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/charts" 2>&1)"; printf '%s\n' "$output"
+          digest="$(printf '%s\n' "$output" | sed -n 's/^Digest: //p')"; [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]
+          ref="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/charts/dataobs@${digest}"
+          cosign sign --yes "$ref"
+          cosign attest --yes --type slsaprovenance --predicate <(printf '{"target_sha":"%s"}\n' '${{ inputs.target_sha }}') "$ref"
+          cosign verify "$ref" --certificate-identity-regexp "^https://github.com/${GITHUB_REPOSITORY}/.github/workflows/team-0-release-candidate.yml@" --certificate-oidc-issuer https://token.actions.githubusercontent.com
+          cosign verify-attestation "$ref" --type slsaprovenance --certificate-identity-regexp "^https://github.com/${GITHUB_REPOSITORY}/.github/workflows/team-0-release-candidate.yml@" --certificate-oidc-issuer https://token.actions.githubusercontent.com

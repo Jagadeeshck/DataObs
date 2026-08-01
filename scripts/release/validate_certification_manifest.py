@@ -21,6 +21,7 @@ from scripts.release.release_metadata import (  # noqa: E402
 
 SUPPORTED_SCHEMAS = {"1.0"}
 EXACT_EVENTS = {"workflow_dispatch", "push"}
+TEAM_ZERO = "Team 0"
 
 
 class WorkflowLoader(yaml.SafeLoader):
@@ -29,9 +30,7 @@ class WorkflowLoader(yaml.SafeLoader):
 
 WorkflowLoader.yaml_implicit_resolvers = copy.deepcopy(yaml.SafeLoader.yaml_implicit_resolvers)
 for first, resolvers in list(WorkflowLoader.yaml_implicit_resolvers.items()):
-    WorkflowLoader.yaml_implicit_resolvers[first] = [
-        item for item in resolvers if item[0] != "tag:yaml.org,2002:bool"
-    ]
+    WorkflowLoader.yaml_implicit_resolvers[first] = [item for item in resolvers if item[0] != "tag:yaml.org,2002:bool"]
 
 
 def _artifacts(workflow: dict[str, Any]) -> set[str]:
@@ -57,7 +56,21 @@ def validate_manifest(path: Path, root: Path = ROOT) -> list[str]:
         errors.append("target Elasticsearch version is incorrect")
     if data.get("terminal_migration") != terminal_migration():
         errors.append("terminal migration differs from executable registry")
+    aliases = data.get("compatibility_aliases") or {}
+    legacy_names: set[str] = set()
+    for canonical, contract in aliases.items():
+        if not str(canonical).startswith("team-0-"):
+            errors.append(f"compatibility alias canonical name is not Team 0: {canonical}")
+        names = contract.get("legacy_names", []) if isinstance(contract, dict) else []
+        if not names or any(not isinstance(name, str) for name in names):
+            errors.append(f"{canonical}: compatibility aliases are empty or invalid")
+        if legacy_names.intersection(names):
+            errors.append(f"{canonical}: legacy alias is assigned more than once")
+        legacy_names.update(names)
+        if not set(contract.get("schema_versions", [])) <= SUPPORTED_SCHEMAS:
+            errors.append(f"{canonical}: alias supports an unsupported schema")
     seen: set[tuple[str, str]] = set()
+    canonical_artifacts: set[str] = set()
     for entry in data.get("capabilities", []):
         cid = str(entry.get("capability_id", "<missing>"))
         workflow_name, artifact = entry.get("workflow"), entry.get("artifact")
@@ -65,6 +78,9 @@ def validate_manifest(path: Path, root: Path = ROOT) -> list[str]:
         if pair in seen:
             errors.append(f"{cid}: duplicate workflow/artifact pair")
         seen.add(pair)
+        if str(artifact) in canonical_artifacts:
+            errors.append(f"{cid}: canonical artifact satisfies more than one capability")
+        canonical_artifacts.add(str(artifact))
         if not entry.get("required_test_categories"):
             errors.append(f"{cid}: required test categories are empty")
         if str(entry.get("evidence_schema_version")) not in SUPPORTED_SCHEMAS:
@@ -91,11 +107,17 @@ def validate_manifest(path: Path, root: Path = ROOT) -> list[str]:
         if artifact not in _artifacts(workflow):
             errors.append(f"{cid}: artifact name is not uploaded by workflow")
         declared_team = entry.get("owning_team")
-        if declared_team not in {f"Team {number}" for number in range(1, 7)}:
+        if declared_team not in {f"Team {number}" for number in range(0, 6)}:
             errors.append(f"{cid}: invalid owning team")
         if not cid.startswith(f"team{str(declared_team).split()[-1]}."):
             errors.append(f"{cid}: capability ownership does not match capability id")
     return errors
+
+
+def validate(path: Path, root: Path = ROOT) -> dict[str, Any]:
+    """Compatibility API returning the machine-readable validation result."""
+    errors = validate_manifest(path, root)
+    return {"status": "pass" if not errors else "fail", "errors": errors}
 
 
 def main() -> int:

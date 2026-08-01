@@ -7,9 +7,9 @@ from scripts.release.verify_beta_candidate import validate_evidence, verify_entr
 SHA = "a" * 40
 ENTRY = {
     "capability_id": "platform.security",
-    "owning_team": "Team 6",
+    "owning_team": "Team 0",
     "workflow": "beta-1-release-candidate.yml",
-    "artifact": "team-6-evidence",
+    "artifact": "team-0-evidence",
     "required_conclusion": "success",
     "mandatory_for_beta": True,
     "evidence_schema_version": "1.0",
@@ -58,7 +58,7 @@ def verify(*, runs=None, artifacts=None, payload=None, entry=None):
         target_sha=SHA,
         terminal="0021_lineage_analysis_explorer",
         runs=[run()] if runs is None else runs,
-        artifacts=[{"name": "team-6-evidence", "workflow_run": {"id": 7}}] if artifacts is None else artifacts,
+        artifacts=[{"name": "team-0-evidence", "workflow_run": {"id": 7}}] if artifacts is None else artifacts,
         load_evidence=lambda _: evidence() if payload is None else payload,
     )
 

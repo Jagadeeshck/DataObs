@@ -9,16 +9,29 @@ import json
 import re
 import subprocess
 import time
+from collections.abc import Mapping
 from pathlib import Path
+from typing import Any
 
-import yaml
+import yaml  # type: ignore[import-untyped]
 
 SHA = re.compile(r"^[0-9a-f]{40}$")
 
 
-def gh(*args: str) -> object:
-    result = subprocess.run(["gh", "api", *args], check=True, text=True, capture_output=True)
-    return json.loads(result.stdout) if result.stdout.strip() else {}
+def gh(*args: str, retries: int = 3) -> Mapping[str, Any]:
+    """Call GitHub with a small, explicit retry budget (never retry forever)."""
+    if not 1 <= retries <= 5:
+        raise ValueError("GitHub API retry count must be between 1 and 5")
+    for attempt in range(retries):
+        result = subprocess.run(["gh", "api", *args], text=True, capture_output=True)
+        if result.returncode == 0:
+            value = json.loads(result.stdout) if result.stdout.strip() else {}
+            if not isinstance(value, dict):
+                raise RuntimeError("GitHub API returned a non-object response")
+            return value
+        if attempt + 1 < retries:
+            time.sleep(2**attempt)
+    raise RuntimeError(f"GitHub API failed after {retries} attempts: {args[-1]}")
 
 
 def main() -> int:
@@ -106,6 +119,7 @@ def main() -> int:
                         }
                     )
                     if run["status"] == "completed":
+                        item["completion_time"] = run.get("updated_at")
                         arts = gh(f"repos/{a.repository}/actions/runs/{run['id']}/artifacts").get("artifacts", [])
                         item["artifacts"] = [{"id": x["id"], "name": x["name"], "expired": x["expired"]} for x in arts]
                         pending.pop(workflow)
@@ -116,6 +130,9 @@ def main() -> int:
         )
         if pending:
             report["timeout_workflows"] = sorted(pending)
+            for item in pending.values():
+                if item.get("run_id"):
+                    gh("--method", "POST", f"repos/{a.repository}/actions/runs/{item['run_id']}/cancel")
     a.output.parent.mkdir(parents=True, exist_ok=True)
     a.output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
     return 0 if report["status"] in {"planned", "pass"} else 1

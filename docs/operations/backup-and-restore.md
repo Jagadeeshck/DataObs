@@ -2,7 +2,7 @@
 
 ## Beta contract
 
-Elasticsearch snapshot/restore is the authoritative backup mechanism for DataObs durable state. The Team 6 scripts include `dataobs-*` indices (including migration state) and `logs-dataobs.*` append-only streams and exclude cluster-global state. External provider state, OIDC configuration/secrets, Kubernetes Secrets, transient memory, container filesystems and third-party systems are not backed up.
+Elasticsearch snapshot/restore is the authoritative backup mechanism for DataObs durable state. The Team 0 scripts include `dataobs-*` indices (including migration state) and `logs-dataobs.*` append-only streams and exclude cluster-global state. External provider state, OIDC configuration/secrets, Kubernetes Secrets, transient memory, container filesystems and third-party systems are not backed up.
 
 Operators must provision a snapshot repository supported by their Elasticsearch deployment. The filesystem repository option is test/CI-only and requires `path.repo`; production should use an administrator-managed object-store repository. Credentials are supplied through Elasticsearch configuration/environment and are never command arguments or repository files.
 

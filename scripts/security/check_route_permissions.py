@@ -14,9 +14,8 @@ if str(ROOT) not in sys.path:
 
 from fastapi.routing import APIRoute  # noqa: E402
 
-from src.api.app import _permission_for_request, create_app  # noqa: E402
-
-PUBLIC_ROUTES = frozenset({("GET", "/api/v1/auth/config")})
+from src.api.app import create_app  # noqa: E402
+from src.security.route_policy import PUBLIC_ROUTES, permission_for_route  # noqa: E402
 
 
 def inspect_routes() -> dict[str, object]:
@@ -31,12 +30,18 @@ def inspect_routes() -> dict[str, object]:
             key = (method, route.path)
             seen.add(key)
             public = key in PUBLIC_ROUTES
-            permission = "public" if public else _permission_for_request(method, route.path).value
+            try:
+                perm = permission_for_route(method, route.path)
+                permission = "public" if perm is None else perm.value
+            except LookupError:
+                uncovered.append(f"{method} {route.path}: route has no explicit permission policy")
+                registered.append({"method": method, "path": route.path, "permission": "unknown"})
+                continue
             dependencies = {getattr(item.call, "__name__", "") for item in route.dependant.dependencies}
             has_auth = "require_auth" in dependencies
             if public and has_auth:
                 unexpectedly_public.append(f"{method} {route.path}: allowlisted route requires authentication")
-            if not public and not has_auth:
+            if not public and perm is not None and not has_auth:
                 uncovered.append(f"{method} {route.path}: protected route lacks require_auth")
             registered.append({"method": method, "path": route.path, "permission": permission})
     stale = [f"{method} {path}" for method, path in sorted(PUBLIC_ROUTES - seen)]

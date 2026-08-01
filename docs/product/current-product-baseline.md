@@ -1,5 +1,15 @@
 # Current product baseline
 
+## Pathway Intelligence backend v1
+
+The backend supports fenced incremental OpenTelemetry Kafka evidence processing,
+durable event watermarks and overlap replay, canonical node/edge projections,
+bounded complete and partial pathway assembly, explainable health/latency and
+bottleneck calculations, bounded comparison, impact classifications, canonical
+Elasticsearch-backed APIs, and durable pathway SLO CRUD. Monitor evaluation,
+payload inspection, automatic remediation, and major Console visualisation are
+not part of this baseline.
+
 ## Lineage and job/run investigation
 
 The console baseline includes tenant-scoped Jobs inventory, Job 360, Run 360, run comparison, and bounded dataset/column lineage exploration. Canonical lineage responses disclose evidence coverage, confidence, partial/missing states, and truncation rather than inferring unobserved relationships. Hosted Elasticsearch 9.4.2, browser, and accessibility evidence is owned by the `lineage-analysis-console` workflow artifact and is not promoted from local-only results.

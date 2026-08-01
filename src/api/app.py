@@ -31,6 +31,7 @@ from services.product_query import ElasticsearchConsoleRepository
 from services.product_query.path_search import search_paths
 from src.api.data_product_routes import create_data_product_router
 from src.api.monitor_routes import router as monitor_router
+from src.api.pathway_routes import create_pathway_router
 from src.api.store import StoreProtocol, get_store
 from src.api.stream_routes import create_stream_router
 from src.config.settings import AppSettings, load_settings
@@ -1044,62 +1045,6 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
             raise HTTPException(status_code=404, detail="Kafka cluster not found")
         return item
 
-    @app.get("/api/v1/stream-topology", dependencies=[Depends(require_auth)])
-    async def stream_topology(request: Request):
-        return {"nodes": tenant_items(request, "nodes"), "edges": tenant_items(request, "edges")}
-
-    @app.get("/api/v1/stream-topology/nodes", dependencies=[Depends(require_auth)])
-    async def stream_nodes(request: Request):
-        return {"items": tenant_items(request, "nodes")}
-
-    @app.get("/api/v1/stream-topology/edges", dependencies=[Depends(require_auth)])
-    async def stream_edges(request: Request):
-        return {"items": tenant_items(request, "edges")}
-
-    @app.get("/api/v1/pathways", dependencies=[Depends(require_auth)])
-    async def pathways(request: Request):
-        return {"items": tenant_items(request, "pathways")}
-
-    @app.post("/api/v1/pathway-slos", status_code=201, dependencies=[Depends(require_auth)])
-    async def create_pathway_slo(request: Request, response: Response, body: Dict[str, Any]):
-        slo_id = body.get("id") or str(uuid.uuid4())
-        document = body | {"id": slo_id, "tenant_id": request.state.tenant_id, "revision": 1}
-        request.app.state.kafka_dsm["slos"][(request.state.tenant_id, slo_id)] = document
-        response.headers["ETag"] = '"1"'
-        return document
-
-    @app.get("/api/v1/pathway-slos", dependencies=[Depends(require_auth)])
-    async def pathway_slos(request: Request):
-        return {
-            "items": [
-                value
-                for (tenant, _), value in request.app.state.kafka_dsm["slos"].items()
-                if tenant == request.state.tenant_id
-            ]
-        }
-
-    @app.patch("/api/v1/pathway-slos/{slo_id}", dependencies=[Depends(require_auth)])
-    async def update_pathway_slo(
-        slo_id: str, request: Request, response: Response, body: Dict[str, Any], if_match: str | None = Header(None)
-    ):
-        key = (request.state.tenant_id, slo_id)
-        current = request.app.state.kafka_dsm["slos"].get(key)
-        if not current:
-            raise HTTPException(status_code=404, detail="Pathway SLO not found")
-        if if_match != f'"{current["revision"]}"':
-            raise HTTPException(status_code=412, detail="ETag mismatch")
-        updated = (
-            current | body | {"id": slo_id, "tenant_id": request.state.tenant_id, "revision": current["revision"] + 1}
-        )
-        request.app.state.kafka_dsm["slos"][key] = updated
-        response.headers["ETag"] = f'"{updated["revision"]}"'
-        return updated
-
-    @app.delete("/api/v1/pathway-slos/{slo_id}", status_code=204, dependencies=[Depends(require_auth)])
-    async def delete_pathway_slo(slo_id: str, request: Request):
-        if request.app.state.kafka_dsm["slos"].pop((request.state.tenant_id, slo_id), None) is None:
-            raise HTTPException(status_code=404, detail="Pathway SLO not found")
-
     @app.get("/api/data-observability/assets/{asset_id:path}/health", dependencies=[Depends(require_auth)])
     async def dataobs_get_health(
         asset_id: str, service: DataObservabilityService = Depends(dataobs_service)
@@ -1690,6 +1635,7 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
         return {"backlog": enterprise_backlog(implemented_keys=[])}
 
     app.include_router(create_stream_router(get_console_repository, require_auth))
+    app.include_router(create_pathway_router(get_console_repository, require_auth))
     app.include_router(create_data_product_router(get_data_product_repository, require_auth))
 
     return app

@@ -1,5 +1,12 @@
 # DataObs
 
+Pathway Intelligence backend v1 provides metadata-only, tenant-scoped pathway
+processing and canonical Elasticsearch APIs. See
+[`docs/architecture/pathway-intelligence.md`](docs/architecture/pathway-intelligence.md),
+[`docs/operations/pathway-worker.md`](docs/operations/pathway-worker.md), and
+[`docs/operations/pathway-replay.md`](docs/operations/pathway-replay.md) for the
+evidence, confidence, health, latency, and late-arrival contracts.
+
 The console includes tenant-scoped Jobs inventory, Job 360, Run 360, run comparison, and a bounded dataset/column Lineage Explorer. Architecture and rebuild details are documented in `docs/architecture/lineage-projections.md` and `docs/operations/lineage-rebuild.md`.
 
 ## Status

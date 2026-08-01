@@ -1,549 +1,529 @@
+import { createElement, type ComponentType } from "react";
+
 export type CapabilityAvailability =
   | "available"
   | "preview"
   | "not_configured"
   | "planned"
   | "unavailable";
-export type NavigationGroup = "Overview" | "Observe" | "Respond" | "Configure";
-export type RouteLoaderId =
-  | "commandCenter"
-  | "flow"
-  | "assets"
-  | "asset"
-  | "quality"
-  | "monitors"
-  | "monitorNew"
-  | "monitor"
-  | "jobs"
-  | "job"
-  | "run"
-  | "runCompare"
-  | "lineage"
-  | "pathways"
-  | "pathway"
-  | "streams"
-  | "cluster"
-  | "topic"
-  | "consumerGroup"
-  | "connector"
-  | "schema"
-  | "dataProducts"
-  | "dataProduct"
-  | "incidents"
-  | "incident"
-  | "integrations"
-  | "integration"
-  | "onboarding";
+export type NavigationGroup =
+  | "Overview"
+  | "Observe"
+  | "Respond"
+  | "Configure"
+  | "System";
+export type ConfigurationState =
+  | "configured"
+  | "optional"
+  | "required"
+  | "not_applicable";
+export type RouteModule = Promise<{ default: ComponentType }>;
 
+export interface EntityParameter {
+  name: string;
+  entityType: string;
+  encode: (value: string) => string;
+}
 export interface ConsoleRoute {
   id: string;
   path: string;
   name: string;
-  navigationLabel: string;
+  aliases: readonly string[];
   group: NavigationGroup;
+  capabilityId: string;
   icon: string;
-  permission?: string;
-  owner: `team-${0 | 1 | 2 | 3 | 4 | 5 | 6}`;
-  implementation: CapabilityAvailability;
-  navigation: boolean;
-  hiddenButRoutable?: boolean;
-  featureFlag?: string;
-  parentId?: string;
+  requiredPermission?: string;
+  protected: boolean;
+  owner: `team-${0 | 1 | 2 | 3 | 4 | 5}`;
+  availability: CapabilityAvailability;
+  configuration: ConfigurationState;
   breadcrumb: string;
-  title: string;
-  dynamicLabel?: string;
-  suspenseLabel: string;
-  loader: RouteLoaderId;
+  parentId?: string;
+  entityParameters?: readonly EntityParameter[];
+  navigation: boolean;
+  quickFind: boolean;
+  searchEligible: boolean;
+  featureFlag?: string;
+  onboardingDependency?: string;
+  loader: () => RouteModule;
 }
 
-const route = (value: ConsoleRoute) => value;
+const parameter = (name: string, entityType: string): EntityParameter => ({
+  name,
+  entityType,
+  encode: encodeURIComponent,
+});
+const modules = import.meta.glob([
+  "../features/**/*.tsx",
+  "!../features/**/*.test.tsx",
+  "../auth/AuthPages.tsx",
+]);
+const load = (path: string, exportName: string) => async () => {
+  const importer = modules[`${path}.tsx`];
+  if (!importer) throw new Error(`Route module is not registered: ${path}`);
+  const module = (await importer()) as Record<string, ComponentType>;
+  if (!module[exportName])
+    throw new Error(`Route component is not exported: ${exportName}`);
+  return { default: module[exportName] };
+};
+const streamDetail = (kind: "topic" | "group") => async () => {
+  const { Stream360 } = await import("../features/streams/Stream360");
+  return { default: () => createElement(Stream360, { kind }) };
+};
+
+const route = (
+  value: Partial<ConsoleRoute> &
+    Pick<
+      ConsoleRoute,
+      "id" | "path" | "name" | "group" | "capabilityId" | "owner" | "loader"
+    >,
+): ConsoleRoute => ({
+  aliases: [],
+  icon: "·",
+  protected: true,
+  requiredPermission: "console:read",
+  availability: "available",
+  configuration: "configured",
+  breadcrumb: value.name,
+  navigation: false,
+  quickFind: true,
+  searchEligible: true,
+  ...value,
+});
+
+/** Authoritative routing, navigation, breadcrumb, permission and discovery model. */
 export const consoleRoutes: readonly ConsoleRoute[] = [
   route({
     id: "command-center",
     path: "/",
     name: "Command Center",
-    navigationLabel: "Command Center",
+    aliases: ["home", "overview"],
     group: "Overview",
+    capabilityId: "command-center",
     icon: "⌁",
     owner: "team-5",
-    implementation: "available",
     navigation: true,
-    breadcrumb: "Command Center",
-    title: "Command Center",
-    suspenseLabel: "Loading Command Center…",
-    loader: "commandCenter",
+    loader: load("../features/command-center/CommandCenter", "CommandCenter"),
   }),
   route({
     id: "flow",
     path: "/flow",
     name: "Data Flow",
-    navigationLabel: "Data Flow",
+    aliases: ["map", "topology"],
     group: "Overview",
+    capabilityId: "unified-data-flow",
     icon: "⌘",
     owner: "team-5",
-    implementation: "available",
     navigation: true,
-    breadcrumb: "Data Flow",
-    title: "Data Flow",
-    suspenseLabel: "Loading Data Flow…",
-    loader: "flow",
-  }),
-  route({
-    id: "assets",
-    path: "/assets",
-    name: "Assets",
-    navigationLabel: "Assets",
-    group: "Observe",
-    icon: "◇",
-    owner: "team-2",
-    implementation: "available",
-    navigation: true,
-    breadcrumb: "Assets",
-    title: "Assets",
-    suspenseLabel: "Loading Assets…",
-    loader: "assets",
-  }),
-  route({
-    id: "asset",
-    path: "/assets/:assetId",
-    name: "Asset",
-    navigationLabel: "Asset",
-    group: "Observe",
-    icon: "◇",
-    owner: "team-2",
-    implementation: "available",
-    navigation: false,
-    hiddenButRoutable: true,
-    parentId: "assets",
-    breadcrumb: "Asset",
-    dynamicLabel: "assetId",
-    title: "Asset",
-    suspenseLabel: "Loading asset…",
-    loader: "asset",
-  }),
-  route({
-    id: "quality",
-    path: "/quality",
-    name: "Data Quality",
-    navigationLabel: "Data Quality",
-    group: "Observe",
-    icon: "✓",
-    permission: "quality:read",
-    owner: "team-2",
-    implementation: "available",
-    navigation: true,
-    breadcrumb: "Data Quality",
-    title: "Data Quality",
-    suspenseLabel: "Loading Data Quality…",
-    loader: "quality",
-  }),
-  route({
-    id: "quality-monitors",
-    path: "/quality/monitors",
-    name: "Monitor Inventory",
-    navigationLabel: "Monitors",
-    group: "Observe",
-    icon: "✓",
-    permission: "quality:read",
-    owner: "team-2",
-    implementation: "available",
-    navigation: false,
-    parentId: "quality",
-    breadcrumb: "Monitors",
-    title: "Monitor Inventory",
-    suspenseLabel: "Loading monitors…",
-    loader: "monitors",
-  }),
-  route({
-    id: "quality-monitor-new",
-    path: "/quality/monitors/new",
-    name: "New Monitor",
-    navigationLabel: "New monitor",
-    group: "Observe",
-    icon: "✓",
-    permission: "quality:write",
-    owner: "team-2",
-    implementation: "preview",
-    navigation: false,
-    hiddenButRoutable: true,
-    parentId: "quality-monitors",
-    breadcrumb: "New",
-    title: "New Monitor",
-    suspenseLabel: "Loading monitor authoring…",
-    loader: "monitorNew",
-  }),
-  route({
-    id: "quality-monitor",
-    path: "/quality/monitors/:monitorId",
-    name: "Monitor",
-    navigationLabel: "Monitor",
-    group: "Observe",
-    icon: "✓",
-    permission: "quality:read",
-    owner: "team-2",
-    implementation: "available",
-    navigation: false,
-    hiddenButRoutable: true,
-    parentId: "quality-monitors",
-    breadcrumb: "Monitor",
-    dynamicLabel: "monitorId",
-    title: "Monitor",
-    suspenseLabel: "Loading monitor…",
-    loader: "monitor",
-  }),
-  route({
-    id: "jobs",
-    path: "/jobs",
-    name: "Jobs",
-    navigationLabel: "Jobs",
-    group: "Observe",
-    icon: "▤",
-    permission: "jobs:read",
-    owner: "team-2",
-    implementation: "available",
-    navigation: true,
-    breadcrumb: "Jobs",
-    title: "Jobs",
-    suspenseLabel: "Loading jobs…",
-    loader: "jobs",
-  }),
-  route({
-    id: "job",
-    path: "/jobs/:jobId",
-    name: "Job",
-    navigationLabel: "Job",
-    group: "Observe",
-    icon: "▤",
-    permission: "jobs:read",
-    owner: "team-2",
-    implementation: "available",
-    navigation: false,
-    hiddenButRoutable: true,
-    parentId: "jobs",
-    breadcrumb: "Job",
-    dynamicLabel: "jobId",
-    title: "Job",
-    suspenseLabel: "Loading job…",
-    loader: "job",
-  }),
-  route({
-    id: "run-compare",
-    path: "/runs/compare",
-    name: "Run Comparison",
-    navigationLabel: "Run comparison",
-    group: "Observe",
-    icon: "▤",
-    permission: "jobs:read",
-    owner: "team-2",
-    implementation: "available",
-    navigation: false,
-    hiddenButRoutable: true,
-    parentId: "jobs",
-    breadcrumb: "Compare runs",
-    title: "Run Comparison",
-    suspenseLabel: "Loading run comparison…",
-    loader: "runCompare",
-  }),
-  route({
-    id: "run",
-    path: "/runs/:runId",
-    name: "Run",
-    navigationLabel: "Run",
-    group: "Observe",
-    icon: "▤",
-    permission: "jobs:read",
-    owner: "team-2",
-    implementation: "available",
-    navigation: false,
-    hiddenButRoutable: true,
-    parentId: "jobs",
-    breadcrumb: "Run",
-    dynamicLabel: "runId",
-    title: "Run",
-    suspenseLabel: "Loading run…",
-    loader: "run",
-  }),
-  route({
-    id: "lineage",
-    path: "/lineage",
-    name: "Lineage",
-    navigationLabel: "Lineage",
-    group: "Observe",
-    icon: "↝",
-    permission: "lineage:read",
-    owner: "team-2",
-    implementation: "available",
-    navigation: true,
-    breadcrumb: "Lineage",
-    title: "Lineage",
-    suspenseLabel: "Loading Lineage…",
-    loader: "lineage",
+    loader: load("../features/flow-map/FlowMap", "FlowMap"),
   }),
   route({
     id: "pathways",
     path: "/pathways",
     name: "Pathways",
-    navigationLabel: "Pathways",
     group: "Observe",
+    capabilityId: "pathways",
     icon: "⇄",
-    permission: "pathways:read",
     owner: "team-1",
-    implementation: "available",
     navigation: true,
-    breadcrumb: "Pathways",
-    title: "Pathways",
-    suspenseLabel: "Loading pathways…",
-    loader: "pathways",
+    loader: load("../features/pathways/PathwayExplorer", "PathwayExplorer"),
   }),
   route({
-    id: "pathway",
+    id: "pathway-360",
     path: "/pathways/:pathwayId",
     name: "Pathway",
-    navigationLabel: "Pathway",
     group: "Observe",
-    icon: "⇄",
-    permission: "pathways:read",
+    capabilityId: "pathways",
     owner: "team-1",
-    implementation: "available",
-    navigation: false,
-    hiddenButRoutable: true,
     parentId: "pathways",
-    breadcrumb: "Pathway",
-    dynamicLabel: "pathwayId",
-    title: "Pathway",
-    suspenseLabel: "Loading pathway…",
-    loader: "pathway",
+    entityParameters: [parameter("pathwayId", "pathway")],
+    loader: load("../features/pathways/PathwayExplorer", "PathwayExplorer"),
+  }),
+  route({
+    id: "assets",
+    path: "/assets",
+    name: "Assets",
+    group: "Observe",
+    capabilityId: "assets",
+    icon: "◇",
+    owner: "team-2",
+    navigation: true,
+    loader: load("../features/assets/AssetCatalog", "AssetCatalog"),
+  }),
+  route({
+    id: "asset-360",
+    path: "/assets/:assetId",
+    name: "Asset",
+    group: "Observe",
+    capabilityId: "assets",
+    owner: "team-2",
+    parentId: "assets",
+    entityParameters: [parameter("assetId", "asset")],
+    loader: load("../features/assets/Asset360", "Asset360"),
   }),
   route({
     id: "streams",
     path: "/streams",
     name: "Streams",
-    navigationLabel: "Streams",
+    aliases: ["kafka"],
     group: "Observe",
+    capabilityId: "streams",
     icon: "≋",
-    permission: "streams:read",
     owner: "team-1",
-    implementation: "available",
     navigation: true,
-    breadcrumb: "Streams",
-    title: "Streams",
-    suspenseLabel: "Loading streams…",
-    loader: "streams",
+    loader: load("../features/streams/StreamsInventory", "StreamsInventory"),
   }),
-  ...(
-    [
-      [
-        "cluster",
-        "/streams/clusters/:clusterId",
-        "Kafka cluster",
-        "clusterId",
-        "cluster",
-      ],
-      [
-        "topic",
-        "/streams/topics/:streamId",
-        "Kafka topic",
-        "streamId",
-        "topic",
-      ],
-      [
-        "consumer-group",
-        "/streams/consumer-groups/:groupId",
-        "Consumer group",
-        "groupId",
-        "consumerGroup",
-      ],
-      [
-        "connector",
-        "/streams/connectors/:connectorId",
-        "Connector",
-        "connectorId",
-        "connector",
-      ],
-      [
-        "schema",
-        "/streams/schemas/:subjectId",
-        "Schema subject",
-        "subjectId",
-        "schema",
-      ],
-    ] as const
-  ).map(([id, path, name, param, loader]) =>
-    route({
-      id: `streams-${id}`,
-      path,
-      name,
-      navigationLabel: name,
-      group: "Observe",
-      icon: "≋",
-      permission: "streams:read",
-      owner: "team-1",
-      implementation: "available",
-      navigation: false,
-      hiddenButRoutable: true,
-      parentId: "streams",
-      breadcrumb: name,
-      dynamicLabel: param,
-      title: name,
-      suspenseLabel: `Loading ${name.toLowerCase()}…`,
-      loader,
-    }),
-  ),
+  route({
+    id: "cluster-360",
+    path: "/streams/clusters/:clusterId",
+    name: "Kafka cluster",
+    group: "Observe",
+    capabilityId: "streams",
+    owner: "team-1",
+    parentId: "streams",
+    entityParameters: [parameter("clusterId", "cluster")],
+    loader: load("../features/streams/Cluster360", "Cluster360"),
+  }),
+  route({
+    id: "topic-360",
+    path: "/streams/topics/:streamId",
+    name: "Topic",
+    group: "Observe",
+    capabilityId: "streams",
+    owner: "team-1",
+    parentId: "streams",
+    entityParameters: [parameter("streamId", "topic")],
+    loader: streamDetail("topic"),
+  }),
+  route({
+    id: "consumer-group-360",
+    path: "/streams/consumer-groups/:groupId",
+    name: "Consumer group",
+    group: "Observe",
+    capabilityId: "streams",
+    owner: "team-1",
+    parentId: "streams",
+    entityParameters: [parameter("groupId", "consumer-group")],
+    loader: streamDetail("group"),
+  }),
+  route({
+    id: "connector-360",
+    path: "/streams/connectors/:connectorId",
+    name: "Connector",
+    group: "Observe",
+    capabilityId: "streams",
+    owner: "team-1",
+    parentId: "streams",
+    entityParameters: [parameter("connectorId", "connector")],
+    loader: load("../features/streams/Connector360", "Connector360"),
+  }),
+  route({
+    id: "schema-360",
+    path: "/streams/schemas/:subjectId",
+    name: "Schema",
+    group: "Observe",
+    capabilityId: "streams",
+    owner: "team-1",
+    parentId: "streams",
+    entityParameters: [parameter("subjectId", "schema")],
+    loader: load("../features/streams/Schema360", "Schema360"),
+  }),
   route({
     id: "data-products",
     path: "/data-products",
     name: "Data Products",
-    navigationLabel: "Data Products",
     group: "Observe",
+    capabilityId: "data-products",
     icon: "▣",
-    permission: "data-products:read",
     owner: "team-2",
-    implementation: "available",
     navigation: true,
-    breadcrumb: "Data Products",
-    title: "Data Products",
-    suspenseLabel: "Loading data products…",
-    loader: "dataProducts",
+    loader: load(
+      "../features/data-products/DataProductList",
+      "DataProductList",
+    ),
   }),
   route({
-    id: "data-product",
+    id: "data-product-360",
     path: "/data-products/:productId",
-    name: "Data Product",
-    navigationLabel: "Data Product",
+    name: "Data product",
     group: "Observe",
-    icon: "▣",
-    permission: "data-products:read",
+    capabilityId: "data-products",
     owner: "team-2",
-    implementation: "available",
-    navigation: false,
-    hiddenButRoutable: true,
     parentId: "data-products",
-    breadcrumb: "Data Product",
-    dynamicLabel: "productId",
-    title: "Data Product",
-    suspenseLabel: "Loading data product…",
-    loader: "dataProduct",
+    entityParameters: [parameter("productId", "data-product")],
+    loader: load("../features/data-products/DataProduct360", "DataProduct360"),
+  }),
+  route({
+    id: "quality",
+    path: "/quality",
+    name: "Data Quality",
+    group: "Observe",
+    capabilityId: "quality",
+    icon: "✓",
+    owner: "team-4",
+    navigation: true,
+    loader: load("../features/quality/QualityOverview", "QualityOverview"),
+  }),
+  route({
+    id: "monitors",
+    path: "/quality/monitors",
+    name: "Monitors",
+    group: "Observe",
+    capabilityId: "quality",
+    owner: "team-4",
+    parentId: "quality",
+    loader: load("../features/quality/MonitorInventory", "MonitorInventory"),
+  }),
+  route({
+    id: "monitor-new",
+    path: "/quality/monitors/new",
+    name: "Create monitor",
+    group: "Observe",
+    capabilityId: "quality",
+    owner: "team-4",
+    parentId: "monitors",
+    searchEligible: false,
+    loader: load("../features/quality/MonitorAuthoring", "MonitorAuthoring"),
+  }),
+  route({
+    id: "monitor-360",
+    path: "/quality/monitors/:monitorId",
+    name: "Monitor",
+    group: "Observe",
+    capabilityId: "quality",
+    owner: "team-4",
+    parentId: "monitors",
+    entityParameters: [parameter("monitorId", "monitor")],
+    loader: load("../features/quality/Monitor360", "Monitor360"),
+  }),
+  route({
+    id: "jobs",
+    path: "/jobs",
+    name: "Jobs",
+    group: "Observe",
+    capabilityId: "jobs",
+    icon: "▤",
+    owner: "team-2",
+    navigation: true,
+    loader: load("../features/jobs/JobRunExplorer", "JobsInventory"),
+  }),
+  route({
+    id: "job-360",
+    path: "/jobs/:jobId",
+    name: "Job",
+    group: "Observe",
+    capabilityId: "jobs",
+    owner: "team-2",
+    parentId: "jobs",
+    entityParameters: [parameter("jobId", "job")],
+    loader: load("../features/jobs/JobRunExplorer", "Job360"),
+  }),
+  route({
+    id: "run-360",
+    path: "/runs/:runId",
+    name: "Run",
+    group: "Observe",
+    capabilityId: "jobs",
+    owner: "team-2",
+    parentId: "jobs",
+    entityParameters: [parameter("runId", "run")],
+    loader: load("../features/jobs/JobRunExplorer", "Run360"),
+  }),
+  route({
+    id: "run-comparison",
+    path: "/runs/compare",
+    name: "Run comparison",
+    group: "Observe",
+    capabilityId: "jobs",
+    owner: "team-2",
+    parentId: "jobs",
+    loader: load("../features/jobs/JobRunExplorer", "RunComparison"),
+  }),
+  route({
+    id: "lineage",
+    path: "/lineage",
+    name: "Lineage",
+    group: "Observe",
+    capabilityId: "lineage",
+    icon: "↝",
+    owner: "team-2",
+    navigation: true,
+    loader: load("../features/lineage/LineageExplorer", "LineageExplorer"),
   }),
   route({
     id: "incidents",
     path: "/incidents",
-    name: "Incident Inbox",
-    navigationLabel: "Incidents",
+    name: "Incidents",
     group: "Respond",
+    capabilityId: "incidents",
     icon: "!",
-    permission: "incidents:read",
+    requiredPermission: "incidents:read",
     owner: "team-3",
-    implementation: "available",
     navigation: true,
-    breadcrumb: "Incidents",
-    title: "Incident Inbox",
-    suspenseLabel: "Loading incidents…",
-    loader: "incidents",
+    loader: load("../features/incidents/IncidentInbox", "IncidentInbox"),
   }),
   route({
-    id: "incident",
+    id: "incident-workbench",
     path: "/incidents/:incidentId",
     name: "Incident",
-    navigationLabel: "Incident",
     group: "Respond",
-    icon: "!",
-    permission: "incidents:read",
+    capabilityId: "incidents",
+    requiredPermission: "incidents:read",
     owner: "team-3",
-    implementation: "available",
-    navigation: false,
-    hiddenButRoutable: true,
     parentId: "incidents",
-    breadcrumb: "Incident",
-    dynamicLabel: "incidentId",
-    title: "Incident",
-    suspenseLabel: "Loading incident…",
-    loader: "incident",
+    entityParameters: [parameter("incidentId", "incident")],
+    loader: load("../features/incidents/IncidentDetail", "IncidentDetail"),
   }),
   route({
     id: "integrations",
     path: "/integrations",
     name: "Integrations",
-    navigationLabel: "Integrations",
     group: "Configure",
+    capabilityId: "integrations",
     icon: "+",
-    permission: "integrations:read",
+    requiredPermission: "integrations:read",
     owner: "team-5",
-    implementation: "available",
     navigation: true,
-    breadcrumb: "Integrations",
-    title: "Integrations",
-    suspenseLabel: "Loading integrations…",
-    loader: "integrations",
+    loader: load("../features/integrations/Integrations", "Integrations"),
   }),
   route({
-    id: "integration",
+    id: "integration-detail",
     path: "/integrations/:integrationId",
     name: "Integration",
-    navigationLabel: "Integration",
     group: "Configure",
-    icon: "+",
-    permission: "integrations:read",
+    capabilityId: "integrations",
+    requiredPermission: "integrations:read",
     owner: "team-5",
-    implementation: "available",
-    navigation: false,
-    hiddenButRoutable: true,
     parentId: "integrations",
-    breadcrumb: "Integration",
-    dynamicLabel: "integrationId",
-    title: "Integration",
-    suspenseLabel: "Loading integration…",
-    loader: "integration",
+    entityParameters: [parameter("integrationId", "integration")],
+    loader: load("../features/integrations/Integrations", "IntegrationDetail"),
   }),
   route({
     id: "onboarding",
     path: "/onboarding",
     name: "Get started",
-    navigationLabel: "Get started",
+    aliases: ["setup"],
     group: "Configure",
+    capabilityId: "onboarding",
     icon: "→",
     owner: "team-5",
-    implementation: "available",
     navigation: true,
-    breadcrumb: "Onboarding",
-    title: "Onboarding",
-    suspenseLabel: "Loading onboarding…",
-    loader: "onboarding",
+    loader: load("../features/onboarding/Onboarding", "Onboarding"),
+  }),
+  route({
+    id: "login",
+    path: "/login",
+    name: "Sign in",
+    group: "System",
+    capabilityId: "authentication",
+    owner: "team-5",
+    protected: false,
+    requiredPermission: undefined,
+    quickFind: false,
+    searchEligible: false,
+    loader: load("../auth/AuthPages", "Login"),
+  }),
+  route({
+    id: "auth-callback",
+    path: "/auth/callback",
+    name: "Authentication callback",
+    group: "System",
+    capabilityId: "authentication",
+    owner: "team-5",
+    protected: false,
+    requiredPermission: undefined,
+    quickFind: false,
+    searchEligible: false,
+    loader: load("../auth/AuthPages", "Callback"),
+  }),
+  route({
+    id: "logout",
+    path: "/logout",
+    name: "Sign out",
+    group: "System",
+    capabilityId: "authentication",
+    owner: "team-5",
+    protected: false,
+    requiredPermission: undefined,
+    quickFind: false,
+    searchEligible: false,
+    loader: load("../auth/AuthPages", "Logout"),
+  }),
+  route({
+    id: "unauthorised",
+    path: "/unauthorised",
+    name: "Unauthorised",
+    group: "System",
+    capabilityId: "shell",
+    owner: "team-5",
+    protected: false,
+    requiredPermission: undefined,
+    quickFind: false,
+    searchEligible: false,
+    loader: load("../auth/AuthPages", "Unauthorised"),
   }),
 ] as const;
 
-export type RuntimeCapabilityState = CapabilityAvailability | "unknown";
 export interface EffectiveRouteState {
-  implementation: CapabilityAvailability;
+  availability: CapabilityAvailability;
   authorised: boolean;
-  configuration: RuntimeCapabilityState;
+  configuration: ConfigurationState;
   actionable: boolean;
 }
 export function resolveRouteState(
   route: ConsoleRoute,
   permissions: readonly string[],
-  capabilities?: Record<string, RuntimeCapabilityState>,
+  capabilities?: Record<string, ConfigurationState>,
 ): EffectiveRouteState {
   const authorised =
-    !route.permission || permissions.includes(route.permission);
+    !route.requiredPermission ||
+    route.requiredPermission === "console:read" ||
+    permissions.includes(route.requiredPermission);
   const configuration =
     capabilities?.[route.id] ??
     capabilities?.[route.parentId ?? ""] ??
-    "unknown";
+    route.configuration;
   return {
-    implementation: route.implementation,
+    availability: route.availability,
     authorised,
     configuration,
     actionable:
       authorised &&
-      ["available", "preview"].includes(route.implementation) &&
-      (configuration === "available" || configuration === "preview"),
+      ["available", "preview"].includes(route.availability) &&
+      (configuration === "configured" || configuration === "optional"),
   };
 }
 export function visibleRoutes(permissions: readonly string[]) {
   return consoleRoutes.filter(
     (item) =>
-      item.navigation && resolveRouteState(item, permissions).authorised,
+      !item.requiredPermission ||
+      item.requiredPermission === "console:read" ||
+      permissions.includes(item.requiredPermission),
   );
+}
+const normalise = (value: string) =>
+  value !== "/" && value.endsWith("/") ? value.slice(0, -1) : value;
+const matches = (pattern: string, pathname: string) =>
+  new RegExp(`^${pattern.replace(/:[^/]+/g, "[^/]+")}$`).test(
+    normalise(pathname),
+  );
+export function routeForPath(pathname: string) {
+  return consoleRoutes.find((item) => matches(item.path, pathname));
+}
+export function buildRoutePath(
+  routeId: string,
+  parameters: Record<string, string> = {},
+) {
+  const item = consoleRoutes.find(({ id }) => id === routeId);
+  if (!item) return undefined;
+  return item.path.replace(/:([^/]+)/g, (_, name: string) => {
+    const definition = item.entityParameters?.find(
+      (candidate) => candidate.name === name,
+    );
+    if (!definition || parameters[name] === undefined)
+      throw new Error(`Missing safe route parameter: ${name}`);
+    return definition.encode(parameters[name]);
+  });
 }
 const escapeRegex = (value: string) =>
   value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -570,9 +550,6 @@ export function matchRoute(
     return null;
   }
 }
-export function routeForPath(pathname: string) {
-  return consoleRoutes.find((item) => matchRoute(item.path, pathname));
-}
 export function breadcrumbsForPath(pathname: string) {
   const current = routeForPath(pathname);
   if (!current) return [];
@@ -589,8 +566,8 @@ export function breadcrumbsForPath(pathname: string) {
     id: entry.id,
     path: entry === current ? pathname : entry.path,
     label:
-      entry === current && entry.dynamicLabel
-        ? params[entry.dynamicLabel] || entry.breadcrumb
+      entry === current && entry.entityParameters?.length
+        ? params[entry.entityParameters[0].name] || entry.breadcrumb
         : entry.breadcrumb,
   }));
 }
@@ -598,8 +575,7 @@ export function titleForPath(pathname: string) {
   const current = routeForPath(pathname);
   if (!current) return "DataObs — Page not found";
   const params = matchRoute(current.path, pathname) ?? {};
-  const label = current.dynamicLabel
-    ? params[current.dynamicLabel] || current.title
-    : current.title;
-  return `DataObs — ${current.title}${current.dynamicLabel && label !== current.title ? ` ${label}` : ""}`;
+  const entityParam = current.entityParameters?.[0];
+  const label = entityParam ? params[entityParam.name] || current.name : current.name;
+  return `DataObs — ${current.name}${entityParam && label !== current.name ? ` ${label}` : ""}`;
 }

@@ -1,15 +1,14 @@
-import { useEffect } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import {
-  breadcrumbsForPath,
   consoleRoutes,
-  resolveRouteState,
-  titleForPath,
+  routeForPath,
   visibleRoutes,
   type NavigationGroup,
 } from "../app/routes";
 import { DataStatusBanner, LoadingSkeleton } from "../components/Evidence";
 import { useProductContext } from "../state/context";
+import { QuickFind } from "../features/quick-find/QuickFind";
+import { useEffect } from "react";
 
 export function ProductContextSelector() {
   const { tenant, environment, availableTenants, setTenant, setEnvironment } =
@@ -123,6 +122,7 @@ export function AppHeader() {
         </div>
       </div>
       <div className="context">
+        <QuickFind />
         <ProductContextSelector />
         <TimeRangeSelector />
         <GlobalRefreshControl />
@@ -139,8 +139,7 @@ export function PrimaryNavigation() {
     "Respond",
     "Configure",
   ];
-  const permissions = identity?.permissions ?? [];
-  const routes = visibleRoutes(permissions);
+  const routes = visibleRoutes(identity?.permissions ?? []);
   return (
     <nav aria-label="Primary">
       {groups.map((group) => (
@@ -148,26 +147,16 @@ export function PrimaryNavigation() {
           <h2 id={`nav-${group}`}>{group}</h2>
           {routes
             .filter((route) => route.group === group && route.navigation)
-            .map((route) => {
-              const state = resolveRouteState(
-                route,
-                permissions,
-                identity?.capabilities,
-              );
-              const configured =
-                state.configuration === "unknown"
-                  ? route.implementation
-                  : state.configuration;
-              return state.authorised &&
-                (configured === "available" || configured === "preview") ? (
+            .map((route) =>
+              route.availability === "available" ||
+              route.availability === "preview" ? (
                 <NavLink
                   key={route.id}
                   to={route.path}
                   end={route.path === "/"}
                 >
-                  {route.icon} <span>{route.navigationLabel}</span>
-                  {(route.implementation === "preview" ||
-                    configured === "preview") && <em>Preview</em>}
+                  {route.icon} <span>{route.name}</span>
+                  {route.availability === "preview" && <em>Preview</em>}
                 </NavLink>
               ) : (
                 <span
@@ -175,11 +164,11 @@ export function PrimaryNavigation() {
                   key={route.id}
                   aria-disabled="true"
                 >
-                  {route.icon} <b>{route.navigationLabel}</b>
-                  <em>{configured.replace("_", " ")}</em>
+                  {route.icon} <b>{route.name}</b>
+                  <em>{route.availability.replace("_", " ")}</em>
                 </span>
-              );
-            })}
+              ),
+            )}
         </section>
       ))}
     </nav>
@@ -187,29 +176,21 @@ export function PrimaryNavigation() {
 }
 export function Breadcrumbs() {
   const location = useLocation();
-  const crumbs = breadcrumbsForPath(location.pathname);
-  useEffect(() => {
-    document.title = titleForPath(location.pathname);
-  }, [location.pathname]);
+  const route = routeForPath(location.pathname);
+  const parent = route?.parentId
+    ? consoleRoutes.find((candidate) => candidate.id === route.parentId)
+    : undefined;
   return (
     <nav className="breadcrumbs" aria-label="Breadcrumb">
       <NavLink to="/">DataObs</NavLink>
-      {crumbs.map((crumb, index) => (
-        <span key={crumb.id} className="breadcrumb-item">
-          <span aria-hidden="true">/</span>
-          {index === crumbs.length - 1 ? (
-            <span aria-current="page">{crumb.label}</span>
-          ) : (
-            <NavLink to={crumb.path}>{crumb.label}</NavLink>
-          )}
-        </span>
-      ))}
-      {!crumbs.length && (
+      {parent && (
         <>
           <span aria-hidden="true">/</span>
-          <span aria-current="page">Unknown route</span>
+          <NavLink to={parent.path}>{parent.breadcrumb}</NavLink>
         </>
       )}
+      {route?.id !== "command-center" && <span aria-hidden="true">/</span>}
+      <span aria-current="page">{route?.breadcrumb ?? "Unknown route"}</span>
     </nav>
   );
 }
@@ -227,6 +208,10 @@ export function ConnectivityBanner() {
 }
 export function AppShell() {
   const { status, retryAuthentication } = useProductContext();
+  const location = useLocation();
+  useEffect(() => {
+    document.title = `${routeForPath(location.pathname)?.name ?? "Page not found"} · DataObs`;
+  }, [location.pathname]);
   if (status === "loading")
     return (
       <main className="route-state">

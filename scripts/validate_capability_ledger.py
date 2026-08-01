@@ -71,7 +71,10 @@ def validate(data: dict) -> list[str]:
     if len(ids) != len(set(ids)):
         e.append("duplicate capability IDs")
     openapi = json.loads((ROOT / "openapi.json").read_text()).get("paths", {})
-    routes = (ROOT / "ui/dataobs-console/src/app/App.tsx").read_text()
+    routes = "\n".join(
+        (ROOT / path).read_text()
+        for path in ("ui/dataobs-console/src/app/App.tsx", "ui/dataobs-console/src/app/routes.ts")
+    )
     plan = json.loads(subprocess.check_output([sys.executable, "-m", "packages.elastic_store.cli", "plan"], cwd=ROOT))[
         "migrations"
     ]
@@ -121,7 +124,9 @@ def validate(data: dict) -> list[str]:
             if not api.startswith("planned:") and api not in openapi:
                 e.append(f"{cid}: API absent from openapi.json: {api}")
         for route in impl.get("ui_routes", []):
-            if not route.startswith("planned:") and route != "/" and f'path="{route.lstrip("/")}"' not in routes:
+            rendered_path = route.lstrip("/")
+            registered = f'path="{rendered_path}"' in routes or f'path: "{route}"' in routes
+            if not route.startswith("planned:") and route != "/" and not registered:
                 e.append(f"{cid}: UI route absent: {route}")
         for mid in impl.get("migrations", []):
             if mid not in actual:

@@ -1,14 +1,5 @@
 # Console cross-capability navigation
 
-`src/app/entityLinks.ts` is the canonical resolver for Incident, Monitor, Job,
-Run, Pathway, Kafka cluster, Topic, Consumer group, Connector, Schema subject,
-Data product, Asset, and Integration links. Identifiers are length/control-byte
-validated and encoded as one path segment. Unknown types and malformed IDs
-return `null`, requiring callers to render non-link text.
+The typed registry in `ui/dataobs-console/src/app/routes.ts` is authoritative for rendered routes, navigation, breadcrumbs, permissions, support/configuration state, safe entity parameters, Quick Find eligibility, ownership, and lazy loaders. `App.tsx` generates protected and public route elements from it. Groups are Overview, Observe, Respond, Configure, and non-navigation System. Unauthorised permission-sensitive entries are omitted; unavailable entries are visible only as disabled explanations.
 
-Tenant, environment, and time range are propagated by shared product context,
-not embedded into entity identifiers. Only allowlisted, non-secret query state
-may be retained. Tokens, raw provider configuration, evidence payloads, and
-browser-supplied tenant identity must never enter a URL or navigation state.
-Capability pages should migrate local concatenation to this resolver when their
-owning team next changes those surfaces; Team 5 does not rewrite their logic.
+Each detail route has one parent and uses `encodeURIComponent` through `buildRoutePath`. Existing external paths are unchanged. Breadcrumbs derive parents from registry IDs and use safe route names; capability pages may later supply non-sensitive entity display names. Navigation state meanings are available, preview, not configured, unavailable, and planned—none means healthy.

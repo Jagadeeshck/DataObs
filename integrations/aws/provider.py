@@ -17,19 +17,49 @@ from packages.collectors.sdk.errors import IntegrationError
 from .clients import AwsClientFactory
 from .configuration import parse_configuration
 from .errors import map_aws_error
-from .services import athena, emr_serverless, glue, rds
+from .services import (
+    athena,
+    emr_serverless,
+    glue,
+    lambda_service,
+    mwaa,
+    rds,
+    redshift,
+    redshift_serverless,
+    s3,
+    sagemaker,
+)
+
+AWS_CLIENT_NAMES = {
+    "rds": "rds",
+    "glue": "glue",
+    "athena": "athena",
+    "emr-serverless": "emr-serverless",
+    "s3": "s3",
+    "lambda": "lambda",
+    "sagemaker": "sagemaker",
+    "mwaa": "mwaa",
+    "redshift": "redshift",
+    "redshift-serverless": "redshift-serverless",
+}
 
 COLLECTORS = {
     "rds": rds.collect,
     "glue": glue.collect,
     "athena": athena.collect,
     "emr-serverless": emr_serverless.collect,
+    "s3": s3.collect,
+    "lambda": lambda_service.collect,
+    "sagemaker": sagemaker.collect,
+    "mwaa": mwaa.collect,
+    "redshift": redshift.collect,
+    "redshift-serverless": redshift_serverless.collect,
 }
 
 
 class AwsDataPlatformProvider:
     provider_type = "aws"
-    provider_version = "1"
+    provider_version = "2"
 
     def __init__(self, client_factory=None):
         self._factory = client_factory
@@ -50,7 +80,10 @@ class AwsDataPlatformProvider:
             ("sts:GetCallerIdentity", "read-only service metadata", "cloudwatch:GetMetricData"),
             frozenset({CollectionMode.SCHEDULED, CollectionMode.ON_DEMAND}),
             ("boto3",),
-            ("Four explicitly configured services only", "No SQL, logs, lineage, profiling, cost, or mutation"),
+            (
+                "Ten explicitly configured services only",
+                "No object contents, SQL, secrets, logs, lineage, profiling, cost, or mutation",
+            ),
         )
 
     async def validate_configuration(self, context, configuration):
@@ -96,7 +129,7 @@ class AwsDataPlatformProvider:
         for region in cfg.regions:
             for service in cfg.services:
                 try:
-                    client = factory.client(account, region, service.replace("-", "_"))
+                    client = factory.client(account, region, AWS_CLIENT_NAMES[service])
                     for item in COLLECTORS[service](client, context, cfg, account, region):
                         if item is not None:
                             yield item

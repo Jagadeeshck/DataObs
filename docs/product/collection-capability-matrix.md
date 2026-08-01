@@ -10,7 +10,7 @@ cloud provider implemented. Provider status is governed by the capability ledger
 | Windows | Yes system/windows | Yes host receivers | No | host metrics/logs/events | Fleet secret refs | agent host read | Elastic system datasets |
 | Kubernetes | Yes kubernetes | Yes k8s receivers | No | pods/nodes/events/logs/traces | service account | read cluster resources | kubernetes, otlp |
 | Docker | Yes container/docker logs | Yes | No | container metrics/logs | socket scoped | docker read | container datasets |
-| AWS | Yes aws | Yes | Yes for v1 data platform evidence | RDS/Aurora, Glue, Athena, EMR Serverless metadata and allowlisted metrics | AWS chain/web identity/optional AssumeRole | least-read IAM | dataobs provider evidence |
+| AWS | Yes aws | Yes | Yes for v2 data platform evidence | RDS/Aurora, Glue, Athena, EMR Serverless, S3, Lambda, SageMaker, MWAA, Redshift and Redshift Serverless bounded metadata and allowlisted metrics | AWS chain/web identity/optional AssumeRole | least-read IAM | dataobs provider evidence |
 | Azure | Yes azure | Yes | Sometimes | metrics/logs/data factories | managed identity/Key Vault | reader | azure, dataobs cloud |
 | GCP | Yes gcp | Yes | Sometimes | metrics/logs/data services | workload identity/Secret Manager | viewer | gcp, dataobs cloud |
 | PostgreSQL | Yes postgresql | Yes | Yes | ops metrics plus schema/freshness/profile | secret ref | connect/catalog/select opt-in | dataobs database streams |

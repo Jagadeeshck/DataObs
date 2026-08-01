@@ -53,7 +53,7 @@ def test_explicit_regions_and_allowlist():
     with pytest.raises(InvalidConfigurationError):
         parse_configuration({"services": ["rds"]})
     with pytest.raises(InvalidConfigurationError):
-        parse_configuration({"regions": ["eu-west-1"], "services": ["s3"]})
+        parse_configuration({"regions": ["eu-west-1"], "services": ["ec2"]})
 
 
 def test_provider_collects_safe_rds_and_rejects_capability():
@@ -80,3 +80,38 @@ def test_cloudwatch_measured_zero_and_missing():
     )
     assert values[0].value == 0 and values[0].state == EvidenceState.MEASURED
     assert values[1].value is None and values[1].state == EvidenceState.MISSING
+
+
+def test_provider_v2_and_explicit_client_names():
+    from integrations.aws.provider import AWS_CLIENT_NAMES
+
+    assert AwsDataPlatformProvider.provider_version == "2"
+    assert AWS_CLIENT_NAMES == {
+        "rds": "rds",
+        "glue": "glue",
+        "athena": "athena",
+        "emr-serverless": "emr-serverless",
+        "s3": "s3",
+        "lambda": "lambda",
+        "sagemaker": "sagemaker",
+        "mwaa": "mwaa",
+        "redshift": "redshift",
+        "redshift-serverless": "redshift-serverless",
+    }
+
+
+def test_v1_configuration_remains_valid_and_v2_options_are_bounded():
+    assert parse_configuration({"regions": ["eu-west-1"], "services": ["rds", "glue", "athena", "emr-serverless"]})
+    assert parse_configuration(
+        {
+            "regions": ["eu-west-1"],
+            "services": ["s3"],
+            "service_options": {
+                "s3": {"prefix_assets": [{"bucket": "synthetic", "prefix": "curated/"}], "maximum_prefix_samples": 1}
+            },
+        }
+    )
+    with pytest.raises(InvalidConfigurationError):
+        parse_configuration(
+            {"regions": ["eu-west-1"], "services": ["s3"], "service_options": {"s3": {"maximum_prefix_samples": 1001}}}
+        )

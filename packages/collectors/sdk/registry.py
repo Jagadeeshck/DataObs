@@ -6,7 +6,7 @@ from collections.abc import Callable
 from .base import IntegrationProvider
 
 _PROVIDER_TYPE = re.compile(r"^[a-z][a-z0-9_]{1,62}$")
-_VERSION = re.compile(r"^\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?$")
+_VERSION = re.compile(r"^(?:\d+|\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?)$")
 
 
 class ProviderRegistry:
@@ -21,7 +21,7 @@ class ProviderRegistry:
         if not _PROVIDER_TYPE.fullmatch(provider.provider_type):
             raise ValueError("provider_type must be a stable lowercase identifier")
         if not _VERSION.fullmatch(provider.provider_version):
-            raise ValueError("provider_version must be semantic version format")
+            raise ValueError("provider_version must be a generation or semantic version")
         if provider.provider_type in self._factories:
             raise ValueError(f"provider already registered: {provider.provider_type}")
         capabilities = provider.capabilities()

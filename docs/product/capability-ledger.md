@@ -7,7 +7,7 @@ Audited commit: `5164762a6337a44a76ad2c7574a78edc048a70b3` · PR range: #82-#168
 ## State counts
 
 - **foundation**: 12
-- **functional_unvalidated**: 18
+- **functional_unvalidated**: 19
 - **not_started**: 6
 - **optional_integration**: 1
 - **scaffold**: 1
@@ -17,7 +17,7 @@ Audited commit: `5164762a6337a44a76ad2c7574a78edc048a70b3` · PR range: #82-#168
 - **ai_agent**: 2
 - **business**: 2
 - **data**: 5
-- **data_pipeline**: 9
+- **data_pipeline**: 10
 - **finops_cost**: 1
 - **platform**: 19
 
@@ -135,6 +135,14 @@ Evidence-led status for openlineage ingest.
 - **Release readiness:** `blocked`
 - **Next gate:** Run the focused workflow for the final PR head and independently verify its retained exact-commit artifact.
 
+### `data_pipeline.stream_pathway_reliability` — Stream and pathway reliability runtime v1
+
+Tenant-scoped bounded reliability evaluation without root-cause or remediation claims.
+
+- **State:** `functional_unvalidated`
+- **Release readiness:** `blocked`
+- **Next gate:** Retain and verify the focused workflow artifact for the final commit.
+
 ### `streams.connect_schema` — Kafka Connect and Schema Registry
 
 Evidence-led status for kafka connect and schema registry.
@@ -217,11 +225,11 @@ Evidence-led status for cases, workflows, approvals, actions, and verification.
 
 ### `integration.cloud` — AWS, Azure, GCP, and Snowflake providers
 
-AWS collector v2 is bounded and functional_unvalidated; Azure, GCP, and Snowflake remain deferred.
+AWS collector v2 and Snowflake warehouse collector v1 are bounded and functional_unvalidated; Azure and GCP remain deferred.
 
 - **State:** `functional_unvalidated`
 - **Release readiness:** `blocked`
-- **Next gate:** Retain and independently verify exact-commit hosted AWS v2 evidence.
+- **Next gate:** Retain and independently verify exact-commit hosted AWS v2 and Snowflake v1 evidence.
 
 ### `integration.elastic` — Elasticsearch and Kibana authoritative plane
 

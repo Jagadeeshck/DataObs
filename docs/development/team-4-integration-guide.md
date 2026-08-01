@@ -12,3 +12,5 @@ exceptions in fixtures or evidence.
 
 Certification follows `docs/development/certification-evidence-contract.md`. A local pass supports at most
 `functional_unvalidated`; only successful exact-commit hosted and independently verified evidence supports promotion.
+
+The Snowflake warehouse collector v1 uses a lazy optional connector, closed authentication/configuration schemas, fixed bounded SQL templates, SQL-free query history, isolated evidence families and generic persist-before-checkpoint storage. Access History and canonical lineage require Team 2 review; packaging and UI onboarding remain Team 0 and Team 5 work. It remains `functional_unvalidated` until hosted exact-commit evidence is independently verified.

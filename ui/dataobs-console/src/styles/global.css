@@ -1238,3 +1238,60 @@ header {
     animation-duration: 0.01ms !important;
   }
 }
+.pathway-filters {
+  flex-wrap: wrap;
+}
+.pathway-tabs {
+  display: flex;
+  gap: 0.4rem;
+  overflow-x: auto;
+  padding: 0.5rem 0;
+}
+.pathway-tabs [aria-selected="true"] {
+  border-color: var(--color-accent, #36a2ff);
+  font-weight: 700;
+}
+.pathway-evidence {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: 0.75rem;
+}
+.pathway-evidence div {
+  border: 1px solid #354052;
+  padding: 0.75rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.pathway-evidence dt {
+  font-size: 0.8rem;
+  opacity: 0.75;
+}
+.pathway-evidence dd {
+  margin: 0.25rem 0 0;
+}
+.pathway-graph {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 1.5rem;
+  max-height: 32rem;
+  overflow: auto;
+  padding: 1rem;
+  border: 1px solid #354052;
+}
+.pathway-node {
+  min-height: 5rem;
+  position: relative;
+}
+.pathway-node small {
+  display: block;
+}
+.pathway-node:not(:last-child)::after {
+  content: "→";
+  position: absolute;
+  right: -1.2rem;
+  top: 35%;
+}
+.table-scroll {
+  max-width: 100%;
+  overflow: auto;
+}

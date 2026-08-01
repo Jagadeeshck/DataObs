@@ -48,6 +48,21 @@ SAFE_FIELDS = [
     "excluded_edge_count",
     "metrics",
     "reason_codes",
+    "edges",
+    "nodes",
+    "impact_links",
+    "warnings",
+    "missing_inputs",
+    "observed_at",
+    "data_status",
+    "revision",
+    "owner",
+    "enabled",
+    "metric",
+    "objective",
+    "evaluation_window",
+    "created_at",
+    "updated_at",
 ]
 
 
@@ -56,19 +71,66 @@ class PathwayRepository:
         self.es = getattr(es, "es", es)
 
     def search(
-        self, index: str, tenant: str, environment: str, *, size: int, after: list[Any] | None = None
+        self,
+        index: str,
+        tenant: str,
+        environment: str,
+        *,
+        size: int,
+        after: list[Any] | None = None,
+        filters: dict[str, Any] | None = None,
     ) -> list[dict[str, Any]]:
+        clauses: list[dict[str, Any]] = [{"term": {"tenant_id": tenant}}, {"term": {"environment": environment}}]
+        for field, value in (filters or {}).items():
+            if field == "search":
+                clauses.append(
+                    {
+                        "simple_query_string": {
+                            "query": value,
+                            "fields": ["pathway_id", "name"],
+                            "default_operator": "and",
+                        }
+                    }
+                )
+            else:
+                clauses.append({"term": {field: value}})
+        sort_field = "pathway_id" if "definitions" in index else ("node_id" if "nodes" in index else "id")
         body: dict[str, Any] = {
             "index": index,
             "size": size,
             "source": SAFE_FIELDS,
-            "query": {"bool": {"filter": [{"term": {"tenant_id": tenant}}, {"term": {"environment": environment}}]}},
-            "sort": [{"id": "asc"}, {"_id": "asc"}],
+            "query": {"bool": {"filter": clauses}},
+            "sort": [{sort_field: "asc"}, {"_id": "asc"}],
         }
         if after:
             body["search_after"] = after
         response = self.es.search(**body)
         return [{"document": hit.get("_source", {}), "sort": hit.get("sort", [])} for hit in response["hits"]["hits"]]
+
+    def get_many(self, index: str, ids: list[str], tenant: str, environment: str) -> list[dict[str, Any]]:
+        if not ids:
+            return []
+        response = self.es.search(
+            index=index,
+            size=min(len(ids), 200),
+            source=SAFE_FIELDS,
+            query={
+                "bool": {
+                    "filter": [
+                        {"term": {"tenant_id": tenant}},
+                        {"term": {"environment": environment}},
+                        {
+                            "bool": {
+                                "should": [{"terms": {"node_id": ids}}, {"terms": {"edge_id": ids}}],
+                                "minimum_should_match": 1,
+                            }
+                        },
+                    ]
+                }
+            },
+            sort=[{"node_id": "asc"}, {"edge_id": "asc"}, {"_id": "asc"}],
+        )
+        return [hit.get("_source", {}) for hit in response["hits"]["hits"]]
 
     def get(self, index: str, resource_id: str, tenant: str, environment: str) -> dict[str, Any] | None:
         response = self.es.search(
@@ -180,8 +242,10 @@ def create_pathway_router(get_es: Callable[..., Any], require_auth: Callable[...
         limit: int,
         cursor: str | None,
         repo: PathwayRepository,
+        query_filters: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        filters = {"limit": limit}
+        filters = {"limit": limit, **(query_filters or {})}
+        sort_field = "pathway_id" if "definitions" in index else ("node_id" if "nodes" in index else "id")
         after = None
         if cursor:
             try:
@@ -192,11 +256,13 @@ def create_pathway_router(get_es: Callable[..., Any], require_auth: Callable[...
                     filters=filters,
                     route=route,
                     resource=index,
-                    sort={"id": "asc"},
+                    sort={sort_field: "asc"},
                 ).sort
             except InvalidCursor as exc:
                 raise HTTPException(400, detail={"code": "invalid_cursor", "message": str(exc)}) from exc
-        hits = repo.search(index, request.state.tenant_id, environment, size=limit + 1, after=after)
+        hits = repo.search(
+            index, request.state.tenant_id, environment, size=limit + 1, after=after, filters=query_filters
+        )
         visible, more = hits[:limit], len(hits) > limit
         next_cursor = (
             codec.encode(
@@ -206,7 +272,7 @@ def create_pathway_router(get_es: Callable[..., Any], require_auth: Callable[...
                 filters=filters,
                 route=route,
                 resource=index,
-                sort={"id": "asc"},
+                sort={sort_field: "asc"},
             )
             if visible and more
             else None
@@ -221,10 +287,34 @@ def create_pathway_router(get_es: Callable[..., Any], require_auth: Callable[...
         environment: str = Query(...),
         limit: int = Query(50, ge=1, le=200),
         cursor: str | None = None,
+        search: str | None = Query(None, max_length=128),
+        health: str | None = Query(None, pattern="^(healthy|degraded|unhealthy|unknown)$"),
+        classification: str | None = Query(None, pattern="^(complete|partial)$"),
+        owner_team: str | None = Query(None, max_length=128),
+        business_service: str | None = Query(None, max_length=128),
+        truncated: bool | None = None,
         repo: PathwayRepository = Depends(repository),
     ) -> dict[str, Any]:
         return await list_resource(
-            "dataobs-pathway-definitions-v1-read", "pathways", request, environment, limit, cursor, repo
+            "dataobs-pathway-definitions-v1-read",
+            "pathways",
+            request,
+            environment,
+            limit,
+            cursor,
+            repo,
+            {
+                k: v
+                for k, v in {
+                    "search": search,
+                    "health": health,
+                    "classification": classification,
+                    "owner_team": owner_team,
+                    "business_service": business_service,
+                    "truncated": truncated,
+                }.items()
+                if v is not None
+            },
         )
 
     @router.post("/pathways/search")
@@ -256,10 +346,18 @@ def create_pathway_router(get_es: Callable[..., Any], require_auth: Callable[...
         pathway_id: str, request: Request, environment: str = Query(...), repo: PathwayRepository = Depends(repository)
     ) -> dict[str, Any]:
         item = await pathway(pathway_id, request, environment, repo)
+        nodes = item.get("nodes") or repo.get_many(
+            "dataobs-pathway-nodes-v1-read", item.get("node_ids", [])[:200], request.state.tenant_id, environment
+        )
+        # Durable definitions contain bounded edge evidence. Older projections remain
+        # honest (empty) rather than querying the wrong definition resource as edges.
+        edges = item.get("edges", [])[:200]
         return {
             "pathway_id": pathway_id,
             "node_ids": item.get("node_ids", []),
             "edge_ids": item.get("edge_ids", []),
+            "nodes": nodes,
+            "edges": edges,
             **response_envelope(request, True, item.get("source_coverage", [])),
         }
 
@@ -387,6 +485,15 @@ def create_pathway_router(get_es: Callable[..., Any], require_auth: Callable[...
         environment: str = Query(...),
         repo: PathwayRepository = Depends(repository),
     ) -> dict[str, Any]:
+        metric = body.get("metric")
+        objective = body.get("objective")
+        window = body.get("evaluation_window")
+        if metric not in {"latency", "reliability", "backlog", "retention_risk"}:
+            raise HTTPException(422, detail="Unsupported pathway SLO metric")
+        if not isinstance(objective, (int, float)) or isinstance(objective, bool) or not 0 < objective <= 100:
+            raise HTTPException(422, detail="Objective must be greater than zero and at most 100")
+        if not isinstance(window, str) or len(window) > 16 or not window[:-1].isdigit() or window[-1:] not in "mhd":
+            raise HTTPException(422, detail="Evaluation window must be a bounded duration such as 15m")
         item = repo.create_slo(request.state.tenant_id, environment, body, str(request.state.principal.subject))
         response.headers["ETag"] = f'"{item["revision"]}"'
         return item
@@ -397,10 +504,18 @@ def create_pathway_router(get_es: Callable[..., Any], require_auth: Callable[...
         environment: str = Query(...),
         limit: int = Query(50, ge=1, le=200),
         cursor: str | None = None,
+        pathway_id: str | None = Query(None, max_length=256),
         repo: PathwayRepository = Depends(repository),
     ) -> dict[str, Any]:
         return await list_resource(
-            "dataobs-pathway-slos-v1-read", "pathway-slos", request, environment, limit, cursor, repo
+            "dataobs-pathway-slos-v1-read",
+            "pathway-slos",
+            request,
+            environment,
+            limit,
+            cursor,
+            repo,
+            {"pathway_id": pathway_id} if pathway_id else None,
         )
 
     @router.get("/pathway-slos/{slo_id}")

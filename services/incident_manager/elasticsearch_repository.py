@@ -7,6 +7,8 @@ from elasticsearch import ConflictError, Elasticsearch, NotFoundError
 from packages.domain_model.incident import Finding, Incident
 
 from .repository import VersionConflict, finding_projection
+from .timeline_storage import timeline_document_to_event, timeline_event_to_document
+from .workbench_contracts import IncidentInboxFilters, IncidentInboxPage, TimelinePage
 
 FINDINGS_ALIAS = "dataobs-findings-v1-write"
 FINDINGS_READ_ALIAS = "dataobs-findings-v1-read"
@@ -14,6 +16,8 @@ INCIDENTS_ALIAS = "dataobs-incidents-v1-write"
 INCIDENTS_READ_ALIAS = "dataobs-incidents-v1-read"
 MAX_PAGE_SIZE = 200
 TIMELINE_STREAM = "logs-dataobs.incident_comment-default"
+IDEMPOTENCY_ALIAS = "dataobs-action-idempotency-v1-write"
+IDEMPOTENCY_READ_ALIAS = "dataobs-action-idempotency-v1-read"
 
 
 class ElasticsearchIncidentRepository:
@@ -175,7 +179,12 @@ class ElasticsearchIncidentRepository:
     def append_event(self, event: dict[str, Any]) -> None:
         """Append an immutable event to the released incident collaboration stream."""
         try:
-            self.client.create(index=TIMELINE_STREAM, id=event["event_id"], document=event, refresh="wait_for")
+            self.client.create(
+                index=TIMELINE_STREAM,
+                id=event["event_id"],
+                document=timeline_event_to_document(event),
+                refresh="wait_for",
+            )
         except ConflictError:
             # Idempotent retries never rewrite the existing historical event.
             return
@@ -185,6 +194,121 @@ class ElasticsearchIncidentRepository:
             index="logs-dataobs.incident_comment-*",
             size=MAX_PAGE_SIZE,
             query={"bool": {"filter": self._scope(tenant_id, environment) + [{"term": {"incident_id": incident_id}}]}},
-            sort=[{"timestamp": "asc"}, {"event_id": "asc"}],
+            sort=[{"@timestamp": "asc"}, {"correlation_id": "asc"}],
         )
-        return [dict(hit["_source"]) for hit in response["hits"]["hits"]]
+        return [timeline_document_to_event(dict(hit["_source"])) for hit in response["hits"]["hits"]]
+
+    def search_incidents(
+        self,
+        tenant_id: str,
+        environment: str,
+        filters: IncidentInboxFilters,
+        sort: str,
+        page_size: int,
+        search_after: list[Any] | None,
+        pit_id: str | None,
+    ) -> IncidentInboxPage:
+        clauses = self._scope(tenant_id, environment)
+        for field, value in (
+            ("incident_state", filters.state),
+            ("severity", filters.severity),
+            ("owner_team", filters.owner),
+            ("business_service", filters.business_service),
+        ):
+            if value:
+                clauses.append({"term": {field: value}})
+        if filters.asset:
+            clauses.append({"term": {"affected_assets": filters.asset}})
+        if filters.unassigned:
+            clauses.append({"bool": {"must_not": {"exists": {"field": "owner_team"}}}})
+        for field, lower, upper in (
+            ("opened_at", filters.opened_from, filters.opened_to),
+            ("last_observed_at", filters.observed_from, filters.observed_to),
+        ):
+            bounds = {key: value.isoformat() for key, value in (("gte", lower), ("lte", upper)) if value}
+            if bounds:
+                clauses.append({"range": {field: bounds}})
+        must = []
+        if filters.search:
+            must.append({"multi_match": {"query": filters.search, "fields": ["title", "impact_summary"]}})
+        sorts: dict[str, list[dict[str, Any]]] = {
+            "newest_opened": [{"opened_at": "desc"}, {"id": "asc"}],
+            "recently_observed": [{"last_observed_at": "desc"}, {"id": "asc"}],
+            "occurrence_count": [{"occurrence_count": "desc"}, {"id": "asc"}],
+            "severity": [{"severity_rank": "asc"}, {"id": "asc"}],
+        }
+        body: dict[str, Any] = {
+            "size": page_size + 1,
+            "query": {"bool": {"filter": clauses, "must": must}},
+            "sort": sorts[sort],
+            "seq_no_primary_term": True,
+        }
+        if sort == "severity":
+            body["runtime_mappings"] = {
+                "severity_rank": {
+                    "type": "long",
+                    "script": {
+                        "source": "def r=['critical':0L,'high':1L,'medium':2L,'low':3L]; emit(r.getOrDefault(doc['severity'].value,4L))"
+                    },
+                }
+            }
+        if search_after:
+            body["search_after"] = search_after
+        if pit_id is None:
+            pit_id = self.client.open_point_in_time(index=INCIDENTS_READ_ALIAS, keep_alive="2m")["id"]
+        body["pit"] = {"id": pit_id, "keep_alive": "2m"}
+        response = self.client.search(**body)
+        hits = response["hits"]["hits"]
+        more = len(hits) > page_size
+        hits = hits[:page_size]
+        items = []
+        for hit in hits:
+            source = dict(hit["_source"])
+            source.update(seq_no=hit.get("_seq_no"), primary_term=hit.get("_primary_term"))
+            items.append(Incident.model_validate(source))
+        return IncidentInboxPage(items, list(hits[-1]["sort"]) if more else None, response.get("pit_id", pit_id))
+
+    def search_events(
+        self, tenant_id: str, environment: str, incident_id: str, page_size: int, search_after: list[Any] | None
+    ) -> TimelinePage:
+        body: dict[str, Any] = {
+            "index": "logs-dataobs.incident_comment-*",
+            "size": page_size + 1,
+            "query": {
+                "bool": {"filter": self._scope(tenant_id, environment) + [{"term": {"incident_id": incident_id}}]}
+            },
+            "sort": [{"@timestamp": "asc"}, {"correlation_id": "asc"}],
+        }
+        if search_after:
+            body["search_after"] = search_after
+        hits = self.client.search(**body)["hits"]["hits"]
+        more = len(hits) > page_size
+        hits = hits[:page_size]
+        return TimelinePage(
+            [timeline_document_to_event(dict(hit["_source"])) for hit in hits], list(hits[-1]["sort"]) if more else None
+        )
+
+    def get_operation(self, operation_id: str) -> dict[str, Any] | None:
+        try:
+            result = self.client.get(index=IDEMPOTENCY_READ_ALIAS, id=operation_id)
+        except NotFoundError:
+            return None
+        source = result["_source"]
+        document = source.get("document") or {}
+        return {"fingerprint": source.get("fingerprint"), "event": document.get("event")}
+
+    def save_operation(self, operation_id: str, fingerprint: str, event: dict[str, Any]) -> None:
+        document = {
+            "fingerprint": fingerprint,
+            "idempotency_key": operation_id,
+            "document": {"event": event},
+            "@timestamp": event["timestamp"],
+            "tenant_id": event["tenant_id"],
+            "environment": event["environment"],
+        }
+        try:
+            self.client.create(index=IDEMPOTENCY_ALIAS, id=operation_id, document=document, refresh="wait_for")
+        except ConflictError:
+            existing = self.get_operation(operation_id)
+            if not existing or existing["fingerprint"] != fingerprint:
+                raise VersionConflict("idempotency key was used for another operation")

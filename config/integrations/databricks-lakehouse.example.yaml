@@ -1,0 +1,33 @@
+integration_id: databricks-lakehouse-dev
+provider_type: databricks
+enabled: false
+allowed_capabilities: [resource_discovery, metadata_collection, metric_collection, query_history, schema_discovery, health_check, incremental_collection]
+timeout_seconds: 300
+provider:
+  cloud: aws
+  workspace_host: https://dbc-00000000-0000.cloud.databricks.com
+  expected_workspace_id: "0000000000000000"
+  authentication:
+    type: oauth_m2m
+    client_id_ref: env:DATAOBS_DATABRICKS_CLIENT_ID
+    client_secret_ref: env:DATAOBS_DATABRICKS_CLIENT_SECRET
+  unity_catalog:
+    enabled: true
+    include_catalogs: [analytics, curated]
+    exclude_schemas: [information_schema]
+    include_browse_only: true
+    include_columns: true
+    include_volumes: true
+    maximum_catalogs: 100
+    maximum_schemas: 2000
+    maximum_tables: 50000
+    maximum_columns: 200000
+    maximum_volumes: 5000
+  sql_warehouses: {enabled: true, include_ids: [], maximum_warehouses: 500}
+  jobs: {enabled: true, include_task_summaries: true, history_lookback_seconds: 86400, history_overlap_seconds: 900, maximum_jobs: 5000, maximum_runs: 10000, maximum_tasks_per_job: 500}
+  system_tables:
+    enabled: false
+    sql_warehouse_id: synthetic-warehouse-id
+    query_history: {enabled: false, lookback_seconds: 3600, overlap_seconds: 900, maximum_rows: 5000}
+    warehouse_events: {enabled: false, lookback_seconds: 86400, overlap_seconds: 900, maximum_rows: 5000}
+  limits: {maximum_pages: 1000, page_size: 100, maximum_observations: 100000, statement_timeout_seconds: 60, request_timeout_seconds: 30, maximum_concurrent_requests: 8}

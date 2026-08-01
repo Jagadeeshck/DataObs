@@ -29,6 +29,7 @@ The immutable Elasticsearch migration registry currently spans `0001` through `0
 The [certification and release gap audit](docs/development/certification-release-gap-audit.md) records the PR #171–#173 review and pending hosted actions.
 
 The CI workflows define Python, migration/OCC, Elasticsearch 9.4.2, Data Product foundation and reconciliation, end-to-end signal-path, PostgreSQL, Kafka/OpenLineage, Console, browser/accessibility, infrastructure, image-security, and documentation gates. Final-head hosted runs and retained artifacts—not test files or local output—are required before promotion to `validated` or release-ready.
+Focused certification is owned by `data-quality-monitoring`, `job-run-backend`, and `lineage-analysis-console`; each publishes an exact-commit artifact and has a separate download-and-verification job.
 
 The production-representative signal-path contract is:
 

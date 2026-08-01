@@ -403,8 +403,8 @@ capabilities:
     runbooks: []
     artifacts: []
   blockers:
-  - The Helm chart packages only API, quality worker, and collector foundations and is not production-ready; final-head image
-    and release rehearsal evidence is absent.
+  - The Helm chart packages only API, quality worker, and collector foundations and is not production-ready; final-head
+    image and release rehearsal evidence is absent.
   non_goals:
   - No product implementation is added by the ledger.
   next_gate: Execute and retain the evidence required for promotion.
@@ -470,7 +470,7 @@ capabilities:
     unit: defined_not_run
     integration: defined_not_run
     real_stack: defined_not_run
-    hosted_ci: missing
+    hosted_ci: defined_not_run
     browser: not_applicable
     accessibility: not_applicable
     security: not_applicable
@@ -484,17 +484,22 @@ capabilities:
     - tests/integration/test_quality_signal_path.py
     workflow_jobs:
     - ci.yml:integration-tests
-    audit_docs: []
+    - data-quality-monitoring.yml:certify
+    - data-quality-monitoring.yml:independently verify evidence
+    audit_docs:
+    - docs/development/quality-job-lineage-certification-audit.md
     runbooks: []
     artifacts:
+    - data-quality-monitoring-v1-evidence (final-head hosted run pending)
     - e2e-signal-path (defined; redacted final-head hosted artifact pending)
   blockers:
-  - The complete quality-to-incident contract exists, but no successful retained artifact for this PR head is available yet.
+  - Focused certification and independent verification are defined, but have not executed successfully for this
+    PR final head.
   non_goals:
   - No product implementation is added by the ledger.
-  next_gate: Run the final-head Elasticsearch 9.4.2 integration job and retain the redaction-safe e2e-signal-path artifact.
+  next_gate: Run the focused workflow for the final PR head and independently verify its retained exact-commit artifact.
   owner: unassigned
-  last_audited_at: '2026-07-27'
+  last_audited_at: '2026-08-01'
   last_audited_commit: 5164762a6337a44a76ad2c7574a78edc048a70b3
 - id: data.asset360
   name: Asset Catalog and Asset 360
@@ -544,7 +549,7 @@ capabilities:
   summary: Evidence-led status for lineage and pathway explorer.
   pillar: data_pipeline
   domain: console
-  state: foundation
+  state: functional_unvalidated
   release_readiness: blocked
   implementation:
     code_paths:
@@ -560,7 +565,7 @@ capabilities:
     unit: defined_not_run
     integration: defined_not_run
     real_stack: not_applicable
-    hosted_ci: missing
+    hosted_ci: defined_not_run
     browser: defined_not_run
     accessibility: defined_not_run
     security: not_applicable
@@ -569,24 +574,29 @@ capabilities:
     release: missing
   evidence:
     tests: []
-    workflow_jobs: []
-    audit_docs: []
+    workflow_jobs:
+    - lineage-analysis-console.yml:certify
+    - lineage-analysis-console.yml:independently verify evidence
+    audit_docs:
+    - docs/development/quality-job-lineage-certification-audit.md
     runbooks: []
-    artifacts: []
+    artifacts:
+    - lineage-analysis-console-evidence (final-head hosted run pending)
   blockers:
-  - Retained hosted and applicable real-stack/browser/security/scale evidence is absent.
+  - Focused certification and independent verification are defined, but have not executed successfully for this
+    PR final head.
   non_goals:
   - No product implementation is added by the ledger.
-  next_gate: Execute and retain the evidence required for promotion.
+  next_gate: Run the focused workflow for the final PR head and independently verify its retained exact-commit artifact.
   owner: unassigned
-  last_audited_at: '2026-07-27'
+  last_audited_at: '2026-08-01'
   last_audited_commit: 5164762a6337a44a76ad2c7574a78edc048a70b3
 - id: pipeline.openlineage
   name: OpenLineage ingest
   summary: Evidence-led status for openlineage ingest.
   pillar: data_pipeline
   domain: integrations
-  state: foundation
+  state: functional_unvalidated
   release_readiness: blocked
   implementation:
     code_paths:
@@ -601,7 +611,7 @@ capabilities:
     unit: defined_not_run
     integration: defined_not_run
     real_stack: not_applicable
-    hosted_ci: missing
+    hosted_ci: defined_not_run
     browser: not_applicable
     accessibility: not_applicable
     security: not_applicable
@@ -610,24 +620,29 @@ capabilities:
     release: missing
   evidence:
     tests: []
-    workflow_jobs: []
-    audit_docs: []
+    workflow_jobs:
+    - job-run-backend.yml:certify
+    - job-run-backend.yml:independently verify evidence
+    audit_docs:
+    - docs/development/quality-job-lineage-certification-audit.md
     runbooks: []
-    artifacts: []
+    artifacts:
+    - job-run-backend-evidence (final-head hosted run pending)
   blockers:
-  - Retained hosted and applicable real-stack/browser/security/scale evidence is absent.
+  - Focused certification and independent verification are defined, but have not executed successfully for this
+    PR final head.
   non_goals:
   - No product implementation is added by the ledger.
-  next_gate: Execute and retain the evidence required for promotion.
+  next_gate: Run the focused workflow for the final PR head and independently verify its retained exact-commit artifact.
   owner: unassigned
-  last_audited_at: '2026-07-27'
+  last_audited_at: '2026-08-01'
   last_audited_commit: 5164762a6337a44a76ad2c7574a78edc048a70b3
 - id: pipeline.jobs
   name: Job and run domain and Explorer
   summary: Evidence-led status for job and run domain and explorer.
   pillar: data_pipeline
   domain: console
-  state: foundation
+  state: functional_unvalidated
   release_readiness: blocked
   implementation:
     code_paths:
@@ -643,7 +658,7 @@ capabilities:
     unit: defined_not_run
     integration: defined_not_run
     real_stack: not_applicable
-    hosted_ci: missing
+    hosted_ci: defined_not_run
     browser: defined_not_run
     accessibility: defined_not_run
     security: not_applicable
@@ -652,24 +667,29 @@ capabilities:
     release: missing
   evidence:
     tests: []
-    workflow_jobs: []
-    audit_docs: []
+    workflow_jobs:
+    - job-run-backend.yml:certify
+    - job-run-backend.yml:independently verify evidence
+    audit_docs:
+    - docs/development/quality-job-lineage-certification-audit.md
     runbooks: []
-    artifacts: []
+    artifacts:
+    - job-run-backend-evidence (final-head hosted run pending)
   blockers:
-  - Retained hosted and applicable real-stack/browser/security/scale evidence is absent.
+  - Focused certification and independent verification are defined, but have not executed successfully for this
+    PR final head.
   non_goals:
   - No product implementation is added by the ledger.
-  next_gate: Execute and retain the evidence required for promotion.
+  next_gate: Run the focused workflow for the final PR head and independently verify its retained exact-commit artifact.
   owner: unassigned
-  last_audited_at: '2026-07-27'
+  last_audited_at: '2026-08-01'
   last_audited_commit: 5164762a6337a44a76ad2c7574a78edc048a70b3
 - id: pipeline.adapters
   name: Airflow, dbt, and Spark adapters
   summary: Evidence-led status for airflow, dbt, and spark adapters.
   pillar: data_pipeline
   domain: integrations
-  state: foundation
+  state: functional_unvalidated
   release_readiness: blocked
   implementation:
     code_paths:
@@ -684,7 +704,7 @@ capabilities:
     unit: defined_not_run
     integration: defined_not_run
     real_stack: not_applicable
-    hosted_ci: missing
+    hosted_ci: defined_not_run
     browser: not_applicable
     accessibility: not_applicable
     security: not_applicable
@@ -693,17 +713,22 @@ capabilities:
     release: missing
   evidence:
     tests: []
-    workflow_jobs: []
-    audit_docs: []
+    workflow_jobs:
+    - job-run-backend.yml:certify
+    - job-run-backend.yml:independently verify evidence
+    audit_docs:
+    - docs/development/quality-job-lineage-certification-audit.md
     runbooks: []
-    artifacts: []
+    artifacts:
+    - job-run-backend-evidence (final-head hosted run pending)
   blockers:
-  - Retained hosted and applicable real-stack/browser/security/scale evidence is absent.
+  - Focused certification and independent verification are defined, but have not executed successfully for this
+    PR final head.
   non_goals:
   - No product implementation is added by the ledger.
-  next_gate: Execute and retain the evidence required for promotion.
+  next_gate: Run the focused workflow for the final PR head and independently verify its retained exact-commit artifact.
   owner: unassigned
-  last_audited_at: '2026-07-27'
+  last_audited_at: '2026-08-01'
   last_audited_commit: 5164762a6337a44a76ad2c7574a78edc048a70b3
 - id: monitoring.runtime
   name: Monitor runtime, baselines, and recommendations
@@ -828,11 +853,12 @@ capabilities:
     - data-product-foundation (defined; final-head hosted run pending)
     - data-product-reconciliation-evidence (defined; final-head hosted run pending)
   blockers:
-  - Final-head hosted Elasticsearch, independent evidence verification, browser/accessibility, and security artifacts are
-    not yet retained.
+  - Final-head hosted Elasticsearch, independent evidence verification, browser/accessibility, and security artifacts
+    are not yet retained.
   non_goals:
   - No product implementation is added by the ledger.
-  next_gate: Run foundation and full reconciliation profiles for the final PR head and independently verify retained artifacts.
+  next_gate: Run foundation and full reconciliation profiles for the final PR head and independently verify retained
+    artifacts.
   owner: unassigned
   last_audited_at: '2026-07-27'
   last_audited_commit: 5164762a6337a44a76ad2c7574a78edc048a70b3
@@ -1040,10 +1066,12 @@ capabilities:
     artifacts:
     - e2e-signal-path (defined; redacted final-head hosted artifact pending)
   blockers:
-  - The complete quality-to-incident contract exists, but no successful retained artifact for this PR head is available yet.
+  - The complete quality-to-incident contract exists, but no successful retained artifact for this PR head is available
+    yet.
   non_goals:
   - No product implementation is added by the ledger.
-  next_gate: Run the final-head Elasticsearch 9.4.2 integration job and retain the redaction-safe e2e-signal-path artifact.
+  next_gate: Run the final-head Elasticsearch 9.4.2 integration job and retain the redaction-safe e2e-signal-path
+    artifact.
   owner: unassigned
   last_audited_at: '2026-07-27'
   last_audited_commit: 5164762a6337a44a76ad2c7574a78edc048a70b3
@@ -1459,17 +1487,19 @@ capabilities:
     artifacts:
     - e2e-signal-path (defined; redacted final-head hosted artifact pending)
   blockers:
-  - The complete quality-to-incident contract exists, but no successful retained artifact for this PR head is available yet.
+  - The complete quality-to-incident contract exists, but no successful retained artifact for this PR head is available
+    yet.
   non_goals:
   - No product implementation is added by the ledger.
-  next_gate: Run the final-head Elasticsearch 9.4.2 integration job and retain the redaction-safe e2e-signal-path artifact.
+  next_gate: Run the final-head Elasticsearch 9.4.2 integration job and retain the redaction-safe e2e-signal-path
+    artifact.
   owner: unassigned
   last_audited_at: '2026-07-27'
   last_audited_commit: 5164762a6337a44a76ad2c7574a78edc048a70b3
 - id: integration.optional
   name: OpenSearch, Grafana, and Alloy interoperability
-  summary: Evidence-led status for opensearch, grafana, and alloy interoperability. Elasticsearch remains authoritative; this
-    is export/interoperability only.
+  summary: Evidence-led status for opensearch, grafana, and alloy interoperability. Elasticsearch remains authoritative;
+    this is export/interoperability only.
   pillar: platform
   domain: integrations
   state: optional_integration

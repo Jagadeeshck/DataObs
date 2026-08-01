@@ -343,19 +343,36 @@ class DataObservabilityService:
                             "edge_id": stable_id("lineage_edge", source, target, parsed["job_id"]),
                             "source_asset_id": source,
                             "target_asset_id": target,
+                            "tenant_id": parsed["tenant_id"],
+                            "environment": parsed["environment"],
+                            "relationship": "produces",
                             "relationship_type": "produces",
                             "edge_type": "DATASET_TO_DATASET",
                             "job_id": parsed["job_id"],
                             "job_name": parsed["job_name"],
-                            "job_run_id": parsed["run_id"],
+                            "run_id": parsed["canonical_run_id"],
+                            "job_run_id": parsed["canonical_run_id"],
+                            "confidence": 1.0,
+                            "evidence_refs": [parsed["event_id"]],
+                            "schema_version": "v1",
                             "observed_at": parsed["event_time"],
                         }
                     )
                 )
         projected_column_edges = [
-            self.ingest_column_lineage_edge(edge)
+            self.ingest_column_lineage_edge(
+                {
+                    **edge,
+                    "tenant_id": parsed["tenant_id"],
+                    "environment": parsed["environment"],
+                    "evidence_refs": [parsed["event_id"]],
+                }
+            )
             for edge in column_lineage_edges(
-                parsed["outputs"], job_id=parsed["job_id"], run_id=parsed["run_id"], observed_at=parsed["event_time"]
+                parsed["outputs"],
+                job_id=parsed["job_id"],
+                run_id=parsed["canonical_run_id"],
+                observed_at=parsed["event_time"],
             )
         ]
         projected_quality_runs = [

@@ -1,5 +1,7 @@
 # DataObs
 
+The console includes tenant-scoped Jobs inventory, Job 360, Run 360, run comparison, and a bounded dataset/column Lineage Explorer. Architecture and rebuild details are documented in `docs/architecture/lineage-projections.md` and `docs/operations/lineage-rebuild.md`.
+
 ## Status
 
 DataObs is an **Elasticsearch-native Data Observability and Data Streams Monitoring product** under active development. **This repository is not a production release yet.** Capability and release-readiness claims are evidence-gated by the [capability ledger](docs/product/capability-ledger.yaml); local tests or the existence of configuration do not constitute hosted certification.

@@ -63,6 +63,24 @@ async function write<T>(
   return response.json() as Promise<T>;
 }
 export const api = {
+  jobs: (tenant: string, env: string, search = "", signal?: AbortSignal) =>
+    read<{ items: Record<string, unknown>[]; next_cursor: string | null }>(
+      `/api/v1/jobs?environment=${encodeURIComponent(env)}&search=${encodeURIComponent(search)}`,
+      tenant,
+      signal,
+    ),
+  entity: (
+    tenant: string,
+    env: string,
+    kind: "job" | "run",
+    id: string,
+    signal?: AbortSignal,
+  ) =>
+    read<Record<string, unknown>>(
+      `/api/v1/${kind}s/${encodeURIComponent(id)}?environment=${encodeURIComponent(env)}`,
+      tenant,
+      signal,
+    ),
   dataProducts: (
     tenant: string,
     env: string,

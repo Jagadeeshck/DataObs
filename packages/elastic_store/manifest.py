@@ -1601,6 +1601,41 @@ IDENTITY_RBAC_TENANT_BINDINGS_MIGRATION = Migration(
     },
 )
 
+LINEAGE_ANALYSIS_EXPLORER_MIGRATION = Migration(
+    "0021_lineage_analysis_explorer",
+    "Add durable dataset/column lineage observations and current analysis projections",
+    "v1",
+    dependencies=["0020_identity_rbac_tenant_bindings"],
+    rollback_strategy="stop lineage projection writers and transforms; retain append-only observations and snapshot current projections before removing only 0021 resources",
+    operations={
+        "mutable_indices": [
+            "dataobs-lineage-current-v1",
+            "dataobs-column-lineage-current-v1",
+            "dataobs-lineage-analysis-checkpoints-v1",
+        ],
+        "data_streams": [
+            "logs-dataobs.lineage-observation-*",
+            "logs-dataobs.column-lineage-observation-*",
+        ],
+        "transforms": [
+            {
+                "id": "dataobs-current-dataset-lineage",
+                "source": "logs-dataobs.lineage-observation-*",
+                "destination": "dataobs-lineage-current-v1",
+                "unique_key": ["tenant_id", "environment", "edge_id"],
+                "sort": "observed_at",
+            },
+            {
+                "id": "dataobs-current-column-lineage",
+                "source": "logs-dataobs.column-lineage-observation-*",
+                "destination": "dataobs-column-lineage-current-v1",
+                "unique_key": ["tenant_id", "environment", "edge_id"],
+                "sort": "observed_at",
+            },
+        ],
+    },
+)
+
 
 def migrations() -> List[Migration]:
     return [
@@ -1624,6 +1659,7 @@ def migrations() -> List[Migration]:
         DATA_PRODUCT_DECISION_REASON_ALIAS_MIGRATION,
         DATA_PRODUCT_CLAIM_EXPIRES_DATE_MIGRATION,
         IDENTITY_RBAC_TENANT_BINDINGS_MIGRATION,
+        LINEAGE_ANALYSIS_EXPLORER_MIGRATION,
     ]
 
 

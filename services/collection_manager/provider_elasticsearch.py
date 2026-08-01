@@ -6,7 +6,7 @@ import hashlib
 from dataclasses import asdict, is_dataclass
 from datetime import datetime
 from enum import Enum
-from typing import Any, Sequence
+from typing import Any, Sequence, cast
 
 from packages.collectors.sdk import CollectionCheckpoint, IntegrationConfiguration, IntegrationContext, PaginationCursor
 from packages.collectors.sdk.errors import CheckpointConflictError, InternalCollectorError
@@ -22,7 +22,7 @@ def _id(*parts: str) -> str:
 
 def _json(value: Any) -> Any:
     if is_dataclass(value):
-        return {k: _json(v) for k, v in asdict(value).items()}
+        return {k: _json(v) for k, v in asdict(cast(Any, value)).items()}
     if isinstance(value, (datetime, Enum)):
         return value.isoformat() if isinstance(value, datetime) else value.value
     if isinstance(value, (set, frozenset, tuple)):
@@ -106,7 +106,7 @@ class ElasticsearchProviderRepository:
 
     async def persist(self, context: IntegrationContext, observations: Sequence[object]) -> None:
         for start in range(0, len(observations), self.bulk_size):
-            operations = []
+            operations: list[dict[str, Any]] = []
             for item in observations[start : start + self.bulk_size]:
                 body = _json(item)
                 body.update(

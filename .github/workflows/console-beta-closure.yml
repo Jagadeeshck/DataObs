@@ -1,0 +1,76 @@
+name: Console Beta closure v1
+on:
+  pull_request:
+    paths: ['ui/dataobs-console/**', 'docs/**', '.github/workflows/console-beta-closure.yml', 'openapi.json']
+  workflow_dispatch:
+permissions: {contents: read}
+concurrency: {group: 'console-beta-closure-${{ github.ref }}', cancel-in-progress: true}
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: pnpm/action-setup@v4
+        with: {version: 10.28.1}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22', cache: pnpm, cache-dependency-path: ui/dataobs-console/pnpm-lock.yaml}
+      - name: Repository policy validation
+        run: |
+          python scripts/check_team_boundaries.py
+          python scripts/check_generated_artifacts.py
+          python scripts/check_docs_links.py
+          python scripts/validate_capability_ledger.py
+          python scripts/check_migration_immutability.py --base-ref "${{ github.event.pull_request.base.sha || github.event.before }}"
+      - name: Install and generated-client drift
+        working-directory: ui/dataobs-console
+        run: pnpm install --frozen-lockfile && pnpm api:generate && git diff --exit-code src/api/generated/schema.ts
+      - name: Static, route, contract, and unit tests
+        working-directory: ui/dataobs-console
+        run: mkdir -p ../../evidence && pnpm typecheck && pnpm lint && pnpm format:check && pnpm test -- --reporter=junit --outputFile=../../evidence/vitest.xml
+      - name: Production bundle
+        working-directory: ui/dataobs-console
+        run: mkdir -p ../../evidence && pnpm build 2>&1 | tee ../../evidence/build.log && pnpm bundle:check 2>&1 | tee ../../evidence/bundle.log
+      - name: Browser matrix and axe
+        working-directory: ui/dataobs-console
+        run: pnpm exec playwright install --with-deps chromium && pnpm playwright --reporter=html,junit
+        env: {PLAYWRIGHT_JUNIT_OUTPUT_FILE: '../../evidence/playwright.xml'}
+      - name: Exact-commit manifest
+        if: always()
+        run: |
+          mkdir -p evidence
+          node --version > evidence/node-version.txt
+          pnpm --version > evidence/pnpm-version.txt
+          pnpm --dir ui/dataobs-console exec playwright --version > evidence/browser-tool-version.txt
+          printf '{"schema_version":"1.0","repository":"%s","commit_sha":"%s","workflow_run_id":"%s","workflow_url":"%s/actions/runs/%s","generated_at":"%s","artifact":"console-beta-closure-v1-evidence"}\n' "$GITHUB_REPOSITORY" "$GITHUB_SHA" "$GITHUB_RUN_ID" "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" "$(date -u +%FT%TZ)" > evidence/manifest.json
+          find ui/dataobs-console/dist/assets -maxdepth 1 -type f -printf '%f %s bytes\n' | sort > evidence/chunks.txt
+          git diff --name-only "${{ github.event.pull_request.base.sha || github.event.before }}"...HEAD -- 'dataobs/migrations/**' > evidence/migration-terminal.txt
+          printf 'Hosted warnings and skipped tests are represented by workflow/job conclusions.\n' > evidence/known-warnings.txt
+          cp -r ui/dataobs-console/playwright-report evidence/playwright-report 2>/dev/null || true
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with: {name: console-beta-closure-v1-evidence, path: evidence/, retention-days: 30, if-no-files-found: error}
+  verify-evidence:
+    needs: validate
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with: {name: console-beta-closure-v1-evidence, path: evidence}
+      - name: Independent evidence verification
+        env: {TESTED_SHA: '${{ github.sha }}'}
+        run: |
+          python - <<'PY'
+          import json, os, pathlib, re, xml.etree.ElementTree as ET
+          root=pathlib.Path('evidence'); required=['manifest.json','vitest.xml','playwright.xml','build.log','bundle.log','chunks.txt','migration-terminal.txt']
+          missing=[x for x in required if not (root/x).is_file()]
+          assert not missing, f'missing evidence: {missing}'
+          manifest=json.loads((root/'manifest.json').read_text()); assert manifest['commit_sha']==os.environ['TESTED_SHA']
+          for report in ('vitest.xml','playwright.xml'):
+            tree=ET.parse(root/report); suites=tree.getroot(); assert int(suites.attrib.get('failures','0'))==0
+          assert 'JavaScript bundle:' in (root/'bundle.log').read_text()
+          payload='\n'.join(p.read_text(errors='ignore') for p in root.rglob('*') if p.is_file())
+          assert not re.search(r'(?i)(authorization:\s*bearer\s+\S+|-----BEGIN (?:RSA |EC )?PRIVATE KEY-----|aws_secret_access_key\s*[=:])',payload)
+          print('exact-commit evidence verified')
+          PY

@@ -1,4 +1,4 @@
-schema_version: v1
+schema_version: v1 # configuration envelope remains backward compatible; AWS provider implementation is v2
 integration_id: aws-data-platform-dev
 provider_type: aws
 enabled: false
@@ -11,6 +11,16 @@ provider:
     external_id_ref: env:DATAOBS_AWS_EXTERNAL_ID
     session_duration_seconds: 3600
   regions: [eu-west-1, eu-west-2]
-  services: [rds, glue, athena, emr-serverless]
+  services: [rds, glue, athena, emr-serverless, s3, lambda, sagemaker, mwaa, redshift, redshift-serverless]
+  service_options:
+    s3:
+      include_buckets: [synthetic-data-bucket]
+      prefix_assets: [{bucket: synthetic-data-bucket, prefix: curated/}]
+      maximum_prefix_samples: 100
+      maximum_prefix_pages: 10
+    lambda: {include_function_patterns: [data-platform-*]}
+    sagemaker: {include_training_jobs: true, include_processing_jobs: true, include_pipeline_executions: true, include_endpoints: true, history_lookback_seconds: 86400}
+    mwaa: {collect_environment_metrics: true}
+    redshift: {include_query_summaries: false, query_history_lookback_seconds: 3600}
   cloudwatch: {enabled: true, lookback_seconds: 900, period_seconds: 300}
   ownership_tag_keys: [Owner, Team, Application, DataProduct]

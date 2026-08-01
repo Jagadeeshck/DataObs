@@ -1,0 +1,40 @@
+{{- if .Values.pathwayWorker.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "dataobs.fullname" . }}-pathway-worker
+  labels: {{- include "dataobs.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.pathwayWorker.replicaCount }}
+  revisionHistoryLimit: {{ .Values.global.revisionHistoryLimit }}
+  strategy: {type: RollingUpdate, rollingUpdate: {maxUnavailable: 0, maxSurge: 1}}
+  selector:
+    matchLabels: {{- include "dataobs.selector" (dict "Release" .Release "Chart" .Chart "Values" .Values "component" "pathway-worker") | nindent 6 }}
+  template:
+    metadata:
+      labels: {{- include "dataobs.selector" (dict "Release" .Release "Chart" .Chart "Values" .Values "component" "pathway-worker") | nindent 8 }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/shared-config.yaml") . | sha256sum }}
+{{ toYaml .Values.pathwayWorker.podAnnotations | indent 8 }}
+    spec:
+      serviceAccountName: {{ include "dataobs.fullname" . }}-pathway-worker
+      automountServiceAccountToken: false
+      securityContext: {{ toYaml .Values.global.podSecurityContext | nindent 8 }}
+      terminationGracePeriodSeconds: {{ .Values.pathwayWorker.terminationGracePeriodSeconds }}
+      imagePullSecrets: {{ toYaml .Values.global.imagePullSecrets | nindent 8 }}
+      containers:
+        - name: pathway-worker
+          image: {{ include "dataobs.image" (dict "root" . "image" .Values.pathwayWorker.image) | quote }}
+          imagePullPolicy: {{ .Values.pathwayWorker.image.pullPolicy }}
+          command: {{ toJson .Values.pathwayWorker.command }}
+          env:
+{{ include "dataobs.commonEnv" . | indent 12 }}
+{{ toYaml .Values.pathwayWorker.env | indent 12 }}
+          envFrom: {{ toYaml .Values.pathwayWorker.envFrom | nindent 12 }}
+          securityContext: {{ toYaml .Values.global.securityContext | nindent 12 }}
+          resources: {{ toYaml .Values.pathwayWorker.resources | nindent 12 }}
+      nodeSelector: {{ toYaml (default .Values.global.nodeSelector .Values.pathwayWorker.nodeSelector) | nindent 8 }}
+      affinity: {{ toYaml (default .Values.global.affinity .Values.pathwayWorker.affinity) | nindent 8 }}
+      tolerations: {{ toYaml (default .Values.global.tolerations .Values.pathwayWorker.tolerations) | nindent 8 }}
+      topologySpreadConstraints: {{ toYaml (default .Values.global.topologySpreadConstraints .Values.pathwayWorker.topologySpreadConstraints) | nindent 8 }}
+{{- end }}

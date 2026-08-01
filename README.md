@@ -80,3 +80,7 @@ Delivery governance is defined by [team ownership](docs/development/team-ownersh
 ### Connector and Schema 360
 
 The Console includes dedicated, read-only Connector and Schema investigation at `/streams/connectors/:connectorId` and `/streams/schemas/:subjectId`. It exposes bounded operational evidence and fingerprints, never connector configuration or full schema definitions. See `docs/operations/connector-schema-360.md`.
+
+## Beta Kubernetes deployment package
+
+The functional-but-unvalidated Beta chart is under [`helm/dataobs`](helm/dataobs/README.md). It packages runnable components against external Elasticsearch only; review the release manifest and Kubernetes production guides before evaluation.

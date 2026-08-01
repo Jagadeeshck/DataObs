@@ -1,0 +1,4 @@
+scannerWorker: {enabled: false}
+monitorRuntime: {enabled: false}
+pathwayWorker: {enabled: false}
+kafkaObserver: {enabled: false}

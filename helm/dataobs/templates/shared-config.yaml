@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "dataobs.fullname" . }}-config
+  labels: {{- include "dataobs.labels" . | nindent 4 }}
+data:
+  environment: {{ .Values.global.environment | quote }}
+  tenant-mode: {{ .Values.global.tenantMode | quote }}
+  elasticsearch-url: {{ .Values.external.elasticsearch.url | quote }}
+  oidc-issuer: {{ .Values.external.oidc.issuer | quote }}
+  oidc-audience: {{ .Values.external.oidc.audience | quote }}
+  console-runtime.js: |
+    window.__DATAOBS_CONFIG__ = Object.freeze({apiBaseUrl: {{ .Values.console.apiBaseUrl | toJson }}, oidcIssuer: {{ .Values.external.oidc.issuer | toJson }}, oidcClientId: {{ .Values.external.oidc.clientId | toJson }}});

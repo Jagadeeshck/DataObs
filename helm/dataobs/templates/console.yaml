@@ -1,0 +1,45 @@
+{{- if .Values.console.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "dataobs.fullname" . }}-console
+  labels: {{- include "dataobs.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.console.replicaCount }}
+  revisionHistoryLimit: {{ .Values.global.revisionHistoryLimit }}
+  strategy: {type: RollingUpdate, rollingUpdate: {maxUnavailable: 0, maxSurge: 1}}
+  selector:
+    matchLabels: {{- include "dataobs.selector" (dict "Release" .Release "Chart" .Chart "Values" .Values "component" "console") | nindent 6 }}
+  template:
+    metadata:
+      labels: {{- include "dataobs.selector" (dict "Release" .Release "Chart" .Chart "Values" .Values "component" "console") | nindent 8 }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/shared-config.yaml") . | sha256sum }}
+{{ toYaml .Values.console.podAnnotations | indent 8 }}
+    spec:
+      serviceAccountName: {{ include "dataobs.fullname" . }}-console
+      automountServiceAccountToken: false
+      securityContext: {{ toYaml .Values.global.podSecurityContext | nindent 8 }}
+      terminationGracePeriodSeconds: {{ .Values.console.terminationGracePeriodSeconds }}
+      imagePullSecrets: {{ toYaml .Values.global.imagePullSecrets | nindent 8 }}
+      containers:
+        - name: console
+          image: {{ include "dataobs.image" (dict "root" . "image" .Values.console.image) | quote }}
+          imagePullPolicy: {{ .Values.console.image.pullPolicy }}
+          ports:
+            - {name: http, containerPort: 8080, protocol: TCP}
+          readinessProbe:
+{{ toYaml .Values.console.readinessProbe | indent 12 }}
+          livenessProbe:
+{{ toYaml .Values.console.livenessProbe | indent 12 }}
+          env:
+{{ include "dataobs.commonEnv" . | indent 12 }}
+{{ toYaml .Values.console.env | indent 12 }}
+          envFrom: {{ toYaml .Values.console.envFrom | nindent 12 }}
+          securityContext: {{ toYaml .Values.global.securityContext | nindent 12 }}
+          resources: {{ toYaml .Values.console.resources | nindent 12 }}
+      nodeSelector: {{ toYaml (default .Values.global.nodeSelector .Values.console.nodeSelector) | nindent 8 }}
+      affinity: {{ toYaml (default .Values.global.affinity .Values.console.affinity) | nindent 8 }}
+      tolerations: {{ toYaml (default .Values.global.tolerations .Values.console.tolerations) | nindent 8 }}
+      topologySpreadConstraints: {{ toYaml (default .Values.global.topologySpreadConstraints .Values.console.topologySpreadConstraints) | nindent 8 }}
+{{- end }}

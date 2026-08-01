@@ -1,0 +1,93 @@
+{
+  "release_version": "0.2.0-beta.1",
+  "git_sha": "0000000000000000000000000000000000000000",
+  "chart_version": "0.2.0",
+  "application_version": "0.2.0",
+  "created_at": "2026-08-01T00:00:00Z",
+  "Elasticsearch_version": "9.4.2",
+  "Kibana_version": "9.4.2",
+  "terminal_migration": "0021_lineage_analysis_explorer",
+  "components": {
+    "api": {
+      "image_repository": "jagadeeshck/dataobs-api",
+      "image_tag": "0.2.0",
+      "image_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "SBOM": "pending",
+      "signature": "pending",
+      "provenance": "pending",
+      "certification_artifact": "pending"
+    },
+    "console": {
+      "image_repository": "jagadeeshck/dataobs-console",
+      "image_tag": "0.2.0",
+      "image_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "SBOM": "pending",
+      "signature": "pending",
+      "provenance": "pending",
+      "certification_artifact": "pending"
+    },
+    "qualityWorker": {
+      "image_repository": "jagadeeshck/dataobs-qualityworker",
+      "image_tag": "0.2.0",
+      "image_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "SBOM": "pending",
+      "signature": "pending",
+      "provenance": "pending",
+      "certification_artifact": "pending"
+    },
+    "scannerWorker": {
+      "image_repository": "jagadeeshck/dataobs-scannerworker",
+      "image_tag": "0.2.0",
+      "image_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "SBOM": "pending",
+      "signature": "pending",
+      "provenance": "pending",
+      "certification_artifact": "pending"
+    },
+    "monitorRuntime": {
+      "image_repository": "jagadeeshck/dataobs-monitorruntime",
+      "image_tag": "0.2.0",
+      "image_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "SBOM": "pending",
+      "signature": "pending",
+      "provenance": "pending",
+      "certification_artifact": "pending"
+    },
+    "pathwayWorker": {
+      "image_repository": "jagadeeshck/dataobs-pathwayworker",
+      "image_tag": "0.2.0",
+      "image_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "SBOM": "pending",
+      "signature": "pending",
+      "provenance": "pending",
+      "certification_artifact": "pending"
+    },
+    "kafkaObserver": {
+      "image_repository": "jagadeeshck/dataobs-kafkaobserver",
+      "image_tag": "0.2.0",
+      "image_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "SBOM": "pending",
+      "signature": "pending",
+      "provenance": "pending",
+      "certification_artifact": "pending"
+    },
+    "otelCollector": {
+      "image_repository": "otel/opentelemetry-collector-contrib",
+      "image_tag": "0.2.0",
+      "image_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "SBOM": "pending",
+      "signature": "pending",
+      "provenance": "pending",
+      "certification_artifact": "pending"
+    },
+    "migrationJob": {
+      "image_repository": "jagadeeshck/dataobs-migrationjob",
+      "image_tag": "0.2.0",
+      "image_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "SBOM": "pending",
+      "signature": "pending",
+      "provenance": "pending",
+      "certification_artifact": "pending"
+    }
+  }
+}

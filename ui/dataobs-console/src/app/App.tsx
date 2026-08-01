@@ -10,6 +10,12 @@ import { AssetCatalog } from "../features/assets/AssetCatalog";
 import { Asset360 } from "../features/assets/Asset360";
 import { PathwayExplorer } from "../features/pathways/PathwayExplorer";
 import { Callback, Login, Logout, Unauthorised } from "../auth/AuthPages";
+import { NotFound, RouteError } from "./RouteStates";
+import {
+  Integrations,
+  IntegrationDetail,
+} from "../features/integrations/Integrations";
+import { Onboarding } from "../features/onboarding/Onboarding";
 import {
   Job360,
   JobsInventory,
@@ -66,7 +72,7 @@ export function App() {
             <Route path="auth/callback" element={<Callback />} />
             <Route path="logout" element={<Logout />} />
             <Route path="unauthorised" element={<Unauthorised />} />
-            <Route element={<AppShell />}>
+            <Route element={<AppShell />} errorElement={<RouteError />}>
               <Route index element={<CommandCenter />} />
               <Route path="flow" element={<FlowMap />} />
               <Route path="assets" element={<AssetCatalog />} />
@@ -78,6 +84,12 @@ export function App() {
               <Route path="runs/:runId" element={<Run360 />} />
               <Route path="runs/compare" element={<RunComparison />} />
               <Route path="lineage" element={<LineageExplorer />} />
+              <Route path="integrations" element={<Integrations />} />
+              <Route
+                path="integrations/:integrationId"
+                element={<IntegrationDetail />}
+              />
+              <Route path="onboarding" element={<Onboarding />} />
               <Route path="quality" element={<QualityOverview />} />
               <Route path="quality/monitors" element={<MonitorInventory />} />
               <Route
@@ -119,6 +131,7 @@ export function App() {
                 path="streams/schemas/:subjectId"
                 element={<Schema360 />}
               />
+              <Route path="*" element={<NotFound />} />
             </Route>
           </Routes>
         </Suspense>

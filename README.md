@@ -72,3 +72,7 @@ The tenant-scoped `/streams`, Topic 360, and Consumer Group 360 investigation vi
 ### Kafka Cluster 360 Console
 
 `/streams/clusters/:clusterId` now has a dedicated read-only operational console with bounded broker, topic, consumer-group and safe connector summaries plus evidence-based health. Missing observations remain unknown, changes/incidents report Not configured without providers, and optional 30-second polling pauses while hidden. See [the Cluster 360 operations guide](docs/operations/cluster-360-console.md).
+
+## Parallel team delivery
+
+Delivery governance is defined by [team ownership](docs/development/team-ownership.md), [GitHub development workflow](docs/development/github-delivery-conventions.md), the [ADR process](docs/architecture/adr/README.md), [migration ownership](docs/development/migration-ownership.md), the planned [Beta 1 delivery plan](docs/product/beta-1-delivery-plan.md), and the [certification evidence contract](docs/development/certification-evidence-contract.md). Beta 1 remains planned until hosted certification evidence supports promotion.

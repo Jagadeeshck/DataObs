@@ -1,0 +1,1 @@
+{"tenant_id":"tenant-healthy","environment":"test","cluster":"cluster-1","topic":"orders","consumer_group":"fulfilment","pathway":"orders-to-warehouse"}

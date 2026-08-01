@@ -1,0 +1,1 @@
+{"tenant_id":"tenant-healthy","environment":"test","job":"daily-orders","run":"run-1","eventType":"COMPLETE","producer":"https://dataobs.invalid/fixtures"}

@@ -89,3 +89,7 @@ The supported core browser scope is Streams Inventory, Topic 360, and Consumer G
 ## Kafka Cluster 360 Console v1
 
 The dedicated cluster route provides typed, bounded and tenant-isolated cluster overview, broker, topic, consumer-group, connector and operational-health views. Unknown and measured zero are distinct; Changes and Incidents honestly remain `not_configured` without providers. Optional 30-second polling pauses when hidden. Exact-commit hosted certification is defined by `cluster-360-console.yml` and remains pending until its artifact is retained and independently verified.
+
+## Parallel delivery foundation
+
+The repository defines six ownership workstreams and a planned Beta 1 sequence. These governance and validation foundations do not promote Beta 1 or add product behavior; certification remains evidence-led through the shared contract in `docs/development/certification-evidence-contract.md`.

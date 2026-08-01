@@ -1,0 +1,21 @@
+# Interim owner @Jagadeeshck; comments identify future team ownership.
+# Team 0 — Platform, Security and Release
+/packages/elastic_store/manifest.py @Jagadeeshck
+/packages/elastic_store/migrations/ @Jagadeeshck
+/packages/elastic_store/migrations.py @Jagadeeshck
+/scripts/check_migration_immutability.py @Jagadeeshck
+/scripts/certification/ @Jagadeeshck
+/src/security/ @Jagadeeshck
+/.github/workflows/ @Jagadeeshck
+/helm/ @Jagadeeshck
+/deploy/ @Jagadeeshck
+/docs/product/capability-ledger.yaml @Jagadeeshck
+# Shared Console transport and generated schema — Teams 0 and 5
+/ui/dataobs-console/src/api/transport.ts @Jagadeeshck
+/ui/dataobs-console/src/api/generated/ @Jagadeeshck
+# Future capability teams
+/services/kafka_observer/ @Jagadeeshck
+/services/monitoring/ @Jagadeeshck
+/services/incident_manager/ @Jagadeeshck
+/integrations/ @Jagadeeshck
+/ui/dataobs-console/src/ @Jagadeeshck

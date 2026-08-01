@@ -32,6 +32,7 @@ export async function write<T>(
   tenant: string,
   body: unknown,
   signal?: AbortSignal,
+  headers: Record<string, string> = {},
 ): Promise<T> {
   const token = await accessToken();
   const response = await fetch(path, {
@@ -42,6 +43,7 @@ export async function write<T>(
       "Content-Type": "application/json",
       "X-DataObs-Tenant": tenant,
       "X-Request-ID": requestId(),
+      ...headers,
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: JSON.stringify(body),

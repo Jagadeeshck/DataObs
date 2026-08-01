@@ -15,6 +15,11 @@ export function IncidentDetail() {
   const [status, setStatus] = useState("Loading incident…");
   const [comment, setComment] = useState("");
   const [preview, setPreview] = useState<Record<string, unknown>>();
+  const [mutation, setMutation] = useState<{
+    fingerprint: string;
+    key: string;
+  }>();
+  const [submitting, setSubmitting] = useState(false);
   const load = () => {
     setStatus("Loading incident…");
     Promise.all([
@@ -44,14 +49,27 @@ export function IncidentDetail() {
         setStatus("Incident data is unavailable or permission was denied."),
       );
   }, [tenant, environment, incidentId]);
-  const mutate = (body: Record<string, unknown>) =>
-    item &&
-    incidentsApi
-      .mutate(tenant, environment, incidentId, {
-        revision: item.revision,
-        ...body,
+  const mutate = (body: Record<string, unknown>) => {
+    if (!item || submitting) return;
+    const payload = { revision: item.revision, ...body };
+    const fingerprint = JSON.stringify([
+      tenant,
+      environment,
+      incidentId,
+      payload,
+    ]);
+    const operation =
+      mutation?.fingerprint === fingerprint
+        ? mutation
+        : { fingerprint, key: crypto.randomUUID() };
+    setMutation(operation);
+    setSubmitting(true);
+    return incidentsApi
+      .mutate(tenant, environment, incidentId, payload, operation.key)
+      .then(() => {
+        setMutation(undefined);
+        return load();
       })
-      .then(() => load())
       .catch((error: { status?: number }) => {
         setStatus(
           error.status === 409
@@ -59,7 +77,9 @@ export function IncidentDetail() {
             : "The change could not be saved.",
         );
         load();
-      });
+      })
+      .finally(() => setSubmitting(false));
+  };
   return (
     <main className="page incident-page" aria-labelledby="incident-title">
       <p role="status" aria-live="polite">
@@ -93,7 +113,10 @@ export function IncidentDetail() {
             {item.warnings.map((w) => (
               <p key={w}>{w}</p>
             ))}
-            <button onClick={() => mutate({ state: "acknowledged" })}>
+            <button
+              disabled={submitting}
+              onClick={() => mutate({ state: "acknowledged" })}
+            >
               Acknowledge
             </button>
           </section>
@@ -144,7 +167,7 @@ export function IncidentDetail() {
               />
             </label>
             <button
-              disabled={!comment.trim()}
+              disabled={!comment.trim() || submitting}
               onClick={() => {
                 mutate({ comment });
                 setComment("");

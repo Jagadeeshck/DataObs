@@ -75,11 +75,8 @@ export function App() {
               <Route path="runs/:runId" element={<Run360 />} />
               <Route path="runs/compare" element={<RunComparison />} />
               <Route path="lineage" element={<LineageExplorer />} />
-<<<<<<< HEAD
-              <Route path="quality/*" element={<QualityRoutes />} />
-=======
               <Route path="incidents" element={<IncidentInbox />} />
->>>>>>> origin/main
+              <Route path="quality/*" element={<QualityRoutes />} />
               <Route
                 path="incidents/:incidentId"
                 element={<IncidentDetail />}

@@ -24,6 +24,7 @@ class SchemaRegistryCollector:
                 raw = item.get("schema", "")
                 rows.append(
                     {
+                        "subject_id": subject,
                         "subject": subject,
                         "version": version,
                         "schema_id": item.get("id"),

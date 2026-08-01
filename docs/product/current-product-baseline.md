@@ -6,6 +6,10 @@ The console baseline includes tenant-scoped Jobs inventory, Job 360, Run 360, ru
 
 > Audit date: 2026-07-27. Implementation baseline: local commit `5164762a6337a44a76ad2c7574a78edc048a70b3`, including merged PR history through #168. Final pull-request-head hosted run identifiers remain pending and no local result is presented as hosted evidence.
 
+## Kafka Stream Observer backend v1
+
+The backend composes bounded Kafka inventory, assigned consumer-group offsets, optional Kafka Connect, and optional Schema Registry collection. Capability-aware scheduling, Elasticsearch leases/checkpoints, canonical top-level projections, and explainable lag/retention intelligence are implemented. The `stream-observer-backend-v1-evidence` hosted artifact is defined but remains pending for the final commit; therefore this baseline does not claim real-stack certification.
+
 ## 1. Product identity
 
 DataObs is a proprietary, Elasticsearch-native Data Observability and Data Streams Monitoring product owned by KJC InfoTech Limited. Elasticsearch and Kibana are authoritative; OpenTelemetry and OpenLineage are ingestion standards. The standalone DataObs Console is the operational UI. The canonical six-pillar model remains the target, not a claim that every pillar is implemented.

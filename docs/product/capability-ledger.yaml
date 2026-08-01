@@ -872,29 +872,39 @@ capabilities:
   implementation:
     code_paths:
     - services/kafka_observer/service.py
+    - services/kafka_observer/scheduler.py
+    - services/kafka_observer/repository.py
     api_paths: []
     ui_routes:
     - /streams
-    storage_resources: []
+    storage_resources:
+    - dataobs-kafka-observer-checkpoints-v1
+    - dataobs-kafka-observer-leases-v1
     migrations:
-    - 0004_kafka_data_streams_monitoring
+    - 0009_topic_queue_stream_360
+    - 0010_topic_queue_stream_360_completion
   validation:
     unit: defined_not_run
     integration: defined_not_run
-    real_stack: not_applicable
-    hosted_ci: missing
+    real_stack: defined_not_run
+    hosted_ci: defined_not_run
     browser: not_applicable
     accessibility: not_applicable
-    security: not_applicable
+    security: defined_not_run
     scale: not_applicable
     upgrade: not_applicable
     release: missing
   evidence:
-    tests: []
-    workflow_jobs: []
-    audit_docs: []
-    runbooks: []
-    artifacts: []
+    tests:
+    - tests/stream_360
+    workflow_jobs:
+    - stream-observer-backend / certify
+    audit_docs:
+    - docs/development/stream-observer-backend-audit.md
+    runbooks:
+    - docs/operations/kafka-observer.md
+    artifacts:
+    - stream-observer-backend-v1-evidence (defined; final-head hosted run pending)
   blockers:
   - Retained hosted and applicable real-stack/browser/security/scale evidence is absent.
   non_goals:
@@ -923,19 +933,24 @@ capabilities:
     unit: defined_not_run
     integration: defined_not_run
     real_stack: not_applicable
-    hosted_ci: missing
+    hosted_ci: defined_not_run
     browser: not_applicable
     accessibility: not_applicable
-    security: not_applicable
+    security: defined_not_run
     scale: not_applicable
     upgrade: not_applicable
     release: missing
   evidence:
-    tests: []
-    workflow_jobs: []
-    audit_docs: []
-    runbooks: []
-    artifacts: []
+    tests:
+    - tests/stream_360
+    workflow_jobs:
+    - stream-observer-backend / certify
+    audit_docs:
+    - docs/development/stream-observer-backend-audit.md
+    runbooks:
+    - docs/security/kafka-observer-secrets.md
+    artifacts:
+    - stream-observer-backend-v1-evidence (defined; final-head hosted run pending)
   blockers:
   - Retained hosted and applicable real-stack/browser/security/scale evidence is absent.
   non_goals:

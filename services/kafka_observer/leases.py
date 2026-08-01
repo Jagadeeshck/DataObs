@@ -35,7 +35,10 @@ class MemoryLeaseRepository:
         current = self.values.get(name)
         if current and current["owner"] != owner and datetime.fromisoformat(current["expires_at"]) > now:
             return False
-        self.values[name] = {"owner": owner, "expires_at": expires_at}
+        token = int(current.get("fencing_token", 0)) if current else 0
+        if current is None or current["owner"] != owner:
+            token += 1
+        self.values[name] = {"owner": owner, "expires_at": expires_at, "fencing_token": token}
         return True
 
     def release_lease(self, name: str, owner: str) -> None:

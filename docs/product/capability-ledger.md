@@ -6,8 +6,8 @@ Audited commit: `5164762a6337a44a76ad2c7574a78edc048a70b3` · PR range: #82-#168
 
 ## State counts
 
-- **foundation**: 16
-- **functional_unvalidated**: 10
+- **foundation**: 12
+- **functional_unvalidated**: 14
 - **not_started**: 7
 - **optional_integration**: 1
 - **scaffold**: 1
@@ -77,7 +77,7 @@ Evidence-led status for quality and drift evidence.
 
 - **State:** `functional_unvalidated`
 - **Release readiness:** `blocked`
-- **Next gate:** Run the final-head Elasticsearch 9.4.2 integration job and retain the redaction-safe e2e-signal-path artifact.
+- **Next gate:** Run the focused workflow for the final PR head and independently verify its retained exact-commit artifact.
 
 ### `monitoring.runtime` — Monitor runtime, baselines, and recommendations
 
@@ -91,17 +91,17 @@ Evidence-led status for monitor runtime, baselines, and recommendations.
 
 Evidence-led status for lineage and pathway explorer.
 
-- **State:** `foundation`
+- **State:** `functional_unvalidated`
 - **Release readiness:** `blocked`
-- **Next gate:** Execute and retain the evidence required for promotion.
+- **Next gate:** Run the focused workflow for the final PR head and independently verify its retained exact-commit artifact.
 
 ### `pipeline.jobs` — Job and run domain and Explorer
 
 Evidence-led status for job and run domain and explorer.
 
-- **State:** `foundation`
+- **State:** `functional_unvalidated`
 - **Release readiness:** `blocked`
-- **Next gate:** Execute and retain the evidence required for promotion.
+- **Next gate:** Run the focused workflow for the final PR head and independently verify its retained exact-commit artifact.
 
 ### `streams.detail` — Stream 360 detail pages
 
@@ -115,17 +115,17 @@ Evidence-led status for stream 360 detail pages.
 
 Evidence-led status for airflow, dbt, and spark adapters.
 
-- **State:** `foundation`
+- **State:** `functional_unvalidated`
 - **Release readiness:** `blocked`
-- **Next gate:** Execute and retain the evidence required for promotion.
+- **Next gate:** Run the focused workflow for the final PR head and independently verify its retained exact-commit artifact.
 
 ### `pipeline.openlineage` — OpenLineage ingest
 
 Evidence-led status for openlineage ingest.
 
-- **State:** `foundation`
+- **State:** `functional_unvalidated`
 - **Release readiness:** `blocked`
-- **Next gate:** Execute and retain the evidence required for promotion.
+- **Next gate:** Run the focused workflow for the final PR head and independently verify its retained exact-commit artifact.
 
 ### `streams.connect_schema` — Kafka Connect and Schema Registry
 

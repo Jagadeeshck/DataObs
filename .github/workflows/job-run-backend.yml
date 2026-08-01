@@ -4,21 +4,76 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
 jobs:
-  verify:
+  certify:
+    name: certify
     runs-on: ubuntu-latest
+    timeout-minutes: 35
+    services:
+      elasticsearch:
+        image: docker.elastic.co/elasticsearch/elasticsearch:9.4.2
+        env:
+          discovery.type: single-node
+          xpack.security.enabled: "false"
+        ports: ["9200:9200"]
+        options: >-
+          --health-cmd "curl --fail http://localhost:9200/_cluster/health"
+          --health-interval 10s --health-timeout 5s --health-retries 12
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: pip install -r requirements.txt
-      - run: python -m pytest -q tests/job_run tests/test_data_observability.py
-      - name: Retain backend evidence
+          cache: pip
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt pytest pytest-cov ruff black
+      - name: Bounded Elasticsearch readiness and version check
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p job-run-backend-evidence/results
+          for attempt in {1..30}; do curl --fail --silent http://localhost:9200 >/tmp/es.json && break; sleep 2; done
+          test -s /tmp/es.json || { docker logs "${{ job.services.elasticsearch.id }}"; exit 1; }
+          python -c 'import json; d=json.load(open("/tmp/es.json")); assert d["version"]["number"] == "9.4.2"; print(d["version"]["number"])' | tee job-run-backend-evidence/elasticsearch-version.txt
+      - name: Migration immutability
+        run: python scripts/check_migration_immutability.py --base-ref "${{ github.event.pull_request.base.sha || github.event.before || 'HEAD^' }}"
+      - name: OpenLineage lifecycle, projection, normalisation, tenancy and RBAC tests
+        env:
+          ELASTICSEARCH_URL: http://localhost:9200
+        run: python -m pytest tests/job_run tests/security/test_oidc_rbac_tenant.py -q --junitxml=job-run-backend-evidence/results/backend.xml
+      - name: Resolve numeric job ID and generate exact-commit evidence
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          JOB_ID=$(curl --fail --silent --retry 3 -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json"             "${{ github.api_url }}/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/jobs?per_page=100"             | python -c 'import json,sys; jobs=[j for j in json.load(sys.stdin)["jobs"] if j["name"] == "certify"]; assert len(jobs)==1; print(jobs[0]["id"])')
+          python scripts/certification/verify_product_evidence.py generate             --directory job-run-backend-evidence --repository "${{ github.repository }}" --workflow "${{ github.workflow }}"             --run-id "${{ github.run_id }}" --job-id "$JOB_ID" --event "${{ github.event_name }}"             --elasticsearch-version "$(cat job-run-backend-evidence/elasticsearch-version.txt)"             --python-version "$(python --version | cut -d' ' -f2)"  --required-suite elasticsearch --required-suite openlineage --required-suite redaction --required-suite idempotency --required-suite ordering --required-suite airflow --required-suite dbt --required-suite spark --required-suite security --required-suite tenant --required-suite rbac
+      - name: Upload evidence and failure diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: job-run-backend-evidence
           path: |
-            capability-validation-report.json
-            capability-state-counts.json
+            job-run-backend-evidence
+            /tmp/es.json
+          if-no-files-found: error
+          retention-days: 30
+  verify-evidence:
+    name: independently verify evidence
+    if: always()
+    needs: certify
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: job-run-backend-evidence
+          path: downloaded-evidence
+      - name: Validate provenance, service version, migration and test XML
+        run: python scripts/certification/verify_product_evidence.py verify --directory downloaded-evidence/job-run-backend-evidence --repository "${{ github.repository }}" --workflow "${{ github.workflow }}" --run-id "${{ github.run_id }}" --expected-sha "$(git rev-parse HEAD)" --required-suite elasticsearch --required-suite openlineage --required-suite redaction --required-suite idempotency --required-suite ordering --required-suite airflow --required-suite dbt --required-suite spark --required-suite security --required-suite tenant --required-suite rbac

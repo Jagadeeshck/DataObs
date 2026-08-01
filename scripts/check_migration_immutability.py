@@ -23,12 +23,13 @@ def plan(ref: str) -> list[dict]:
 
     data = yaml.safe_load(source.stdout)
     checksums = data.get("migration_checksums", {})
-    # Migration order is authoritative in each capability's declared chain.
-    chains = [c.get("implementation", {}).get("migrations", []) for c in data.get("capabilities", [])]
-    longest = max(chains, key=len, default=[])
+    # The checksum registry is append-only and ordered by the executable plan.
+    # Capability chains can legitimately mention only the migrations relevant to
+    # that capability, so using the longest chain silently omitted later entries.
+    released = list(checksums)
     return [
-        {"migration_id": mid, "checksum": checksums.get(mid), "dependencies": longest[:i]}
-        for i, mid in enumerate(longest)
+        {"migration_id": mid, "checksum": checksums.get(mid), "dependencies": released[:i]}
+        for i, mid in enumerate(released)
     ]
 
 

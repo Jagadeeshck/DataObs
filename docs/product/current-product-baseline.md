@@ -18,6 +18,8 @@ Certification definitions pin Elasticsearch and Kibana **9.4.2**. Compatibility 
 
 The released forward migration registry spans `0001_product_foundation` through `0021_lineage_analysis_explorer`. Existing migrations remain immutable. The registry checksum ledger and the comparison against the branch base are mandatory gates.
 
+Focused hosted certification is defined by `data-quality-monitoring`, `job-run-backend`, and `lineage-analysis-console`. Their exact-commit artifacts must pass a separate download-and-verification job; until a successful final-head run exists, the related capabilities remain functional but unvalidated.
+
 ## 4. Implemented API domains
 
 The checked-in OpenAPI contract exposes health and migration status; assets, quality results/checks/runs and lineage; tenants and collection/scanner control; monitors, baselines, recommendations and coverage; Data Products, memberships, proposals, dependencies, impact and revisions; findings, incidents, approvals and actions; job/run exploration; pathways and topology; and Kafka/stream, consumer-group, connector and schema views. Presence in OpenAPI is not proof of authorization, browser usability, or hosted execution.

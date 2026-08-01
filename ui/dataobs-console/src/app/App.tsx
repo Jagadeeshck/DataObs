@@ -4,6 +4,7 @@ import { AppShell } from "../layouts/AppShell";
 import { CommandCenter } from "../features/command-center/CommandCenter";
 import { FlowMap } from "../features/flow-map/FlowMap";
 import { IncidentDetail } from "../features/incidents/IncidentDetail";
+import { IncidentInbox } from "../features/incidents/IncidentInbox";
 import { ProductContextProvider } from "../state/context";
 import { AssetCatalog } from "../features/assets/AssetCatalog";
 import { Asset360 } from "../features/assets/Asset360";
@@ -63,6 +64,7 @@ export function App() {
               <Route path="runs/:runId" element={<Run360 />} />
               <Route path="runs/compare" element={<RunComparison />} />
               <Route path="lineage" element={<LineageExplorer />} />
+              <Route path="incidents" element={<IncidentInbox />} />
               <Route
                 path="incidents/:incidentId"
                 element={<IncidentDetail />}

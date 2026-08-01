@@ -30,6 +30,8 @@ class IncidentRepository(Protocol):
     def get_finding(self, tenant_id: str, finding_id: str, environment: str | None = None) -> Finding | None: ...
     def list_incidents(self, tenant_id: str, environment: str | None = None) -> list[Incident]: ...
     def get_incident(self, tenant_id: str, incident_id: str, environment: str | None = None) -> Incident | None: ...
+    def append_event(self, event: dict[str, Any]) -> None: ...
+    def list_events(self, tenant_id: str, environment: str, incident_id: str) -> list[dict[str, Any]]: ...
 
 
 class InMemoryIncidentRepository:
@@ -120,4 +122,23 @@ class InMemoryIncidentRepository:
             deepcopy(i)
             if i and i.tenant_id == tenant_id and (environment is None or i.environment == environment)
             else None
+        )
+
+    def append_event(self, event: dict[str, Any]) -> None:
+        if any(item["event_id"] == event["event_id"] for item in self.events):
+            return
+        self.events.append(deepcopy(event))
+
+    def list_events(self, tenant_id: str, environment: str, incident_id: str) -> list[dict[str, Any]]:
+        return deepcopy(
+            sorted(
+                (
+                    item
+                    for item in self.events
+                    if item["tenant_id"] == tenant_id
+                    and item["environment"] == environment
+                    and item["incident_id"] == incident_id
+                ),
+                key=lambda item: (item["timestamp"], item["event_id"]),
+            )
         )

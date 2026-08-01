@@ -1609,6 +1609,46 @@ capabilities:
   owner: unassigned
   last_audited_at: '2026-07-27'
   last_audited_commit: 5164762a6337a44a76ad2c7574a78edc048a70b3
+- id: streams.connector_schema_360
+  name: Connector and Schema 360 Console v1
+  summary: Durable safe projections and read-only operational investigation.
+  pillar: data_pipeline
+  domain: streams
+  state: functional_unvalidated
+  release_readiness: blocked
+  owner_team: team:streams
+  release_target: beta-1
+  implementation_status: implemented
+  certification_status: functional_unvalidated
+  implementation:
+    code_paths: [services/kafka_observer/repository.py, services/product_query/stream_repository.py, ui/dataobs-console/src/features/streams/Connector360.tsx, ui/dataobs-console/src/features/streams/Schema360.tsx]
+    api_paths: [/api/v1/stream-connectors, /api/v1/schema-subjects]
+    ui_routes: [/streams/connectors/:connectorId, /streams/schemas/:subjectId]
+    storage_resources: [dataobs-kafka-connectors-v1, dataobs-kafka-schemas-v1]
+    migrations: [0009_topic_queue_stream_360, 0010_topic_queue_stream_360_completion]
+  validation:
+    unit: defined_not_run
+    integration: defined_not_run
+    real_stack: defined_not_run
+    hosted_ci: defined_not_run
+    browser: defined_not_run
+    accessibility: defined_not_run
+    security: defined_not_run
+    scale: not_applicable
+    upgrade: not_applicable
+    release: defined_not_run
+  evidence:
+    tests: [tests/stream_360/test_connector_schema_360.py]
+    workflow_jobs: [connector-schema-360-console]
+    audit_docs: [docs/development/connector-schema-360-audit.md]
+    runbooks: [docs/operations/connector-schema-360.md]
+    artifacts: [connector-schema-360-console-v1-evidence]
+  blockers: [Final-head hosted evidence has not been independently verified.]
+  non_goals: [Connector actions and full schema disclosure.]
+  next_gate: Execute and independently verify the hosted workflow.
+  owner: team:streams
+  last_audited_at: '2026-08-01'
+  last_audited_commit: pending
 migration_checksums:
   0001_product_foundation: 71d939094a97b4dd7c61de60542b60dd41cb238fd6bebfd75d53d723b00f3556
   0002_postgres_observability: c2098fa24ddae209fcf2ffeb369f7040d57018d58682a8513db9e943c749aa2d

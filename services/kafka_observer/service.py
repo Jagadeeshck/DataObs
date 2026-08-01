@@ -50,12 +50,16 @@ class KafkaObserverService:
                     if self.connect_collector
                     else {"data_status": "not_configured", "connectors": []}
                 )
+                if self.repository is not None and self.connect_collector is not None:
+                    self.repository.save_connector_projection(payload)
             elif capability == "schemas":
                 payload = (
                     self.schema_collector.collect()
                     if self.schema_collector
                     else {"data_status": "not_configured", "schemas": []}
                 )
+                if self.repository is not None and self.schema_collector is not None:
+                    self.repository.save_schema_projection(payload)
             else:
                 raise ValueError(f"unsupported collection capability: {capability}")
         except Exception as error:

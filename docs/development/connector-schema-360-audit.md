@@ -1,0 +1,13 @@
+# Connector and Schema 360 preflight audit
+
+The Connect collector emits bounded identity, type, measured connector/task state, worker IDs, counts, and SHA-256 class/configuration fingerprints. It drops its redacted configuration object before returning. The Schema Registry collector emits bounded subject/version rows with type, compatibility mode, fingerprint, references, and a semantic field-count summary; it never returns the definition.
+
+Before this change the observer checkpointed successful optional collection but did not write either projection. Released resources `dataobs-kafka-connectors-v1` and `dataobs-kafka-schemas-v1` support their fixed read/write aliases. Released mappings support the common tenant/environment/integration/timestamp identity plus connector/task state, schema subject/compatibility, generic counts, fingerprints, references and bounded objects. A durable actor, configuration diff, full error trace, registry audit actor, compatibility-test result, and complete definition require a future explicit contract/mapping and are not stored.
+
+Existing API detail/subresources read current projection fields, enforce tenant and environment terms, use a fixed alias/source list and return 404 when the parent is absent. Previously the generic Console handled Connector and Schema pages, exposed an Actions tab, and rendered untyped objects. Dedicated pages now keep URL-backed accessible tabs and absence semantics.
+
+Sensitive connector configuration, credentials, authorization material, connection secrets, JAAS material, and complete schema definitions are prohibited. Only fingerprints and safe structural summaries cross the persistence boundary.
+
+Data status is exact: `complete` means the bounded configured collector completed; `partial` means truncation or per-item failure; `stale` preserves the last measured health; `not_configured` means no provider/history relationship is configured; `unknown` means configured evidence cannot answer; and `unavailable` means the provider/request failed. Null stays unknown and is never converted to zero.
+
+Connector change classification is supported only from explicit stored evidence (including fingerprint/state/count transitions). Schema fingerprint differences establish only that content changed; `breaking` requires explicit compatibility evidence or a supported deterministic comparison. Current mappings do not provide historical change production, so changes are `not_configured` unless explicit evidence exists. Incident, monitor and impact arrays are used only when projected; relationships remain `direct`, `correlated`, `inferred`, or `unknown`, and correlation is not causation.

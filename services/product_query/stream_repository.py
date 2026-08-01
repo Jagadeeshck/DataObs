@@ -82,7 +82,6 @@ SAFE_SOURCE = [
     "impact",
     "partitions",
     "metrics",
-    "configuration",
     "pathways",
     "incidents",
     "consumer_groups",
@@ -115,6 +114,12 @@ SAFE_SOURCE = [
     "connector_type",
     "classification",
     "data_status",
+    "task_states",
+    "worker_ids",
+    "class_fingerprint",
+    "schema_type",
+    "subject",
+    "semantic_summary",
 ]
 BROKER_SAFE_SOURCE = [
     "broker_id",
@@ -270,6 +275,75 @@ class StreamRepository:
         )
         hits = response["hits"]["hits"]
         return hits[0].get("_source", {}) if hits else None
+
+    def get_connector(self, connector_id: str, tenant: str, environment: str) -> dict[str, Any] | None:
+        return self.get("connectors", connector_id, tenant, environment)
+
+    def get_connector_tasks(
+        self, connector_id: str, tenant: str, environment: str, *, size: int = 100
+    ) -> list[dict[str, Any]]:
+        connector = self.get_connector(connector_id, tenant, environment)
+        if not connector:
+            return []
+        states = connector.get("task_states") or []
+        workers = connector.get("worker_ids") or []
+        return [
+            {
+                "task_id": str(task.get("id")),
+                "state": task.get("state"),
+                "worker_id": task.get("worker_id") or (workers[index] if index < len(workers) else None),
+                "health": (
+                    "critical"
+                    if task.get("state") == "FAILED"
+                    else "healthy" if task.get("state") == "RUNNING" else "unknown"
+                ),
+                "reason_codes": ["task_failed"] if task.get("state") == "FAILED" else [],
+                "last_error_category": task.get("last_error_category"),
+                "last_transition_at": task.get("last_transition_at"),
+                "observed_at": connector.get("observed_at"),
+                "data_status": connector.get("data_status", "unknown"),
+            }
+            for index, task in enumerate(states[: min(max(size, 1), 200)])
+        ]
+
+    def get_connector_changes(self, connector_id: str, tenant: str, environment: str) -> list[dict[str, Any]]:
+        connector = self.get_connector(connector_id, tenant, environment)
+        return list((connector or {}).get("changes") or [])[:100]
+
+    def get_connector_incidents(self, connector_id: str, tenant: str, environment: str) -> list[dict[str, Any]]:
+        return list((self.get_connector(connector_id, tenant, environment) or {}).get("incidents") or [])[:100]
+
+    def get_connector_monitors(self, connector_id: str, tenant: str, environment: str) -> list[dict[str, Any]]:
+        return list((self.get_connector(connector_id, tenant, environment) or {}).get("monitors") or [])[:100]
+
+    def get_connector_evidence(self, connector_id: str, tenant: str, environment: str) -> dict[str, Any] | None:
+        return self.get_connector(connector_id, tenant, environment)
+
+    def get_schema_subject(self, subject_id: str, tenant: str, environment: str) -> dict[str, Any] | None:
+        return self.get("schemas", subject_id, tenant, environment)
+
+    def get_schema_versions(
+        self, subject_id: str, tenant: str, environment: str, *, size: int = 100
+    ) -> list[dict[str, Any]]:
+        subject = self.get_schema_subject(subject_id, tenant, environment)
+        return sorted(
+            list((subject or {}).get("versions") or []), key=lambda row: int(row.get("version", 0)), reverse=True
+        )[: min(max(size, 1), 200)]
+
+    def get_schema_changes(self, subject_id: str, tenant: str, environment: str) -> list[dict[str, Any]]:
+        return list((self.get_schema_subject(subject_id, tenant, environment) or {}).get("changes") or [])[:100]
+
+    def get_schema_impact(self, subject_id: str, tenant: str, environment: str) -> list[dict[str, Any]]:
+        return list((self.get_schema_subject(subject_id, tenant, environment) or {}).get("impact") or [])[:200]
+
+    def get_schema_incidents(self, subject_id: str, tenant: str, environment: str) -> list[dict[str, Any]]:
+        return list((self.get_schema_subject(subject_id, tenant, environment) or {}).get("incidents") or [])[:100]
+
+    def get_schema_monitors(self, subject_id: str, tenant: str, environment: str) -> list[dict[str, Any]]:
+        return list((self.get_schema_subject(subject_id, tenant, environment) or {}).get("monitors") or [])[:100]
+
+    def get_schema_evidence(self, subject_id: str, tenant: str, environment: str) -> dict[str, Any] | None:
+        return self.get_schema_subject(subject_id, tenant, environment)
 
     def related(
         self,

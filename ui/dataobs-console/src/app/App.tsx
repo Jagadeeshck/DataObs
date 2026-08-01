@@ -26,6 +26,16 @@ const Stream360 = lazy(() =>
     default: m.Stream360,
   })),
 );
+const Connector360 = lazy(() =>
+  import("../features/streams/Connector360").then((m) => ({
+    default: m.Connector360,
+  })),
+);
+const Schema360 = lazy(() =>
+  import("../features/streams/Schema360").then((m) => ({
+    default: m.Schema360,
+  })),
+);
 const Cluster360 = lazy(() =>
   import("../features/streams/Cluster360").then((m) => ({
     default: m.Cluster360,
@@ -87,11 +97,11 @@ export function App() {
               />
               <Route
                 path="streams/connectors/:connectorId"
-                element={<Stream360 kind="connector" />}
+                element={<Connector360 />}
               />
               <Route
                 path="streams/schemas/:subjectId"
-                element={<Stream360 kind="schema" />}
+                element={<Schema360 />}
               />
             </Route>
           </Routes>

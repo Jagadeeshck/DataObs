@@ -173,3 +173,7 @@ def validate_policy() -> None:
     for method, path in PUBLIC_ROUTES:
         if any(method in rule.methods and rule.pattern.fullmatch(path) for rule in RULES):
             raise RuntimeError(f"public route is also protected: {method} {path}")
+
+
+# Backward-compatible alias.
+permission_for = permission_for_route

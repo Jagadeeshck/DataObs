@@ -209,6 +209,7 @@ def make_es_client(settings: AppSettings) -> Elasticsearch:
         "request_timeout": es.request_timeout,
         "max_retries": max(0, min(es.max_retries, 5)),
         "retry_on_status": (429, 502, 503, 504),
+        "retry_on_timeout": False,
     }
     if es.ca_certs:
         kwargs["ca_certs"] = es.ca_certs
@@ -495,6 +496,39 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
         document = request.app.state.role_bindings.get(binding_id)
         if not document or document["tenant_id"] != request.state.tenant_id:
             raise HTTPException(status_code=404, detail="Role binding not found")
+        return document
+
+    @app.patch(
+        "/api/v1/iam/role-bindings/{binding_id}", tags=["iam"], dependencies=[Depends(require_auth)]
+    )
+    async def patch_role_binding(
+        binding_id: str,
+        payload: RoleBindingPatch,
+        request: Request,
+        if_match: str | None = Header(default=None),
+    ) -> Dict[str, Any]:
+        if not if_match:
+            raise HTTPException(
+                status_code=428, detail={"code": "if_match_required", "message": "If-Match is required"}
+            )
+        document = request.app.state.role_bindings.get(binding_id)
+        if not document or document["tenant_id"] != request.state.tenant_id:
+            raise HTTPException(status_code=404, detail={"code": "role_binding_not_found", "message": "Role binding not found"})
+        if if_match != document["etag"]:
+            raise HTTPException(status_code=409, detail={"code": "etag_mismatch", "message": "Role binding ETag mismatch"})
+        updates = payload.model_dump(exclude_none=True)
+        document.update(updates)
+        import hashlib as _hashlib
+        document["revision"] = document.get("revision", 1) + 1
+        document["etag"] = '"' + _hashlib.sha256(f"{binding_id}:{document['revision']}".encode()).hexdigest() + '"'
+        request.app.state.security_audit_events.append(
+            {
+                "event_action": "binding_updated",
+                "principal_subject": request.state.principal.subject,
+                "tenant_id": request.state.tenant_id,
+                "binding_id": binding_id,
+            }
+        )
         return document
 
     @app.delete(

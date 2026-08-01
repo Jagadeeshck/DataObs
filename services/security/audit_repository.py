@@ -4,6 +4,8 @@ from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from typing import Protocol
 
+SECURITY_EVENT_DATA_STREAM = "logs-dataobs.security-event-default"
+
 SECURITY_ACTIONS = frozenset(
     {
         "authentication_failed",

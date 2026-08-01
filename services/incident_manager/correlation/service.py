@@ -14,10 +14,29 @@ class CorrelationService:
     def __init__(self, policy: CorrelationPolicy = V1_POLICY) -> None:
         self.policy = policy
 
-    def evaluate(self, incident: Incident, candidate: Incident, *, revision: str) -> CorrelationDecision:
+    def evaluate(
+        self,
+        incident: Incident,
+        candidate: Incident,
+        *,
+        revision: str,
+        candidate_revision: str = "0",
+        existing_group_id: str | None = None,
+    ) -> CorrelationDecision:
         p = self.policy
         decision_id = deterministic_id(
-            "correlation-decision", [incident.tenant_id, incident.environment, incident.id, revision, p.version]
+            "correlation-decision",
+            [
+                incident.tenant_id,
+                incident.environment,
+                incident.id,
+                revision,
+                existing_group_id or candidate.id,
+                candidate_revision,
+                p.name,
+                p.version,
+                p.canonical_hash,
+            ],
         )
         if (incident.tenant_id, incident.environment) != (candidate.tenant_id, candidate.environment):
             action, reasons, group_id = "reject", ("scope_incompatible",), None
@@ -49,7 +68,8 @@ class CorrelationService:
             )
             reasons = tuple(f.name for f in features if f.state == EvidenceState.MATCHED) or (action,)
             group_id = (
-                deterministic_id(
+                existing_group_id
+                or deterministic_id(
                     "correlation-group",
                     [incident.tenant_id, incident.environment, *sorted([incident.id, candidate.id]), p.version],
                 )

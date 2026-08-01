@@ -25,13 +25,19 @@ from services.collection_manager.elasticsearch_repository import ElasticsearchCo
 from services.collection_manager.leases import claim_task, renew_task
 from services.collection_manager.memory_repository import InMemoryCollectionRepository
 from services.incident_manager import IncidentManagerService
+from services.incident_manager.correlation.coordinator import IncidentCorrelationCoordinator
+from services.incident_manager.correlation.elasticsearch_repository import ElasticsearchCorrelationRepository
+from services.incident_manager.correlation.repository import InMemoryCorrelationRepository
 from services.incident_manager.elasticsearch_repository import ElasticsearchIncidentRepository
+from services.incident_manager.flood_control.elasticsearch_repository import ElasticsearchFloodRepository
+from services.incident_manager.flood_control.repository import InMemoryFloodRepository
 from services.incident_manager.repository import VersionConflict
 from services.monitoring.elasticsearch_repository import ElasticsearchMonitorRepository
 from services.product_query import ElasticsearchConsoleRepository
 from services.product_query.path_search import search_paths
 from src.api.data_product_routes import create_data_product_router
 from src.api.incident_routes import create_incident_workbench_router
+from src.api.incident_runtime_routes import create_incident_runtime_router
 from src.api.monitor_routes import router as monitor_router
 from src.api.pathway_routes import create_pathway_router
 from src.api.reliability_routes import create_reliability_router
@@ -279,12 +285,20 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
     else:
         repo = InMemoryCollectionRepository()
     app.state.collection_manager = CollectionManagerService(repo)
-    incident_repo = (
-        ElasticsearchIncidentRepository(make_es_client(resolved_settings))
-        if resolved_settings.store_backend.lower() == "elasticsearch"
-        else None
-    )
-    app.state.incident_manager = IncidentManagerService(incident_repo)
+    if resolved_settings.store_backend.lower() == "elasticsearch":
+        incident_client = make_es_client(resolved_settings)
+        incident_repo = ElasticsearchIncidentRepository(incident_client)
+        correlation_repo = ElasticsearchCorrelationRepository(incident_client)
+        flood_repo = ElasticsearchFloodRepository(incident_client)
+    else:
+        from services.incident_manager.repository import InMemoryIncidentRepository
+
+        incident_repo = InMemoryIncidentRepository()
+        correlation_repo = InMemoryCorrelationRepository()
+        flood_repo = InMemoryFloodRepository()
+    coordinator = IncidentCorrelationCoordinator(incident_repo, correlation_repo, flood_repo)
+    app.state.incident_correlation_coordinator = coordinator
+    app.state.incident_manager = IncidentManagerService(incident_repo, coordinator)
     app.state.console_repository = (
         ElasticsearchConsoleRepository(make_es_client(resolved_settings))
         if resolved_settings.store_backend.lower() == "elasticsearch"
@@ -499,9 +513,7 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
             raise HTTPException(status_code=404, detail="Role binding not found")
         return document
 
-    @app.patch(
-        "/api/v1/iam/role-bindings/{binding_id}", tags=["iam"], dependencies=[Depends(require_auth)]
-    )
+    @app.patch("/api/v1/iam/role-bindings/{binding_id}", tags=["iam"], dependencies=[Depends(require_auth)])
     async def patch_role_binding(
         binding_id: str,
         payload: RoleBindingPatch,
@@ -514,12 +526,17 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
             )
         document = request.app.state.role_bindings.get(binding_id)
         if not document or document["tenant_id"] != request.state.tenant_id:
-            raise HTTPException(status_code=404, detail={"code": "role_binding_not_found", "message": "Role binding not found"})
+            raise HTTPException(
+                status_code=404, detail={"code": "role_binding_not_found", "message": "Role binding not found"}
+            )
         if if_match != document["etag"]:
-            raise HTTPException(status_code=409, detail={"code": "etag_mismatch", "message": "Role binding ETag mismatch"})
+            raise HTTPException(
+                status_code=409, detail={"code": "etag_mismatch", "message": "Role binding ETag mismatch"}
+            )
         updates = payload.model_dump(exclude_none=True)
         document.update(updates)
         import hashlib as _hashlib
+
         document["revision"] = document.get("revision", 1) + 1
         document["etag"] = '"' + _hashlib.sha256(f"{binding_id}:{document['revision']}".encode()).hexdigest() + '"'
         request.app.state.security_audit_events.append(
@@ -1711,5 +1728,6 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
     app.include_router(create_pathway_router(get_console_repository, require_auth))
     app.include_router(create_data_product_router(get_data_product_repository, require_auth))
     app.include_router(create_incident_workbench_router(require_auth))
+    app.include_router(create_incident_runtime_router(require_auth))
 
     return app

@@ -23,6 +23,14 @@ class FloodEvent:
     severity: str = "medium"
     data_loss_risk: bool = False
     business_services: tuple[str, ...] = ()
+    data_products: tuple[str, ...] = ()
+    region: str | None = None
+    account: str | None = None
+    cluster: str | None = None
+    failure_family: str | None = None
+    retention_loss_risk: bool = False
+    business_impact_confirmed: bool = False
+    representative_valid: bool = True
 
 
 @dataclass

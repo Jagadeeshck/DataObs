@@ -1,14 +1,24 @@
 from __future__ import annotations
 
-from datetime import timedelta
+from copy import deepcopy
+from datetime import datetime, timedelta
 
 from .contracts import FloodDecision, FloodEvent, FloodState, FloodWindow
 from .policy import V1_FLOOD_POLICY, FloodPolicy
 
 
-def evaluate_flood(window: FloodWindow, event: FloodEvent, policy: FloodPolicy = V1_FLOOD_POLICY) -> FloodDecision:
-    """Pure event-time evaluation. Callers durably persist the returned window/decision."""
+def evaluate_flood(
+    window: FloodWindow,
+    event: FloodEvent,
+    policy: FloodPolicy = V1_FLOOD_POLICY,
+    *,
+    quiet_at: datetime | None = None,
+) -> tuple[FloodDecision, FloodWindow]:
+    """Return a decision and new state without mutating caller-owned state."""
+    window = deepcopy(window)
     prior = window.state
+    replay = event.event_id in window.events
+    existing = tuple(window.events.values())
     window.events.setdefault(event.event_id, event)  # replay never double-counts
     end = max(e.occurred_at for e in window.events.values())
     start = end - timedelta(seconds=policy.observation_seconds)
@@ -22,10 +32,39 @@ def evaluate_flood(window: FloodWindow, event: FloodEvent, policy: FloodPolicy =
     assets = len({e.asset_id for e in active if e.asset_id})
     sources = len({e.source for e in active if e.source})
     rate = count / max(policy.observation_seconds / 60, 1 / 60)
-    bypass = event.severity == "critical" or event.data_loss_risk
+    bypass_reasons = []
+    if event.severity == "critical":
+        bypass_reasons.append("critical_severity")
+    if event.data_loss_risk:
+        bypass_reasons.append("suspected_data_loss")
+    if event.retention_loss_risk:
+        bypass_reasons.append("imminent_retention_loss")
+    if event.business_impact_confirmed:
+        bypass_reasons.append("confirmed_business_impact")
+    if not event.representative_valid:
+        bypass_reasons.append("invalid_representative_incident")
+    comparisons = (
+        (event.data_products, (v for e in existing for v in e.data_products), "new_critical_data_product"),
+        (event.business_services, (v for e in existing for v in e.business_services), "new_critical_business_service"),
+        ((event.region,) if event.region else (), (e.region for e in existing), "new_region"),
+        ((event.account,) if event.account else (), (e.account for e in existing), "new_account"),
+        ((event.cluster,) if event.cluster else (), (e.cluster for e in existing), "new_cluster"),
+        (
+            (event.failure_family,) if event.failure_family else (),
+            (e.failure_family for e in existing),
+            "new_failure_family",
+        ),
+    )
+    for incoming, previous, code in comparisons:
+        if incoming and not set(incoming).issubset({v for v in previous if v}):
+            bypass_reasons.append(code)
+    previous_assets = {e.asset_id for e in existing if e.asset_id}
+    if event.asset_id and previous_assets and event.asset_id not in previous_assets:
+        bypass_reasons.append("materially_expanded_asset_scope")
+    bypass = bool(bypass_reasons)
     reasons: list[str] = []
     if bypass:
-        reasons.append("critical_severity" if event.severity == "critical" else "data_loss_risk")
+        reasons.extend(bypass_reasons)
         notification = "escalate"
     else:
         notification = "notify"
@@ -48,25 +87,36 @@ def evaluate_flood(window: FloodWindow, event: FloodEvent, policy: FloodPolicy =
         window.state = FloodState.RECOVERING
         reasons.append("hysteresis_hold")
     else:
-        window.state = FloodState.NORMAL
-        reasons.append("below_threshold")
-    if window.state == FloodState.FLOODING and not bypass:
+        quiet_elapsed = bool(
+            prior == FloodState.RECOVERING
+            and quiet_at is not None
+            and window.last_transition_at is not None
+            and quiet_at >= window.last_transition_at + timedelta(seconds=policy.quiet_period_seconds)
+        )
+        window.state = FloodState.CLOSED if quiet_elapsed else FloodState.NORMAL
+        reasons.append("quiet_period_closed" if quiet_elapsed else "below_threshold")
+    if window.state == FloodState.FLOODING and not bypass and not replay:
         notification = "coalesce"
         window.suppressed_notification_count += 1
-    return FloodDecision(
-        prior,
-        window.state,
-        notification,
-        tuple(reasons),
-        {"count": count, "rate_per_minute": rate, "unique_assets": assets, "unique_sources": sources},
-        {
-            "elevated_count": policy.elevated_count,
-            "flooding_count": policy.flooding_count,
-            "rate_per_minute": policy.event_rate_per_minute,
-            "unique_assets": policy.unique_asset_threshold,
-        },
-        start,
-        end,
-        policy.version,
-        tuple(e.event_id for e in active[-50:]),
+    if window.state != prior:
+        window.last_transition_at = end
+    return (
+        FloodDecision(
+            prior,
+            window.state,
+            notification,
+            tuple(reasons),
+            {"count": count, "rate_per_minute": rate, "unique_assets": assets, "unique_sources": sources},
+            {
+                "elevated_count": policy.elevated_count,
+                "flooding_count": policy.flooding_count,
+                "rate_per_minute": policy.event_rate_per_minute,
+                "unique_assets": policy.unique_asset_threshold,
+            },
+            start,
+            end,
+            policy.version,
+            tuple(e.event_id for e in active[-50:]),
+        ),
+        window,
     )

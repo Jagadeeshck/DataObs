@@ -46,16 +46,17 @@ def test_missing_evidence_does_not_inflate_confidence_and_scope_is_absolute():
 def test_event_time_threshold_replay_and_critical_bypass():
     policy = FloodPolicy(elevated_count=2, flooding_count=3, event_rate_per_minute=100, unique_asset_threshold=99)
     window = FloodWindow("f1", "t1", "prod", "g1")
-    assert evaluate_flood(window, FloodEvent("e1", NOW, "i1"), policy).new_state == FloodState.NORMAL
-    assert (
-        evaluate_flood(window, FloodEvent("e2", NOW + timedelta(seconds=1), "i2"), policy).new_state
-        == FloodState.ELEVATED
-    )
-    flooding = evaluate_flood(window, FloodEvent("e3", NOW + timedelta(seconds=2), "i3"), policy)
+    decision, window = evaluate_flood(window, FloodEvent("e1", NOW, "i1"), policy)
+    assert decision.new_state == FloodState.NORMAL
+    elevated, window = evaluate_flood(window, FloodEvent("e2", NOW + timedelta(seconds=1), "i2"), policy)
+    assert elevated.new_state == FloodState.ELEVATED
+    flooding, window = evaluate_flood(window, FloodEvent("e3", NOW + timedelta(seconds=2), "i3"), policy)
     assert flooding.new_state == FloodState.FLOODING
     assert flooding.notification_decision == "coalesce"
-    assert evaluate_flood(window, FloodEvent("e3", NOW + timedelta(seconds=2), "i3"), policy).observed["count"] == 3
-    bypass = evaluate_flood(window, FloodEvent("e4", NOW + timedelta(seconds=3), "i4", severity="critical"), policy)
+    assert evaluate_flood(window, FloodEvent("e3", NOW + timedelta(seconds=2), "i3"), policy)[0].observed["count"] == 3
+    bypass, window = evaluate_flood(
+        window, FloodEvent("e4", NOW + timedelta(seconds=3), "i4", severity="critical"), policy
+    )
     assert bypass.notification_decision == "escalate"
 
 
@@ -63,5 +64,5 @@ def test_storage_is_bounded_deterministically():
     policy = FloodPolicy(maximum_events=2, elevated_count=99, flooding_count=100)
     window = FloodWindow("f1", "t1", "prod", "g1")
     for n in range(3):
-        evaluate_flood(window, FloodEvent(f"e{n}", NOW + timedelta(seconds=n), f"i{n}"), policy)
+        _, window = evaluate_flood(window, FloodEvent(f"e{n}", NOW + timedelta(seconds=n), f"i{n}"), policy)
     assert sorted(window.events) == ["e1", "e2"]

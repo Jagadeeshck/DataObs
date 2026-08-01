@@ -18,3 +18,7 @@ Audit logs and request IDs should be used for correlation without recording acti
 ## Beta 1 limitations
 
 Real Elasticsearch 9.4.2 was not available in the closure workspace, so strict-template execution remains to be certified by the opt-in environment; serializer tests use the generated production mapping. PITs live for two minutes and cursors for 15 minutes, so an expired PIT/cursor requires restarting the listing. A timeline failure after a mutation is recovered by retrying the identical idempotency key; a different payload with that key conflicts. A failure before the operation record is durable still requires operator investigation. Watchers, tasks, approvals and executions are displayed only when backed by their existing durable services; no external connector is fabricated.
+
+## Runtime v1 production contract
+
+The durable runtime, storage/OCC/idempotency boundaries, deferred recovery, security bounds and current certification limitations are specified in [Incident correlation runtime](../architecture/incident-correlation-runtime.md) and [Event Storm runtime](../architecture/event-storm-runtime.md), with operator procedures in the corresponding operations runbooks. Correlation associates evidence without deleting incidents; flood control changes notification intent without discarding ingestion.

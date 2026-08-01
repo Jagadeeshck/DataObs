@@ -19,3 +19,7 @@ Protected mutations attribute events only to `request.state.principal.subject`; 
 Only the existing Team 3 allowlist can be previewed. Preview output includes allow/deny, risk, approval state, expected changes, target, provider state, warnings and non-sensitive payload-key names. With no executor configured an allowlisted preview is `not_configured`, expected changes are empty, and no execution success is reported. Unsupported actions are denied. Existing durable approval policy requires a pending, unexpired, same-tenant request and separation of requester/approver duties.
 
 Beta 1 does not add autonomous remediation, arbitrary URLs/Kibana calls, provider connectors, Cases synchronization, Workflows deployment, correlation learning, merge/split or flood control.
+
+## Runtime v1 production contract
+
+The durable runtime, storage/OCC/idempotency boundaries, deferred recovery, security bounds and current certification limitations are specified in [Incident correlation runtime](incident-correlation-runtime.md) and [Event Storm runtime](event-storm-runtime.md), with operator procedures in the corresponding operations runbooks. Correlation associates evidence without deleting incidents; flood control changes notification intent without discarding ingestion.

@@ -9,3 +9,7 @@ All accepted findings and incidents remain stored. Flood control only changes no
 ## Certification
 
 Unit and focused repository tests do not certify Elasticsearch restart persistence or strict-mapping compatibility. Run the opt-in Elasticsearch 9.4.2 suite before production enablement and record its output; do not infer success from mocked clients.
+
+## Runtime v1 production contract
+
+The durable runtime, storage/OCC/idempotency boundaries, deferred recovery, security bounds and current certification limitations are specified in [Incident correlation runtime](../architecture/incident-correlation-runtime.md) and [Event Storm runtime](../architecture/event-storm-runtime.md), with operator procedures in the corresponding operations runbooks. Correlation associates evidence without deleting incidents; flood control changes notification intent without discarding ingestion.

@@ -28,13 +28,19 @@ from services.collection_manager.elasticsearch_repository import ElasticsearchCo
 from services.collection_manager.leases import claim_task, renew_task
 from services.collection_manager.memory_repository import InMemoryCollectionRepository
 from services.incident_manager import IncidentManagerService
+from services.incident_manager.correlation.coordinator import IncidentCorrelationCoordinator
+from services.incident_manager.correlation.elasticsearch_repository import ElasticsearchCorrelationRepository
+from services.incident_manager.correlation.repository import InMemoryCorrelationRepository
 from services.incident_manager.elasticsearch_repository import ElasticsearchIncidentRepository
+from services.incident_manager.flood_control.elasticsearch_repository import ElasticsearchFloodRepository
+from services.incident_manager.flood_control.repository import InMemoryFloodRepository
 from services.incident_manager.repository import VersionConflict
 from services.monitoring.elasticsearch_repository import ElasticsearchMonitorRepository
 from services.product_query import ElasticsearchConsoleRepository
 from services.product_query.path_search import search_paths
 from src.api.data_product_routes import create_data_product_router
 from src.api.incident_routes import create_incident_workbench_router
+from src.api.incident_runtime_routes import create_incident_runtime_router
 from src.api.monitor_routes import router as monitor_router
 from src.api.pathway_routes import create_pathway_router
 from src.api.reliability_routes import create_reliability_router
@@ -292,12 +298,20 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
     else:
         repo = InMemoryCollectionRepository()
     app.state.collection_manager = CollectionManagerService(repo)
-    incident_repo = (
-        ElasticsearchIncidentRepository(make_es_client(resolved_settings))
-        if resolved_settings.store_backend.lower() == "elasticsearch"
-        else None
-    )
-    app.state.incident_manager = IncidentManagerService(incident_repo)
+    if resolved_settings.store_backend.lower() == "elasticsearch":
+        incident_client = make_es_client(resolved_settings)
+        incident_repo = ElasticsearchIncidentRepository(incident_client)
+        correlation_repo = ElasticsearchCorrelationRepository(incident_client)
+        flood_repo = ElasticsearchFloodRepository(incident_client)
+    else:
+        from services.incident_manager.repository import InMemoryIncidentRepository
+
+        incident_repo = InMemoryIncidentRepository()
+        correlation_repo = InMemoryCorrelationRepository()
+        flood_repo = InMemoryFloodRepository()
+    coordinator = IncidentCorrelationCoordinator(incident_repo, correlation_repo, flood_repo)
+    app.state.incident_correlation_coordinator = coordinator
+    app.state.incident_manager = IncidentManagerService(incident_repo, coordinator)
     app.state.console_repository = (
         ElasticsearchConsoleRepository(make_es_client(resolved_settings))
         if resolved_settings.store_backend.lower() == "elasticsearch"
@@ -1852,5 +1866,6 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
     app.include_router(create_pathway_router(get_console_repository, require_auth))
     app.include_router(create_data_product_router(get_data_product_repository, require_auth))
     app.include_router(create_incident_workbench_router(require_auth))
+    app.include_router(create_incident_runtime_router(require_auth))
 
     return app

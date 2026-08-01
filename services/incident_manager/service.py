@@ -121,10 +121,11 @@ def merge_finding(incident: Incident, finding: Finding) -> Incident:
 
 
 class IncidentManagerService:
-    def __init__(self, repo: IncidentRepository | None = None) -> None:
+    def __init__(self, repo: IncidentRepository | None = None, correlation_coordinator: Any | None = None) -> None:
         # The in-memory implementation is deliberately opt-in outside tests. Production
         # composition must inject ElasticsearchIncidentRepository.
         self.repo = repo or InMemoryIncidentRepository()
+        self.correlation_coordinator = correlation_coordinator
 
     def ingest(self, event: dict[str, Any], *, tenant_id: str) -> dict[str, Any]:
         incoming = normalize_event(event, tenant_id=tenant_id)
@@ -138,7 +139,19 @@ class IncidentManagerService:
                     if not decision.changed:
                         _counters[f"incident_ingest_{decision.reason}_total"].add(1)
                         logger.info("incident ingest replay", extra={"reason": decision.reason})
-                        return self._result(finding, incident, decision)
+                        result = self._result(finding, incident, decision)
+                        if self.correlation_coordinator is not None:
+                            try:
+                                result["processing"] = self.correlation_coordinator.process(incident)
+                            except Exception:
+                                self.correlation_coordinator.defer(incident, "correlation")
+                                result["processing"] = {
+                                    "status": "incident_persisted_correlation_deferred",
+                                    "correlation": {"status": "deferred"},
+                                    "flood_control": {"status": "not_started"},
+                                    "notification_decision": {"status": "not_started"},
+                                }
+                        return result
                     incident = self.repo.update_incident(decision.incident)
                     _counters["incident_ingest_updated_total"].add(1)
                 else:
@@ -166,7 +179,24 @@ class IncidentManagerService:
                     )
                     decision = FindingMergeDecision(incident, True, "new_occurrence", True)
                     _counters["incident_ingest_created_total"].add(1)
-                return self._result(finding, incident, decision)
+                result = self._result(finding, incident, decision)
+                if self.correlation_coordinator is None:
+                    return result
+                # The incident is already committed. Downstream failure is durable
+                # deferred work, never an apparent ingestion rollback.
+                try:
+                    runtime = self.correlation_coordinator.process(incident)
+                    result["processing"] = runtime
+                except Exception:
+                    logger.exception("incident correlation runtime deferred")
+                    self.correlation_coordinator.defer(incident, "correlation")
+                    result["processing"] = {
+                        "status": "incident_persisted_correlation_deferred",
+                        "correlation": {"status": "deferred"},
+                        "flood_control": {"status": "not_started"},
+                        "notification_decision": {"status": "not_started"},
+                    }
+                return result
             except VersionConflict:
                 _counters["incident_ingest_conflict_total"].add(1)
                 if attempt + 1 == MAX_CONFLICT_ATTEMPTS:

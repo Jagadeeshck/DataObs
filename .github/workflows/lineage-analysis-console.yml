@@ -1,0 +1,40 @@
+name: lineage-analysis-console
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      elasticsearch:
+        image: docker.elastic.co/elasticsearch/elasticsearch:9.4.2
+        env:
+          discovery.type: single-node
+          xpack.security.enabled: "false"
+        ports: ["9200:9200"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - uses: pnpm/action-setup@v4
+        with: {version: "10.28.1"}
+      - uses: actions/setup-node@v4
+        with: {node-version: "22", cache: pnpm, cache-dependency-path: ui/dataobs-console/pnpm-lock.yaml}
+      - run: pip install -r requirements.txt
+      - run: python -m pytest -q tests/job_run tests/test_lineage.py
+      - working-directory: ui/dataobs-console
+        run: pnpm install --frozen-lockfile && pnpm typecheck && pnpm lint && pnpm test && pnpm build
+      - if: always()
+        run: |
+          mkdir -p lineage-analysis-console-evidence
+          git rev-parse HEAD > lineage-analysis-console-evidence/final-sha.txt
+          python -m pytest -q tests/job_run tests/test_lineage.py --junitxml=lineage-analysis-console-evidence/backend.xml
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lineage-analysis-console-evidence
+          path: lineage-analysis-console-evidence
+      - if: always()
+        run: test "$(cat lineage-analysis-console-evidence/final-sha.txt)" = "$(git rev-parse HEAD)"

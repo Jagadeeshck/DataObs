@@ -9,6 +9,13 @@ import { AssetCatalog } from "../features/assets/AssetCatalog";
 import { Asset360 } from "../features/assets/Asset360";
 import { PathwayExplorer } from "../features/pathways/PathwayExplorer";
 import { Callback, Login, Logout, Unauthorised } from "../auth/AuthPages";
+import {
+  Job360,
+  JobsInventory,
+  Run360,
+  RunComparison,
+} from "../features/jobs/JobRunExplorer";
+import { LineageExplorer } from "../features/lineage/LineageExplorer";
 const StreamsInventory = lazy(() =>
   import("../features/streams/StreamsInventory").then((m) => ({
     default: m.StreamsInventory,
@@ -46,6 +53,11 @@ export function App() {
               <Route path="assets/:assetId" element={<Asset360 />} />
               <Route path="pathways" element={<PathwayExplorer />} />
               <Route path="pathways/:pathwayId" element={<PathwayExplorer />} />
+              <Route path="jobs" element={<JobsInventory />} />
+              <Route path="jobs/:jobId" element={<Job360 />} />
+              <Route path="runs/:runId" element={<Run360 />} />
+              <Route path="runs/compare" element={<RunComparison />} />
+              <Route path="lineage" element={<LineageExplorer />} />
               <Route
                 path="incidents/:incidentId"
                 element={<IncidentDetail />}

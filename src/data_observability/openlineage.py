@@ -375,6 +375,14 @@ def column_lineage_edges(
                     continue
                 source_asset_id = qualified_name(str(namespace), str(name))
                 transformations = input_field.get("transformations") or []
+                # Transformation text can contain SQL and secrets.  Persist only
+                # an evidence-safe classification and deterministic digest.
+                transformation_fingerprint = hashlib.sha256(
+                    json.dumps(transformations, sort_keys=True, separators=(",", ":"), default=str).encode()
+                ).hexdigest()
+                classification = "rename" if str(source_column) != str(target_column) else "identity"
+                if transformations:
+                    classification = "transformed"
                 edge_id = stable_id(
                     "column_edge",
                     source_asset_id,
@@ -391,8 +399,14 @@ def column_lineage_edges(
                         "target_asset_id": target_asset_id,
                         "target_column": str(target_column),
                         "job_id": job_id,
+                        "run_id": run_id,
                         "job_run_id": run_id,
-                        "transformations": transformations,
+                        "transformation_classification": classification,
+                        "transformation_fingerprint": transformation_fingerprint,
+                        "confidence": 0.9,
+                        "evidence_refs": [],
+                        "schema_version": "v1",
+                        "observed_at": observed_at,
                         "first_seen": observed_at,
                         "last_seen": observed_at,
                         "active": True,

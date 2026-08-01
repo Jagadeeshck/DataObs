@@ -1,5 +1,9 @@
 # Current product baseline
 
+## Lineage and job/run investigation
+
+The console baseline includes tenant-scoped Jobs inventory, Job 360, Run 360, run comparison, and bounded dataset/column lineage exploration. Canonical lineage responses disclose evidence coverage, confidence, partial/missing states, and truncation rather than inferring unobserved relationships. Hosted Elasticsearch 9.4.2, browser, and accessibility evidence is owned by the `lineage-analysis-console` workflow artifact and is not promoted from local-only results.
+
 > Audit date: 2026-07-27. Implementation baseline: local commit `5164762a6337a44a76ad2c7574a78edc048a70b3`, including merged PR history through #168. Final pull-request-head hosted run identifiers remain pending and no local result is presented as hosted evidence.
 
 ## 1. Product identity
@@ -12,7 +16,7 @@ Certification definitions pin Elasticsearch and Kibana **9.4.2**. Compatibility 
 
 ## 3. Storage migrations
 
-The released forward migration registry spans `0001_product_foundation` through `0019_data_product_operation_claim_expires_date`. This consolidation changes no migration. The registry checksum ledger and the comparison against the branch base are mandatory gates.
+The released forward migration registry spans `0001_product_foundation` through `0021_lineage_analysis_explorer`. Existing migrations remain immutable. The registry checksum ledger and the comparison against the branch base are mandatory gates.
 
 ## 4. Implemented API domains
 

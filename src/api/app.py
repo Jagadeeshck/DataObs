@@ -970,10 +970,12 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
 
     # Canonical query surfaces are registered before legacy parameterised aliases.
     from src.api.job_routes import create_job_router
+    from src.api.lineage_routes import create_lineage_router
     from src.api.run_routes import create_run_router
 
     app.include_router(create_job_router(dataobs_service, require_auth))
     app.include_router(create_run_router(dataobs_service, require_auth))
+    app.include_router(create_lineage_router(dataobs_service, require_auth))
 
     @app.post("/api/data-observability/assets", status_code=201, dependencies=[Depends(require_auth)])
     async def dataobs_create_asset(

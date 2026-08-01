@@ -7,9 +7,8 @@ from typing import Any, Callable, Literal
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
-from services.product_query.stream_actions import ActionStore
 from services.product_query.stream_common import envelope
 from services.product_query.stream_comparison import compare_samples
 from services.product_query.stream_pagination import CursorCodec, CursorState, InvalidCursor
@@ -30,11 +29,6 @@ class CompareRequest(BaseModel):
     end: datetime
     baseline_start: datetime | None = None
     baseline_end: datetime | None = None
-
-
-class ActionRequest(BaseModel):
-    action: Literal["restart_failed_connector", "restart_failed_task", "verify_recovery"]
-    reason: str = Field(min_length=8, max_length=500)
 
 
 READ_SCOPE = {
@@ -83,8 +77,8 @@ SUBRESOURCES = {
         "rca",
         "monitors",
     ),
-    "stream-connectors": ("tasks", "changes", "incidents", "rca", "action-eligibility", "actions"),
-    "schema-subjects": ("versions", "changes", "impact", "incidents", "monitors"),
+    "stream-connectors": ("tasks", "changes", "incidents", "monitors", "evidence"),
+    "schema-subjects": ("versions", "changes", "impact", "incidents", "monitors", "evidence"),
 }
 
 
@@ -94,7 +88,7 @@ def create_stream_router(get_es: Callable[..., Any], require_auth: Callable[...,
         os.getenv("DATAOBS_CURSOR_SECRET", "development-cursor-secret-change-me"),
         previous_secrets=[value for value in os.getenv("DATAOBS_CURSOR_PREVIOUS_SECRETS", "").split(",") if value],
     )
-    actions, events = ActionStore(), EventReplay(int(os.getenv("DATAOBS_STREAM_SSE_REPLAY_SIZE", "500")))
+    events = EventReplay(int(os.getenv("DATAOBS_STREAM_SSE_REPLAY_SIZE", "500")))
 
     def repo(es: Any = Depends(get_es)) -> StreamRepository:
         return StreamRepository(es.es, timeout=float(os.getenv("DATAOBS_STREAM_QUERY_TIMEOUT", "5")))
@@ -243,8 +237,6 @@ def create_stream_router(get_es: Callable[..., Any], require_auth: Callable[...,
 
     for root, names in SUBRESOURCES.items():
         for name in names:
-            if root == "stream-connectors" and name == "actions":
-                continue
 
             async def subresource_handler(
                 resource_id: str,
@@ -255,7 +247,8 @@ def create_stream_router(get_es: Callable[..., Any], require_auth: Callable[...,
                 _name: str = name,
             ) -> dict[str, Any]:
                 scope(request, READ_SCOPE[_root])
-                item = repository.get(RESOURCE[_root], resource_id, request.state.tenant_id, environment)
+                tenant = request.state.tenant_id
+                item = repository.get(RESOURCE[_root], resource_id, tenant, environment)
                 if item is None:
                     raise HTTPException(
                         404,
@@ -264,9 +257,25 @@ def create_stream_router(get_es: Callable[..., Any], require_auth: Callable[...,
                             "message": "Resource was not found in this tenant and environment",
                         },
                     )
-                value = item.get(_name.replace("-", "_"))
-                configured = value is not None and _name != "cost"
-                return {
+                methods = {
+                    ("stream-connectors", "tasks"): repository.get_connector_tasks,
+                    ("stream-connectors", "changes"): repository.get_connector_changes,
+                    ("stream-connectors", "incidents"): repository.get_connector_incidents,
+                    ("stream-connectors", "monitors"): repository.get_connector_monitors,
+                    ("stream-connectors", "evidence"): repository.get_connector_evidence,
+                    ("schema-subjects", "versions"): repository.get_schema_versions,
+                    ("schema-subjects", "changes"): repository.get_schema_changes,
+                    ("schema-subjects", "impact"): repository.get_schema_impact,
+                    ("schema-subjects", "incidents"): repository.get_schema_incidents,
+                    ("schema-subjects", "monitors"): repository.get_schema_monitors,
+                    ("schema-subjects", "evidence"): repository.get_schema_evidence,
+                }
+                method = methods[(_root, _name)]
+                value = method(resource_id, tenant, environment)
+                history_sections = {"changes", "incidents", "monitors", "impact"}
+                configured = not (_name in history_sections and not item.get(_name.replace("-", "_")))
+                status = item.get("data_status") if configured else "not_configured"
+                result = {
                     "resource_id": resource_id,
                     "kind": _name,
                     "data": value,
@@ -274,9 +283,13 @@ def create_stream_router(get_es: Callable[..., Any], require_auth: Callable[...,
                         request.state.request_id,
                         configured=configured,
                         found=value is not None,
-                        sources=["kafka_observer"] if configured else [],
+                        sources=item.get("source_coverage", []),
                     ),
                 }
+                result["data_status"] = status or result["data_status"]
+                if isinstance(value, list):
+                    result.update({"items": value, "next_cursor": None})
+                return result
 
             router.add_api_route(
                 f"/{root}/{{resource_id}}/{name}", subresource_handler, methods=["GET"], name=f"get_{root}_{name}"
@@ -448,46 +461,6 @@ def create_stream_router(get_es: Callable[..., Any], require_auth: Callable[...,
     async def inspect(resource_id: str, request: Request) -> None:
         scope(request, "streams:inspect")
         raise HTTPException(403, detail={"code": "inspection_disabled", "message": "Message inspection is disabled"})
-
-    @router.get("/stream-connectors/{resource_id}/actions")
-    async def connector_actions(resource_id: str, request: Request, environment: str = Query(...)) -> dict[str, Any]:
-        scope(request, "stream-connectors:read")
-        return {
-            "items": actions.list(request.state.tenant_id, environment, resource_id),
-            **envelope(request.state.request_id, configured=True, found=True, sources=["action_workflow"]),
-        }
-
-    @router.post("/stream-connectors/{resource_id}/actions", status_code=202)
-    async def connector_action(
-        resource_id: str,
-        body: ActionRequest,
-        request: Request,
-        environment: str = Query(...),
-        idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
-    ) -> dict[str, Any]:
-        scope(request, "stream-connectors:restart")
-        if not idempotency_key:
-            raise HTTPException(400, detail={"code": "idempotency_required", "message": "Idempotency-Key is required"})
-        try:
-            record = actions.request(
-                tenant=request.state.tenant_id,
-                environment=environment,
-                target_id=resource_id,
-                action=body.action,
-                reason=body.reason,
-                requester=request.state.principal.get("subject", "unknown"),
-                idempotency_key=idempotency_key,
-                eligible=True,
-            )
-        except ValueError as exc:
-            raise HTTPException(409, detail={"code": "action_conflict", "message": str(exc)}) from exc
-        events.publish(
-            request.state.tenant_id,
-            environment,
-            "stream_action.updated",
-            {"resource_id": resource_id, "data_status": "complete", "changed_fields": ["state"]},
-        )
-        return record
 
     for root in ("streams", "stream-clusters", "consumer-groups"):
 

@@ -1,0 +1,2 @@
+# Secret handling
+Credentials enter through Secret references or mounted files, never ConfigMaps. The shared recursive redactor covers authorization, passwords, secrets, tokens, API/private keys, client secrets, credentials, SASL/JAAS and cookies in logs, audit, diagnostics and evidence while preserving safe `token_expiry` and `secret_reference_name`. Rotate at the provider, roll workloads, verify old credentials fail, and scan evidence before publication.

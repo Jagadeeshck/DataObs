@@ -1,0 +1,22 @@
+# Documentation/test example only. This is not a supported production connector.
+schema_version: v1
+integration_id: example-docs-only
+provider_type: example_test
+enabled: false
+schedule: null
+timeout_seconds: 30
+allowed_capabilities: [resource_discovery]
+resource_filters:
+  include: [synthetic-resource]
+rate_limit_per_second: 1
+checkpoint:
+  enabled: true
+credential_ref:
+  kind: environment
+  reference: DATAOBS_EXAMPLE_CREDENTIAL
+provider:
+  endpoint_profile: synthetic
+redaction:
+  enabled: true
+tags:
+  purpose: documentation

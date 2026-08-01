@@ -4,6 +4,7 @@ import { AppShell } from "../layouts/AppShell";
 import { CommandCenter } from "../features/command-center/CommandCenter";
 import { FlowMap } from "../features/flow-map/FlowMap";
 import { IncidentDetail } from "../features/incidents/IncidentDetail";
+import { IncidentInbox } from "../features/incidents/IncidentInbox";
 import { ProductContextProvider } from "../state/context";
 import { AssetCatalog } from "../features/assets/AssetCatalog";
 import { Asset360 } from "../features/assets/Asset360";
@@ -24,6 +25,16 @@ const StreamsInventory = lazy(() =>
 const Stream360 = lazy(() =>
   import("../features/streams/Stream360").then((m) => ({
     default: m.Stream360,
+  })),
+);
+const Connector360 = lazy(() =>
+  import("../features/streams/Connector360").then((m) => ({
+    default: m.Connector360,
+  })),
+);
+const Schema360 = lazy(() =>
+  import("../features/streams/Schema360").then((m) => ({
+    default: m.Schema360,
   })),
 );
 const Cluster360 = lazy(() =>
@@ -64,7 +75,11 @@ export function App() {
               <Route path="runs/:runId" element={<Run360 />} />
               <Route path="runs/compare" element={<RunComparison />} />
               <Route path="lineage" element={<LineageExplorer />} />
+<<<<<<< HEAD
               <Route path="quality/*" element={<QualityRoutes />} />
+=======
+              <Route path="incidents" element={<IncidentInbox />} />
+>>>>>>> origin/main
               <Route
                 path="incidents/:incidentId"
                 element={<IncidentDetail />}
@@ -89,11 +104,11 @@ export function App() {
               />
               <Route
                 path="streams/connectors/:connectorId"
-                element={<Stream360 kind="connector" />}
+                element={<Connector360 />}
               />
               <Route
                 path="streams/schemas/:subjectId"
-                element={<Stream360 kind="schema" />}
+                element={<Schema360 />}
               />
             </Route>
           </Routes>

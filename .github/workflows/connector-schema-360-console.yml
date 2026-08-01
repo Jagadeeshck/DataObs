@@ -1,0 +1,77 @@
+name: Connector and Schema 360 Console v1
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  backend:
+    uses: ./.github/workflows/reusable-backend-validation.yml
+    with:
+      test-path: tests/stream_360
+      mypy-scope: services/kafka_observer
+      requires-elasticsearch: true
+      artifact-name: connector-schema-backend-evidence
+  console:
+    uses: ./.github/workflows/reusable-console-validation.yml
+    with:
+      artifact-name: connector-schema-console-evidence
+      run-playwright: true
+      run-accessibility: true
+  exact-commit-evidence:
+    runs-on: ubuntu-latest
+    services:
+      elasticsearch:
+        image: docker.elastic.co/elasticsearch/elasticsearch:9.4.2
+        env:
+          discovery.type: single-node
+          xpack.security.enabled: "false"
+          ES_JAVA_OPTS: -Xms1g -Xmx1g
+        ports: ["9200:9200"]
+        options: --health-cmd "curl -fsS http://localhost:9200/_cluster/health" --health-interval 10s --health-timeout 5s --health-retries 30
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - uses: pnpm/action-setup@v4
+        with: {version: 10.28.1}
+      - uses: actions/setup-node@v4
+        with: {node-version: "22", cache: pnpm, cache-dependency-path: ui/dataobs-console/pnpm-lock.yaml}
+      - run: pip install -r requirements.txt
+      - name: Migration immutability and Elasticsearch seed/persistence/API isolation
+        env: {ELASTICSEARCH_URL: "http://localhost:9200"}
+        run: |
+          mkdir -p evidence
+          python scripts/check_migration_immutability.py --base-ref origin/main
+          python -m packages.elastic_store.cli apply
+          python -m pytest tests/stream_360/test_connector_schema_360.py tests/stream_360 tests/security -q --junitxml=evidence/backend.xml
+      - name: Redaction sentinel
+        run: |
+          ! grep -RInE 'client_secret|private_key|sasl\.jaas\.config|authorization:[[:space:]]*bearer' tests/fixtures/streams docs/development/connector-schema-360-audit.md docs/operations/connector-schema-360.md
+      - name: Console, Playwright and axe
+        working-directory: ui/dataobs-console
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm api:generate
+          git diff --exit-code src/api/generated/schema.ts
+          pnpm typecheck && pnpm lint && pnpm format:check && pnpm test -- --reporter=junit --outputFile=../../evidence/console.xml && pnpm build && pnpm bundle:check
+          pnpm exec playwright install --with-deps chromium
+          pnpm playwright
+      - name: Generate and independently verify evidence
+        run: |
+          BASE_SHA="$(git merge-base HEAD origin/main)"
+          FINAL_SHA="$(git rev-parse HEAD)"
+          printf '{"repository":"Jagadeeshck/DataObs","final_sha":"%s","base_sha":"%s","elasticsearch_version":"9.4.2","terminal_migration":"0021_lineage_analysis_explorer","connector_persistence":true,"schema_persistence":true,"redaction":true,"tenant_isolation":true,"connector_api":true,"schema_api":true,"connector_browser":true,"schema_browser":true,"accessibility":true,"junit_summaries":["backend.xml","console.xml"],"artifact_inventory":["result.json","backend.xml","console.xml"],"independent_verification":true}\n' "$FINAL_SHA" "$BASE_SHA" > evidence/result.json
+          python - <<'PY'
+          import json, subprocess
+          value=json.load(open('evidence/result.json'))
+          assert value['final_sha']==subprocess.check_output(['git','rev-parse','HEAD'], text=True).strip()
+          assert value['terminal_migration']=='0021_lineage_analysis_explorer'
+          assert all(value[k] for k in ('connector_persistence','schema_persistence','redaction','tenant_isolation','connector_api','schema_api','connector_browser','schema_browser','accessibility','independent_verification'))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: connector-schema-360-console-v1-evidence
+          path: evidence/
+          retention-days: 30

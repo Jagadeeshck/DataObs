@@ -39,9 +39,12 @@ def principal_from_claims(claims: dict[str, Any], settings: AuthSettings) -> Pri
     subject = claims.get(oidc.subject_claim)
     if not isinstance(subject, str) or not subject:
         raise SecurityError("mandatory_claim_missing", "Access token subject is missing")
-    principal_type = (
-        "service" if claims.get("client_id") and claims.get("preferred_username") == "service-account" else "user"
-    )
+    client_id = claims.get("azp") or claims.get("client_id")
+    explicit_service = isinstance(client_id, str) and client_id in oidc.allowed_service_clients
+    principal_type = "service" if explicit_service else "user"
+    # Service identities never inherit interactive-user group roles.
+    if explicit_service:
+        roles.clear()
     return Principal(
         subject=subject,
         issuer=str(claims.get("iss", oidc.issuer)),
@@ -56,6 +59,7 @@ def principal_from_claims(claims: dict[str, Any], settings: AuthSettings) -> Pri
         permissions=permissions_for_roles(frozenset(roles)),
         tenant_access=frozenset(access),
         is_service=principal_type == "service",
+        client_id=client_id if isinstance(client_id, str) else None,
     )
 
 

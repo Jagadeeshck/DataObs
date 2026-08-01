@@ -39,7 +39,7 @@ def generate_expected_runs(policy: ReliabilityPolicy, start: datetime, end: date
     if end <= start or not policy.enabled or not policy.expected_schedule:
         return []
     schedule = policy.expected_schedule
-    if schedule.kind not in {"interval", "cron"}:
+    if schedule.kind not in {"interval", "cron", "external"}:
         return []
     if policy.schedule_source == ScheduleSource.UNKNOWN:
         return []
@@ -48,7 +48,10 @@ def generate_expected_runs(policy: ReliabilityPolicy, start: datetime, end: date
     zone = ZoneInfo(policy.timezone)
     cursor = start.astimezone(zone).replace(second=0, microsecond=0)
     candidates: list[datetime] = []
-    if schedule.kind == "interval":
+    if schedule.kind == "external":
+        if schedule.next_expected_at and start <= schedule.next_expected_at < end:
+            candidates.append(schedule.next_expected_at.astimezone(zone))
+    elif schedule.kind == "interval":
         try:
             seconds = int(schedule.expression or "0")
         except ValueError as exc:
@@ -70,10 +73,13 @@ def generate_expected_runs(policy: ReliabilityPolicy, start: datetime, end: date
                 raise ValueError("cron evaluation range exceeds one year")
     result = []
     for scheduled in candidates:
+        business_day = scheduled.date().isoformat()
         excluded = next(
             (w.reason or "maintenance" for w in policy.maintenance_windows if w.starts_at <= scheduled <= w.ends_at),
             None,
         )
+        if not excluded and business_day in policy.business_calendar_exclusions:
+            excluded = "business_calendar_exclusion"
         status = ExpectedRunState.EXCLUDED_BY_MAINTENANCE if excluded else ExpectedRunState.EXPECTED
         result.append(
             ExpectedRun(
@@ -92,6 +98,7 @@ def generate_expected_runs(policy: ReliabilityPolicy, start: datetime, end: date
                 schedule_source=policy.schedule_source,
                 schedule_confidence=schedule.confidence,
                 status=status,
+                reason_codes=[excluded] if excluded else [],
                 maintenance_exclusion=excluded,
                 evaluated_at=end,
             )

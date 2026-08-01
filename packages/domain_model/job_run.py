@@ -156,6 +156,141 @@ class JobReliability(DomainModel):
     confidence: float = 0
 
 
+class ScheduleSource(str, Enum):
+    CONFIGURED = "configured"
+    AIRFLOW = "airflow"
+    DBT = "dbt"
+    OPENLINEAGE = "openlineage"
+    INFERRED = "inferred"
+    UNKNOWN = "unknown"
+
+
+class ExpectedRunState(str, Enum):
+    EXPECTED = "expected"
+    ON_TIME = "on_time"
+    LATE = "late"
+    MISSING = "missing"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    SKIPPED_BY_POLICY = "skipped_by_policy"
+    EXCLUDED_BY_MAINTENANCE = "excluded_by_maintenance"
+    SUPERSEDED = "superseded"
+    UNKNOWN = "unknown"
+
+
+class ReliabilityState(str, Enum):
+    HEALTHY = "healthy"
+    WARNING = "warning"
+    BREACHING = "breaching"
+    RECOVERING = "recovering"
+    NO_DATA = "no_data"
+    STALE = "stale"
+    DISABLED = "disabled"
+    ERROR = "error"
+    UNKNOWN = "unknown"
+
+
+class MaintenanceWindow(DomainModel):
+    starts_at: datetime
+    ends_at: datetime
+    reason: Optional[str] = None
+
+
+class ReliabilityPolicy(Scoped):
+    job_id: str
+    enabled: bool = True
+    schedule_source: ScheduleSource = ScheduleSource.UNKNOWN
+    timezone: str = "UTC"
+    expected_schedule: Optional[JobSchedule] = None
+    allowed_start_delay_seconds: int = 0
+    completion_deadline_seconds: Optional[int] = None
+    maximum_duration_ms: Optional[int] = None
+    missing_run_grace_seconds: int = 0
+    minimum_success_rate: float = 0.95
+    maximum_retry_rate: float = 0.05
+    maximum_missing_run_rate: float = 0.0
+    maximum_quality_failure_rate: float = 0.0
+    maximum_dependency_failure_rate: float = 0.0
+    evaluation_windows_seconds: List[int] = Field(default_factory=lambda: [86400])
+    minimum_sample_size: int = 1
+    minimum_available_components: int = 1
+    component_weights: Dict[str, float] = Field(default_factory=dict)
+    maintenance_windows: List[MaintenanceWindow] = Field(default_factory=list)
+    business_calendar_exclusions: List[str] = Field(default_factory=list)
+    owner: Optional[JobOwner] = None
+    revision: int = 1
+    etag: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class ExpectedRun(Scoped):
+    expected_run_id: str
+    job_id: str
+    scheduled_at: datetime
+    permitted_start_at: datetime
+    permitted_start_until: datetime
+    deadline_at: Optional[datetime] = None
+    schedule_source: ScheduleSource
+    schedule_confidence: float = 0
+    actual_run_id: Optional[str] = None
+    status: ExpectedRunState = ExpectedRunState.EXPECTED
+    reason_codes: List[str] = Field(default_factory=list)
+    maintenance_exclusion: Optional[str] = None
+    evaluated_at: datetime
+
+
+class RunReliabilityEvaluation(Scoped):
+    evaluation_id: str
+    job_id: str
+    run_id: str
+    expected_run_id: Optional[str] = None
+    run_state: RunState
+    start_delay_result: Optional[bool] = None
+    deadline_result: Optional[bool] = None
+    duration_result: Optional[bool] = None
+    retry_result: Optional[bool] = None
+    quality_result: Optional[bool] = None
+    dependency_result: Optional[bool] = None
+    failure_category: Optional[FailureCategory] = None
+    confidence: float = 0
+    evidence_coverage: float = 0
+    missing_inputs: List[str] = Field(default_factory=list)
+    warnings: List[str] = Field(default_factory=list)
+    evidence_references: List[str] = Field(default_factory=list)
+    evaluated_at: datetime
+    policy_revision: int
+    schema_version: str = "v1"
+
+
+class JobReliabilitySnapshot(Scoped):
+    job_id: str
+    state: ReliabilityState
+    score: Optional[float] = None
+    components: Dict[str, Optional[float]] = Field(default_factory=dict)
+    normalized_weights: Dict[str, float] = Field(default_factory=dict)
+    sample_counts: Dict[str, int] = Field(default_factory=dict)
+    evaluated_from: datetime
+    evaluated_until: datetime
+    expected_run_count: int = 0
+    observed_run_count: int = 0
+    success_count: int = 0
+    failed_count: int = 0
+    late_count: int = 0
+    missing_count: int = 0
+    retry_count: int = 0
+    duration_breach_count: int = 0
+    quality_failure_count: int = 0
+    dependency_failure_count: int = 0
+    confidence: float = 0
+    missing_components: List[str] = Field(default_factory=list)
+    reason_codes: List[str] = Field(default_factory=list)
+    current_streaks: Dict[str, int] = Field(default_factory=dict)
+    previous_period_comparison: Optional[Dict[str, float]] = None
+    policy_revision: int
+    observed_at: datetime
+
+
 class JobDefinition(Scoped):
     job_id: str
     qualified_name: str

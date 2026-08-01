@@ -1,0 +1,5 @@
+# Job/Run Reliability v1 delivery audit
+
+Base SHA: `5bd728f89efb49cea2e1c5d70640c1245761d7dc`. Final SHA is populated by Git/PR metadata after commit. Terminal migration changes from 0023 to 0024. Storage comprises four mutable reliability indices and three writer-backed append-only patterns documented in the architecture. This increment supplies typed policy/expected-run/evaluation/snapshot contracts, schedule generation, scoring, signed cursors, and memory/Elasticsearch repository boundaries.
+
+Tenant controls are scoped repository keys/predicates and scope-bound cursors. Local tests are recorded in the PR. Hosted run URL, artifact ID, browser/accessibility evidence and independent verification are unavailable and no certification, Beta-readiness or production-readiness claim is made. Limitations: complete API/Console surfaces and runtime worker orchestration remain follow-up work. Rollback: stop reliability writers, retain streams, snapshot mutable indices, then remove 0024 aliases/templates only after review; never edit prior migrations.

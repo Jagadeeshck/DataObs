@@ -34,7 +34,7 @@ Certification definitions pin Elasticsearch and Kibana **9.4.2**. Compatibility 
 
 ## 3. Storage migrations
 
-The released forward migration registry spans `0001_product_foundation` through `0021_lineage_analysis_explorer`. Existing migrations remain immutable. The registry checksum ledger and the comparison against the branch base are mandatory gates.
+The released forward migration registry spans `0001_product_foundation` through `0022_aws_data_platform_collector`. Existing migrations remain immutable. The registry checksum ledger and the comparison against the branch base are mandatory gates.
 
 Focused hosted certification is defined by `data-quality-monitoring`, `job-run-backend`, and `lineage-analysis-console`. Their exact-commit artifacts must pass a separate download-and-verification job; until a successful final-head run exists, the related capabilities remain functional but unvalidated.
 
@@ -48,7 +48,7 @@ Implemented routes are `/`, `/flow`, `/assets`, `/assets/:assetId`, `/pathways`,
 
 ## 6. Workers and services
 
-Runnable Dockerfiles exist for the API, Console, quality worker, scanner worker, monitor runtime, pathway worker, and Kafka observer. Collection Manager has an implemented service library but no dedicated production Dockerfile/entrypoint, so release packaging must not invent its image.
+Runnable Dockerfiles exist for the API, Console, quality worker, scanner worker, monitor runtime, pathway worker, and Kafka observer. Collection Manager has an implemented CLI entrypoint but no dedicated packaged production workload or Dockerfile, so release packaging must not invent its image.
 
 ## 7. Collection mechanisms
 
@@ -68,7 +68,7 @@ The release inventory is limited to components with Dockerfiles and supported en
 
 ## 11. Security posture
 
-Services and repositories contain tenant-scoping, strict Elasticsearch mappings, OCC/idempotency controls, redaction tests, dependency auditing, image scanning, and SBOM gates. OIDC/RBAC and comprehensive production tenant enforcement, HA, backup/restore, and a release rehearsal remain incomplete. Evidence bundles must exclude tokens, webhooks, authorization headers, and raw sensitive payloads.
+Services and repositories contain tenant-scoping, strict Elasticsearch mappings, OCC/idempotency controls, redaction tests, dependency auditing, image scanning, and SBOM gates. OIDC/RBAC and tenant-security implementation exists; hosted OIDC, HA, backup/restore, browser, and release evidence remain incomplete. Evidence bundles must exclude tokens, webhooks, authorization headers, and raw sensitive payloads.
 
 ## 12. Known blockers
 
@@ -80,11 +80,11 @@ Services and repositories contain tenant-scoping, strict Elasticsearch mappings,
 
 ## 13. Explicitly unsupported
 
-FinOps, Business Observability, AI/Agent Observability, autonomous remediation, new cloud and messaging providers, and full beta deployment hardening are not delivered by this baseline. POC/demo/sample assets are not supported production runtime.
+FinOps, Business Observability, AI/Agent Observability, autonomous remediation, new cloud and messaging providers, are not delivered by this baseline; Beta deployment packaging is implemented but remains uncertified. POC/demo/sample assets are not supported production runtime.
 
 ## 14. Next milestone
 
-The recommended next focused branch is `codex/oidc-rbac-tenant-enforcement`, followed only by core Data Quality Monitoring, Job/Run Explorer, Data Streams Monitoring, Incident and Automation Workbench, and full beta deployment hardening as evidence gates allow.
+The next release gate is exact-commit hosted Beta 1 certification after all mandatory feature PRs merge; publication requires a later explicit approval.
 
 ## Stream 360 Core Console v1
 

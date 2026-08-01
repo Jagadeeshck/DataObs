@@ -1681,7 +1681,7 @@ capabilities:
     ui_routes: []
     storage_resources: []
     migrations:
-    - 0021_lineage_analysis_explorer
+    - 0022_aws_data_platform_collector
   validation:
     unit: defined_not_run
     integration: defined_not_run

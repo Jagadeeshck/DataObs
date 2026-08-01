@@ -54,7 +54,7 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium && pnpm playwright
       - name: Produce and independently verify exact-commit evidence
         run: |
-          printf '{"final_sha":"%s","elasticsearch_version":"9.4.2","terminal_migration":"0021_lineage_analysis_explorer","cluster_overview":true,"broker_result":true,"topic_result":true,"consumer_group_result":true,"connector_result":true,"health_aggregation":true,"cursor_result":true,"tenant_isolation":true,"playwright":true,"accessibility":true,"junit_results":["elasticsearch.xml","api-security.xml","console-junit.xml"]}\n' "$(git rev-parse HEAD)" > evidence/cluster-360-console-v1.json
+          printf '{"final_sha":"%s","elasticsearch_version":"9.4.2","terminal_migration":"0022_aws_data_platform_collector","cluster_overview":true,"broker_result":true,"topic_result":true,"consumer_group_result":true,"connector_result":true,"health_aggregation":true,"cursor_result":true,"tenant_isolation":true,"playwright":true,"accessibility":true,"junit_results":["elasticsearch.xml","api-security.xml","console-junit.xml"]}\n' "$(git rev-parse HEAD)" > evidence/cluster-360-console-v1.json
           python scripts/certification/verify_cluster_360_console_evidence.py evidence/cluster-360-console-v1.json
       - uses: actions/upload-artifact@v4
         with:

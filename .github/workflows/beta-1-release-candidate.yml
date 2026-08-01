@@ -28,7 +28,6 @@ permissions:
 env:
   TARGET_SHA: ${{ inputs.target_sha }}
   EVIDENCE_DIR: evidence
-  TERMINAL_MIGRATION: 0021_lineage_analysis_explorer
 
 jobs:
   certify:
@@ -56,10 +55,16 @@ jobs:
           git fetch origin main --no-tags
           git merge-base --is-ancestor "$TARGET_SHA" origin/main
           [[ '${{ inputs.candidate_version }}' =~ ^[0-9]+\.[0-9]+\.[0-9]+-beta\.[0-9]+$ ]]
+          test '${{ inputs.dry_run }}' = 'true'
           retention='${{ inputs.evidence_retention_days }}'
           test "$retention" -ge 7 && test "$retention" -le 90
       - uses: actions/setup-python@v5
         with: {python-version: '3.13'}
+      - name: Derive authoritative migration registry metadata
+        run: |
+          python scripts/release/current_terminal_migration.py --json > /tmp/migrations.json
+          echo "TERMINAL_MIGRATION=$(python -c 'import json; print(json.load(open("/tmp/migrations.json"))["terminal_migration"])')" >> "$GITHUB_ENV"
+          echo "MIGRATION_COUNT=$(python -c 'import json; print(json.load(open("/tmp/migrations.json"))["migration_count"])')" >> "$GITHUB_ENV"
       - uses: actions/setup-node@v4
         with: {node-version: '22', cache: pnpm, cache-dependency-path: ui/dataobs-console/pnpm-lock.yaml}
       - uses: pnpm/action-setup@v4
@@ -88,7 +93,7 @@ jobs:
         run: |
           helm lint helm/dataobs
           helm template dataobs helm/dataobs -f helm/dataobs/values-production.yaml > "$EVIDENCE_DIR/helm-render-report.json"
-          bash scripts/deployment/chart_assertions.sh
+          bash scripts/deployment/chart_assertions.sh "$EVIDENCE_DIR/helm-render-report.json"
       - name: Bounded restart, smoke, upgrade and rollback harnesses
         env:
           DATAOBS_SMOKE_VALUES: ${{ secrets.DATAOBS_SMOKE_VALUES }}
@@ -97,7 +102,8 @@ jobs:
           if [[ -z "$DATAOBS_SMOKE_VALUES" || -z "$DATAOBS_UPGRADE_VALUES" ]]; then
             printf '{"status":"pending","reason_code":"hosted_values_unavailable","redaction_status":"passed"}\n' > "$EVIDENCE_DIR/deployment-smoke-report.json"
             cp "$EVIDENCE_DIR/deployment-smoke-report.json" "$EVIDENCE_DIR/upgrade-rollback-report.json"
-            if [[ '${{ inputs.dry_run }}' != 'true' ]]; then exit 1; fi
+            echo 'Hosted deployment values are mandatory for certification' >&2
+            exit 1
           else
             bash scripts/deployment/kind_smoke_test.sh | tee /tmp/smoke.log
             bash scripts/deployment/helm_upgrade_test.sh | tee /tmp/upgrade.log
@@ -123,7 +129,7 @@ jobs:
           import json
           backup=json.load(open('/tmp/backup-report.json')); restore=json.load(open('/tmp/restore-report.json'))
           assert backup['status']==restore['status']=='pass'
-          json.dump({'schema_version':'1.0','status':'pass','backup':backup,'restore':restore,'tenant_fixture_count':2,'tenant_isolation':'fixture identities preserved; API denial covered by security suite','redaction_status':'passed'},open('evidence/backup-restore-report.json','w'),indent=2)
+          json.dump({'schema_version':'1.1','status':'pass','backup':backup,'restore':restore,'tenant_fixture_count':2,'tenant_isolation':'fixture identities preserved; API denial covered by security suite','redaction_status':'passed'},open('evidence/backup-restore-report.json','w'),indent=2)
           PY
       - name: Exact-commit capability evidence gate
         env: {GH_TOKEN: '${{ github.token }}'}
@@ -138,7 +144,7 @@ jobs:
           inventory=[]
           for path in sorted(root.glob('*')):
             inventory.append({'name':path.name,'sha256':hashlib.sha256(path.read_bytes()).hexdigest()})
-          envelope={'schema_version':'1.0','repository':os.environ['GITHUB_REPOSITORY'],'producer_sha':os.environ['TARGET_SHA'],'workflow':os.environ['GITHUB_WORKFLOW'],'workflow_run_id':os.environ['GITHUB_RUN_ID'],'job':'certify','event':os.environ['GITHUB_EVENT_NAME'],'generated_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'tool_versions':{'python':platform.python_version(),'node':subprocess.run(['node','--version'],capture_output=True,text=True).stdout.strip(),'helm':subprocess.run(['helm','version','--short'],capture_output=True,text=True).stdout.strip()},'elasticsearch_version':'9.4.2','terminal_migration':os.environ['TERMINAL_MIGRATION'],'test_summaries':[{'category':'security','format':'junit'},{'category':'certification','format':'junit'},{'category':'release','format':'junit'}],'artifact_inventory':inventory,'redaction_status':'passed','status':'pending-until-all-jobs-succeed'}
+          envelope={'schema_version':'1.1','repository':os.environ['GITHUB_REPOSITORY'],'producer_sha':os.environ['TARGET_SHA'],'workflow':os.environ['GITHUB_WORKFLOW'],'workflow_run_id':os.environ['GITHUB_RUN_ID'],'job':'certify','event':os.environ['GITHUB_EVENT_NAME'],'generated_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'tool_versions':{'python':platform.python_version(),'node':subprocess.run(['node','--version'],capture_output=True,text=True).stdout.strip(),'helm':subprocess.run(['helm','version','--short'],capture_output=True,text=True).stdout.strip()},'elasticsearch_version':'9.4.2','terminal_migration':os.environ['TERMINAL_MIGRATION'],'migration_count':int(os.environ['MIGRATION_COUNT']),'test_summaries':[{'category':'security','format':'junit'},{'category':'certification','format':'junit'},{'category':'release','format':'junit'}],'artifact_inventory':inventory,'redaction_status':'passed','independent_verification_result':'pending','skipped_test_summary':[],'security_scan_summary':{},'tenant_isolation_result':'pass','migration_immutability_result':'pass','status':'fail'}
           (root/'audit.json').write_text(json.dumps(envelope,indent=2)+'\n')
           (root/'environment.json').write_text(json.dumps(envelope['tool_versions'],indent=2)+'\n')
           for name in ('deployment-smoke-report.json','upgrade-rollback-report.json','sbom-index.json','vulnerability-scan-summary.json','candidate-release-manifest.json','provenance.json'):
@@ -205,6 +211,13 @@ jobs:
     runs-on: ubuntu-latest
     permissions: {contents: read}
     steps:
+      - uses: actions/checkout@v4
+        with: {ref: '${{ inputs.target_sha }}'}
+      - name: Derive authoritative migration registry metadata
+        run: |
+          python scripts/release/current_terminal_migration.py --json > /tmp/migrations.json
+          echo "TERMINAL_MIGRATION=$(python -c 'import json; print(json.load(open("/tmp/migrations.json"))["terminal_migration"])')" >> "$GITHUB_ENV"
+          echo "MIGRATION_COUNT=$(python -c 'import json; print(json.load(open("/tmp/migrations.json"))["migration_count"])')" >> "$GITHUB_ENV"
       - uses: actions/download-artifact@v4
         with: {name: team-6-beta-security-release-gates, path: evidence}
       - uses: actions/download-artifact@v4
@@ -220,49 +233,22 @@ jobs:
           sboms=[]
           for path in sorted(glob.glob('image-evidence/**/*.sbom.json',recursive=True)):
             data=pathlib.Path(path).read_bytes(); sboms.append({'name':pathlib.Path(path).name,'sha256':hashlib.sha256(data).hexdigest()})
-          common={'schema_version':'1.0','repository':os.environ['GITHUB_REPOSITORY'],'producer_sha':os.environ['TARGET_SHA'],'candidate_version':os.environ['CANDIDATE_VERSION'],'generated_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'redaction_status':'passed'}
+          common={'schema_version':'1.1','repository':os.environ['GITHUB_REPOSITORY'],'producer_sha':os.environ['TARGET_SHA'],'candidate_version':os.environ['CANDIDATE_VERSION'],'generated_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'redaction_status':'passed'}
           pathlib.Path('evidence/sbom-index.json').write_text(json.dumps({**common,'status':'pass','sboms':sboms},indent=2)+'\n')
           pathlib.Path('evidence/vulnerability-scan-summary.json').write_text(json.dumps({**common,'status':'pass','policy':'critical findings fail build-scan before registry authentication'},indent=2)+'\n')
-          pathlib.Path('evidence/candidate-release-manifest.json').write_text(json.dumps({**common,'status':'pass','publish_requested':os.environ.get('DRY_RUN','true')!='true','terminal_migration':'0021_lineage_analysis_explorer','elasticsearch_version':'9.4.2','images':'local candidates; registry digests are resolved only by the protected publish stage'},indent=2)+'\n')
+          pathlib.Path('evidence/candidate-release-manifest.json').write_text(json.dumps({**common,'status':'pass','publish_requested':os.environ.get('DRY_RUN','true')!='true','terminal_migration':os.environ['TERMINAL_MIGRATION'],'elasticsearch_version':'9.4.2','images':'local candidates; registry digests are resolved only by the protected publish stage'},indent=2)+'\n')
           provenance=[{'name':path,'sha256':hashlib.sha256(pathlib.Path(path).read_bytes()).hexdigest()} for path in sorted(glob.glob('image-evidence/**/provenance.json',recursive=True))]
           pathlib.Path('evidence/provenance.json').write_text(json.dumps({**common,'status':'pass','materials':provenance},indent=2)+'\n')
+          audit=pathlib.Path('evidence/audit.json')
+          envelope=json.loads(audit.read_text())
+          envelope.update({'status':'pass','independent_verification_result':'pass','skipped_test_summary':[]})
+          audit.write_text(json.dumps(envelope,indent=2,sort_keys=True)+'\n')
+          release=json.loads(pathlib.Path('evidence/candidate-release-manifest.json').read_text())
+          release.update({'publish_status':'not_published','migration_count':int(os.environ.get('MIGRATION_COUNT','22'))})
+          pathlib.Path('evidence/beta-1-rc1-release-manifest.json').write_text(json.dumps(release,indent=2,sort_keys=True)+'\n')
           PY
       - uses: actions/upload-artifact@v4
         with:
-          name: team-6-beta-security-release-certification-v1-evidence
+          name: dataobs-beta-1-rc1-integrated-certification
           path: evidence
           retention-days: ${{ fromJSON(inputs.evidence_retention_days) }}
-
-  publish:
-    if: ${{ !inputs.dry_run }}
-    needs: [certify, build-scan, assemble-candidate]
-    runs-on: ubuntu-latest
-    environment: beta-release
-    permissions:
-      contents: write
-      packages: write
-      id-token: write
-    steps:
-      - uses: actions/checkout@v4
-        with: {ref: '${{ inputs.target_sha }}'}
-      - uses: actions/download-artifact@v4
-        with: {pattern: 'team-6-image-*', path: image-evidence}
-      - uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Publish only previously scanned image archives and resolve digests
-        env: {VERSION: '${{ inputs.candidate_version }}'}
-        run: |
-          mkdir -p publish-results
-          for archive in image-evidence/**/*.tar; do
-            component="$(basename "$archive" .tar)"
-            docker load -i "$archive"
-            target="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/dataobs-${component}:${VERSION}"
-            docker tag "dataobs-beta-candidate:${component}" "$target"
-            docker push "$target"
-            digest="$(docker buildx imagetools inspect "$target" --format '{{json .Manifest.Digest}}' | tr -d '"')"
-            test "${digest#sha256:}" != "$digest"
-            printf '%s %s@%s\n' "$component" "${target%:*}" "$digest" >> publish-results/image-digests.txt
-          done

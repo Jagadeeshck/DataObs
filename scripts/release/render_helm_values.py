@@ -4,9 +4,13 @@
 import argparse
 import json
 import re
+import sys
 from pathlib import Path
 
 import yaml
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from scripts.release.current_terminal_migration import migration_report
 
 REQUIRED = {
     "api",
@@ -47,7 +51,7 @@ def main():
     ap.add_argument("--output", type=Path, required=True)
     a = ap.parse_args()
     manifest = json.loads(a.manifest.read_text())
-    if manifest.get("terminal_migration") != "0021_lineage_analysis_explorer":
+    if manifest.get("terminal_migration") != migration_report()["terminal_migration"]:
         raise SystemExit("unexpected terminal migration")
     try:
         result = render(manifest)

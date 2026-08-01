@@ -14,6 +14,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, ConfigDict
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.middleware.cors import CORSMiddleware
 
 from packages.domain_model.incident import IncidentState
 from packages.domain_model.investigation import PathwayRouteEdge, PathwayRouteNode, PathwaySearchRequest
@@ -43,6 +44,7 @@ from src.security.authentication import Authenticator
 from src.security.authorization import authorize
 from src.security.errors import SecurityError
 from src.security.permissions import Permission
+from src.security.route_policy import permission_for_route, validate_policy
 from src.security.tenant_context import resolve_tenant_context
 
 logger = logging.getLogger(__name__)
@@ -50,39 +52,10 @@ _bearer = HTTPBearer(auto_error=False)
 
 
 def _permission_for_request(method: str, path: str) -> Permission:
-    """Deny-by-default route policy; high-risk actions are matched before domains."""
-    write = method.upper() not in {"GET", "HEAD", "OPTIONS"}
-    if write and path in {"/api/v1/openlineage/events", "/api/v1/lineage", "/api/data-observability/lineage/events"}:
-        return Permission.COLLECTION_INGEST
-    if path.startswith("/api/v1/quality") and (path.endswith("/run") or "/executions" in path):
-        return Permission.QUALITY_EXECUTE
-    if path.startswith("/api/v1/monitors") and path.endswith("/run"):
-        return Permission.MONITORS_EXECUTE
-    if path.startswith("/api/v1/iam"):
-        return Permission.IAM_WRITE if write else Permission.IAM_READ
-    if path == "/api/v1/auth/me":
-        return Permission.AUTH_READ
-    if "/approvals/" in path or path.endswith(("/approve", "/reject")):
-        return Permission.WORKFLOWS_APPROVE
-    if "workflow" in path or "/actions/" in path:
-        return Permission.WORKFLOWS_EXECUTE if write else Permission.WORKFLOWS_READ
-    domains = (
-        (("asset", "command-center", "topology", "pillar"), Permission.ASSETS_READ, Permission.ASSETS_WRITE),
-        (("lineage", "pathway"), Permission.LINEAGE_READ, Permission.LINEAGE_WRITE),
-        (("quality", "rule"), Permission.QUALITY_READ, Permission.QUALITY_WRITE),
-        (("monitor", "baseline"), Permission.MONITORS_READ, Permission.MONITORS_WRITE),
-        (("data-product",), Permission.DATA_PRODUCTS_READ, Permission.DATA_PRODUCTS_WRITE),
-        (("job", "run"), Permission.JOBS_READ, Permission.JOBS_EXECUTE),
-        (("stream", "kafka", "topic", "connector", "schema"), Permission.STREAMS_READ, Permission.STREAMS_EXECUTE),
-        (("incident", "finding"), Permission.INCIDENTS_READ, Permission.INCIDENTS_WRITE),
-        (("integration", "source"), Permission.INTEGRATIONS_READ, Permission.INTEGRATIONS_WRITE),
-        (("collector", "scanner", "scan-", "tenant"), Permission.COLLECTION_MANAGE, Permission.COLLECTION_MANAGE),
-    )
-    for tokens, read_permission, write_permission in domains:
-        if any(token in path for token in tokens):
-            return write_permission if write else read_permission
-    # No route silently inherits broad administration rights.
-    return Permission.PLATFORM_ADMIN
+    permission = permission_for_route(method, path)
+    if permission is None:
+        raise LookupError("public routes do not have a protected permission")
+    return permission
 
 
 class DataObsModel(BaseModel):
@@ -228,11 +201,22 @@ def settings_from_env() -> AppSettings:
 
 
 def make_es_client(settings: AppSettings) -> Elasticsearch:
-    return Elasticsearch(
-        [settings.elasticsearch.url],
-        basic_auth=(settings.elasticsearch.user, settings.elasticsearch.password),
-        request_timeout=30,
-    )
+    es = settings.elasticsearch
+    kwargs: dict[str, Any] = {
+        "verify_certs": es.verify_tls,
+        "request_timeout": es.request_timeout,
+        "max_retries": max(0, min(es.max_retries, 5)),
+        "retry_on_status": (429, 502, 503, 504),
+    }
+    if es.ca_certs:
+        kwargs["ca_certs"] = es.ca_certs
+    if es.ssl_assert_fingerprint:
+        kwargs["ssl_assert_fingerprint"] = es.ssl_assert_fingerprint
+    if es.api_key:
+        kwargs["api_key"] = es.api_key
+    elif es.user or es.password:
+        kwargs["basic_auth"] = (es.user, es.password)
+    return Elasticsearch([es.url], **kwargs)
 
 
 def create_store_bundle(settings: AppSettings) -> StoreBundle:
@@ -272,6 +256,17 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
     resolved_settings = settings or settings_from_env()
     resolved_bundle = store_bundle or create_store_bundle(resolved_settings)
     app = FastAPI(title="DataObs API", version="1.1.0")
+    validate_policy()
+    cors = resolved_settings.cors
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=list(cors.allowed_origins),
+        allow_methods=list(cors.allowed_methods),
+        allow_headers=list(cors.allowed_headers),
+        expose_headers=list(cors.exposed_headers),
+        allow_credentials=cors.allow_credentials,
+        max_age=cors.max_age,
+    )
     app.state.settings = resolved_settings
     app.state.authenticator = Authenticator(resolved_settings.auth)
     app.state.store_bundle = resolved_bundle
@@ -299,6 +294,20 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
     app.state.role_bindings = {}
     app.state.security_audit_events = []
     if resolved_settings.store_backend.lower() == "elasticsearch":
+        from services.security.elasticsearch_audit_repository import ElasticsearchAuditRepository
+        from services.security.elasticsearch_role_binding_repository import ElasticsearchRoleBindingRepository
+
+        security_client = make_es_client(resolved_settings)
+        app.state.role_binding_repository = ElasticsearchRoleBindingRepository(
+            security_client, request_timeout=resolved_settings.elasticsearch.request_timeout
+        )
+        app.state.audit_repository = ElasticsearchAuditRepository(
+            security_client, request_timeout=resolved_settings.elasticsearch.request_timeout
+        )
+    else:
+        app.state.role_binding_repository = None
+        app.state.audit_repository = None
+    if resolved_settings.store_backend.lower() == "elasticsearch":
         from services.data_products.elasticsearch_repository import ElasticsearchDataProductRepository
 
         app.state.data_product_repository = ElasticsearchDataProductRepository(make_es_client(resolved_settings))
@@ -309,13 +318,24 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
 
     @app.middleware("http")
     async def request_context_middleware(request: Request, call_next):
-        request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+        supplied = request.headers.get("X-Request-ID", "")
+        request_id = (
+            supplied
+            if len(supplied) <= 128 and supplied.replace("-", "").replace("_", "").replace(".", "").isalnum()
+            else str(uuid.uuid4())
+        )
         request.state.request_id = request_id
         response = await call_next(request)
         response.headers["X-Request-ID"] = request_id
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["Referrer-Policy"] = "no-referrer"
         response.headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'"
+        response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+        if request.url.path.startswith(("/api/v1/auth", "/api/v1/iam")):
+            response.headers["Cache-Control"] = "no-store"
+            response.headers["Pragma"] = "no-cache"
+        if resolved_settings.runtime.env == "production":
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         return response
 
     def get_settings(request: Request) -> AppSettings:
@@ -360,7 +380,9 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
                 _request_id(request),
                 request.headers.get("traceparent"),
             )
-            permission = _permission_for_request(request.method, request.url.path)
+            route = request.scope.get("route")
+            template = getattr(route, "path", request.url.path)
+            permission = _permission_for_request(request.method, template)
             authorize(principal, permission)
             request.state.principal = principal
             request.state.tenant_context = context

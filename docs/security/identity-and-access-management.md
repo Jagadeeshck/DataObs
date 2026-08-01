@@ -1,0 +1,2 @@
+# Identity and access management
+Production validates OIDC identity, then resolves durable `user`, `group`, or `service` bindings from `dataobs-role-bindings-v1`. Roles are `platform_admin`, `tenant_admin`, `operator`, `investigator`, `monitor_editor`, `workflow_approver`, `viewer`, and `collector`; unknown roles grant nothing. Reads require `iam:read`, mutations `iam:write`, ETags protect updates, deletion disables, and cross-tenant lookup is not found. Platform-admin grants require an existing platform administrator and the final administrator is protected.

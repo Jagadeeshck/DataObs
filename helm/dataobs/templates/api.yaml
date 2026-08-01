@@ -46,6 +46,13 @@ spec:
               valueFrom: {secretKeyRef: {name: {{ .Values.api.secrets.encryptionSecretName | quote }}, key: {{ .Values.api.secrets.encryptionSecretKey | quote }}}}
             - {name: LOG_LEVEL, value: {{ .Values.api.logLevel | quote }}}
             - {name: REQUEST_TIMEOUT_SECONDS, value: {{ .Values.api.requestTimeoutSeconds | quote }}}
+            - {name: DATAOBS_AUTHORIZATION_SOURCE, value: {{ .Values.api.security.authorizationSource | quote }}}
+            - {name: DATAOBS_SECURITY_BOOTSTRAP_ENABLED, value: {{ .Values.api.security.bootstrapEnabled | quote }}}
+            - {name: DATAOBS_OIDC_MAXIMUM_TOKEN_LIFETIME_SECONDS, value: {{ .Values.api.oidc.maximumTokenLifetimeSeconds | quote }}}
+            - {name: DATAOBS_OIDC_ALLOWED_AUTHORISED_PARTIES, value: {{ .Values.api.oidc.allowedAuthorisedParties | toJson | quote }}}
+            - {name: DATAOBS_OIDC_ALLOWED_TOKEN_TYPES, value: {{ .Values.api.oidc.allowedTokenTypes | toJson | quote }}}
+            - {name: DATAOBS_OIDC_REQUIRE_JTI_FOR_SERVICE_TOKENS, value: {{ .Values.api.oidc.requireJtiForServiceTokens | quote }}}
+            - {name: DATAOBS_CORS_ALLOWED_ORIGINS, value: {{ .Values.api.security.cors.allowedOrigins | toJson | quote }}}
 {{ toYaml .Values.api.env | indent 12 }}
           envFrom: {{ toYaml .Values.api.envFrom | nindent 12 }}
           securityContext: {{ toYaml .Values.global.securityContext | nindent 12 }}

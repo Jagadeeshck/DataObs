@@ -7,10 +7,10 @@ from dataclasses import replace
 from datetime import datetime, timezone
 
 from packages.collectors.sdk import (
+    CheckpointStore,
     CollectionCheckpoint,
     CollectionRequest,
     CollectionRunResult,
-    InMemoryCheckpointStore,
     IntegrationConfiguration,
     IntegrationContext,
     PartialFailure,
@@ -21,6 +21,8 @@ from packages.collectors.sdk import (
 )
 from packages.collectors.sdk.errors import CollectionTimeoutError, IntegrationError, InternalCollectorError
 from packages.collectors.sdk.redaction import redact_text
+
+from .provider_storage import ObservationRepository, RunRepository
 
 
 class ProviderRuntime:
@@ -33,7 +35,9 @@ class ProviderRuntime:
     def __init__(
         self,
         registry: ProviderRegistry,
-        checkpoint_store: InMemoryCheckpointStore | None = None,
+        checkpoint_store: CheckpointStore,
+        observation_repository: ObservationRepository,
+        run_repository: RunRepository,
         *,
         retry_policy: RetryPolicy | None = None,
         maximum_observations: int = 10_000,
@@ -41,7 +45,9 @@ class ProviderRuntime:
         if not 1 <= maximum_observations <= 100_000:
             raise ValueError("maximum_observations must be in [1, 100000]")
         self.registry = registry
-        self.checkpoints = checkpoint_store or InMemoryCheckpointStore()
+        self.checkpoints = checkpoint_store
+        self.observations = observation_repository
+        self.runs = run_repository
         self.retry_policy = retry_policy or RetryPolicy()
         self.maximum_observations = maximum_observations
 
@@ -111,10 +117,12 @@ class ProviderRuntime:
             watermark=datetime.now(timezone.utc),
             version=(before.version + 1 if before else 1),
         )
+        # Required evidence is durable before its cursor is advanced.
+        await self.observations.persist(context, tuple(unique.values()))
         if configuration.checkpoint_enabled:
             await self.checkpoints.save(after, expected_version=before.version if before else None)
         values = tuple(unique.values())
-        return CollectionRunResult(
+        result = CollectionRunResult(
             context.collection_run_id,
             frozenset(map(str, configuration.allowed_capabilities)),
             frozenset(map(str, configuration.allowed_capabilities)) if not failures else frozenset(),
@@ -129,3 +137,5 @@ class ProviderRuntime:
             after if configuration.checkpoint_enabled else before,
             values,  # type: ignore[arg-type]
         )
+        await self.runs.persist(context, configuration, provider.provider_version, result)
+        return result

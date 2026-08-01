@@ -16,6 +16,64 @@ from .manifest import (
 
 _DATA_PRODUCT_DECISION_INDEX = "dataobs-data-product-membership-decisions-v1"
 
+PROVIDER_PROPERTIES: Dict[str, Any] = {
+    **{
+        key: {"type": "keyword"}
+        for key in [
+            "integration_id",
+            "provider_type",
+            "provider_version",
+            "capability",
+            "collection_run_id",
+            "status",
+            "evidence_status",
+            "provider",
+            "account",
+            "region",
+            "service",
+            "resource_type",
+            "native_resource_id",
+            "display_name",
+            "canonical_id",
+            "owner",
+            "resource_id",
+            "metric_name",
+            "state",
+            "unit",
+            "aggregation",
+            "source_provider",
+            "reason",
+            "severity",
+            "error_code",
+        ]
+    },
+    **{key: {"type": "date"} for key in ["watermark", "started_at", "completed_at", "observed_at", "timestamp"]},
+    **{
+        key: {"type": "long"}
+        for key in [
+            "version",
+            "resource_count",
+            "observation_count",
+            "skipped_duplicate_count",
+            "retry_count",
+            "partial_failure_count",
+            "period_seconds",
+            "freshness_seconds",
+        ]
+    },
+    "value": {"type": "double"},
+    "evidence_confidence": {"type": "double"},
+    "scope": {"type": "flattened"},
+    "source_evidence": {"type": "flattened"},
+    "tags": {"type": "flattened"},
+    "dimensions": {"type": "flattened"},
+    "requested_capabilities": {"type": "keyword"},
+    "completed_capabilities": {"type": "keyword"},
+    "error_codes": {"type": "keyword"},
+    "cursor": {"type": "keyword"},
+    "configuration_fingerprint": {"type": "keyword"},
+}
+
 
 def plan() -> List[Dict[str, Any]]:
     return [
@@ -49,7 +107,8 @@ def _mapping() -> Dict[str, Any]:
         | KAFKA_PROPERTIES
         | MONITORING_PROPERTIES
         | JOB_RUN_PROPERTIES
-        | SECURITY_PROPERTIES,
+        | SECURITY_PROPERTIES
+        | PROVIDER_PROPERTIES,
     }
 
 
@@ -160,6 +219,7 @@ def _ensure_data_stream_template(es: Elasticsearch, pattern: str) -> None:
             **MONITORING_PROPERTIES,
             **JOB_RUN_PROPERTIES,
             **SECURITY_PROPERTIES,
+            **PROVIDER_PROPERTIES,
             "event_type": {"type": "keyword"},
             "message": {"type": "match_only_text"},
             "metricset": {"type": "keyword"},

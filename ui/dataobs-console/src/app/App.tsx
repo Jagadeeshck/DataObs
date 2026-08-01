@@ -26,6 +26,11 @@ const Stream360 = lazy(() =>
     default: m.Stream360,
   })),
 );
+const Cluster360 = lazy(() =>
+  import("../features/streams/Cluster360").then((m) => ({
+    default: m.Cluster360,
+  })),
+);
 const DataProductList = lazy(() =>
   import("../features/data-products/DataProductList").then((m) => ({
     default: m.DataProductList,
@@ -70,7 +75,7 @@ export function App() {
               />
               <Route
                 path="streams/clusters/:clusterId"
-                element={<Stream360 kind="cluster" />}
+                element={<Cluster360 />}
               />
               <Route
                 path="streams/topics/:streamId"

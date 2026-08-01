@@ -52,7 +52,6 @@ RESOURCE = {
     "schema-subjects": "schemas",
 }
 SUBRESOURCES = {
-    "stream-clusters": ("brokers", "health", "topics", "consumer-groups", "connectors", "changes", "incidents"),
     "streams": (
         "partitions",
         "metrics",
@@ -282,6 +281,158 @@ def create_stream_router(get_es: Callable[..., Any], require_auth: Callable[...,
             router.add_api_route(
                 f"/{root}/{{resource_id}}/{name}", subresource_handler, methods=["GET"], name=f"get_{root}_{name}"
             )
+
+    cluster_resources = {
+        "brokers": ("brokers", "name"),
+        "topics": ("streams", "topic"),
+        "consumer-groups": ("consumer_groups", "name"),
+        "connectors": ("connectors", "name"),
+    }
+
+    for section, (related_resource, default_sort) in cluster_resources.items():
+
+        async def cluster_related_handler(
+            resource_id: str,
+            request: Request,
+            environment: str = Query(..., min_length=1, max_length=64),
+            limit: int = Query(50, ge=1, le=200),
+            cursor: str | None = None,
+            search: str | None = Query(None, max_length=200),
+            health: str | None = Query(None, max_length=32),
+            retention_risk: str | None = Query(None, max_length=32),
+            has_lag: bool | None = None,
+            sort: str | None = Query(None, max_length=32),
+            repository: StreamRepository = Depends(repo),
+            _section: str = section,
+            _related_resource: str = related_resource,
+            _default_sort: str = default_sort,
+        ) -> dict[str, Any]:
+            scope(request, "streams:read")
+            tenant, effective_sort = request.state.tenant_id, sort or _default_sort
+            cluster = repository.get("clusters", resource_id, tenant, environment)
+            if cluster is None:
+                raise HTTPException(
+                    404,
+                    detail={
+                        "code": "resource_not_found",
+                        "message": "Cluster was not found in this tenant and environment",
+                    },
+                )
+            filters = {
+                "limit": limit,
+                "cluster_id": resource_id,
+                "search": search,
+                "health": health,
+                "retention_risk": retention_risk,
+                "has_lag": has_lag,
+                "sort": effective_sort,
+            }
+            after = None
+            if cursor:
+                try:
+                    after = codec.decode(
+                        cursor,
+                        tenant=tenant,
+                        environment=environment,
+                        filters=filters,
+                        route=f"stream-clusters/{_section}",
+                        resource=_related_resource,
+                        sort={"name": effective_sort},
+                    ).sort
+                except InvalidCursor as exc:
+                    raise HTTPException(400, detail={"code": "invalid_cursor", "message": str(exc)}) from exc
+            hits = repository.related(
+                _related_resource,
+                resource_id,
+                tenant,
+                environment,
+                size=limit + 1,
+                search_after=after,
+                search=search,
+                health=health,
+                retention_risk=retention_risk,
+                has_lag=has_lag,
+                sort=effective_sort,
+            )
+            visible, has_more = hits[:limit], len(hits) > limit
+            items = [hit["document"] for hit in visible]
+            next_cursor = (
+                codec.encode(
+                    CursorState(visible[-1]["sort"]),
+                    tenant=tenant,
+                    environment=environment,
+                    filters=filters,
+                    route=f"stream-clusters/{_section}",
+                    resource=_related_resource,
+                    sort={"name": effective_sort},
+                )
+                if visible and has_more
+                else None
+            )
+            return {
+                "items": items,
+                "next_cursor": next_cursor,
+                **envelope(request.state.request_id, configured=True, found=bool(items), sources=["kafka_observer"]),
+            }
+
+        router.add_api_route(
+            f"/stream-clusters/{{resource_id}}/{section}",
+            cluster_related_handler,
+            methods=["GET"],
+            name=f"get_stream_clusters_{section}",
+        )
+
+    @router.get("/stream-clusters/{resource_id}/health")
+    async def cluster_health(
+        resource_id: str, request: Request, environment: str = Query(...), repository: StreamRepository = Depends(repo)
+    ) -> dict[str, Any]:
+        scope(request, "streams:read")
+        cluster = repository.get("clusters", resource_id, request.state.tenant_id, environment)
+        if cluster is None:
+            raise HTTPException(
+                404,
+                detail={
+                    "code": "resource_not_found",
+                    "message": "Cluster was not found in this tenant and environment",
+                },
+            )
+        result = repository.cluster_health(cluster, request.state.tenant_id, environment)
+        return {
+            **result,
+            "warnings": (["Some cluster evidence is missing"] if result["missing_inputs"] else []),
+            "request_id": request.state.request_id,
+            "next_cursor": None,
+        }
+
+    @router.get("/stream-clusters/{resource_id}/changes")
+    async def cluster_changes(
+        resource_id: str, request: Request, environment: str = Query(...), repository: StreamRepository = Depends(repo)
+    ) -> dict[str, Any]:
+        scope(request, "streams:read")
+        if repository.get("clusters", resource_id, request.state.tenant_id, environment) is None:
+            raise HTTPException(
+                404,
+                detail={
+                    "code": "resource_not_found",
+                    "message": "Cluster was not found in this tenant and environment",
+                },
+            )
+        return {"items": [], "next_cursor": None, **envelope(request.state.request_id, configured=False, found=False)}
+
+    @router.get("/stream-clusters/{resource_id}/incidents")
+    async def cluster_incidents(
+        resource_id: str, request: Request, environment: str = Query(...), repository: StreamRepository = Depends(repo)
+    ) -> dict[str, Any]:
+        scope(request, "streams:read")
+        if repository.get("clusters", resource_id, request.state.tenant_id, environment) is None:
+            raise HTTPException(
+                404,
+                detail={
+                    "code": "resource_not_found",
+                    "message": "Cluster was not found in this tenant and environment",
+                },
+            )
+        return {"items": [], "next_cursor": None, **envelope(request.state.request_id, configured=False, found=False)}
 
     @router.get("/streams/{resource_id}/inspection-policy")
     async def inspection_policy(resource_id: str, request: Request) -> dict[str, Any]:

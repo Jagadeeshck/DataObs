@@ -85,3 +85,7 @@ The recommended next focused branch is `codex/oidc-rbac-tenant-enforcement`, fol
 ## Stream 360 Core Console v1
 
 The supported core browser scope is Streams Inventory, Topic 360, and Consumer Group 360. These views consume measured projection fields, preserve zero versus missing evidence, provide URL-backed server filters and accessible table alternatives, and expose no actions. Cluster, Connector, Schema, and Pathway Console redesigns remain deferred. Exact-commit hosted evidence is defined by `stream-360-core-console.yml`; completion remains contingent on its successful final-head run.
+
+## Kafka Cluster 360 Console v1
+
+The dedicated cluster route provides typed, bounded and tenant-isolated cluster overview, broker, topic, consumer-group, connector and operational-health views. Unknown and measured zero are distinct; Changes and Incidents honestly remain `not_configured` without providers. Optional 30-second polling pauses when hidden. Exact-commit hosted certification is defined by `cluster-360-console.yml` and remains pending until its artifact is retained and independently verified.

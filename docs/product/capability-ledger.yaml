@@ -971,6 +971,7 @@ capabilities:
     - src/api/stream_routes.py
     - services/product_query/stream_repository.py
     - ui/dataobs-console/src/features/streams
+    - ui/dataobs-console/src/features/streams/Cluster360.tsx
     api_paths: []
     ui_routes:
     - /streams/clusters/:clusterId
@@ -991,14 +992,19 @@ capabilities:
     upgrade: not_applicable
     release: missing
   evidence:
-    tests: []
-    workflow_jobs: []
+    tests:
+    - tests/stream_360/test_cluster_360_console.py
+    workflow_jobs:
+    - .github/workflows/cluster-360-console.yml
     audit_docs:
     - docs/development/stream-360-core-console-audit.md
+    - docs/development/cluster-360-console-audit.md
     runbooks:
     - docs/operations/stream-360-console.md
+    - docs/operations/cluster-360-console.md
     artifacts:
     - stream-360-core-console-v1-evidence (defined; final-head hosted run pending)
+    - cluster-360-console-v1-evidence (defined; final-head hosted run pending)
   blockers:
   - Retained hosted and applicable real-stack/browser/security/scale evidence is absent.
   non_goals:

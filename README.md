@@ -68,3 +68,7 @@ Autonomous remediation is not enabled. Actions require explicit approval and saf
 ### Stream 360 Core Console
 
 The tenant-scoped `/streams`, Topic 360, and Consumer Group 360 investigation views document honest evidence states, accessible grid/table alternatives, safe configuration, URL-backed filtering, and cancellable refresh behavior. See [the operations guide](docs/operations/stream-360-console.md). Cluster, Connector, Schema, and Pathway redesigns are deferred.
+
+### Kafka Cluster 360 Console
+
+`/streams/clusters/:clusterId` now has a dedicated read-only operational console with bounded broker, topic, consumer-group and safe connector summaries plus evidence-based health. Missing observations remain unknown, changes/incidents report Not configured without providers, and optional 30-second polling pauses while hidden. See [the Cluster 360 operations guide](docs/operations/cluster-360-console.md).

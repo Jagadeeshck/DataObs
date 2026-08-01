@@ -1,0 +1,13 @@
+{
+  "schema_version": "1.1", "candidate_version": "0.1.0-beta.1", "repository": "Jagadeeshck/DataObs",
+  "target_sha": null, "base_sha": "232a8e073cbfedf0d0c2444e9be23b59e959a4ee", "created_at": "2026-08-01T20:20:58Z", "Elasticsearch_version": "9.4.2",
+  "terminal_migration": "0022_aws_data_platform_collector", "migration_count": 22,
+  "chart_version": "0.2.0", "application_version": "0.2.0",
+  "packaged_components": ["api", "console", "quality-worker", "scanner-worker", "monitor-runtime", "pathway-worker", "kafka-observer"],
+  "excluded_components": [{"component":"collection-manager","reason":"no supported packaged Helm workload"}],
+  "image_identities": [], "SBOM_hashes": [], "scan_summaries": [], "capability_evidence": [{"mandatory":true,"status":"fail","reason":"hosted certification not executed"}],
+  "workflow_run_URLs": [], "artifact_IDs": [], "artifact_names": [], "artifacts": [],
+  "backup_restore_result": "fail", "upgrade_rollback_result": "fail", "HA_restart_result": "fail", "browser_result": "fail", "accessibility_result": "fail", "security_result": "fail",
+  "known_limitations": ["PR #198 is not present in local history", "origin/main and hosted evidence are unavailable"],
+  "publish_status": "not_published", "release_decision": "NO_GO"
+}

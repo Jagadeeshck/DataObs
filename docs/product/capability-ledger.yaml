@@ -1674,7 +1674,7 @@ capabilities:
     ui_routes: []
     storage_resources: []
     migrations:
-    - 0021_lineage_analysis_explorer
+    - 0022_aws_data_platform_collector
   validation:
     unit: defined_not_run
     integration: defined_not_run
@@ -1773,3 +1773,4 @@ migration_checksums:
   0019_data_product_operation_claim_expires_date: 6ee0e71ae766305f526d7eaf91a594ae4fc8f6035ce4138b69cb618ac9912861
   0020_identity_rbac_tenant_bindings: 4b0505ec6d2e1f9db0edc19d6e7d808cff36ae2de3789dc921770b7ea3390d33
   0021_lineage_analysis_explorer: 48708bb08b183788d378f5666c19ab9d4294d073fca6df44ef1849b7af2bcd7e
+  0022_aws_data_platform_collector: adb36e8f60ffe41e85bbc910de537a6b1b415da362a9b79eda6f13f69f9f50f8

@@ -177,9 +177,29 @@ JOB_RUN_PROPERTIES: Dict[str, Any] = {
             "data_status",
             "rca_id",
             "streaming_query_id",
+            "expected_run_id",
+            "evaluation_id",
+            "schedule_source",
+            "schedule_kind",
+            "reliability_state",
+            "policy_owner",
+            "schema_version",
         ]
     },
-    **{key: {"type": "date"} for key in ["scheduled_at", "started_at", "ended_at", "ingested_at"]},
+    **{
+        key: {"type": "date"}
+        for key in [
+            "scheduled_at",
+            "started_at",
+            "ended_at",
+            "ingested_at",
+            "event_timestamp",
+            "evaluation_timestamp",
+            "permitted_start_at",
+            "permitted_start_until",
+            "deadline_at",
+        ]
+    },
     **{
         key: {"type": "long"}
         for key in [
@@ -191,6 +211,8 @@ JOB_RUN_PROPERTIES: Dict[str, Any] = {
             "input_bytes",
             "output_bytes",
             "critical_path_duration_ms",
+            "policy_revision",
+            "minimum_sample_size",
         ]
     },
     "input_asset_ids": {"type": "keyword"},
@@ -199,6 +221,14 @@ JOB_RUN_PROPERTIES: Dict[str, Any] = {
     "openlineage_facets": {"type": "flattened"},
     "workflow_references": {"type": "keyword"},
     "incident_references": {"type": "keyword"},
+    "reliability_score": {"type": "double"},
+    "schedule_confidence": {"type": "double"},
+    "evidence_confidence": {"type": "double"},
+    "component_values": {"type": "flattened"},
+    "component_weights": {"type": "flattened"},
+    "reason_codes": {"type": "keyword"},
+    "missing_inputs": {"type": "keyword"},
+    "evidence_references": {"type": "keyword"},
 }
 
 

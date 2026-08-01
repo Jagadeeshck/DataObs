@@ -1,0 +1,11 @@
+# Job/Run Reliability v1 preflight
+
+Audited `main` at `5bd728f89efb49cea2e1c5d70640c1245761d7dc`; no remote is configured in this checkout, so that locally available main head is the auditable base. The terminal migration is `0023_stream_pathway_reliability_runtime`; `0024_job_run_reliability_runtime` is available.
+
+The audit covered Team ownership and Beta delivery/baseline/ledger/evidence contracts; the canonical job/run domain and Elasticsearch manifest; job and run APIs; Job Observer and OpenLineage ingest/projection; Airflow, dbt, and Spark integrations; Console job features and central routes; the backend workflow; and `tests/job_run`.
+
+Existing storage is migration 0008's job/run, attempt, task, stage, streaming query, schedule, SLO, checkpoint, action-request and append-only OpenLineage resources. OpenLineage normalizes source events into canonical jobs/runs and provider facets, including out-of-order handling. Existing integrations contribute Airflow DAG/task/schedule/retry, dbt invocation/node/test fingerprint, and Spark application/stage/streaming/resource evidence without storing compiled SQL or raw payloads.
+
+Process-local dependencies remain in legacy API helpers which inspect private store collections. `services/job_observer/repository.py` was only a placeholder at audit time; OpenLineage has its own ingestion repository, not a reliability query boundary. Existing APIs provide job/run inventory and detail, hierarchy, quality/incident correlation, reliability/SLO scaffolding, comparison and requested actions. Console routes include `/jobs`, `/jobs/:jobId`, `/runs/:runId`, and `/runs/compare`. Permissions are centrally declared and the current certification entry point is `.github/workflows/job-run-backend.yml`.
+
+In scope for this increment: canonical typed reliability contracts, bounded interval/cron expectation semantics, explainable scoring, signed cursors, a tenant-scoped repository boundary, and migration 0024 durable resources. Out of scope: new collectors, raw SQL/rows/payloads, external action execution, autonomous remediation, other teams' reliability implementations, and any production-readiness claim. Remaining API/Console/runtime-worker and hosted certification work is explicitly not represented as complete.

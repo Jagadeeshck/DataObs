@@ -1669,6 +1669,28 @@ STREAM_PATHWAY_RELIABILITY_MIGRATION = Migration(
     },
 )
 
+JOB_RUN_RELIABILITY_MIGRATION = Migration(
+    "0024_job_run_reliability_runtime",
+    "Add Team 2 reliability policy, projections, coordination and append-only evaluation evidence",
+    "v1",
+    dependencies=["0023_stream_pathway_reliability_runtime"],
+    rollback_strategy="stop Team 2 reliability workers; retain append-only evaluation evidence; snapshot current policy and runtime state before alias removal",
+    operations={
+        "mutable_indices": [
+            "dataobs-job-reliability-policy-v1",
+            "dataobs-job-reliability-current-v1",
+            "dataobs-job-reliability-runtime-state-v1",
+            "dataobs-expected-run-current-v1",
+        ],
+        "data_streams": [
+            "metrics-dataobs.job-reliability-*",
+            "logs-dataobs.expected-run-evaluation-*",
+            "logs-dataobs.job-reliability-event-*",
+        ],
+        "retention_defaults": {"evaluations": "365d append-only evidence"},
+    },
+)
+
 
 def migrations() -> List[Migration]:
     return [
@@ -1695,6 +1717,7 @@ def migrations() -> List[Migration]:
         LINEAGE_ANALYSIS_EXPLORER_MIGRATION,
         AWS_DATA_PLATFORM_COLLECTOR_MIGRATION,
         STREAM_PATHWAY_RELIABILITY_MIGRATION,
+        JOB_RUN_RELIABILITY_MIGRATION,
     ]
 
 

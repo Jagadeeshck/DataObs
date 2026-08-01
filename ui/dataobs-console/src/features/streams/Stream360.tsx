@@ -2,6 +2,15 @@ import { useEffect, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { api, type StreamResponse } from "../../api/client";
 import { useProductContext } from "../../state/context";
+import type { LagCell, MetricSample, Partition } from "../../api/client";
+import {
+  AccessibleSparkline,
+  HealthBadge,
+  LagHeatmap,
+  MissingInputs,
+  PartitionHealthGrid,
+  display,
+} from "./components";
 
 const tabs = {
   cluster: [
@@ -19,6 +28,7 @@ const tabs = {
     "Overview",
     "Data Flow",
     "Partitions",
+    "Throughput",
     "Consumer Groups",
     "Producers",
     "Consumers",
@@ -35,6 +45,8 @@ const tabs = {
     "Lag",
     "Members",
     "Assignments",
+    "Offsets",
+    "Retention Risk",
     "Rebalances",
     "Applications",
     "Incidents",
@@ -97,6 +109,52 @@ export function Stream360({ kind }: { kind: keyof typeof tabs }) {
     return () => controller.abort();
   }, [tenant, environment, kind, id, activeIndex]);
   const data = response?.item ?? response?.data;
+  const object =
+    data && typeof data === "object" && !Array.isArray(data)
+      ? (data as { [key: string]: unknown })
+      : undefined;
+  const allowed =
+    kind === "topic"
+      ? [
+          "topic",
+          "name",
+          "cluster_id",
+          "health",
+          "reason_codes",
+          "partition_count",
+          "replication_factor",
+          "cleanup_policy",
+          "retention_ms",
+          "min_insync_replicas",
+          "producer_rate",
+          "consumer_rate",
+          "maximum_lag",
+          "retention_risk",
+          "schema_state",
+          "connector_state",
+          "observed_at",
+          "source_coverage",
+        ]
+      : [
+          "group_id",
+          "cluster_id",
+          "state",
+          "protocol",
+          "coordinator",
+          "member_count",
+          "assigned_partition_count",
+          "total_lag",
+          "maximum_lag",
+          "lag_velocity",
+          "drain_time",
+          "retention_risk",
+          "rebalance_count",
+          "observed_at",
+          "source_coverage",
+        ];
+  const rows = Array.isArray(data)
+    ? (data as Array<{ [key: string]: unknown }>)
+    : [];
   return (
     <section aria-labelledby="stream-title" className="page-card">
       <nav aria-label="Breadcrumb">
@@ -153,19 +211,54 @@ export function Stream360({ kind }: { kind: keyof typeof tabs }) {
         <h2>{tabs[kind][activeIndex]}</h2>
         {response && (
           <>
+            {kind === "topic" && selected === "partitions" ? (
+              <PartitionHealthGrid
+                partitions={rows as unknown as Partition[]}
+              />
+            ) : null}
+            {kind === "topic" && selected === "throughput" ? (
+              <div className="chart-grid">
+                {[
+                  "records_per_second",
+                  "bytes_per_second",
+                  "producer_rate",
+                  "consumer_rate",
+                ].map((key) => (
+                  <AccessibleSparkline
+                    key={key}
+                    label={key.replaceAll("_", " ")}
+                    unit={key === "bytes_per_second" ? "bytes/s" : "records/s"}
+                    samples={object?.[key] as MetricSample[] | undefined}
+                  />
+                ))}
+              </div>
+            ) : null}
+            {kind === "group" &&
+            (selected === "lag" || selected === "lag-heatmap") ? (
+              <LagHeatmap
+                cells={
+                  (Array.isArray(data)
+                    ? data
+                    : (object?.by_partition ?? [])) as LagCell[]
+                }
+              />
+            ) : null}
             <dl className="stream-facts">
-              {data && typeof data === "object" ? (
-                Object.entries(data)
-                  .slice(0, 40)
+              {object ? (
+                allowed
+                  .filter((key) => key in object)
+                  .map((key) => [key, object[key]] as [string, unknown])
                   .map(([key, value]) => (
                     <div key={key}>
                       <dt>{key.replaceAll("_", " ")}</dt>
                       <dd>
-                        {value === null || value === undefined
-                          ? "Unknown"
+                        {Array.isArray(value)
+                          ? value.map(String).join(", ") || "Unknown"
                           : typeof value === "object"
-                            ? JSON.stringify(value)
-                            : String(value)}
+                            ? "Measured details available below"
+                            : display(
+                                value as string | number | null | undefined,
+                              )}
                       </dd>
                     </div>
                   ))
@@ -176,9 +269,26 @@ export function Stream360({ kind }: { kind: keyof typeof tabs }) {
                 </div>
               )}
             </dl>
-            {response.missing_inputs.length > 0 && (
-              <p>Missing inputs: {response.missing_inputs.join(", ")}</p>
+            <MissingInputs inputs={response.missing_inputs} />
+            {kind === "topic" && selected === "overview" && (
+              <aside className="explanation">
+                <h3>Health explanation</h3>
+                <HealthBadge health={String(object?.health ?? "unknown")} />
+                <p>
+                  {Array.isArray(object?.reason_codes)
+                    ? object.reason_codes.join("; ")
+                    : "No measured reason codes are available."}
+                </p>
+              </aside>
             )}
+            {kind === "group" &&
+              selected === "retention-risk" &&
+              object?.compacted_only === true && (
+                <p>
+                  Compacted-only topics are not evaluated with delete-retention
+                  calculations.
+                </p>
+              )}
           </>
         )}
       </section>

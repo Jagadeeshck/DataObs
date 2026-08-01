@@ -969,10 +969,13 @@ capabilities:
   implementation:
     code_paths:
     - src/api/stream_routes.py
+    - services/product_query/stream_repository.py
+    - ui/dataobs-console/src/features/streams
     api_paths: []
     ui_routes:
     - /streams/clusters/:clusterId
     - /streams/topics/:streamId
+    - /streams/consumer-groups/:groupId
     storage_resources: []
     migrations:
     - 0010_topic_queue_stream_360_completion
@@ -990,9 +993,12 @@ capabilities:
   evidence:
     tests: []
     workflow_jobs: []
-    audit_docs: []
-    runbooks: []
-    artifacts: []
+    audit_docs:
+    - docs/development/stream-360-core-console-audit.md
+    runbooks:
+    - docs/operations/stream-360-console.md
+    artifacts:
+    - stream-360-core-console-v1-evidence (defined; final-head hosted run pending)
   blockers:
   - Retained hosted and applicable real-stack/browser/security/scale evidence is absent.
   non_goals:

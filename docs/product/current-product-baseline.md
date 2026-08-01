@@ -81,3 +81,7 @@ FinOps, Business Observability, AI/Agent Observability, autonomous remediation, 
 ## 14. Next milestone
 
 The recommended next focused branch is `codex/oidc-rbac-tenant-enforcement`, followed only by core Data Quality Monitoring, Job/Run Explorer, Data Streams Monitoring, Incident and Automation Workbench, and full beta deployment hardening as evidence gates allow.
+
+## Stream 360 Core Console v1
+
+The supported core browser scope is Streams Inventory, Topic 360, and Consumer Group 360. These views consume measured projection fields, preserve zero versus missing evidence, provide URL-backed server filters and accessible table alternatives, and expose no actions. Cluster, Connector, Schema, and Pathway Console redesigns remain deferred. Exact-commit hosted evidence is defined by `stream-360-core-console.yml`; completion remains contingent on its successful final-head run.

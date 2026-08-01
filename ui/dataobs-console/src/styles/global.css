@@ -1107,3 +1107,93 @@ header {
   outline: 2px solid #71b4ff;
   outline-offset: 2px;
 }
+.metric-grid,
+.chart-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin: 12px 0;
+}
+.metric-card,
+.sparkline,
+.empty-state,
+.explanation {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface2);
+}
+.metric-card {
+  display: grid;
+  gap: 6px;
+}
+.metric-card strong {
+  font-size: 1.4rem;
+}
+.health {
+  display: inline-flex;
+  gap: 5px;
+  white-space: nowrap;
+}
+.health-healthy {
+  color: #65d19e;
+}
+.health-critical {
+  color: #ff8d8d;
+}
+.health-unknown,
+.lag-unknown {
+  color: #c7cbd1;
+  background: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 4px,
+    #ffffff12 4px,
+    #ffffff12 8px
+  );
+}
+.health-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+  gap: 6px;
+  margin: 12px 0;
+}
+.health-cell {
+  min-height: 52px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface2);
+  color: inherit;
+}
+.health-cell small {
+  display: block;
+}
+.lag-zero {
+  border-color: #65d19e;
+}
+.lag-present {
+  border-color: #ffc857;
+}
+.sparkline svg {
+  width: 100%;
+  height: 100px;
+}
+.long-id {
+  overflow-wrap: anywhere;
+}
+.page-card {
+  max-width: 100%;
+  overflow: hidden;
+}
+.table-scroll {
+  max-width: 100%;
+}
+@media (max-width: 700px) {
+  .metric-grid,
+  .chart-grid {
+    grid-template-columns: 1fr;
+  }
+  .table-scroll {
+    max-height: none;
+  }
+}

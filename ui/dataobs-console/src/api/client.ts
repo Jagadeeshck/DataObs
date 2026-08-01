@@ -130,6 +130,207 @@ export const api = {
       tenant,
       signal,
     ),
+  stream: (tenant: string, env: string, id: string, signal?: AbortSignal) =>
+    streamRead<StreamItem>(tenant, env, "streams", id, undefined, signal),
+  streamPartitions: (
+    tenant: string,
+    env: string,
+    id: string,
+    signal?: AbortSignal,
+  ) =>
+    streamRead<Partition[]>(tenant, env, "streams", id, "partitions", signal),
+  streamMetrics: (
+    tenant: string,
+    env: string,
+    id: string,
+    signal?: AbortSignal,
+  ) => streamRead<StreamMetrics>(tenant, env, "streams", id, "metrics", signal),
+  streamThroughput: (
+    tenant: string,
+    env: string,
+    id: string,
+    signal?: AbortSignal,
+  ) =>
+    streamRead<ThroughputSeries>(
+      tenant,
+      env,
+      "streams",
+      id,
+      "throughput",
+      signal,
+    ),
+  streamConsumerGroups: (
+    tenant: string,
+    env: string,
+    id: string,
+    signal?: AbortSignal,
+  ) =>
+    streamRead<ConsumerGroup[]>(
+      tenant,
+      env,
+      "streams",
+      id,
+      "consumer-groups",
+      signal,
+    ),
+  streamConfiguration: (
+    tenant: string,
+    env: string,
+    id: string,
+    signal?: AbortSignal,
+  ) =>
+    streamRead<TopicConfiguration>(
+      tenant,
+      env,
+      "streams",
+      id,
+      "configuration",
+      signal,
+    ),
+  streamPathways: (
+    tenant: string,
+    env: string,
+    id: string,
+    signal?: AbortSignal,
+  ) =>
+    streamRead<PathwaySummary[]>(
+      tenant,
+      env,
+      "streams",
+      id,
+      "pathways",
+      signal,
+    ),
+  streamIncidents: (
+    tenant: string,
+    env: string,
+    id: string,
+    signal?: AbortSignal,
+  ) =>
+    streamRead<IncidentSummary[]>(
+      tenant,
+      env,
+      "streams",
+      id,
+      "incidents",
+      signal,
+    ),
+  consumerGroups: (
+    tenant: string,
+    env: string,
+    query: URLSearchParams,
+    signal?: AbortSignal,
+  ) =>
+    read<ConsumerGroupList>(
+      `/api/v1/consumer-groups?environment=${encodeURIComponent(env)}&${query}`,
+      tenant,
+      signal,
+    ),
+  consumerGroup: (
+    tenant: string,
+    env: string,
+    id: string,
+    signal?: AbortSignal,
+  ) =>
+    streamRead<ConsumerGroup>(
+      tenant,
+      env,
+      "consumer-groups",
+      id,
+      undefined,
+      signal,
+    ),
+  consumerGroupMembers: (
+    tenant: string,
+    env: string,
+    id: string,
+    signal?: AbortSignal,
+  ) =>
+    streamRead<Member[]>(tenant, env, "consumer-groups", id, "members", signal),
+  consumerGroupAssignments: (
+    tenant: string,
+    env: string,
+    id: string,
+    signal?: AbortSignal,
+  ) =>
+    streamRead<Assignment[]>(
+      tenant,
+      env,
+      "consumer-groups",
+      id,
+      "assignments",
+      signal,
+    ),
+  consumerGroupOffsets: (
+    tenant: string,
+    env: string,
+    id: string,
+    signal?: AbortSignal,
+  ) =>
+    streamRead<Offset[]>(tenant, env, "consumer-groups", id, "offsets", signal),
+  consumerGroupLag: (
+    tenant: string,
+    env: string,
+    id: string,
+    signal?: AbortSignal,
+  ) =>
+    streamRead<LagDetails>(tenant, env, "consumer-groups", id, "lag", signal),
+  consumerGroupLagHeatmap: (
+    tenant: string,
+    env: string,
+    id: string,
+    signal?: AbortSignal,
+  ) =>
+    streamRead<LagCell[]>(
+      tenant,
+      env,
+      "consumer-groups",
+      id,
+      "lag-heatmap",
+      signal,
+    ),
+  consumerGroupRetentionRisk: (
+    tenant: string,
+    env: string,
+    id: string,
+    signal?: AbortSignal,
+  ) =>
+    streamRead<RetentionRisk>(
+      tenant,
+      env,
+      "consumer-groups",
+      id,
+      "retention-risk",
+      signal,
+    ),
+  consumerGroupRebalances: (
+    tenant: string,
+    env: string,
+    id: string,
+    signal?: AbortSignal,
+  ) =>
+    streamRead<Rebalance[]>(
+      tenant,
+      env,
+      "consumer-groups",
+      id,
+      "rebalances",
+      signal,
+    ),
+  consumerGroupIncidents: (
+    tenant: string,
+    env: string,
+    id: string,
+    signal?: AbortSignal,
+  ) =>
+    streamRead<IncidentSummary[]>(
+      tenant,
+      env,
+      "consumer-groups",
+      id,
+      "incidents",
+      signal,
+    ),
   streamSection: (
     tenant: string,
     env: string,
@@ -231,8 +432,176 @@ export interface StreamItem {
   maximum_lag?: number;
   retention_risk?: string;
   records_per_second?: number;
+  bytes_per_second?: number;
+  partition_count?: number;
+  replication_factor?: number;
+  producer_rate?: number;
+  consumer_rate?: number;
+  consumer_group_count?: number;
+  cleanup_policy?: string;
+  retention_ms?: number | null;
+  min_insync_replicas?: number;
+  schema_state?: string;
+  connector_state?: string;
+  reason_codes?: string[];
+  source_coverage?: string[];
   observed_at?: string;
-  [key: string]: unknown;
+}
+export type DataStatus =
+  | "complete"
+  | "partial"
+  | "stale"
+  | "unknown"
+  | "not_configured"
+  | "unavailable";
+export interface EvidenceEnvelope {
+  data_status: DataStatus;
+  observed_at: string;
+  source_coverage: string[];
+  confidence: number | null;
+  warnings: string[];
+  missing_inputs: string[];
+  request_id: string;
+}
+export interface SectionResponse<T> extends EvidenceEnvelope {
+  item?: T;
+  data?: T;
+  resource_id?: string;
+  kind?: string;
+}
+function streamRead<T>(
+  tenant: string,
+  env: string,
+  root: string,
+  id: string,
+  section?: string,
+  signal?: AbortSignal,
+) {
+  return read<SectionResponse<T>>(
+    `/api/v1/${root}/${encodeURIComponent(id)}${section ? `/${section}` : ""}?environment=${encodeURIComponent(env)}`,
+    tenant,
+    signal,
+  );
+}
+export interface Partition {
+  partition: number;
+  leader?: number | null;
+  replicas?: number[];
+  isr?: number[];
+  under_replicated?: boolean;
+  offline_replicas?: number[];
+  high_watermark?: number | null;
+  maximum_lag?: number | null;
+  health?: string;
+  observed_at?: string;
+  data_status?: DataStatus;
+}
+export interface MetricSample {
+  observed_at: string;
+  value: number | null;
+}
+export interface ThroughputSeries {
+  records_per_second?: MetricSample[];
+  bytes_per_second?: MetricSample[];
+  producer_rate?: MetricSample[];
+  consumer_rate?: MetricSample[];
+  sample_period_seconds?: number;
+}
+export interface StreamMetrics {
+  producer_rate?: number | null;
+  consumer_rate?: number | null;
+  maximum_lag?: number | null;
+}
+export interface ConsumerGroup {
+  group_id: string;
+  cluster_id?: string;
+  state?: string;
+  protocol?: string;
+  coordinator?: string;
+  member_count?: number;
+  assigned_partition_count?: number;
+  total_lag?: number | null;
+  maximum_lag?: number | null;
+  lag_velocity?: number | null;
+  drain_time?: number | null;
+  retention_risk?: string;
+  rebalance_count?: number;
+  observed_at?: string;
+  source_coverage?: string[];
+}
+export interface ConsumerGroupList extends EvidenceEnvelope {
+  items: ConsumerGroup[];
+  next_cursor: string | null;
+}
+export interface Member {
+  member_id: string;
+  client_id?: string;
+  host?: string;
+  assigned_topics?: string[];
+  assigned_partition_count?: number;
+}
+export interface Assignment {
+  member_id: string;
+  topic: string;
+  partitions: number[];
+}
+export interface Offset {
+  topic: string;
+  partition: number;
+  log_start_offset?: number | null;
+  committed_offset?: number | null;
+  high_watermark?: number | null;
+  lag?: number | null;
+  data_status?: DataStatus;
+  missing_inputs?: string[];
+  observed_at?: string;
+}
+export interface LagCell extends Offset {
+  stale?: boolean;
+}
+export interface LagDetails {
+  total_lag?: number | null;
+  maximum_lag?: number | null;
+  lag_velocity?: number | null;
+  drain_time?: number | null;
+  by_topic?: Array<{ topic: string; lag: number | null }>;
+  by_partition?: LagCell[];
+}
+export interface RetentionRisk {
+  state?: string;
+  affected_topics?: string[];
+  affected_partitions?: number[];
+  estimated_time_remaining?: number | null;
+  suspected_data_loss?: boolean;
+  calculation_inputs?: string[];
+  missing_inputs?: string[];
+  confidence?: number | null;
+  compacted_only?: boolean;
+}
+export interface Rebalance {
+  observed_at: string;
+  previous_state?: string;
+  new_state?: string;
+  member_change?: number;
+  assignment_change?: number;
+  reason?: string | null;
+  evidence_status?: string;
+}
+export interface TopicConfiguration {
+  cleanup_policy?: string;
+  retention_ms?: number | null;
+  min_insync_replicas?: number;
+  segment_bytes?: number;
+  max_message_bytes?: number;
+}
+export interface PathwaySummary {
+  pathway_id: string;
+  health?: string;
+}
+export interface IncidentSummary {
+  incident_id: string;
+  status?: string;
+  title?: string;
 }
 export interface StreamList {
   items: StreamItem[];

@@ -1,0 +1,38 @@
+{{- range $name, $cfg := dict "api" .Values.api "console" .Values.console }}
+{{- if $cfg.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "dataobs.fullname" $ }}-{{ $name }}
+  labels: {{- include "dataobs.labels" $ | nindent 4 }}
+spec:
+  type: {{ $cfg.service.type }}
+  selector: {{- include "dataobs.selector" (dict "Release" $.Release "Chart" $.Chart "Values" $.Values "component" $name) | nindent 4 }}
+  ports: [{name: http, port: {{ $cfg.service.port }}, targetPort: http, protocol: TCP}]
+{{- if $cfg.ingress.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "dataobs.fullname" $ }}-{{ $name }}
+  annotations: {{ toYaml $cfg.ingress.annotations | nindent 4 }}
+spec:
+  {{- with $cfg.ingress.className }}
+  ingressClassName: {{ . }}
+  {{- end }}
+  rules:
+  {{- range $cfg.ingress.hosts }}
+    - host: {{ .host | quote }}
+      http:
+        paths:
+        {{- range .paths }}
+          - path: {{ .path }}
+            pathType: {{ default "Prefix" .pathType }}
+            backend: {service: {name: {{ include "dataobs.fullname" $ }}-{{ $name }}, port: {name: http}}}
+        {{- end }}
+  {{- end }}
+  tls: {{ toYaml $cfg.ingress.tls | nindent 4 }}
+{{- end }}
+{{- end }}
+{{- end }}

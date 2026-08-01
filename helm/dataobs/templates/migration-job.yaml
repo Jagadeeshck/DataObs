@@ -1,0 +1,27 @@
+{{- if .Values.migrationJob.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "dataobs.fullname" . }}-migration-{{ .Release.Revision }}
+  annotations: {"helm.sh/hook": pre-install,pre-upgrade, "helm.sh/hook-weight": "-10", "helm.sh/hook-delete-policy": before-hook-creation}
+  labels: {{- include "dataobs.labels" . | nindent 4 }}
+spec:
+  activeDeadlineSeconds: {{ .Values.migrationJob.activeDeadlineSeconds }}
+  backoffLimit: {{ .Values.migrationJob.backoffLimit }}
+  ttlSecondsAfterFinished: {{ .Values.migrationJob.ttlSecondsAfterFinished }}
+  template:
+    metadata: {labels: {app.kubernetes.io/component: migration}}
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      securityContext: {{ toYaml .Values.global.podSecurityContext | nindent 8 }}
+      containers:
+      - name: migrate
+        image: {{ include "dataobs.image" (dict "root" . "image" .Values.migrationJob.image) | quote }}
+        command: {{ toJson .Values.migrationJob.command }}
+        env:
+{{ include "dataobs.commonEnv" . | indent 8 }}
+        - {name: DATAOBS_TERMINAL_MIGRATION, value: {{ .Values.migrationJob.terminalMigration | quote }}}
+        securityContext: {{ toYaml .Values.global.securityContext | nindent 10 }}
+        resources: {{ toYaml .Values.migrationJob.resources | nindent 10 }}
+{{- end }}

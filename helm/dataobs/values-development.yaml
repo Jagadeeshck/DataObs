@@ -1,0 +1,7 @@
+global:
+  environment: development
+  labels: {dataobs.io/profile: non-production}
+api: {replicaCount: 1, pdb: {enabled: false}}
+console: {replicaCount: 1, pdb: {enabled: false}}
+otelCollector: {replicaCount: 1, pdb: {enabled: false}}
+networkPolicy: {enabled: false}

@@ -1,6 +1,7 @@
 apiVersion: v2
 name: dataobs
-description: Helm chart for deploying DataObs services on Kubernetes
+description: DataObs Beta deployment package for external Elasticsearch
 type: application
-version: 0.1.0
-appVersion: "0.1.0"
+version: 0.2.0
+appVersion: "0.2.0"
+kubeVersion: ">=1.27.0-0"

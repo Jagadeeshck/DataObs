@@ -52,7 +52,7 @@ api:
   image:
     repository: jagadeeshck/dataobs-api
     tag: 0.2.0
-    digest: ''
+    digest: sha256:1111111111111111111111111111111111111111111111111111111111111111
     pullPolicy: IfNotPresent
   resources:
     requests:
@@ -72,7 +72,13 @@ api:
   nodeSelector: {}
   tolerations: []
   affinity: {}
-  topologySpreadConstraints: []
+  topologySpreadConstraints: &id001
+  - maxSkew: 1
+    topologyKey: topology.kubernetes.io/zone
+    whenUnsatisfiable: ScheduleAnyway
+    labelSelector:
+      matchLabels:
+        app.kubernetes.io/instance: dataobs
   terminationGracePeriodSeconds: 30
   service:
     type: ClusterIP
@@ -87,11 +93,18 @@ api:
   logLevel: INFO
   requestTimeoutSeconds: 30
   ingress:
-    enabled: false
-    className: ''
+    enabled: true
+    className: nginx
     annotations: {}
-    hosts: []
-    tls: []
+    hosts:
+    - host: api.example.invalid
+      paths:
+      - path: /
+        pathType: Prefix
+    tls:
+    - secretName: api-tls
+      hosts:
+      - api.example.invalid
   pdb:
     enabled: true
     minAvailable: 1
@@ -123,7 +136,7 @@ console:
   image:
     repository: jagadeeshck/dataobs-console
     tag: 0.2.0
-    digest: ''
+    digest: sha256:1111111111111111111111111111111111111111111111111111111111111111
     pullPolicy: IfNotPresent
   resources:
     requests:
@@ -143,7 +156,7 @@ console:
   nodeSelector: {}
   tolerations: []
   affinity: {}
-  topologySpreadConstraints: []
+  topologySpreadConstraints: *id001
   terminationGracePeriodSeconds: 30
   apiBaseUrl: http://dataobs-api:8080
   csp: default-src 'self'; connect-src 'self'
@@ -151,11 +164,18 @@ console:
     type: ClusterIP
     port: 8080
   ingress:
-    enabled: false
-    className: ''
+    enabled: true
+    className: nginx
     annotations: {}
-    hosts: []
-    tls: []
+    hosts:
+    - host: dataobs.example.invalid
+      paths:
+      - path: /
+        pathType: Prefix
+    tls:
+    - secretName: console-tls
+      hosts:
+      - dataobs.example.invalid
   pdb:
     enabled: true
     minAvailable: 1
@@ -187,7 +207,7 @@ qualityWorker:
   image:
     repository: jagadeeshck/dataobs-quality-worker
     tag: 0.2.0
-    digest: ''
+    digest: sha256:1111111111111111111111111111111111111111111111111111111111111111
     pullPolicy: IfNotPresent
   resources:
     requests:
@@ -220,7 +240,7 @@ scannerWorker:
   image:
     repository: jagadeeshck/dataobs-scanner-worker
     tag: 0.2.0
-    digest: ''
+    digest: sha256:1111111111111111111111111111111111111111111111111111111111111111
     pullPolicy: IfNotPresent
   resources:
     requests:
@@ -264,7 +284,7 @@ monitorRuntime:
   image:
     repository: jagadeeshck/dataobs-monitor-runtime
     tag: 0.2.0
-    digest: ''
+    digest: sha256:1111111111111111111111111111111111111111111111111111111111111111
     pullPolicy: IfNotPresent
   resources:
     requests:
@@ -298,7 +318,7 @@ pathwayWorker:
   image:
     repository: jagadeeshck/dataobs-pathway-worker
     tag: 0.2.0
-    digest: ''
+    digest: sha256:1111111111111111111111111111111111111111111111111111111111111111
     pullPolicy: IfNotPresent
   resources:
     requests:
@@ -332,7 +352,7 @@ kafkaObserver:
   image:
     repository: jagadeeshck/dataobs-kafka-observer
     tag: 0.2.0
-    digest: ''
+    digest: sha256:1111111111111111111111111111111111111111111111111111111111111111
     pullPolicy: IfNotPresent
   resources:
     requests:
@@ -384,7 +404,7 @@ otelCollector:
   image:
     repository: otel/opentelemetry-collector-contrib
     tag: 0.2.0
-    digest: ''
+    digest: sha256:1111111111111111111111111111111111111111111111111111111111111111
     pullPolicy: IfNotPresent
   resources:
     requests:
@@ -404,7 +424,7 @@ otelCollector:
   nodeSelector: {}
   tolerations: []
   affinity: {}
-  topologySpreadConstraints: []
+  topologySpreadConstraints: *id001
   terminationGracePeriodSeconds: 30
   service:
     type: ClusterIP
@@ -425,7 +445,7 @@ migrationJob:
   image:
     repository: jagadeeshck/dataobs-api
     tag: 0.2.0
-    digest: ''
+    digest: sha256:1111111111111111111111111111111111111111111111111111111111111111
     pullPolicy: IfNotPresent
   command:
   - python

@@ -17,7 +17,7 @@ from src.api.store import InMemoryStore
 
 
 def _ensure_memory(store: InMemoryStore) -> None:
-    defaults = {
+    defaults: Dict[str, Dict[str, Any]] = {
         "_dataobs_assets": {},
         "_dataobs_columns": {},
         "_dataobs_checks": {},
@@ -75,7 +75,10 @@ def memory_get_job(self, job_id):
 
 def memory_get_job_run(self, run_id):
     _ensure_memory(self)
-    return self._dataobs_job_runs.get(run_id)
+    direct = self._dataobs_job_runs.get(run_id)
+    if direct:
+        return direct
+    return next((item for item in self._dataobs_job_runs.values() if item.get("source_run_id") == run_id), None)
 
 
 def memory_get_lineage_edge(self, edge_id):
@@ -160,8 +163,20 @@ def memory_column_lineage(self, asset_id, column, direction="upstream"):
     return {"asset_id": asset_id, "column": column, "direction": direction, "edges": edges, "count": len(edges)}
 
 
+FIXED_INDICES = {
+    "jobs": "dataobs-job-definitions-v1",
+    "job-runs": "dataobs-job-run-current-v1",
+    "lineage-events": "logs-dataobs.openlineage-default",
+    "task-runs": "dataobs-task-run-current-v1",
+    "stage-runs": "dataobs-stage-run-current-v1",
+    "attempts": "dataobs-run-attempt-current-v1",
+    "streaming-queries": "dataobs-streaming-query-current-v1",
+}
+
+
 def _index(store, short):
-    return f"dataobs-{short}-v1-{store._tenant}"
+    """Resolve only server-owned fixed resources; never accept an index name from a caller."""
+    return FIXED_INDICES.get(short, f"dataobs-{short}-v1")
 
 
 def _document(store, short, doc_id):

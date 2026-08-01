@@ -1,10 +1,4 @@
-"""OpenLineage parsing and projection helpers for DataObs.
-
-The module intentionally depends only on the Python standard library so the
-DataObs API can receive OpenLineage events without coupling ingestion to a
-specific OpenLineage client release. Unknown facets are preserved verbatim and
-stored using Elasticsearch ``flattened`` mappings.
-"""
+"""Bounded OpenLineage validation, redaction, and projection helpers."""
 
 from __future__ import annotations
 
@@ -20,13 +14,51 @@ EVENT_STATUS = {
     "RUNNING": "running",
     "COMPLETE": "success",
     "FAIL": "failed",
-    "ABORT": "failed",
+    "ABORT": "aborted",
     "OTHER": "unknown",
+}
+MAX_REQUEST_BYTES = 1_048_576
+MAX_ARRAY_ITEMS = 1_000
+MAX_STRING_LENGTH = 16_384
+MAX_NESTING = 12
+MAX_UNKNOWN_FACET_BYTES = 65_536
+REDACTED_KEYS = {
+    "password",
+    "secret",
+    "token",
+    "api_key",
+    "authorization",
+    "credential",
+    "connection_string",
+    "environment",
+    "compiled_sql",
+    "query",
+    "stack_trace",
+}
+SAFE_FACETS = {
+    "nominalTime",
+    "parent",
+    "ownership",
+    "processingEngine",
+    "jobType",
+    "sourceCodeLocation",
+    "documentation",
+    "schema",
+    "datasetType",
+    "version",
+    "dataQualityMetrics",
+    "dataQualityAssertions",
+    "columnLineage",
+    "tags",
+    "airflow",
+    "dbt",
+    "spark",
+    "errorMessage",
 }
 
 
 class OpenLineageValidationError(ValueError):
-    """Raised when a payload is not a valid OpenLineage RunEvent subset."""
+    """Raised before unsafe OpenLineage content reaches persistence."""
 
 
 def now_iso() -> str:
@@ -35,8 +67,7 @@ def now_iso() -> str:
 
 def stable_id(prefix: str, *parts: object) -> str:
     material = "\x1f".join(str(part) for part in parts)
-    digest = hashlib.sha256(material.encode("utf-8")).hexdigest()
-    return f"{prefix}_{digest}"
+    return f"{prefix}_{hashlib.sha256(material.encode()).hexdigest()}"
 
 
 def qualified_name(namespace: str, name: str) -> str:
@@ -46,24 +77,22 @@ def qualified_name(namespace: str, name: str) -> str:
 def parse_datetime(value: str) -> datetime:
     if not isinstance(value, str) or not value.strip():
         raise OpenLineageValidationError("eventTime must be a non-empty ISO-8601 timestamp")
-    normalized = value.strip().replace("Z", "+00:00")
     try:
-        parsed = datetime.fromisoformat(normalized)
+        parsed = datetime.fromisoformat(value.strip().replace("Z", "+00:00"))
     except ValueError as exc:
         raise OpenLineageValidationError("eventTime must be a valid ISO-8601 timestamp") from exc
     if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=timezone.utc)
+        raise OpenLineageValidationError("eventTime must include a timezone")
     return parsed.astimezone(timezone.utc)
 
 
-def duration_ms(start: str | None, finish: str | None) -> int:
+def duration_ms(start: str | None, finish: str | None) -> int | None:
     if not start or not finish:
-        return 0
+        return None
     try:
-        delta = parse_datetime(finish) - parse_datetime(start)
+        return max(0, int((parse_datetime(finish) - parse_datetime(start)).total_seconds() * 1000))
     except OpenLineageValidationError:
-        return 0
-    return max(0, int(delta.total_seconds() * 1000))
+        return None
 
 
 def _mapping(value: Any, field: str) -> Dict[str, Any]:
@@ -72,90 +101,150 @@ def _mapping(value: Any, field: str) -> Dict[str, Any]:
     return dict(value)
 
 
+def _validate_shape(value: Any, depth: int = 0) -> None:
+    if depth > MAX_NESTING:
+        raise OpenLineageValidationError("maximum payload nesting exceeded")
+    if isinstance(value, str) and len(value) > MAX_STRING_LENGTH:
+        raise OpenLineageValidationError("maximum string size exceeded")
+    if isinstance(value, list):
+        if len(value) > MAX_ARRAY_ITEMS:
+            raise OpenLineageValidationError("maximum array size exceeded")
+        for item in value:
+            _validate_shape(item, depth + 1)
+    elif isinstance(value, Mapping):
+        if len(value) > MAX_ARRAY_ITEMS:
+            raise OpenLineageValidationError("maximum object size exceeded")
+        for key, item in value.items():
+            if not isinstance(key, str) or len(key) > 256:
+                raise OpenLineageValidationError("invalid object key")
+            _validate_shape(item, depth + 1)
+
+
+def _sensitive(key: str) -> bool:
+    lowered = key.lower().replace("-", "_")
+    return any(name in lowered for name in REDACTED_KEYS)
+
+
+def redact(value: Any, *, key: str = "") -> Any:
+    if _sensitive(key):
+        return "[REDACTED]"
+    if isinstance(value, Mapping):
+        return {str(k): redact(v, key=str(k)) for k, v in value.items()}
+    if isinstance(value, list):
+        return [redact(item) for item in value]
+    return value
+
+
 def _datasets(value: Any, field: str) -> List[Dict[str, Any]]:
     if value is None:
         return []
     if not isinstance(value, list):
         raise OpenLineageValidationError(f"{field} must be an array")
-    datasets: List[Dict[str, Any]] = []
+    datasets = []
     for position, item in enumerate(value):
         dataset = _mapping(item, f"{field}[{position}]")
-        namespace = dataset.get("namespace")
-        name = dataset.get("name")
-        if not isinstance(namespace, str) or not namespace.strip():
-            raise OpenLineageValidationError(f"{field}[{position}].namespace is required")
-        if not isinstance(name, str) or not name.strip():
-            raise OpenLineageValidationError(f"{field}[{position}].name is required")
-        dataset["namespace"] = namespace.strip()
-        dataset["name"] = name.strip()
+        for required in ("namespace", "name"):
+            if not isinstance(dataset.get(required), str) or not dataset[required].strip():
+                raise OpenLineageValidationError(f"{field}[{position}].{required} is required")
+            dataset[required] = dataset[required].strip()
         datasets.append(dataset)
     return datasets
 
 
 def canonical_event_id(payload: Mapping[str, Any]) -> str:
-    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str)
-    return stable_id("ol_evt", canonical)
+    supplied = payload.get("eventId")
+    if supplied is not None:
+        if not isinstance(supplied, str) or not supplied.strip():
+            raise OpenLineageValidationError("eventId must be a non-empty string")
+        return stable_id("ol_evt", supplied.strip())
+    run: Mapping[str, Any] = payload.get("run") if isinstance(payload.get("run"), Mapping) else {}
+    job: Mapping[str, Any] = payload.get("job") if isinstance(payload.get("job"), Mapping) else {}
+    return stable_id(
+        "ol_evt",
+        payload.get("eventType"),
+        payload.get("eventTime"),
+        run.get("runId"),
+        job.get("namespace"),
+        job.get("name"),
+    )
 
 
-def parse_openlineage_event(payload: Dict[str, Any]) -> Dict[str, Any]:
-    """Validate and normalise an OpenLineage RunEvent.
-
-    DataObs currently projects RunEvent payloads. JobEvent and DatasetEvent can
-    still be retained later because the raw event document stores the original
-    body without mapping every custom facet.
-    """
-
+def parse_openlineage_event(
+    payload: Dict[str, Any], *, tenant_id: str = "default", environment: str = "default"
+) -> Dict[str, Any]:
     if not isinstance(payload, dict):
         raise OpenLineageValidationError("OpenLineage payload must be a JSON object")
-
+    encoded = json.dumps(payload, separators=(",", ":"), default=str).encode()
+    if len(encoded) > MAX_REQUEST_BYTES:
+        raise OpenLineageValidationError("maximum request size exceeded")
+    _validate_shape(payload)
     event_type = str(payload.get("eventType", "")).upper()
     if event_type not in VALID_EVENT_TYPES:
-        allowed = ", ".join(sorted(VALID_EVENT_TYPES))
-        raise OpenLineageValidationError(f"eventType must be one of: {allowed}")
-
+        raise OpenLineageValidationError("eventType must be one of: " + ", ".join(sorted(VALID_EVENT_TYPES)))
     event_time_raw = payload.get("eventTime")
+    if not isinstance(event_time_raw, str):
+        raise OpenLineageValidationError("eventTime must be a non-empty ISO-8601 timestamp")
     event_time = parse_datetime(event_time_raw).isoformat()
-
-    run = _mapping(payload.get("run"), "run")
-    run_id = run.get("runId")
-    if not isinstance(run_id, str) or not run_id.strip():
+    run, job = _mapping(payload.get("run"), "run"), _mapping(payload.get("job"), "job")
+    source_run_id = run.get("runId")
+    if not isinstance(source_run_id, str) or not source_run_id.strip():
         raise OpenLineageValidationError("run.runId is required")
-    run_id = run_id.strip()
-
-    job = _mapping(payload.get("job"), "job")
-    job_namespace = job.get("namespace")
-    job_name = job.get("name")
-    if not isinstance(job_namespace, str) or not job_namespace.strip():
+    namespace, name = job.get("namespace"), job.get("name")
+    if not isinstance(namespace, str) or not namespace.strip():
         raise OpenLineageValidationError("job.namespace is required")
-    if not isinstance(job_name, str) or not job_name.strip():
+    if not isinstance(name, str) or not name.strip():
         raise OpenLineageValidationError("job.name is required")
-    job_namespace = job_namespace.strip()
-    job_name = job_name.strip()
-
-    inputs = _datasets(payload.get("inputs", []), "inputs")
-    outputs = _datasets(payload.get("outputs", []), "outputs")
-    input_assets = [qualified_name(dataset["namespace"], dataset["name"]) for dataset in inputs]
-    output_assets = [qualified_name(dataset["namespace"], dataset["name"]) for dataset in outputs]
-
+    namespace, name, source_run_id = namespace.strip(), name.strip(), source_run_id.strip()
+    producer = payload.get("producer")
+    if not isinstance(producer, str) or not producer.strip():
+        raise OpenLineageValidationError("producer is required")
+    inputs, outputs = _datasets(payload.get("inputs", []), "inputs"), _datasets(payload.get("outputs", []), "outputs")
+    groups = []
+    for entity in (run, job, *inputs, *outputs):
+        facets = entity.get("facets", {})
+        if not isinstance(facets, Mapping):
+            raise OpenLineageValidationError("facets must be objects")
+        groups.append(facets)
+    safe: Dict[str, Any] = {}
+    unknown: Dict[str, Any] = {}
+    for facets in groups:
+        for facet_name, value in facets.items():
+            (safe if facet_name in SAFE_FACETS else unknown)[facet_name] = redact(value, key=facet_name)
+    if len(json.dumps(unknown, default=str).encode()) > MAX_UNKNOWN_FACET_BYTES:
+        raise OpenLineageValidationError("maximum unknown-facet content exceeded")
+    platform = infer_job_type(namespace)
+    job_id = stable_id("job", tenant_id, environment, platform, namespace, name)
+    run_id = stable_id("run", tenant_id, environment, platform, namespace, name, source_run_id)
+    fingerprint = hashlib.sha256(
+        json.dumps(redact(payload), sort_keys=True, separators=(",", ":"), default=str).encode()
+    ).hexdigest()
     return {
         "event_id": canonical_event_id(payload),
+        "content_fingerprint": fingerprint,
         "event_type": event_type,
         "event_time": event_time,
         "status": EVENT_STATUS[event_type],
         "terminal": event_type in TERMINAL_EVENT_TYPES,
-        "producer": payload.get("producer", "unknown"),
+        "producer": producer.strip(),
         "schema_url": payload.get("schemaURL") or payload.get("schemaUrl") or "",
-        "run_id": run_id,
-        "run_facets": dict(run.get("facets") or {}),
-        "job_id": stable_id("job", job_namespace, job_name),
-        "job_qualified_name": qualified_name(job_namespace, job_name),
-        "job_namespace": job_namespace,
-        "job_name": job_name,
-        "job_facets": dict(job.get("facets") or {}),
+        "run_id": source_run_id,
+        "canonical_run_id": run_id,
+        "source_run_id": source_run_id,
+        "run_facets": redact(dict(run.get("facets") or {})),
+        "job_id": job_id,
+        "job_qualified_name": qualified_name(namespace, name),
+        "job_namespace": namespace,
+        "job_name": name,
+        "job_facets": redact(dict(job.get("facets") or {})),
+        "safe_facets": safe,
+        "unknown_facets": unknown,
+        "tenant_id": tenant_id,
+        "environment": environment,
+        "platform": platform,
         "inputs": inputs,
         "outputs": outputs,
-        "input_assets": input_assets,
-        "output_assets": output_assets,
+        "input_assets": [qualified_name(x["namespace"], x["name"]) for x in inputs],
+        "output_assets": [qualified_name(x["namespace"], x["name"]) for x in outputs],
     }
 
 

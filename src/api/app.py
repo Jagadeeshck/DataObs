@@ -37,7 +37,7 @@ from src.config.settings import AppSettings, load_settings
 from src.core.enterprise_blueprint import enterprise_backlog
 from src.core.pillars import PILLAR_REGISTRY, canonical_pillar_value
 from src.data_observability.openlineage import OpenLineageValidationError
-from src.data_observability.service import DataObservabilityService
+from src.data_observability.service import DataObservabilityService, OpenLineageConflictError
 from src.security.authentication import Authenticator
 from src.security.authorization import authorize
 from src.security.errors import SecurityError
@@ -51,6 +51,8 @@ _bearer = HTTPBearer(auto_error=False)
 def _permission_for_request(method: str, path: str) -> Permission:
     """Deny-by-default route policy; high-risk actions are matched before domains."""
     write = method.upper() not in {"GET", "HEAD", "OPTIONS"}
+    if write and path in {"/api/v1/openlineage/events", "/api/v1/lineage", "/api/data-observability/lineage/events"}:
+        return Permission.COLLECTION_INGEST
     if path.startswith("/api/v1/quality") and (path.endswith("/run") or "/executions" in path):
         return Permission.QUALITY_EXECUTE
     if path.startswith("/api/v1/monitors") and path.endswith("/run"):
@@ -959,8 +961,19 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
     ) -> Dict[str, Any]:
         return {"id": stores.store.save_quality_result(_as_dict(result)), "status": "created"}
 
-    def dataobs_service(stores: StoreBundle = Depends(get_stores)) -> DataObservabilityService:
-        return DataObservabilityService(stores.store)
+    def dataobs_service(request: Request, stores: StoreBundle = Depends(get_stores)) -> DataObservabilityService:
+        return DataObservabilityService(
+            stores.store,
+            getattr(request.state, "tenant_id", "default"),
+            getattr(request.state, "environment", "default"),
+        )
+
+    # Canonical query surfaces are registered before legacy parameterised aliases.
+    from src.api.job_routes import create_job_router
+    from src.api.run_routes import create_run_router
+
+    app.include_router(create_job_router(dataobs_service, require_auth))
+    app.include_router(create_run_router(dataobs_service, require_auth))
 
     @app.post("/api/data-observability/assets", status_code=201, dependencies=[Depends(require_auth)])
     async def dataobs_create_asset(
@@ -1162,6 +1175,14 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
             return service.ingest_openlineage_event(_as_dict(event))
         except OpenLineageValidationError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except OpenLineageConflictError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+    @app.post("/api/v1/openlineage/events", status_code=202, dependencies=[Depends(require_auth)])
+    async def canonical_openlineage_ingest(
+        event: DataObservabilityRequest, service: DataObservabilityService = Depends(dataobs_service)
+    ) -> Dict[str, Any]:
+        return await _ingest_openlineage(event, service)
 
     @app.post("/api/v1/lineage", status_code=201, dependencies=[Depends(require_auth)])
     async def openlineage_ingest(

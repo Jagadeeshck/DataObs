@@ -1582,42 +1582,49 @@ capabilities:
   last_audited_commit: 5164762a6337a44a76ad2c7574a78edc048a70b3
 - id: integration.cloud
   name: AWS, Azure, GCP, and Snowflake providers
-  summary: Evidence-led status for aws, azure, gcp, and snowflake providers.
+  summary: AWS collector v2 is bounded and functional_unvalidated; Azure, GCP, and Snowflake remain deferred.
   pillar: platform
   domain: integrations
-  state: not_started
+  state: functional_unvalidated
   release_readiness: blocked
   implementation:
-    code_paths: []
+    code_paths:
+    - integrations/aws
+    - services/collection_manager
     api_paths: []
     ui_routes: []
     storage_resources: []
-    migrations: []
+    migrations:
+    - 0022_aws_data_platform_collector
   validation:
-    unit: not_applicable
-    integration: not_applicable
-    real_stack: not_applicable
+    unit: defined_not_run
+    integration: defined_not_run
+    real_stack: defined_not_run
     hosted_ci: not_applicable
     browser: not_applicable
     accessibility: not_applicable
-    security: not_applicable
-    scale: not_applicable
-    upgrade: not_applicable
-    release: not_applicable
+    security: defined_not_run
+    scale: defined_not_run
+    upgrade: defined_not_run
+    release: defined_not_run
   evidence:
-    tests: []
-    workflow_jobs: []
-    audit_docs: []
-    runbooks: []
-    artifacts: []
+    tests: [tests/integrations/test_aws_provider.py, tests/integrations/test_aws_provider_v2.py]
+    workflow_jobs: [aws-data-platform-collector-v2.yml:validate, aws-data-platform-collector-v2.yml:verify-evidence]
+    audit_docs: [docs/development/aws-data-platform-collector-v2-audit.md]
+    runbooks: [docs/operations/aws-data-platform-collector.md]
+    artifacts: [aws-data-platform-collector-v2-evidence (defined; final-head hosted run pending)]
   blockers:
-  - Meaningful implementation and executable evidence are absent.
+  - Exact-commit hosted and independently verified AWS evidence is absent; non-AWS cloud providers remain deferred.
   non_goals:
-  - No product implementation is added by the ledger.
-  next_gate: Execute and retain the evidence required for promotion.
-  owner: unassigned
-  last_audited_at: '2026-07-27'
-  last_audited_commit: 5164762a6337a44a76ad2c7574a78edc048a70b3
+  - No complete AWS coverage, Azure, GCP, Snowflake, UI onboarding, or deployment packaging is claimed.
+  next_gate: Retain and independently verify exact-commit hosted AWS v2 evidence.
+  owner: team:integrations-collection
+  owner_team: team:integrations-collection
+  release_target: beta-1
+  implementation_status: implemented
+  certification_status: functional_unvalidated
+  last_audited_at: '2026-08-01'
+  last_audited_commit: pending-final-sha
 - id: streams.connector_schema_360
   name: Connector and Schema 360 Console v1
   summary: Durable safe projections and read-only operational investigation.
@@ -1773,3 +1780,4 @@ migration_checksums:
   0019_data_product_operation_claim_expires_date: 6ee0e71ae766305f526d7eaf91a594ae4fc8f6035ce4138b69cb618ac9912861
   0020_identity_rbac_tenant_bindings: 4b0505ec6d2e1f9db0edc19d6e7d808cff36ae2de3789dc921770b7ea3390d33
   0021_lineage_analysis_explorer: 48708bb08b183788d378f5666c19ab9d4294d073fca6df44ef1849b7af2bcd7e
+  0022_aws_data_platform_collector: adb36e8f60ffe41e85bbc910de537a6b1b415da362a9b79eda6f13f69f9f50f8

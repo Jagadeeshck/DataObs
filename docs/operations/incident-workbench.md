@@ -1,0 +1,19 @@
+# Operating the Incident Workbench
+
+## Availability
+
+Use the normal API health and migration readiness endpoints first. The workbench requires the Elasticsearch backend in production and reuses released incident, finding and collaboration resources. A missing provider configuration is intentionally shown as `not_configured`; lack of API support is `unsupported`; license denial and provider failure must remain `unlicensed` and `unavailable` respectively.
+
+## Troubleshooting
+
+* HTTP 400 cursor errors mean filters, environment, sorting or page size changed; restart pagination.
+* HTTP 404 is scope-safe and can mean absent, different-tenant or different-environment data.
+* HTTP 409 means the incident changed after it was read. Refresh, review the new revision and explicitly retry.
+* `unknown` evidence means no safe measurement exists; it is not a measured zero.
+* A `not_configured` preview is informational. Do not treat it as an execution attempt or success.
+
+Audit logs and request IDs should be used for correlation without recording action payloads or evidence. Repository errors should be investigated without copying raw Elasticsearch source documents into tickets.
+
+## Beta 1 limitations
+
+Real Elasticsearch, hosted CI, browser accessibility, Elastic Cases and Elastic Workflows require separate exact-commit certification. Timeline pagination is bounded to the released repository page limit. Watchers, tasks, approvals and executions are displayed only when backed by their existing durable services; no external connector is fabricated.

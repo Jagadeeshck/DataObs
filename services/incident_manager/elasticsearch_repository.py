@@ -13,6 +13,7 @@ FINDINGS_READ_ALIAS = "dataobs-findings-v1-read"
 INCIDENTS_ALIAS = "dataobs-incidents-v1-write"
 INCIDENTS_READ_ALIAS = "dataobs-incidents-v1-read"
 MAX_PAGE_SIZE = 200
+TIMELINE_STREAM = "logs-dataobs.incident_comment-default"
 
 
 class ElasticsearchIncidentRepository:
@@ -170,3 +171,20 @@ class ElasticsearchIncidentRepository:
         source = dict(hits[0]["_source"])
         source.update(seq_no=hits[0].get("_seq_no"), primary_term=hits[0].get("_primary_term"))
         return Incident.model_validate(source)
+
+    def append_event(self, event: dict[str, Any]) -> None:
+        """Append an immutable event to the released incident collaboration stream."""
+        try:
+            self.client.create(index=TIMELINE_STREAM, id=event["event_id"], document=event, refresh="wait_for")
+        except ConflictError:
+            # Idempotent retries never rewrite the existing historical event.
+            return
+
+    def list_events(self, tenant_id: str, environment: str, incident_id: str) -> list[dict[str, Any]]:
+        response = self.client.search(
+            index="logs-dataobs.incident_comment-*",
+            size=MAX_PAGE_SIZE,
+            query={"bool": {"filter": self._scope(tenant_id, environment) + [{"term": {"incident_id": incident_id}}]}},
+            sort=[{"timestamp": "asc"}, {"event_id": "asc"}],
+        )
+        return [dict(hit["_source"]) for hit in response["hits"]["hits"]]

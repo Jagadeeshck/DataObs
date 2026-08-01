@@ -201,6 +201,29 @@
         "envFrom": {
           "type": "array"
         },
+        "observability": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["enabled", "serviceName", "serviceVersion", "deploymentEnvironment", "otlpHttpEndpoint", "traceSampleRatio", "exportIntervalMs", "maxQueuedSpans", "maxQueuedMetrics"],
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "serviceName": { "type": "string", "minLength": 1, "maxLength": 64 },
+            "serviceVersion": { "type": "string", "minLength": 1, "maxLength": 64 },
+            "deploymentEnvironment": { "type": "string", "minLength": 1, "maxLength": 32 },
+            "otlpHttpEndpoint": { "type": "string", "minLength": 1 },
+            "traceSampleRatio": { "type": "number", "minimum": 0, "maximum": 1 },
+            "captureWebVitals": { "type": "boolean" },
+            "captureLongTasks": { "type": "boolean" },
+            "captureResourceSummary": { "type": "boolean" },
+            "propagateTraceHeaders": { "type": "boolean" },
+            "tracePropagationAllowlist": { "type": "array", "items": { "type": "string" }, "maxItems": 16 },
+            "diagnosticsEnabled": { "type": "boolean" },
+            "debug": { "type": "boolean" },
+            "exportIntervalMs": { "type": "integer", "minimum": 1000, "maximum": 60000 },
+            "maxQueuedSpans": { "type": "integer", "minimum": 16, "maximum": 2048 },
+            "maxQueuedMetrics": { "type": "integer", "minimum": 16, "maximum": 2048 }
+          }
+        },
         "service": {
           "type": "object",
           "properties": {

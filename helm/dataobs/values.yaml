@@ -189,6 +189,24 @@ console:
   topologySpreadConstraints: []
   terminationGracePeriodSeconds: 30
   apiBaseUrl: http://dataobs-api:8080
+  # Browser telemetry is opt-in. Prefer a same-origin OTLP/HTTP gateway path.
+  observability:
+    enabled: false
+    serviceName: dataobs-console
+    serviceVersion: 0.2.0
+    deploymentEnvironment: unknown
+    otlpHttpEndpoint: /otel/v1/traces
+    traceSampleRatio: 0.1
+    captureWebVitals: true
+    captureLongTasks: true
+    captureResourceSummary: false
+    propagateTraceHeaders: false
+    tracePropagationAllowlist: []
+    diagnosticsEnabled: false
+    debug: false
+    exportIntervalMs: 5000
+    maxQueuedSpans: 256
+    maxQueuedMetrics: 128
   csp: default-src 'self'; connect-src 'self'
   securityHeaders:
     contentSecurityPolicy: "default-src 'self'; connect-src 'self'"

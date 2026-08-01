@@ -38,6 +38,15 @@ spec:
           envFrom: {{ toYaml .Values.console.envFrom | nindent 12 }}
           securityContext: {{ toYaml .Values.global.securityContext | nindent 12 }}
           resources: {{ toYaml .Values.console.resources | nindent 12 }}
+          volumeMounts:
+            - name: runtime-config
+              mountPath: /usr/share/nginx/html/console-runtime.js
+              subPath: console-runtime.js
+              readOnly: true
+      volumes:
+        - name: runtime-config
+          configMap:
+            name: {{ include "dataobs.fullname" . }}-config
       nodeSelector: {{ toYaml (default .Values.global.nodeSelector .Values.console.nodeSelector) | nindent 8 }}
       affinity: {{ toYaml (default .Values.global.affinity .Values.console.affinity) | nindent 8 }}
       tolerations: {{ toYaml (default .Values.global.tolerations .Values.console.tolerations) | nindent 8 }}

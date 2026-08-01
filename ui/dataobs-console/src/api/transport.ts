@@ -1,5 +1,6 @@
 import { accessToken } from "../auth/oidc";
 import { ApiError } from "./common";
+import { instrumentedFetch } from "../observability";
 
 const requestId = () => crypto.randomUUID();
 export async function read<T>(
@@ -8,7 +9,7 @@ export async function read<T>(
   signal?: AbortSignal,
 ): Promise<T> {
   const token = await accessToken();
-  const response = await fetch(path, {
+  const response = await instrumentedFetch(path, {
     signal,
     credentials: "include",
     headers: {
@@ -35,7 +36,7 @@ export async function write<T>(
   headers: Record<string, string> = {},
 ): Promise<T> {
   const token = await accessToken();
-  const response = await fetch(path, {
+  const response = await instrumentedFetch(path, {
     method: "POST",
     signal,
     credentials: "include",

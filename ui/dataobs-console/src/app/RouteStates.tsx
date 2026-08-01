@@ -1,5 +1,6 @@
 import { Component, type ReactNode } from "react";
 import { Link, useRouteError } from "react-router-dom";
+import { captureError } from "../observability";
 export function NotFound() {
   return (
     <main className="route-state" id="main-content">
@@ -37,26 +38,51 @@ export class RouteBoundary extends Component<
   static getDerivedStateFromError(error: Error): BoundaryState {
     return { error };
   }
-  componentDidCatch() {
-    /* reporting is supplied by the host */
+  private heading = { current: null as HTMLHeadingElement | null };
+  componentDidCatch(error: Error) {
+    captureError(
+      error,
+      /chunk|module|import/i.test(error.message)
+        ? "chunk-load"
+        : "react-render",
+      this.props.routeName,
+    );
+    queueMicrotask(() => this.heading.current?.focus());
   }
   render() {
     if (!this.state.error) return this.props.children;
     const chunkFailure = /chunk|module|import/i.test(this.state.error.message);
     return (
-      <section className="route-state" role="alert">
-        <h1>{this.props.routeName} could not be loaded</h1>
+      <section className="route-state" role="alert" aria-live="assertive">
+        <h1
+          ref={(element) => {
+            this.heading.current = element;
+          }}
+          tabIndex={-1}
+        >
+          {this.props.routeName} could not be loaded
+        </h1>
         <p>
           {chunkFailure
             ? "A Console update may be available."
             : "This capability is temporarily unavailable."}
         </p>
-        <button onClick={() => this.setState({ error: undefined })}>
+        <button
+          onClick={() => {
+            captureError(
+              new Error("recovery"),
+              "recovery-retry",
+              this.props.routeName,
+            );
+            this.setState({ error: undefined });
+          }}
+        >
           Retry
         </button>{" "}
         {chunkFailure && (
           <button onClick={() => location.reload()}>Reload Console</button>
-        )}
+        )}{" "}
+        <Link to="/">Return to Command Center</Link>
       </section>
     );
   }

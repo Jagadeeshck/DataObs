@@ -1,4 +1,5 @@
 import { accessToken } from "../auth/oidc";
+import { instrumentedFetch } from "../observability";
 import { ApiError } from "./common";
 
 export type EvidenceStatus =
@@ -177,7 +178,7 @@ async function request<T>(
   init: RequestInit = {},
 ): Promise<ApiResult<T>> {
   const token = await accessToken();
-  const response = await fetch(path, {
+  const response = await instrumentedFetch(path, {
     ...init,
     credentials: "include",
     headers: {

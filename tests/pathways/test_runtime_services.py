@@ -9,9 +9,14 @@ class Admin:
     def inventory(self):
         return {"cluster_id": "c", "brokers": [], "topics": [], "consumer_groups": []}
 
+    def offsets(self, maximum):
+        """The observer capability contract requires bounded offset collection."""
+        return {"offsets": []}
+
 
 def test_observer_persists_collection_through_repository():
     repository = MemoryObserverRepository()
+    checkpoints = MemoryCheckpointStore()
     binding = CapabilityBinding(
         capability="offset_inventory",
         selected_provider="kafka_admin",
@@ -20,9 +25,9 @@ def test_observer_persists_collection_through_repository():
         source_event_identity="e",
         deduplication_key="d",
     )
-    result = KafkaObserverService(Admin(), MemoryCheckpointStore(), [binding], repository=repository).collect_once()
-    assert repository.collections == [result["inventory"]]
-    assert repository.load_checkpoint("dataobs_kafka_observer")["cluster_id"] == "c"
+    result = KafkaObserverService(Admin(), checkpoints, [binding], repository=repository).collect_once()
+    assert repository.collections == [result["capabilities"]["inventory"]["result"]]
+    assert checkpoints.load("offsets")["consecutive_failure_count"] == 0
 
 
 def test_plaintext_rejected_by_cli_configuration_outside_development(tmp_path):

@@ -80,6 +80,7 @@ export const consoleRoutes: readonly ConsoleRoute[] = [
     breadcrumb: "Streams",
     navigation: true,
     children: [
+      "/streams/reliability",
       "/streams/clusters/:clusterId",
       "/streams/topics/:streamId",
       "/streams/consumer-groups/:groupId",

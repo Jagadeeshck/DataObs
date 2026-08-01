@@ -1,0 +1,35 @@
+schema_version: '1'
+terminal_migration: 0021_lineage_analysis_explorer
+elasticsearch_version: 9.4.2
+capabilities:
+  - capability_id: platform-security-release
+    owning_team: Team 6
+    workflow: beta-1-release-candidate.yml
+    artifact_name: team-6-beta-security-release-certification-v1-evidence
+    required_conclusion: success
+    mandatory_for_beta: true
+    evidence_schema_version: '1'
+    required_test_categories: [security, certification, release, deployment, backup-restore]
+  - capability_id: team-1-capabilities
+    owning_team: Team 1
+    workflow: stream-observer-backend.yml
+    artifact_name: stream-observer-backend-evidence
+    required_conclusion: success
+    mandatory_for_beta: true
+    evidence_schema_version: '1'
+    required_test_categories: [contracts, security, elasticsearch]
+  - capability_id: team-2-capabilities
+    owning_team: Team 2
+    workflow: data-quality-monitoring.yml
+    artifact_name: data-quality-monitoring-evidence
+    required_conclusion: success
+    mandatory_for_beta: true
+    evidence_schema_version: '1'
+    required_test_categories: [contracts, security, elasticsearch]
+  - capability_id: optional-provider-integrations
+    owning_team: Team 4
+    workflow: provider-integrations.yml
+    artifact_name: provider-integration-evidence
+    required_conclusion: success
+    mandatory_for_beta: false
+    exclusion: Optional integrations are not required for the Beta core.

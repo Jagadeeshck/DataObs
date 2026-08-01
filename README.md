@@ -64,3 +64,7 @@ POC, demo, and sample assets—including the Grafana Alloy sample application—
 ## Safety boundary
 
 Autonomous remediation is not enabled. Actions require explicit approval and safety controls, and no future-pillar capability is implied by this baseline.
+
+### Stream 360 Core Console
+
+The tenant-scoped `/streams`, Topic 360, and Consumer Group 360 investigation views document honest evidence states, accessible grid/table alternatives, safe configuration, URL-backed filtering, and cancellable refresh behavior. See [the operations guide](docs/operations/stream-360-console.md). Cluster, Connector, Schema, and Pathway redesigns are deferred.

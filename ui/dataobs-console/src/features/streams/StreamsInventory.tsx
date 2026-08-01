@@ -1,6 +1,14 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { api, type StreamList } from "../../api/client";
+import {
+  DataStatusBanner,
+  EmptyState,
+  HealthBadge,
+  MetricCard,
+  UnavailableState,
+  display,
+} from "./components";
 import { useProductContext } from "../../state/context";
 
 export function StreamsInventory() {
@@ -8,6 +16,7 @@ export function StreamsInventory() {
   const [params, setParams] = useSearchParams();
   const [result, setResult] = useState<StreamList>();
   const [error, setError] = useState("");
+  const [refresh, setRefresh] = useState(0);
   useEffect(() => {
     const controller = new AbortController();
     const query = new URLSearchParams(params);
@@ -22,12 +31,20 @@ export function StreamsInventory() {
           );
       });
     return () => controller.abort();
-  }, [tenant, environment, params]);
+  }, [tenant, environment, params, refresh]);
   const apply = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
     const next = new URLSearchParams(params);
-    for (const key of ["search", "health", "retention_risk", "sort"]) {
+    for (const key of [
+      "search",
+      "cluster_id",
+      "health",
+      "retention_risk",
+      "has_lag",
+      "freshness",
+      "sort",
+    ]) {
       const value = String(data.get(key) ?? "");
       if (value) next.set(key, value);
       else next.delete(key);
@@ -44,12 +61,35 @@ export function StreamsInventory() {
       </p>
       <form role="search" onSubmit={apply} className="stream-filters">
         <label>
+          Cluster{" "}
+          <input
+            name="cluster_id"
+            defaultValue={params.get("cluster_id") ?? ""}
+          />
+        </label>
+        <label>
           Search topics{" "}
           <input
             name="search"
             type="search"
             defaultValue={params.get("search") ?? ""}
           />
+        </label>
+        <label>
+          Has lag{" "}
+          <select name="has_lag" defaultValue={params.get("has_lag") ?? ""}>
+            <option value="">All</option>
+            <option value="true">With consumer lag</option>
+            <option value="false">No measured lag</option>
+          </select>
+        </label>
+        <label>
+          Observed freshness{" "}
+          <select name="freshness" defaultValue={params.get("freshness") ?? ""}>
+            <option value="">Any</option>
+            <option value="fresh">Fresh</option>
+            <option value="stale">Stale</option>
+          </select>
         </label>
         <label>
           Health{" "}
@@ -87,12 +127,14 @@ export function StreamsInventory() {
           </select>
         </label>
         <button type="submit">Apply</button>
+        <button type="button" onClick={() => setParams({})}>
+          Clear all
+        </button>
+        <button type="button" onClick={() => setRefresh((value) => value + 1)}>
+          Refresh
+        </button>
       </form>
-      {error && (
-        <div role="alert" className="data-state">
-          Unavailable — {error}
-        </div>
-      )}
+      {error && <UnavailableState message={error} />}
       {!result && !error && (
         <div role="status" className="data-state">
           Loading measured Stream evidence…
@@ -100,9 +142,59 @@ export function StreamsInventory() {
       )}
       {result && (
         <>
-          <div role="status" className="data-state">
-            {result.data_status} — sources:{" "}
-            {result.source_coverage.join(", ") || "none configured"}
+          <DataStatusBanner
+            status={result.data_status}
+            warnings={result.warnings}
+          />
+          <p>
+            <strong>Bounded page summary</strong> (not global totals)
+          </p>
+          <div className="metric-grid">
+            <MetricCard label="Visible on page" value={result.items.length} />
+            <MetricCard
+              label="Healthy"
+              value={result.items.filter((x) => x.health === "healthy").length}
+            />
+            <MetricCard
+              label="Warning / degraded"
+              value={
+                result.items.filter((x) =>
+                  ["warning", "degraded"].includes(x.health ?? ""),
+                ).length
+              }
+            />
+            <MetricCard
+              label="Critical"
+              value={result.items.filter((x) => x.health === "critical").length}
+            />
+            <MetricCard
+              label="Unknown"
+              value={
+                result.items.filter((x) => !x.health || x.health === "unknown")
+                  .length
+              }
+            />
+            <MetricCard
+              label="At retention risk"
+              value={
+                result.items.filter((x) => x.retention_risk === "at_risk")
+                  .length
+              }
+            />
+            <MetricCard
+              label="Suspected data loss"
+              value={
+                result.items.filter(
+                  (x) => x.retention_risk === "data_loss_suspected",
+                ).length
+              }
+            />
+            <MetricCard
+              label="With consumer lag"
+              value={
+                result.items.filter((x) => (x.maximum_lag ?? 0) > 0).length
+              }
+            />
           </div>
           <div
             className="table-scroll"
@@ -116,6 +208,10 @@ export function StreamsInventory() {
                   <th>Topic</th>
                   <th>Cluster</th>
                   <th>Health</th>
+                  <th>Partitions</th>
+                  <th>Replication</th>
+                  <th>Producer rate</th>
+                  <th>Consumer rate</th>
                   <th>Max lag</th>
                   <th>Throughput</th>
                   <th>Retention risk</th>
@@ -139,10 +235,18 @@ export function StreamsInventory() {
                         {String(item.cluster_id ?? "Unknown")}
                       </Link>
                     </td>
-                    <td>{item.health ?? "Unknown"}</td>
-                    <td>{item.maximum_lag ?? "Unknown"}</td>
-                    <td>{item.records_per_second ?? "Unknown"}</td>
-                    <td>{item.retention_risk ?? "Unknown"}</td>
+                    <td>
+                      <HealthBadge health={item.health} />
+                    </td>
+                    <td>{display(item.partition_count)}</td>
+                    <td>
+                      {display(item.replication_factor, "Not configured")}
+                    </td>
+                    <td>{display(item.producer_rate)}</td>
+                    <td>{display(item.consumer_rate)}</td>
+                    <td>{display(item.maximum_lag)}</td>
+                    <td>{display(item.records_per_second)}</td>
+                    <td>{display(item.retention_risk, "Not configured")}</td>
                     <td>
                       {item.observed_at
                         ? new Date(item.observed_at).toLocaleString()
@@ -154,7 +258,7 @@ export function StreamsInventory() {
             </table>
           </div>
           {!result.items.length && (
-            <p>No streams match these server-side filters.</p>
+            <EmptyState>No streams match these server-side filters.</EmptyState>
           )}
           <nav aria-label="Inventory pagination" className="pagination">
             <button

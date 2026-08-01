@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from elasticsearch import Elasticsearch
 
@@ -77,6 +77,23 @@ SAFE_SOURCE = [
     "references",
     "changes",
     "impact",
+    "partitions",
+    "metrics",
+    "configuration",
+    "pathways",
+    "incidents",
+    "consumer_groups",
+    "cleanup_policy",
+    "retention_ms",
+    "min_insync_replicas",
+    "producer_rate",
+    "consumer_rate",
+    "protocol",
+    "coordinator",
+    "member_count",
+    "assigned_partition_count",
+    "lag_heatmap",
+    "retention_risk_detail",
 ]
 
 RESOURCE_ID_FIELDS = {
@@ -94,17 +111,58 @@ class StreamRepository:
         self.timeout = timeout
 
     def search(
-        self, resource: str, tenant: str, environment: str, *, size: int = 50, search_after: list[Any] | None = None
+        self,
+        resource: str,
+        tenant: str,
+        environment: str,
+        *,
+        size: int = 50,
+        search_after: list[Any] | None = None,
+        search: str | None = None,
+        health: str | None = None,
+        retention_risk: str | None = None,
+        cluster_id: str | None = None,
+        consumer_group_id: str | None = None,
+        has_lag: bool | None = None,
+        sort: Literal["topic", "last_observed", "maximum_lag", "throughput", "retention_risk", "health"] = "topic",
     ) -> list[dict[str, Any]]:
         if resource not in STREAM_ALIASES:
             raise ValueError("unsupported stream resource")
         if not 1 <= size <= 200:
             raise ValueError("page size must be between 1 and 200")
+        filters = isolation_filters(tenant, environment)
+        for field, value in (
+            ("health.keyword", health),
+            ("retention_risk.keyword", retention_risk),
+            ("cluster_id.keyword", cluster_id),
+            ("consumer_groups.group_id.keyword", consumer_group_id),
+        ):
+            if value:
+                filters.append({"term": {field: value}})
+        query: dict[str, Any] = {"bool": {"filter": filters}}
+        if search:
+            # User text is data in a match query, never executable wildcard syntax.
+            query["bool"]["must"] = [{"multi_match": {"query": search, "fields": ["topic", "name"]}}]
+        if has_lag is True:
+            filters.append({"range": {"maximum_lag": {"gt": 0}}})
+        elif has_lag is False:
+            filters.append({"range": {"maximum_lag": {"lte": 0}}})
+        sort_fields: dict[str, tuple[str, str]] = {
+            "topic": ("topic.keyword", "asc"),
+            "last_observed": ("observed_at", "desc"),
+            "maximum_lag": ("maximum_lag", "desc"),
+            "throughput": ("records_per_second", "desc"),
+            "retention_risk": ("retention_risk.keyword", "asc"),
+            "health": ("health.keyword", "asc"),
+        }
+        field, direction = sort_fields[sort]
+        if resource != "streams" and sort == "topic":
+            field = "name.keyword"
         body: dict[str, Any] = {
             "index": STREAM_ALIASES[resource],
             "size": size,
-            "query": {"bool": {"filter": isolation_filters(tenant, environment)}},
-            "sort": [{"name.keyword": "asc"}, {"_id": "asc"}],
+            "query": query,
+            "sort": [{field: {"order": direction, "missing": "_last"}}, {"_id": "asc"}],
             "source": SAFE_SOURCE,
             "request_timeout": self.timeout,
         }

@@ -106,11 +106,33 @@ def create_stream_router(get_es: Callable[..., Any], require_auth: Callable[...,
             raise HTTPException(403, detail={"code": "insufficient_scope", "message": f"Required scope: {required}"})
 
     async def listing(
-        root: str, request: Request, environment: str, limit: int, cursor: str | None, repository: StreamRepository
+        root: str,
+        request: Request,
+        environment: str,
+        limit: int,
+        cursor: str | None,
+        repository: StreamRepository,
+        *,
+        search: str | None = None,
+        health: str | None = None,
+        retention_risk: str | None = None,
+        cluster_id: str | None = None,
+        consumer_group_id: str | None = None,
+        sort: str = "topic",
+        has_lag: bool | None = None,
     ) -> dict[str, Any]:
         scope(request, READ_SCOPE[root])
         tenant = request.state.tenant_id
-        filters = {"limit": limit}
+        filters = {
+            "limit": limit,
+            "search": search,
+            "health": health,
+            "retention_risk": retention_risk,
+            "cluster_id": cluster_id,
+            "consumer_group_id": consumer_group_id,
+            "has_lag": has_lag,
+            "sort": sort,
+        }
         after = None
         if cursor:
             try:
@@ -121,11 +143,25 @@ def create_stream_router(get_es: Callable[..., Any], require_auth: Callable[...,
                     filters=filters,
                     route=root,
                     resource=RESOURCE[root],
-                    sort={"name": "asc"},
+                    sort={"name": sort},
                 ).sort
             except InvalidCursor as exc:
                 raise HTTPException(400, detail={"code": "invalid_cursor", "message": str(exc)}) from exc
-        hits = repository.search(RESOURCE[root], tenant, environment, size=limit + 1, search_after=after)
+        hits = repository.search(
+            RESOURCE[root],
+            tenant,
+            environment,
+            size=limit + 1,
+            search_after=after,
+            search=search,
+            health=health,
+            retention_risk=retention_risk,
+            cluster_id=cluster_id,
+            consumer_group_id=consumer_group_id,
+            has_lag=has_lag,
+            sort=sort,
+        )
+        # has_lag is intentionally a bounded range filter on the measured maximum lag.
         visible, has_more = hits[:limit], len(hits) > limit
         items = [hit["document"] for hit in visible]
         next_cursor = (
@@ -136,7 +172,7 @@ def create_stream_router(get_es: Callable[..., Any], require_auth: Callable[...,
                 filters=filters,
                 route=root,
                 resource=RESOURCE[root],
-                sort={"name": "asc"},
+                sort={"name": sort},
             )
             if visible and has_more
             else None
@@ -154,10 +190,31 @@ def create_stream_router(get_es: Callable[..., Any], require_auth: Callable[...,
             environment: str = Query(..., min_length=1, max_length=64),
             limit: int = Query(50, ge=1, le=200),
             cursor: str | None = None,
+            search: str | None = Query(None, max_length=200),
+            health: str | None = Query(None, max_length=32),
+            retention_risk: str | None = Query(None, max_length=32),
+            cluster_id: str | None = Query(None, max_length=256),
+            consumer_group_id: str | None = Query(None, max_length=256),
+            has_lag: bool | None = None,
+            sort: Literal["topic", "last_observed", "maximum_lag", "throughput", "retention_risk", "health"] = "topic",
             repository: StreamRepository = Depends(repo),
             _root: str = root,
         ) -> dict[str, Any]:
-            return await listing(_root, request, environment, limit, cursor, repository)
+            return await listing(
+                _root,
+                request,
+                environment,
+                limit,
+                cursor,
+                repository,
+                search=search,
+                health=health,
+                retention_risk=retention_risk,
+                cluster_id=cluster_id,
+                consumer_group_id=consumer_group_id,
+                has_lag=has_lag,
+                sort=sort,
+            )
 
         router.add_api_route(f"/{root}", list_handler, methods=["GET"], name=f"list_{root}")
 

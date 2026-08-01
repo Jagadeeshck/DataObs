@@ -123,6 +123,22 @@ export const consoleRoutes: readonly ConsoleRoute[] = [
     navigation: true,
   },
   {
+    id: "quality",
+    path: "/quality",
+    name: "Data Quality",
+    group: "Observe",
+    icon: "✓",
+    owner: "team-4",
+    availability: "available",
+    breadcrumb: "Data Quality",
+    navigation: true,
+    children: [
+      "/quality/monitors",
+      "/quality/monitors/new",
+      "/quality/monitors/:monitorId",
+    ],
+  },
+  {
     id: "incidents",
     path: "/incidents",
     name: "Incidents",

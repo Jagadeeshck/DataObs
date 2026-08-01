@@ -231,7 +231,6 @@ export function AppShell() {
       <AppHeader />
       <aside>
         <PrimaryNavigation />
-      </aside>
       <main id="main-content" tabIndex={-1}>
         <Breadcrumbs />
         <ConnectivityBanner />

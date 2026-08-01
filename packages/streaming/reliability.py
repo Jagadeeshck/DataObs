@@ -8,6 +8,7 @@ then advance their checkpoint.
 from __future__ import annotations
 
 import hashlib
+import math
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
@@ -81,6 +82,18 @@ class Definition:
     schema_version: str = "v1"
 
     def __post_init__(self) -> None:
+        if not self.id or len(self.id) > 128 or not self.resource_id or len(self.resource_id) > 512:
+            raise ValueError("definition and resource identifiers must be non-empty and bounded")
+        if not self.tenant_id or len(self.tenant_id) > 128 or not self.environment or len(self.environment) > 128:
+            raise ValueError("tenant and environment must be non-empty and bounded")
+        if not self.owner or len(self.owner) > 256:
+            raise ValueError("owner must be non-empty and bounded")
+        if self.operator not in {"gt", "gte", "lt", "lte"}:
+            raise ValueError("operator is not supported")
+        if self.missing_data_policy not in {"no_data", "breach", "ignore"}:
+            raise ValueError("missing-data policy is not supported")
+        if isinstance(self.threshold, bool) or not math.isfinite(self.threshold):
+            raise ValueError("threshold must be finite")
         if self.metric not in CAPABILITIES.get(self.resource_type, ()):
             raise ValueError("metric is not supported for resource type")
         if not 1 <= self.evaluation_window_seconds <= 31 * 86400:

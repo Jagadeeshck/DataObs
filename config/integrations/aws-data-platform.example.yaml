@@ -1,0 +1,16 @@
+schema_version: v1
+integration_id: aws-data-platform-dev
+provider_type: aws
+enabled: false
+timeout_seconds: 300
+allowed_capabilities: [resource_discovery, metadata_collection, metric_collection, health_check, incremental_collection]
+provider:
+  expected_account_id: "000000000000"
+  assume_role:
+    role_arn: arn:aws:iam::000000000000:role/DataObsReadOnly
+    external_id_ref: env:DATAOBS_AWS_EXTERNAL_ID
+    session_duration_seconds: 3600
+  regions: [eu-west-1, eu-west-2]
+  services: [rds, glue, athena, emr-serverless]
+  cloudwatch: {enabled: true, lookback_seconds: 900, period_seconds: 300}
+  ownership_tag_keys: [Owner, Team, Application, DataProduct]

@@ -2,7 +2,7 @@
 
 from .base import IntegrationProvider
 from .capabilities import Capability, CollectionMode, ProviderCapabilities
-from .checkpoints import CollectionCheckpoint, InMemoryCheckpointStore, PaginationCursor
+from .checkpoints import CheckpointStore, CollectionCheckpoint, InMemoryCheckpointStore, PaginationCursor
 from .configuration import CredentialReference, CredentialReferenceType, IntegrationConfiguration
 from .context import IntegrationContext
 from .discovery import CollectionRequest, DiscoveryRequest
@@ -23,6 +23,7 @@ from .validation import ConnectionTestResult, ValidationIssue, ValidationResult
 __all__ = [
     "Capability",
     "CollectionCheckpoint",
+    "CheckpointStore",
     "CollectionMode",
     "CollectionRequest",
     "ConnectionTestResult",

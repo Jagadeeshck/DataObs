@@ -54,22 +54,11 @@ const tabs = {
     "Monitors",
     "Changes",
   ],
-  connector: ["Overview", "Tasks", "Changes", "Incidents", "RCA", "Actions"],
-  schema: [
-    "Overview",
-    "Versions",
-    "Changes",
-    "Impact",
-    "Incidents",
-    "Monitors",
-  ],
 } as const;
 const roots = {
   cluster: "stream-clusters",
   topic: "streams",
   group: "consumer-groups",
-  connector: "stream-connectors",
-  schema: "schema-subjects",
 };
 const slug = (value: string) =>
   value.toLowerCase().replaceAll(" ", "-").replace("data-flow", "pathways");

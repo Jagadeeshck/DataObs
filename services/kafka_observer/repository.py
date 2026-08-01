@@ -11,6 +11,8 @@ class ObserverRepository(Protocol):
     def save_checkpoint(self, provider: str, checkpoint: dict[str, Any]) -> None: ...
     def save_collection(self, provider: str, inventory: dict[str, Any], checkpoint: dict[str, Any]) -> None: ...
     def save_error(self, error: dict[str, Any]) -> None: ...
+    def save_connector_projection(self, payload: dict[str, Any]) -> None: ...
+    def save_schema_projection(self, payload: dict[str, Any]) -> None: ...
 
 
 class ElasticsearchObserverRepository:
@@ -62,6 +64,107 @@ class ElasticsearchObserverRepository:
             id=self._id(error["collector"], error["fingerprint"]),
             document=self._base() | {"@timestamp": error["last_observed"], **error},
         )
+
+    def save_connector_projection(self, payload: dict[str, Any]) -> None:
+        """Persist bounded, credential-free current connector projections."""
+        cluster_id = str(payload.get("cluster_id") or self.integration_id)
+        status = payload.get("data_status", "unknown")
+        for connector in payload.get("connectors", [])[:1000]:
+            state = str(connector.get("state") or "UNKNOWN").upper()
+            failed = connector.get("failed_task_count")
+            if state == "FAILED":
+                health, reasons = "critical", ["connector_failed"]
+            elif isinstance(failed, int) and failed > 0:
+                health, reasons = "degraded", ["failed_tasks_observed"]
+            elif state == "PAUSED":
+                health, reasons = "warning", ["connector_paused"]
+            elif state == "RUNNING" and failed == 0:
+                health, reasons = "healthy", ["connector_running", "failed_tasks_zero"]
+            else:
+                health, reasons = "unknown", ["connector_state_unknown"]
+            observed = connector.get("observed_at") or datetime.now(timezone.utc).isoformat()
+            safe = {
+                key: connector.get(key)
+                for key in (
+                    "connector_id",
+                    "name",
+                    "connector_type",
+                    "classification",
+                    "state",
+                    "task_count",
+                    "failed_task_count",
+                    "task_states",
+                    "worker_ids",
+                    "class_fingerprint",
+                    "config_fingerprint",
+                )
+                if key in connector
+            }
+            safe.update(
+                {
+                    "@timestamp": observed,
+                    "observed_at": observed,
+                    "cluster_id": cluster_id,
+                    "health": health,
+                    "reason_codes": reasons,
+                    "worker_count": len(connector.get("worker_ids", [])) if "worker_ids" in connector else None,
+                    "source_coverage": ["kafka_connect"],
+                    "data_status": status,
+                }
+            )
+            self.es.index(
+                index="dataobs-kafka-connectors-v1-write",
+                id=self._id(cluster_id, safe["connector_id"]),
+                document=self._base() | safe,
+            )
+
+    def save_schema_projection(self, payload: dict[str, Any]) -> None:
+        """Persist one bounded subject summary; raw schema definitions never cross this boundary."""
+        cluster_id = str(payload.get("cluster_id") or payload.get("registry_id") or self.integration_id)
+        grouped: dict[str, list[dict[str, Any]]] = {}
+        for row in payload.get("schemas", [])[:100_000]:
+            grouped.setdefault(str(row["subject_id"]), []).append(row)
+        for subject_id, rows in grouped.items():
+            rows = sorted(rows, key=lambda row: int(row.get("version", 0)), reverse=True)[:100]
+            latest = rows[0]
+            observed = max(
+                (str(row["observed_at"]) for row in rows if row.get("observed_at")),
+                default=datetime.now(timezone.utc).isoformat(),
+            )
+            versions = [
+                {
+                    key: row.get(key)
+                    for key in ("version", "schema_id", "schema_type", "fingerprint", "semantic_summary", "observed_at")
+                }
+                | {"reference_count": len(row.get("references", []))}
+                for row in rows
+            ]
+            document = self._base() | {
+                "@timestamp": observed,
+                "observed_at": observed,
+                "cluster_id": cluster_id,
+                "subject_id": subject_id,
+                "subject": latest.get("subject", subject_id),
+                "name": subject_id,
+                "schema_type": latest.get("schema_type"),
+                "compatibility": latest.get("compatibility_mode"),
+                "latest_version": latest.get("version"),
+                "versions": versions,
+                "fingerprints": [row.get("fingerprint") for row in rows],
+                "references": latest.get("references", []),
+                "semantic_summary": latest.get("semantic_summary"),
+                "health": "unknown" if latest.get("compatibility_mode") == "UNKNOWN" else "healthy",
+                "reason_codes": (
+                    ["compatibility_unknown"]
+                    if latest.get("compatibility_mode") == "UNKNOWN"
+                    else ["registry_observed"]
+                ),
+                "source_coverage": ["schema_registry"],
+                "data_status": payload.get("data_status", "unknown"),
+            }
+            self.es.index(
+                index="dataobs-kafka-schemas-v1-write", id=self._id(cluster_id, subject_id), document=document
+            )
 
     def acquire_lease(self, name: str, owner: str, expires_at: str) -> bool:
         lease_id = self._id(name)
@@ -233,6 +336,12 @@ class MemoryObserverRepository:
 
     def save_error(self, error: dict[str, Any]) -> None:
         self.errors.append(dict(error))
+
+    def save_connector_projection(self, payload: dict[str, Any]) -> None:
+        self.collections.append({"capability": "connectors", **payload})
+
+    def save_schema_projection(self, payload: dict[str, Any]) -> None:
+        self.collections.append({"capability": "schemas", **payload})
 
 
 def _integer(value: Any) -> int | None:

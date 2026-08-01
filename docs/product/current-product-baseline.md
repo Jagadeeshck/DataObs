@@ -94,6 +94,10 @@ The dedicated cluster route provides typed, bounded and tenant-isolated cluster 
 
 The repository defines six ownership workstreams and a planned Beta 1 sequence. These governance and validation foundations do not promote Beta 1 or add product behavior; certification remains evidence-led through the shared contract in `docs/development/certification-evidence-contract.md`.
 
+## Connector and Schema 360 Console v1
+
+Dedicated read-only Connector and Schema routes provide bounded tasks, versions, evidence-aware changes, impact and incident/monitor correlation. Optional collector projections are persisted before independent checkpoints advance. Configuration bodies and schema definitions are excluded. Ownership is `team:streams`, release target is `beta-1`, implementation is implemented, and certification remains `functional_unvalidated` pending hosted exact-commit evidence.
+
 ## Beta deployment packaging v1
 
 Team Platform owns the implemented Beta 1 Kubernetes package for API, Console, Quality Worker, Scanner Worker, Monitor Runtime, Pathway Worker, Kafka Observer, optional bundled OpenTelemetry Collector, and the migration Job. Elasticsearch remains external. Collection Manager, Elasticsearch, Kibana, identity and Grafana Alloy are excluded. Certification is `functional_unvalidated` until final-head hosted smoke, upgrade/rollback, and independent evidence succeed.

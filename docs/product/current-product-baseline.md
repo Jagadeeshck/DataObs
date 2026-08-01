@@ -97,3 +97,11 @@ The repository defines six ownership workstreams and a planned Beta 1 sequence. 
 ## Beta deployment packaging v1
 
 Team Platform owns the implemented Beta 1 Kubernetes package for API, Console, Quality Worker, Scanner Worker, Monitor Runtime, Pathway Worker, Kafka Observer, optional bundled OpenTelemetry Collector, and the migration Job. Elasticsearch remains external. Collection Manager, Elasticsearch, Kibana, identity and Grafana Alloy are excluded. Certification is `functional_unvalidated` until final-head hosted smoke, upgrade/rollback, and independent evidence succeed.
+
+## Integration SDK v1
+
+Team 4's provider-neutral typed SDK and Collection Manager runtime bridge are implemented with explicit capability
+negotiation, trusted tenant context, bounded asynchronous execution, retry limits, redaction, deterministic resource
+identity, and checkpoint contracts. The SDK does not add a supported cloud provider: AWS and all other roadmap
+providers remain future work. Status is `functional_unvalidated` pending exact-commit hosted evidence and independent
+verification.

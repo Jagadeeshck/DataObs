@@ -1,5 +1,9 @@
 # Collection Capability Matrix
 
+This matrix describes target collection paths, not certification. The provider-neutral Integration SDK v1 is
+`functional_unvalidated`; it supports explicit registration and capability negotiation but does not make any listed
+cloud provider implemented. Provider status is governed by the capability ledger and exact-commit evidence.
+
 | Source | Existing Elastic integration | EDOT/OTel | DataObs connector required | Collected capabilities | Credential model | Minimum privileges | Output datasets |
 |---|---|---|---|---|---|---|---|
 | Linux | Yes system | Yes host receivers | No | host metrics/logs/process/filesystem | Fleet secret refs | agent host read | Elastic system datasets |

@@ -32,6 +32,14 @@ export function Monitor360() {
   const [items, setItems] = useState<unknown[]>([]);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [resetReason, setResetReason] = useState("");
+  const [suppression, setSuppression] = useState({
+    starts_at: "",
+    ends_at: "",
+    reason: "",
+    approval_reference: "",
+  });
+  const [submitting, setSubmitting] = useState(false);
   const load = useCallback(
     () =>
       qualityApi
@@ -99,6 +107,92 @@ export function Monitor360() {
         );
         await load();
       } else setError((e as Error).message);
+    }
+  };
+  const refreshSection = async (section: string) => {
+    const result = await qualityApi.section(
+      tenant,
+      environment,
+      monitorId,
+      section,
+    );
+    setItems(result.data.items);
+  };
+  const resetBaseline = async () => {
+    if (
+      !resetReason.trim() ||
+      submitting ||
+      !confirm("Reset this monitor baseline?")
+    )
+      return;
+    setSubmitting(true);
+    setError("");
+    try {
+      const result = await qualityApi.mutate<Record<string, unknown>>(
+        tenant,
+        environment,
+        `/monitors/${encodeURIComponent(monitorId)}/baselines/reset`,
+        { reason: resetReason.trim() },
+        { "If-Match": etag },
+      );
+      setMessage(
+        `Baseline reset recorded: ${JSON.stringify(result.data)}. Historical deletion is not implied.`,
+      );
+      setResetReason("");
+      await refreshSection("baselines");
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 412) {
+        setMessage(
+          "Monitor changed concurrently. Refresh and review before retrying.",
+        );
+        await load();
+      } else setError((e as Error).message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+  const createSuppression = async () => {
+    const start = Date.parse(suppression.starts_at);
+    const end = Date.parse(suppression.ends_at);
+    if (
+      !Number.isFinite(start) ||
+      !Number.isFinite(end) ||
+      end <= start ||
+      end - start > 31 * 86400000
+    ) {
+      setError(
+        "Suppression must have valid offset timestamps and a positive duration of at most 31 days.",
+      );
+      return;
+    }
+    if (
+      !suppression.reason.trim() ||
+      !suppression.approval_reference.trim() ||
+      submitting ||
+      !confirm("Create this suppression?")
+    )
+      return;
+    setSubmitting(true);
+    setError("");
+    try {
+      const result = await qualityApi.mutate<Record<string, unknown>>(
+        tenant,
+        environment,
+        `/monitors/${encodeURIComponent(monitorId)}/suppressions`,
+        suppression,
+      );
+      setMessage(`Suppression created: ${JSON.stringify(result.data)}`);
+      setSuppression({
+        starts_at: "",
+        ends_at: "",
+        reason: "",
+        approval_reference: "",
+      });
+      await refreshSection("suppressions");
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSubmitting(false);
     }
   };
   if (error && !monitor)
@@ -170,6 +264,86 @@ export function Monitor360() {
             {monitor.state}); execution evidence is unavailable unless returned
             by the runtime provider.
           </p>
+        )}
+        {tab === "baselines" && monitor.state !== "archived" && (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void resetBaseline();
+            }}
+          >
+            <h2>Reset baseline</h2>
+            <label>
+              Reason{" "}
+              <textarea
+                required
+                maxLength={500}
+                value={resetReason}
+                onChange={(e) => setResetReason(e.target.value)}
+              />
+            </label>
+            <button disabled={submitting || !resetReason.trim()}>
+              Reset baseline
+            </button>
+          </form>
+        )}
+        {tab === "suppressions" && monitor.state !== "archived" && (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void createSuppression();
+            }}
+          >
+            <h2>Create suppression</h2>
+            <label>
+              Start time with offset{" "}
+              <input
+                required
+                placeholder="2026-08-01T10:00:00+00:00"
+                value={suppression.starts_at}
+                onChange={(e) =>
+                  setSuppression({ ...suppression, starts_at: e.target.value })
+                }
+              />
+            </label>
+            <label>
+              End time with offset{" "}
+              <input
+                required
+                placeholder="2026-08-02T10:00:00+00:00"
+                value={suppression.ends_at}
+                onChange={(e) =>
+                  setSuppression({ ...suppression, ends_at: e.target.value })
+                }
+              />
+            </label>
+            <label>
+              Reason{" "}
+              <textarea
+                required
+                maxLength={500}
+                value={suppression.reason}
+                onChange={(e) =>
+                  setSuppression({ ...suppression, reason: e.target.value })
+                }
+              />
+            </label>
+            <label>
+              Approval reference{" "}
+              <input
+                required
+                maxLength={200}
+                value={suppression.approval_reference}
+                onChange={(e) =>
+                  setSuppression({
+                    ...suppression,
+                    approval_reference: e.target.value,
+                  })
+                }
+              />
+            </label>
+            <button disabled={submitting}>Create suppression</button>
+          </form>
         )}
         {!["overview", "configuration", "runtime"].includes(tab) && (
           <EvidenceTable section={tab} items={items} />

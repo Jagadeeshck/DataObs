@@ -4,4 +4,4 @@ Quality reads require `quality:read`; monitor inventory and Monitor 360 require 
 
 The UI allowlists target identity fields: asset, field, pathway, pipeline, service, source type, schema, table, columns and timestamp column. It never renders `connection_ref`, credentials, authorization data, secrets, arbitrary SQL, arbitrary target parameters, historical definition documents, internal approval tokens or raw recommendation evidence. Definition history is projected to revision, action, actor, ETag, checksum and occurrence time.
 
-Missing values remain unknown rather than zero. Incident relationships never imply causation. This release exposes no mutation controls.
+Missing values remain unknown rather than zero. Incident relationships never imply causation. Mutation controls derive tenant and environment from trusted context and actor identity from the authenticated principal. The browser cannot supply creator identity, and legacy actor overrides must match the principal.

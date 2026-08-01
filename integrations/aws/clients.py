@@ -20,7 +20,8 @@ class AwsClientFactory:
             session_factory = boto3.Session
         else:
             self._sdk_config = None
-        self.configuration, self.session_factory, self._clients = configuration, session_factory, {}
+        self.configuration, self.session_factory = configuration, session_factory
+        self._clients: dict[tuple[str, str, str], Any] = {}
         self.session = session_factory()
         role = configuration.raw.get("assume_role") or {}
         if role:

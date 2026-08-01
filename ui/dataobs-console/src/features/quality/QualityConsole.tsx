@@ -28,7 +28,7 @@ export function QualityConsole() {
       <header>
         <h1 id="quality-title">Data Quality</h1>
         <p>
-          Read-only monitoring evidence, coverage, findings and runtime health.
+          Monitoring evidence, bounded authoring and safe lifecycle operations.
         </p>
       </header>
       <nav className="tabs" aria-label="Quality sections">

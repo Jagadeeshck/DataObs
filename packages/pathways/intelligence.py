@@ -142,6 +142,9 @@ def assemble_pathways(
                 "evidence_refs": evidence,
                 "confidence": min((edge.get("confidence", 0.0) for edge in path_edges), default=0.0),
                 "nodes": [node_map[item] for item in node_ids if item in node_map],
+                # Keep the bounded evidence used to assemble the durable projection.
+                # Investigation APIs must not reconstruct edge facts from identifiers.
+                "edges": path_edges,
             }
         )
 

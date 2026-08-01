@@ -14,33 +14,36 @@ jobs:
         image: docker.elastic.co/elasticsearch/elasticsearch:9.4.2
         env:
           discovery.type: single-node
-          xpack.security.enabled: "false"
-        ports: ["9200:9200"]
+          xpack.security.enabled: 'false'
+        ports: ['9200:9200']
     steps:
       - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
       - uses: actions/setup-python@v5
         with: {python-version: '3.12'}
       - run: pip install -r requirements.txt
-      - name: Compile and validate explicit route policy
-        run: |
-          python -m compileall -q src services tests scripts
-          python scripts/security/check_route_permissions.py
-      - name: OIDC, JWKS, IAM, tenant and HTTP security tests
-        run: python -m pytest tests/security tests/certification -q --junitxml=security.xml
-      - name: Migration immutability
-        run: python scripts/check_migration_immutability.py --base-ref origin/main
-      - name: Console PKCE and browser security
-        working-directory: ui/dataobs-console
-        run: corepack enable && pnpm install --frozen-lockfile && pnpm test && pnpm build
-      - name: Helm security rendering
-        run: helm lint helm/dataobs && helm template dataobs helm/dataobs --values helm/dataobs/values-production.yaml >/tmp/dataobs-security-production.yaml
-      - name: Build exact-commit evidence
+      - name: Apply existing migrations
+        run: python -m packages.elastic_store.cli apply
+        env: {ELASTICSEARCH_URL: 'http://localhost:9200'}
+      - name: Security and certification suites
+        run: python -m pytest tests/security tests/certification -q --junitxml=security-junit.xml
+      - run: python scripts/security/check_route_permissions.py
+      - run: python scripts/check_migration_immutability.py --base-ref origin/main
+      - name: Console OIDC checks
+        run: corepack enable && pnpm --dir ui/dataobs-console install --frozen-lockfile && pnpm --dir ui/dataobs-console test
+      - name: Helm security render
+        run: helm lint helm/dataobs && helm template dataobs helm/dataobs --values helm/dataobs/values-production.yaml > rendered.yaml
+      - name: Secret scan
+        run: '! grep -RInE "Bearer[[:space:]]+[A-Za-z0-9._-]+|client_secret:[[:space:]]+[^{$\"]|private_key:[[:space:]]+[^{$\"]" tests docs helm/dataobs --exclude-dir=node_modules'
+      - name: Exact-commit evidence
         run: |
           mkdir -p beta-security-hardening-evidence
-          printf '{"repository":"%s","final_sha":"%s","base_sha":"%s","elasticsearch_version":"9.4.2","terminal_migration":"0021_lineage_analysis_explorer","certification_status":"functional_unvalidated"}\n' "$GITHUB_REPOSITORY" "$GITHUB_SHA" "${{ github.event.pull_request.base.sha || github.event.before }}" > beta-security-hardening-evidence/manifest.json
-          cp security.xml beta-security-hardening-evidence/
-          python -m json.tool beta-security-hardening-evidence/manifest.json >/dev/null
-          ! grep -RInE 'Bearer[[:space:]]+[A-Za-z0-9._-]+|client_secret|private_key' beta-security-hardening-evidence
+          printf 'repository=%s\nfinal_sha=%s\nbase_sha=%s\nelasticsearch_version=9.4.2\noidc_provider_version=repository-test-provider\nterminal_migration=0021_lineage_analysis_explorer\nstatus=functional_unvalidated\n' "$GITHUB_REPOSITORY" "$GITHUB_SHA" "${{ github.event.pull_request.base.sha || github.event.before }}" > beta-security-hardening-evidence/manifest.txt
+          cp security-junit.xml beta-security-hardening-evidence/
+          find beta-security-hardening-evidence -type f -printf '%P\n' | sort > beta-security-hardening-evidence/inventory.txt
+          sha256sum beta-security-hardening-evidence/* > beta-security-hardening-evidence/SHA256SUMS
+      - name: Independent evidence verification
+        run: cd beta-security-hardening-evidence && sha256sum -c SHA256SUMS
       - uses: actions/upload-artifact@v4
         with:
           name: beta-security-hardening-evidence

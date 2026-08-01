@@ -57,7 +57,11 @@ def test_production_rejects_claims_only(monkeypatch):
     monkeypatch.setenv("ELASTICSEARCH_URL", "https://elastic.example:9200")
     monkeypatch.setenv("ELASTICSEARCH_PASSWORD", "not-a-default")
     monkeypatch.setenv("DATAOBS_AUTH_PROVIDER", "oidc")
+    monkeypatch.setenv("DATAOBS_OIDC_ISSUER", "https://identity.example")
+    monkeypatch.setenv("DATAOBS_OIDC_AUDIENCE", "dataobs-api")
+    monkeypatch.setenv("DATAOBS_OIDC_ALLOWED_ALGORITHMS", "RS256")
+    monkeypatch.setenv("DATAOBS_OIDC_PLATFORM_ADMIN_GROUPS", "platform-admins")
     monkeypatch.setenv("DATAOBS_ALLOW_UNAUTHENTICATED_DEV", "false")
     monkeypatch.setenv("DATAOBS_AUTHORIZATION_SOURCE", "claims")
-    with pytest.raises(ConfigurationError, match="claims-only"):
+    with pytest.raises(ConfigurationError, match="claims-only|bindings or intersection"):
         load_settings()

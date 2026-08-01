@@ -12,6 +12,7 @@ import yaml
 
 logger = logging.getLogger(__name__)
 EnvironmentMode = Literal["development", "test", "poc", "production"]
+AuthorizationSource = Literal["claims", "bindings", "intersection"]
 
 
 class ConfigurationError(ValueError):
@@ -58,7 +59,7 @@ class AuthSettings:
     allow_unauthenticated_dev: bool = False
     provider: str = "local"
     oidc: "OIDCSettings" = field(default_factory=lambda: OIDCSettings())
-    authorization_source: Literal["claims", "bindings", "intersection"] = "claims"
+    authorization_source: AuthorizationSource = "claims"
     bootstrap_enabled: bool = True
 
 
@@ -125,9 +126,8 @@ class AppSettings:
     auth: AuthSettings
     tenant: TenantSettings
     observability: ObservabilitySettings
-    store_backend: str = "memory"
     cors: CORSSettings = field(default_factory=CORSSettings)
-    external_scheme: str = "http"
+    store_backend: str = "memory"
 
     @property
     def api_token(self) -> str | None:
@@ -243,7 +243,7 @@ def load_settings() -> AppSettings:
             ),
             provider=str(os.getenv("DATAOBS_AUTH_PROVIDER", _deep_get(config, "auth", "provider", default="local"))),
             authorization_source=str(os.getenv("DATAOBS_AUTHORIZATION_SOURCE", "claims")),
-            bootstrap_enabled=_to_bool(os.getenv("DATAOBS_SECURITY_BOOTSTRAP_ENABLED", True), True),
+            bootstrap_enabled=_to_bool(os.getenv("DATAOBS_SECURITY_BOOTSTRAP_ENABLED", "true"), True),
             oidc=OIDCSettings(
                 issuer=str(
                     os.getenv("DATAOBS_OIDC_ISSUER", _deep_get(config, "auth", "oidc", "issuer", default=""))
@@ -312,7 +312,7 @@ def load_settings() -> AppSettings:
                 ),
                 allowed_service_clients=frozenset(_structured(os.getenv("DATAOBS_OIDC_ALLOWED_SERVICE_CLIENTS"), [])),
                 require_jti_for_service_tokens=_to_bool(
-                    os.getenv("DATAOBS_OIDC_REQUIRE_JTI_FOR_SERVICE_TOKENS", True), True
+                    os.getenv("DATAOBS_OIDC_REQUIRE_JTI_FOR_SERVICE_TOKENS", "true"), True
                 ),
             ),
         ),
@@ -324,9 +324,6 @@ def load_settings() -> AppSettings:
                 os.getenv("LOG_LEVEL", _deep_get(config, "observability", "log_level", default="INFO"))
             ).upper()
         ),
-        store_backend=str(
-            os.getenv("DATAOBS_STORE_BACKEND", _deep_get(config, "store", "backend", default="memory"))
-        ).lower(),
         cors=CORSSettings(
             allowed_origins=tuple(_structured(os.getenv("DATAOBS_CORS_ALLOWED_ORIGINS"), [])),
             allowed_methods=tuple(
@@ -338,10 +335,12 @@ def load_settings() -> AppSettings:
             exposed_headers=tuple(
                 _structured(os.getenv("DATAOBS_CORS_EXPOSED_HEADERS"), list(CORSSettings().exposed_headers))
             ),
-            allow_credentials=_to_bool(os.getenv("DATAOBS_CORS_ALLOW_CREDENTIALS", False)),
+            allow_credentials=_to_bool(os.getenv("DATAOBS_CORS_ALLOW_CREDENTIALS", "false")),
             max_age=int(os.getenv("DATAOBS_CORS_MAX_AGE", "600")),
         ),
-        external_scheme=os.getenv("DATAOBS_EXTERNAL_SCHEME", "http").lower(),
+        store_backend=str(
+            os.getenv("DATAOBS_STORE_BACKEND", _deep_get(config, "store", "backend", default="memory"))
+        ).lower(),
     )
 
     _validate(settings)
@@ -368,17 +367,15 @@ def _validate(settings: AppSettings) -> None:
             )
         if not settings.elasticsearch.url:
             raise ConfigurationError("Production requires ELASTICSEARCH_URL.")
+        parsed_es = urlsplit(settings.elasticsearch.url)
+        if parsed_es.scheme != "https" or parsed_es.username or parsed_es.password:
+            raise ConfigurationError("Production Elasticsearch requires HTTPS and forbids credentials in URLs.")
         if not (settings.elasticsearch.api_key or (settings.elasticsearch.user and settings.elasticsearch.password)):
             raise ConfigurationError("Production requires Elasticsearch credentials or API key.")
         if settings.elasticsearch.password and settings.elasticsearch.password.lower() in banned:
             raise ConfigurationError("Production forbids default/changeme Elasticsearch passwords.")
-        parsed_es = urlsplit(settings.elasticsearch.url)
-        if parsed_es.scheme != "https" or parsed_es.username or parsed_es.password:
-            raise ConfigurationError("Production Elasticsearch requires HTTPS and forbids URL-embedded credentials.")
         if settings.auth.provider != "oidc":
             raise ConfigurationError("Production requires DATAOBS_AUTH_PROVIDER=oidc; shared tokens are forbidden.")
-        if settings.auth.authorization_source == "claims":
-            raise ConfigurationError("Production forbids claims-only authorization.")
         oidc = settings.auth.oidc
         if not oidc.issuer.startswith("https://") or not oidc.audience:
             raise ConfigurationError("Production OIDC requires an HTTPS issuer and explicit audience.")
@@ -390,10 +387,14 @@ def _validate(settings: AppSettings) -> None:
             raise ConfigurationError("Production requires at least one trusted OIDC authorisation mapping.")
         if not settings.elasticsearch.verify_tls:
             raise ConfigurationError("Production requires TLS verification.")
-        if "*" in settings.cors.allowed_origins:
+        if settings.auth.authorization_source not in {"bindings", "intersection"}:
+            raise ConfigurationError("Production requires bindings or intersection authorization source.")
+        if settings.cors.allow_credentials and "*" in settings.cors.allowed_origins:
+            raise ConfigurationError("Production CORS forbids wildcard origins with credentials.")
+        if any("*" in origin for origin in settings.cors.allowed_origins):
             raise ConfigurationError("Production CORS requires exact origins.")
-        if settings.cors.allow_credentials and not settings.cors.allowed_origins:
-            raise ConfigurationError("Credentialed CORS requires an explicit origin.")
+        if oidc.maximum_token_lifetime_seconds <= 0 or oidc.maximum_token_lifetime_seconds > 86400:
+            raise ConfigurationError("Production requires a bounded OIDC token lifetime.")
 
     if settings.runtime.env in {"development", "poc", "test"} and not settings.elasticsearch.verify_tls:
         logger.warning("ELASTICSEARCH_VERIFY_TLS=false in %s mode.", settings.runtime.env)

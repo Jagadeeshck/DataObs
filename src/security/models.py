@@ -29,6 +29,7 @@ class Principal:
     active_tenant: str | None = None
     active_environment: str | None = None
     is_service: bool = False
+    client_id: str | None = None
 
     @property
     def authorised_tenants(self) -> frozenset[str]:
@@ -46,3 +47,13 @@ class TenantContext:
     request_id: str
     trace_id: str | None = None
     authorisation_source: str = "validated_identity"
+
+
+@dataclass(frozen=True)
+class EffectiveAuthorization:
+    tenant_id: str
+    environment: str | None
+    roles: frozenset[str]
+    permissions: frozenset[Permission]
+    authorization_sources: frozenset[str]
+    binding_ids: frozenset[str]

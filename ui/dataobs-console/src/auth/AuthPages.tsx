@@ -1,29 +1,67 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { userManager } from "./oidc";
 
 export function Login() {
-  const requested = new URLSearchParams(location.search).get("next") || "/";
-  const next = requested.startsWith("/") && !requested.startsWith("//") ? requested : "/";
+  const requested = new URLSearchParams(location.search).get("next");
+  const next =
+    requested?.startsWith("/") && !requested.startsWith("//") ? requested : "/";
+  const [error, setError] = useState(false);
   return (
-    <button
-      onClick={() =>
-        void userManager().then((m) => m.signinRedirect({ state: { next } }))
-      }
-    >
-      Sign in with your identity provider
-    </button>
+    <main className="route-state">
+      <h1>Sign in to DataObs</h1>
+      {error && (
+        <p role="alert">
+          Sign in could not be started. Check the identity provider and try
+          again.
+        </p>
+      )}
+      <button
+        onClick={() =>
+          void userManager()
+            .then((m) => m.signinRedirect({ state: { next } }))
+            .catch(() => setError(true))
+        }
+      >
+        Sign in with your identity provider
+      </button>
+    </main>
   );
 }
 export function Callback() {
+  const [failed, setFailed] = useState(false);
   useEffect(() => {
-    void userManager().then(async (manager) => {
-      const user = await manager.signinRedirectCallback();
-      const requested = (user.state as { next?: string } | undefined)?.next || "/";
-      history.replaceState({}, "", requested.startsWith("/") && !requested.startsWith("//") ? requested : "/");
-      location.reload();
-    });
+    void userManager()
+      .then(async (manager) => {
+        const user = await manager.signinRedirectCallback();
+        history.replaceState(
+          {},
+          "",
+          (user.state as { next?: string } | undefined)?.next?.startsWith(
+            "/",
+          ) && !(user.state as { next?: string }).next?.startsWith("//")
+            ? (user.state as { next: string }).next
+            : "/",
+        );
+        location.reload();
+      })
+      .catch(() => setFailed(true));
   }, []);
-  return <p role="status">Completing secure sign in…</p>;
+  return (
+    <main className="route-state">
+      {failed ? (
+        <>
+          <h1>Sign in was not completed</h1>
+          <p role="alert">
+            The identity response could not be validated. Sensitive provider
+            details were withheld.
+          </p>
+          <a href="/login">Try again</a>
+        </>
+      ) : (
+        <p role="status">Completing secure sign in…</p>
+      )}
+    </main>
+  );
 }
 export function Logout() {
   useEffect(() => {

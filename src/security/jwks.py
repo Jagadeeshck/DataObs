@@ -14,17 +14,18 @@ class JWKSClient:
         self.issuer = issuer.rstrip("/")
         self.jwks_url = jwks_url
         self.timeout = timeout
-        self.ttl = max(30, min(ttl, 3600))
+        self.ttl = ttl
         self._keys: dict[str, dict] = {}
         self._expires = 0.0
         self._lock = threading.Lock()
         self._negative: dict[str, float] = {}
+        self._last_refresh = 0.0
 
     def _safe_url(self, url: str) -> str:
         parsed, issuer = urlsplit(url), urlsplit(self.issuer)
 
-        def port(parts):
-            return parts.port or (443 if parts.scheme == "https" else 80)
+        def port(value):
+            return value.port or (443 if value.scheme == "https" else 80)
 
         if (
             parsed.scheme != issuer.scheme
@@ -43,8 +44,9 @@ class JWKSClient:
             ) as r:
                 if int(r.headers.get("Content-Length", "0") or 0) > 1_000_000:
                     raise ValueError("response too large")
-                if self._safe_url(r.geturl()) != r.geturl():
-                    raise ValueError("untrusted response URL")
+                final = self._safe_url(r.geturl())
+                if final != r.geturl():
+                    raise ValueError("untrusted redirect")
                 raw = r.read(1_000_001)
                 if len(raw) > 1_000_000:
                     raise ValueError("response too large")
@@ -66,27 +68,39 @@ class JWKSClient:
                 raise SecurityError("jwks_unavailable", "OIDC JWKS URL is missing")
             document = self._json(url)
             keys = document.get("keys")
-            if not isinstance(keys, list):
+            if not isinstance(keys, list) or len(keys) > 100:
                 raise SecurityError("jwks_unavailable", "OIDC JWKS document is malformed")
-            if len(keys) > 100:
-                raise SecurityError("jwks_unavailable", "OIDC JWKS contains too many keys")
-            accepted = [
-                k
-                for k in keys
-                if isinstance(k, dict)
-                and k.get("kid")
-                and k.get("use", "sig") == "sig"
-                and "sign" in k.get("key_ops", ["sign"])
-                and k.get("kty") in {"RSA", "EC", "OKP"}
-            ]
-            kids = [str(k["kid"]) for k in accepted]
-            if len(kids) != len(set(kids)):
-                raise SecurityError("jwks_unavailable", "OIDC JWKS contains duplicate key identifiers")
-            self._keys = dict(zip(kids, accepted))
-            self._expires = time.monotonic() + self.ttl
+            accepted: dict[str, dict] = {}
+            for key in keys:
+                if not isinstance(key, dict) or not isinstance(key.get("kid"), str):
+                    continue
+                kid = key["kid"]
+                if kid in accepted:
+                    raise SecurityError("jwks_duplicate_kid", "OIDC JWKS contains duplicate key identifiers")
+                if key.get("use", "sig") != "sig" or "verify" not in key.get("key_ops", ["verify"]):
+                    continue
+                if key.get("kty") not in {"RSA", "EC", "OKP"} or key.get("alg") not in {
+                    None,
+                    "RS256",
+                    "RS384",
+                    "RS512",
+                    "PS256",
+                    "PS384",
+                    "PS512",
+                    "ES256",
+                    "ES384",
+                    "ES512",
+                    "EdDSA",
+                }:
+                    continue
+                accepted[kid] = key
+            self._keys = accepted
+            self._expires = time.monotonic() + min(3600, max(30, self.ttl))
+            self._last_refresh = time.monotonic()
 
     def get(self, kid: str) -> dict:
-        if self._negative.get(kid, 0) > time.monotonic():
+        now = time.monotonic()
+        if self._negative.get(kid, 0) > now:
             raise SecurityError("signing_key_unknown", "Token signing key is unknown")
         if time.monotonic() >= self._expires:
             self.refresh()

@@ -1,0 +1,28 @@
+name: Console Product Experience v1
+on:
+  pull_request:
+    paths: ["ui/dataobs-console/**", "docs/architecture/console-*.md", "docs/operations/console-troubleshooting.md", "docs/operations/integration-onboarding.md", "docs/security/console-auth-and-secret-handling.md", "docs/development/team-5-console-audit.md", ".github/workflows/console-product-experience.yml"]
+  push: {branches: [main]}
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  console:
+    uses: ./.github/workflows/reusable-console-validation.yml
+    with:
+      run-playwright: true
+      run-accessibility: true
+      artifact-name: console-product-experience-v1-evidence
+  repository-policy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: python scripts/check_team_boundaries.py
+      - run: python scripts/check_generated_artifacts.py
+      - run: python scripts/check_docs_links.py
+      - run: python scripts/check_migration_immutability.py --base-ref "$(python scripts/resolve_ci_base.py)"
+      - run: mkdir -p evidence && printf '{"commit_sha":"%s","team_boundaries":true,"generated_artifacts":true,"documentation_links":true,"migration_immutability":true}\n' "$(git rev-parse HEAD)" > evidence/console-product-policy.json
+      - uses: actions/upload-artifact@v4
+        with: {name: console-product-experience-v1-policy-evidence, path: evidence/, retention-days: 30}

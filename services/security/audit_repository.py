@@ -1,9 +1,11 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
+from datetime import datetime, timezone
 from typing import Protocol
 
 SECURITY_EVENT_DATA_STREAM = "logs-dataobs.security-event-default"
+
 SECURITY_ACTIONS = frozenset(
     {
         "authentication_failed",
@@ -23,13 +25,14 @@ SECURITY_ACTIONS = frozenset(
 
 
 @dataclass(frozen=True)
-class SecurityAuditEvent:
-    timestamp: str
+class AuditEvent:
     event_action: str
-    event_category: str
     event_outcome: str
     reason_code: str
     request_id: str
+    event_category: str = "authentication"
+    timestamp: str = ""
+    trace_id: str | None = None
     principal_subject: str | None = None
     principal_type: str | None = None
     issuer: str | None = None
@@ -42,6 +45,11 @@ class SecurityAuditEvent:
     user_agent_hash: str | None = None
     schema_version: str = "v1"
 
+    def document(self) -> dict:
+        value = {k: v for k, v in asdict(self).items() if v is not None}
+        value["@timestamp"] = value.pop("timestamp") or datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        return value
+
 
 class AuditRepository(Protocol):
-    def append(self, event: SecurityAuditEvent) -> None: ...
+    def append(self, event: AuditEvent) -> None: ...

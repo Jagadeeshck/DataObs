@@ -1,8 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import cytoscape from "cytoscape";
-import { topologyFixture } from "../../test/fixtures";
-import type { TopologyNode } from "../../api/types";
+import type { Topology, TopologyNode } from "../../api/types";
 import { EntityDrawer } from "../entity-drawer/EntityDrawer";
+import { api, ApiError } from "../../api";
+import { useProductContext } from "../../state/context";
+import { useAbortableRequest } from "../../hooks/useAbortableRequest";
+import {
+  DataStatusBanner,
+  ErrorState,
+  LoadingSkeleton,
+} from "../../components/Evidence";
 const colors = {
   healthy: "#35d49a",
   warning: "#f4bd45",
@@ -15,12 +22,26 @@ export function FlowMap() {
   const [selected, setSelected] = useState<TopologyNode | null>(null);
   const [overlay, setOverlay] = useState("Incidents");
   const [table, setTable] = useState(false);
+  const [topology, setTopology] = useState<Topology>();
+  const [error, setError] = useState<Error>();
+  const { tenant, environment, refreshGeneration } = useProductContext();
+  const request = useAbortableRequest();
   useEffect(() => {
-    if (!graph.current) return;
-    const nodes = topologyFixture.nodes.map((n) => ({
+    if (!tenant || !environment) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset belongs to this external request generation
+    setError(undefined);
+    void request((signal) => api.topology(tenant, environment, signal))
+      .then(setTopology)
+      .catch((reason: unknown) => {
+        if ((reason as Error).name !== "AbortError") setError(reason as Error);
+      });
+  }, [tenant, environment, refreshGeneration, request]);
+  useEffect(() => {
+    if (!graph.current || !topology) return;
+    const nodes = topology.nodes.map((n) => ({
       data: { ...n, label: n.name },
     }));
-    const edges = topologyFixture.edges.map((e) => ({
+    const edges = topology.edges.map((e) => ({
       data: {
         ...e,
         source: e.source_node_id,
@@ -66,7 +87,8 @@ export function FlowMap() {
             "target-arrow-shape": "triangle",
             "curve-style": "bezier",
             opacity: 0.85,
-            "line-style": "solid",
+            "line-style": (e) =>
+              e.data("evidence_state") === "observed" ? "solid" : "dashed",
           },
         },
         {
@@ -84,22 +106,37 @@ export function FlowMap() {
       ],
     });
     cy.on("tap", "node", (event) => {
-      const node = topologyFixture.nodes.find(
-        (n) => n.id === event.target.id(),
-      );
+      const node = topology.nodes.find((n) => n.id === event.target.id());
       setSelected(node ?? null);
     });
     cyRef.current = cy;
     return () => cy.destroy();
-  }, []);
+  }, [topology]);
+  if (!topology && !error)
+    return (
+      <div className="page">
+        <LoadingSkeleton label="Loading bounded topology evidence…" />
+      </div>
+    );
+  if (!topology && error)
+    return (
+      <div className="page">
+        <h1>Data Flow</h1>
+        <ErrorState
+          message="Canonical topology evidence is unavailable."
+          requestId={error instanceof ApiError ? error.requestId : undefined}
+        />
+      </div>
+    );
+  if (!topology) return null;
   return (
     <div className="flow-page">
       <div className="flow-toolbar">
         <div>
           <div className="eyebrow">
-            DATA FLOW <span>/</span> LIVE TOPOLOGY
+            DATA FLOW <span>/</span> EVIDENCE TOPOLOGY
           </div>
-          <h1>Live Data Flow</h1>
+          <h1>Unified Data Flow</h1>
           <p>
             Observed pathways across sources, streams, jobs and data products.
           </p>
@@ -139,19 +176,32 @@ export function FlowMap() {
         <button className="filter">● All health states</button>
       </div>
       <div className="graph-frame">
+        {topology.truncated && (
+          <DataStatusBanner state="partial">
+            Topology was truncated at the bounded API limit (1,000 nodes / 2,500
+            edges). Refine filters to inspect omitted evidence.
+          </DataStatusBanner>
+        )}
+        {!topology.data_status.complete && (
+          <DataStatusBanner state="partial">
+            {topology.data_status.warnings.join(" · ") ||
+              "Topology has partial evidence."}
+          </DataStatusBanner>
+        )}
         <div className="graph-meta">
+          <b>{topology.nodes.length} visible nodes</b>
+          <b>{topology.edges.length} bounded pathways</b>
           <span>
-            <i className="live-dot" /> LIVE
+            {topology.data_status.observed_at
+              ? `Observed ${new Date(topology.data_status.observed_at).toLocaleString()}`
+              : "Observation time unknown"}
           </span>
-          <b>{topologyFixture.nodes.length} visible nodes</b>
-          <b>{topologyFixture.edges.length} observed pathways</b>
-          <span>Updated 8s ago</span>
         </div>
         <div
           ref={graph}
           className="graph"
           role="img"
-          aria-label="Topology graph showing six entities and five directional pathways"
+          aria-label={`Topology graph showing ${topology.nodes.length} entities and ${topology.edges.length} directional pathways`}
         />
         <div className="legend">
           <b>Evidence</b>
@@ -196,7 +246,7 @@ export function FlowMap() {
                 </tr>
               </thead>
               <tbody>
-                {topologyFixture.nodes.map((n) => (
+                {topology.nodes.map((n) => (
                   <tr key={n.id} tabIndex={0} onClick={() => setSelected(n)}>
                     <td>{n.name}</td>
                     <td>{n.type}</td>
@@ -213,15 +263,10 @@ export function FlowMap() {
         <EntityDrawer node={selected} onClose={() => setSelected(null)} />
       )}
       <footer className="flow-footer">
-        <div>
-          <span className="bad">● Critical pathway</span>
-          <b>checkout-api → orders.events.v2 → enrich-orders</b>
-        </div>
         <p>
-          Retention risk threatens 14 downstream entities.{" "}
-          <button onClick={() => setSelected(topologyFixture.nodes[2])}>
-            Investigate entity →
-          </button>
+          {topology.nodes.length} entities and {topology.edges.length}{" "}
+          relationships are rendered. Solid edges are observed; dashed edges are
+          derived, inferred, partial, unknown, or stale.
         </p>
       </footer>
     </div>

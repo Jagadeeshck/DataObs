@@ -1,29 +1,44 @@
-export type Health = "healthy" | "warning" | "critical" | "unknown";
+export type Health =
+  | "healthy"
+  | "warning"
+  | "critical"
+  | "unknown"
+  | "not_configured"
+  | "unavailable"
+  | "stale"
+  | "partial";
 export interface DataStatus {
   complete: boolean;
   warnings: string[];
   sources: string[];
-  observed_at: string;
+  observed_at?: string;
+  missing_inputs?: string[];
+  source_coverage?: number;
+  confidence?: number;
 }
 export interface Pillar {
   id: string;
   name: string;
   health: Health;
   metric: string;
-  issues: number;
-  coverage: string;
+  issues?: number;
+  coverage?: string;
+  observed_at?: string;
+  missing_evidence?: string[];
   trend?: string;
 }
 export interface PriorityItem {
   id: string;
   problem: string;
   entity: string;
-  owner: string;
-  service: string;
-  started: string;
+  owner?: string;
+  service?: string;
+  started?: string;
   severity: string;
-  impact: string;
-  automation: string;
+  impact?: string;
+  automation?: string;
+  href?: string;
+  state?: string;
 }
 export interface CommandCenter {
   overall_health: Health;
@@ -49,6 +64,15 @@ export interface TopologyEdge {
   destination_node_id: string;
   health?: Health;
   confidence?: number;
+  evidence_state?:
+    | "observed"
+    | "derived"
+    | "inferred"
+    | "partial"
+    | "unknown"
+    | "stale";
+  observed_at?: string;
+  evidence_references?: string[];
   throughput?: number;
 }
 export interface Topology {

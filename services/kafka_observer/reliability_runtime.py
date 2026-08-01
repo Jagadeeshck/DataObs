@@ -18,7 +18,10 @@ class Store(Protocol):
     def due(self, tenant: str, environment: str, now: datetime, limit: int) -> list[Definition]: ...
     def previous(self, definition: Definition) -> PreviousState: ...
     def persist(self, evaluation: Evaluation, definition: Definition, fencing_token: int) -> bool: ...
-    def checkpoint(self, definition: Definition, evaluation_id: str, fencing_token: int) -> None: ...
+    def project(self, evaluation: Evaluation, definition: Definition, fencing_token: int) -> None: ...
+    def signal(self, evaluation: Evaluation, definition: Definition, fencing_token: int) -> None: ...
+    def checkpoint(self, definition: Definition, evaluation_id: str, fencing_token: int, now: datetime) -> None: ...
+    def persist_health(self, scope: str, health: "RuntimeHealth", fencing_token: int) -> None: ...
 
 
 @dataclass
@@ -34,6 +37,12 @@ class RuntimeHealth:
     consecutive_failures: int = 0
     checkpoint_status: str = "idle"
     elasticsearch_status: str = "unknown"
+    fencing_token: int | None = None
+    cycle_started_at: datetime | None = None
+    cycle_ended_at: datetime | None = None
+    definitions_failed: int = 0
+    pending_reconciliation_count: int = 0
+    pending_signal_count: int = 0
 
 
 class ReliabilityRuntime:
@@ -48,12 +57,14 @@ class ReliabilityRuntime:
 
     def run_once(self, tenant: str, environment: str, now: datetime | None = None) -> list[Evaluation]:
         now = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
+        self.health.cycle_started_at = now
         scope = f"{tenant}:{environment}"
         token = self.store.acquire(scope, self.health.worker_id, now + timedelta(seconds=90))
         if token is None:
             self.health.lease_status = "contended"
             return []
         self.health.lease_status, self.health.elasticsearch_status = "held", "available"
+        self.health.fencing_token = token
         definitions = self.store.due(tenant, environment, now, self.MAX_DEFINITIONS)
         self.health.definitions_due = len(definitions)
         completed: list[Evaluation] = []
@@ -67,8 +78,12 @@ class ReliabilityRuntime:
                     definition, self.observe(definition, start, now), self.store.previous(definition), now
                 )
                 # append-only persistence is deliberately ordered before checkpointing
+                # The append-only record is the reconciliation anchor. Projection and
+                # signal writes are idempotent; the checkpoint moves only after both.
                 self.store.persist(result, definition, token)
-                self.store.checkpoint(definition, result.evaluation_id, token)
+                self.store.project(result, definition, token)
+                self.store.signal(result, definition, token)
+                self.store.checkpoint(definition, result.evaluation_id, token, now)
                 completed.append(result)
                 self.health.definitions_evaluated += 1
                 self.health.latest_successful_evaluation = now
@@ -77,5 +92,8 @@ class ReliabilityRuntime:
             except Exception:
                 self.health.latest_failed_evaluation = now
                 self.health.consecutive_failures += 1
+                self.health.definitions_failed += 1
                 self.health.checkpoint_status = "not_advanced"
+        self.health.cycle_ended_at = now
+        self.store.persist_health(scope, self.health, token)
         return completed

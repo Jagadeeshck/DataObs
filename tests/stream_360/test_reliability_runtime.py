@@ -106,9 +106,18 @@ class MemoryStore:
         self.saved.append(result.evaluation_id)
         return True
 
-    def checkpoint(self, item, evaluation_id, token):
+    def checkpoint(self, item, evaluation_id, token, now):
         assert self.saved[-1] == evaluation_id
         self.checkpoints.append(evaluation_id)
+
+    def project(self, result, item, token):
+        assert self.saved[-1] == result.evaluation_id
+
+    def signal(self, result, item, token):
+        assert self.saved[-1] == result.evaluation_id
+
+    def persist_health(self, scope, health, token):
+        pass
 
 
 def test_runtime_bounds_window_is_deterministic_and_persists_before_checkpoint():

@@ -6,6 +6,7 @@ import hashlib
 from datetime import datetime, timezone
 from typing import Any, Callable
 
+from elasticsearch import ConflictError
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response
 
 from packages.streaming.reliability import CAPABILITIES, Definition
@@ -23,8 +24,21 @@ def create_reliability_router(get_es: Callable[..., Any], require_auth: Callable
         return ElasticsearchReliabilityRepository(es.es)
 
     def scope(request: Request) -> tuple[str, str]:
-        environment = request.headers.get("x-dataobs-environment", "production")
-        return request.state.tenant_id, environment
+        tenant = getattr(request.state, "tenant_id", None)
+        environment = getattr(request.state, "environment", None)
+        if not tenant or not environment:
+            raise HTTPException(
+                403, detail={"code": "trusted_scope_required", "message": "Authenticated product context is required"}
+            )
+        return str(tenant), str(environment)
+
+    def actor(request: Request) -> str:
+        subject = getattr(getattr(request.state, "principal", None), "subject", None)
+        if not subject:
+            raise HTTPException(
+                403, detail={"code": "mutation_actor_required", "message": "Authenticated actor is required"}
+            )
+        return str(subject)
 
     @router.get("/reliability/capabilities")
     def capabilities() -> dict[str, Any]:
@@ -61,8 +75,10 @@ def create_reliability_router(get_es: Callable[..., Any], require_auth: Callable
     ) -> dict[str, Any]:
         tenant, environment = scope(request)
         now = datetime.now(timezone.utc).isoformat()
-        identifier = hashlib.sha256(f"{tenant}\0{environment}\0{idempotency_key}".encode()).hexdigest()
-        actor = str(request.state.principal.get("sub", "unknown"))
+        mutation_actor = actor(request)
+        identifier = hashlib.sha256(
+            f"{tenant}\0{environment}\0{mutation_actor}\0{idempotency_key}".encode()
+        ).hexdigest()
         document = payload | {
             "id": identifier,
             "tenant_id": tenant,
@@ -71,17 +87,22 @@ def create_reliability_router(get_es: Callable[..., Any], require_auth: Callable
             "revision": 1,
             "created_at": now,
             "updated_at": now,
-            "created_actor": actor,
-            "updated_actor": actor,
+            "created_actor": mutation_actor,
+            "updated_actor": mutation_actor,
             "schema_version": "v1",
             "next_evaluation_at": now,
         }
         Definition(**{key: document[key] for key in Definition.__dataclass_fields__})
         try:
             repo.es.index(index=DEFINITIONS, id=identifier, document=document, op_type="create", refresh="wait_for")
-        except Exception as exc:
-            if type(exc).__name__ != "ConflictError":
-                raise
+        except ConflictError:
+            existing = repo.es.get(index=DEFINITIONS_READ, id=identifier)["_source"]
+            if any(existing.get(key) != value for key, value in payload.items()):
+                raise HTTPException(
+                    409,
+                    detail={"code": "idempotency_conflict", "message": "Idempotency key was used for another request"},
+                ) from None
+            document = existing
         response.headers["ETag"] = '"1"'
         return document
 
@@ -125,7 +146,7 @@ def create_reliability_router(get_es: Callable[..., Any], require_auth: Callable
         updated = current | {key: value for key, value in payload.items() if key not in protected}
         updated["revision"] += 1
         updated["updated_at"] = datetime.now(timezone.utc).isoformat()
-        updated["updated_actor"] = str(request.state.principal.get("sub", "unknown"))
+        updated["updated_actor"] = actor(request)
         Definition(**{key: updated[key] for key in Definition.__dataclass_fields__})
         repo.es.index(index=DEFINITIONS, id=slo_id, document=updated, refresh="wait_for")
         response.headers["ETag"] = f'"{updated["revision"]}"'
@@ -177,18 +198,19 @@ def create_reliability_router(get_es: Callable[..., Any], require_auth: Callable
     @router.get("/reliability/runtime")
     def runtime(request: Request, repo: ElasticsearchReliabilityRepository = Depends(repository)) -> dict[str, Any]:
         tenant, environment = scope(request)
-        return {
-            "configured": True,
-            "worker_id": None,
-            "lease_state": "unknown",
-            "elasticsearch_dependency_state": "available",
-            "definitions_due": len(repo.due(tenant, environment, datetime.now(timezone.utc), 200)),
-            "definitions_evaluated": 0,
-            "definitions_skipped": 0,
-            "latest_successful_evaluation": None,
-            "latest_failed_evaluation": None,
-            "consecutive_failures": 0,
-            "checkpoint_status": "unknown",
-        }
+        health = repo.runtime_health(tenant, environment)
+        if health is None:
+            return {"configured": False, "state": "not_configured"}
+        heartbeat = datetime.fromisoformat(health["heartbeat_at"])
+        age = (datetime.now(timezone.utc) - heartbeat.astimezone(timezone.utc)).total_seconds()
+        if health.get("elasticsearch_status") == "unavailable":
+            state = "elasticsearch_unavailable"
+        elif health.get("consecutive_failures", 0) >= 3:
+            state = "failed"
+        elif health.get("definitions_failed", 0) or health.get("pending_reconciliation_count", 0):
+            state = "degraded"
+        else:
+            state = "stale" if age > 180 else "healthy"
+        return health | {"configured": True, "state": state}
 
     return router

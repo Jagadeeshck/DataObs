@@ -427,6 +427,30 @@ def apply(es: Elasticsearch, *, through_migration_id: str | None = None) -> List
             _ensure_transform(es, definition)
         for index, properties in m.operations.get("mapping_updates", {}).items():
             _apply_mapping_update(es, index, properties)
+        for pattern, contract in m.operations.get("data_stream_contracts", {}).items():
+            stem = pattern.replace("-*", "").replace(".", "-")
+            component = f"dataobs-{stem}-mappings"
+            policy = f"dataobs-{stem}-{contract['retention']}"
+            es.ilm.put_lifecycle(
+                name=policy,
+                policy={
+                    "phases": {
+                        "hot": {"actions": {}},
+                        "delete": {"min_age": contract["retention"], "actions": {"delete": {}}},
+                    }
+                },
+            )
+            es.cluster.put_component_template(
+                name=component, template={"mappings": {"dynamic": "strict", "properties": contract["properties"]}}
+            )
+            es.indices.put_index_template(
+                name=f"dataobs-{stem}-template",
+                index_patterns=[pattern],
+                data_stream={},
+                composed_of=[component],
+                priority=250,
+                template={"settings": {"index.lifecycle.name": policy}},
+            )
         doc = {
             "migration_id": m.migration_id,
             "schema_version": m.schema_version,

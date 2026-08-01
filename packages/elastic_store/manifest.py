@@ -1691,6 +1691,155 @@ JOB_RUN_RELIABILITY_MIGRATION = Migration(
     },
 )
 
+RELIABILITY_DEFINITION_PROPERTIES = {
+    **{
+        key: {"type": "keyword", "ignore_above": 512}
+        for key in [
+            "id",
+            "tenant_id",
+            "environment",
+            "resource_type",
+            "resource_id",
+            "metric",
+            "operator",
+            "unit",
+            "owner",
+            "missing_data_policy",
+            "schema_version",
+            "created_actor",
+            "updated_actor",
+            "latest_evaluation_id",
+        ]
+    },
+    **{key: {"type": "boolean"} for key in ["enabled"]},
+    "threshold": {"type": "double"},
+    **{
+        key: {"type": "long"}
+        for key in [
+            "evaluation_window_seconds",
+            "evaluation_interval_seconds",
+            "required_consecutive_breaches",
+            "recovery_evaluation_count",
+            "revision",
+        ]
+    },
+    **{key: {"type": "date"} for key in ["created_at", "updated_at", "next_evaluation_at"]},
+}
+RELIABILITY_STATUS_PROPERTIES = {
+    **{
+        key: {"type": "keyword", "ignore_above": 512}
+        for key in [
+            "status_id",
+            "evaluation_id",
+            "definition_id",
+            "tenant_id",
+            "environment",
+            "resource_type",
+            "resource_id",
+            "metric",
+            "previous_status",
+            "current_status",
+            "status",
+            "operator",
+            "unit",
+            "latest_evaluation_id",
+            "evidence_type",
+            "latency_method",
+            "schema_version",
+        ]
+    },
+    **{key: {"type": "double"} for key in ["observed_value", "threshold", "confidence", "source_coverage"]},
+    **{
+        key: {"type": "long"}
+        for key in ["consecutive_breaches", "consecutive_recoveries", "breach_duration_seconds", "revision"]
+    },
+    **{
+        key: {"type": "date"}
+        for key in ["first_breach_at", "last_breach_at", "observed_at", "evaluated_at", "transition_at"]
+    },
+    **{
+        key: {"type": "keyword", "ignore_above": 1024}
+        for key in ["reason_codes", "warnings", "missing_inputs", "evidence_refs"]
+    },
+}
+RELIABILITY_RUNTIME_PROPERTIES = {
+    **{
+        key: {"type": "keyword", "ignore_above": 512}
+        for key in [
+            "scope",
+            "tenant_id",
+            "environment",
+            "worker_id",
+            "lease_owner",
+            "lease_status",
+            "checkpoint_status",
+            "elasticsearch_status",
+            "runtime_version",
+        ]
+    },
+    "configured": {"type": "boolean"},
+    **{
+        key: {"type": "date"}
+        for key in [
+            "expires_at",
+            "cycle_started_at",
+            "cycle_ended_at",
+            "latest_successful_evaluation",
+            "latest_failed_evaluation",
+            "heartbeat_at",
+            "updated_at",
+        ]
+    },
+    **{
+        key: {"type": "long"}
+        for key in [
+            "fencing_token",
+            "definitions_due",
+            "definitions_evaluated",
+            "definitions_skipped",
+            "definitions_failed",
+            "consecutive_failures",
+            "pending_reconciliation_count",
+            "pending_signal_count",
+        ]
+    },
+}
+
+STREAM_PATHWAY_RELIABILITY_PRODUCTION_CLOSURE_MIGRATION = Migration(
+    "0025_stream_pathway_reliability_production_closure",
+    "Install strict reliability mappings and retained append-only stream contracts",
+    "v1",
+    dependencies=["0024_job_run_reliability_runtime"],
+    rollback_strategy="stop reliability workers; retain append-only evaluation and signal evidence; restore mutable indices from snapshot; templates and lifecycle policies may be removed only after retention review",
+    operations={
+        "mapping_updates": {
+            "dataobs-stream-slo-definitions-v1": RELIABILITY_DEFINITION_PROPERTIES,
+            "dataobs-reliability-status-v1": RELIABILITY_STATUS_PROPERTIES,
+            "dataobs-reliability-runtime-state-v1": RELIABILITY_RUNTIME_PROPERTIES,
+        },
+        "data_stream_contracts": {
+            "metrics-dataobs.stream-slo-evaluation-*": {
+                "retention": "90d",
+                "properties": RELIABILITY_STATUS_PROPERTIES | {"@timestamp": {"type": "date"}},
+            },
+            "metrics-dataobs.pathway-slo-evaluation-*": {
+                "retention": "90d",
+                "properties": RELIABILITY_STATUS_PROPERTIES | {"@timestamp": {"type": "date"}},
+            },
+            "logs-dataobs.reliability-signal-*": {
+                "retention": "365d",
+                "properties": RELIABILITY_STATUS_PROPERTIES
+                | {
+                    "signal_id": {"type": "keyword"},
+                    "severity": {"type": "keyword"},
+                    "transition_at": {"type": "date"},
+                    "@timestamp": {"type": "date"},
+                },
+            },
+        },
+    },
+)
+
 
 def migrations() -> List[Migration]:
     return [
@@ -1718,6 +1867,7 @@ def migrations() -> List[Migration]:
         AWS_DATA_PLATFORM_COLLECTOR_MIGRATION,
         STREAM_PATHWAY_RELIABILITY_MIGRATION,
         JOB_RUN_RELIABILITY_MIGRATION,
+        STREAM_PATHWAY_RELIABILITY_PRODUCTION_CLOSURE_MIGRATION,
     ]
 
 

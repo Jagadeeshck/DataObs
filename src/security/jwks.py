@@ -10,13 +10,18 @@ from .errors import SecurityError
 
 
 class JWKSClient:
-    def __init__(self, issuer: str, jwks_url: str | None, timeout: float, ttl: int):
+    MAX_RESPONSE_BYTES = 1_000_000
+    MAX_KEYS = 100
+
+    def __init__(self, issuer: str, jwks_url: str | None, timeout: float, ttl: int, last_known_good: int = 60):
         self.issuer = issuer.rstrip("/")
         self.jwks_url = jwks_url
         self.timeout = timeout
         self.ttl = ttl
+        self.last_known_good = last_known_good
         self._keys: dict[str, dict] = {}
         self._expires = 0.0
+        self._stale_until = 0.0
         self._lock = threading.Lock()
         self._negative: dict[str, float] = {}
         self._last_refresh = 0.0
@@ -42,15 +47,18 @@ class JWKSClient:
             with urlopen(
                 Request(self._safe_url(url), headers={"Accept": "application/json"}), timeout=self.timeout
             ) as r:
-                if int(r.headers.get("Content-Length", "0") or 0) > 1_000_000:
+                if int(r.headers.get("Content-Length", "0") or 0) > self.MAX_RESPONSE_BYTES:
                     raise ValueError("response too large")
                 final = self._safe_url(r.geturl())
                 if final != r.geturl():
                     raise ValueError("untrusted redirect")
-                raw = r.read(1_000_001)
-                if len(raw) > 1_000_000:
+                payload = r.read(self.MAX_RESPONSE_BYTES + 1)
+                if len(payload) > self.MAX_RESPONSE_BYTES:
                     raise ValueError("response too large")
-                return json.loads(raw)
+                document = json.loads(payload)
+                if not isinstance(document, dict):
+                    raise ValueError("response is not an object")
+                return document
         except SecurityError:
             raise
         except Exception as exc:
@@ -68,42 +76,39 @@ class JWKSClient:
                 raise SecurityError("jwks_unavailable", "OIDC JWKS URL is missing")
             document = self._json(url)
             keys = document.get("keys")
-            if not isinstance(keys, list) or len(keys) > 100:
+            if not isinstance(keys, list) or not keys or len(keys) > self.MAX_KEYS:
                 raise SecurityError("jwks_unavailable", "OIDC JWKS document is malformed")
             accepted: dict[str, dict] = {}
             for key in keys:
-                if not isinstance(key, dict) or not isinstance(key.get("kid"), str):
-                    continue
-                kid = key["kid"]
-                if kid in accepted:
+                if not isinstance(key, dict) or not isinstance(key.get("kid"), str) or not key["kid"]:
+                    raise SecurityError("jwks_unavailable", "OIDC JWKS document is malformed")
+                if key["kid"] in accepted:
                     raise SecurityError("jwks_duplicate_kid", "OIDC JWKS contains duplicate key identifiers")
-                if key.get("use", "sig") != "sig" or "verify" not in key.get("key_ops", ["verify"]):
+                if key.get("use") not in {None, "sig"}:
                     continue
-                if key.get("kty") not in {"RSA", "EC", "OKP"} or key.get("alg") not in {
-                    None,
-                    "RS256",
-                    "RS384",
-                    "RS512",
-                    "PS256",
-                    "PS384",
-                    "PS512",
-                    "ES256",
-                    "ES384",
-                    "ES512",
-                    "EdDSA",
-                }:
+                if key.get("kty") not in {"RSA", "EC", "OKP"}:
                     continue
-                accepted[kid] = key
+                accepted[key["kid"]] = key
+            if not accepted:
+                raise SecurityError("jwks_unavailable", "OIDC JWKS contains no signing keys")
+            now = time.monotonic()
             self._keys = accepted
-            self._expires = time.monotonic() + min(3600, max(30, self.ttl))
-            self._last_refresh = time.monotonic()
+            self._expires = now + max(1, self.ttl)
+            self._stale_until = self._expires + max(0, self.last_known_good)
+            self._last_refresh = now
 
     def get(self, kid: str) -> dict:
         now = time.monotonic()
         if self._negative.get(kid, 0) > now:
             raise SecurityError("signing_key_unknown", "Token signing key is unknown")
-        if time.monotonic() >= self._expires:
-            self.refresh()
+        if now >= self._expires:
+            try:
+                self.refresh()
+            except SecurityError:
+                # A known key may bridge a bounded provider outage. Unknown keys
+                # never use this path and every request retries after expiry.
+                if kid not in self._keys or now > self._stale_until:
+                    raise
         key = self._keys.get(kid)
         if key is None:  # exactly one controlled refresh for rotation/unknown kid
             self.refresh()

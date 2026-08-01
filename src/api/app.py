@@ -41,6 +41,7 @@ from src.core.enterprise_blueprint import enterprise_backlog
 from src.core.pillars import PILLAR_REGISTRY, canonical_pillar_value
 from src.data_observability.openlineage import OpenLineageValidationError
 from src.data_observability.service import DataObservabilityService, OpenLineageConflictError
+from src.security.audit import security_event
 from src.security.authentication import Authenticator
 from src.security.authorization import authorize
 from src.security.errors import SecurityError
@@ -389,6 +390,11 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
             request.state.tenant_context = context
             request.state.tenant_id = context.tenant_id
             request.state.environment = context.environment
+        except LookupError as exc:
+            raise HTTPException(
+                status_code=403,
+                detail={"code": "permission_policy_missing", "message": "Route access is not configured"},
+            ) from exc
         except SecurityError as exc:
             raise HTTPException(
                 status_code=exc.status_code,
@@ -471,12 +477,16 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
             return existing
         request.app.state.role_bindings[document["binding_id"]] = document
         request.app.state.security_audit_events.append(
-            {
-                "event_action": "binding_created",
-                "principal_subject": request.state.principal.subject,
-                "tenant_id": request.state.tenant_id,
-                "binding_id": document["binding_id"],
-            }
+            security_event(
+                event_type="iam.binding.created",
+                outcome="success",
+                reason_code="binding_created",
+                principal_id=request.state.principal.subject,
+                tenant_id=request.state.tenant_id,
+                environment=request.state.environment,
+                request_id=_request_id(request),
+                route_template="/api/v1/iam/role-bindings",
+            )
         )
         return document
 
@@ -506,12 +516,16 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
             raise HTTPException(status_code=409, detail="Cannot remove the last platform administrator")
         document["active"] = False
         request.app.state.security_audit_events.append(
-            {
-                "event_action": "binding_disabled",
-                "principal_subject": request.state.principal.subject,
-                "tenant_id": request.state.tenant_id,
-                "binding_id": binding_id,
-            }
+            security_event(
+                event_type="iam.binding.disabled",
+                outcome="success",
+                reason_code="binding_disabled",
+                principal_id=request.state.principal.subject,
+                tenant_id=request.state.tenant_id,
+                environment=request.state.environment,
+                request_id=_request_id(request),
+                route_template="/api/v1/iam/role-bindings/{binding_id}",
+            )
         )
         return Response(status_code=204)
 

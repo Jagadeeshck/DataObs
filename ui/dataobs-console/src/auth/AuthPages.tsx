@@ -2,7 +2,8 @@ import { useEffect } from "react";
 import { userManager } from "./oidc";
 
 export function Login() {
-  const next = new URLSearchParams(location.search).get("next") || "/";
+  const requested = new URLSearchParams(location.search).get("next") || "/";
+  const next = requested.startsWith("/") && !requested.startsWith("//") ? requested : "/";
   return (
     <button
       onClick={() =>
@@ -17,11 +18,8 @@ export function Callback() {
   useEffect(() => {
     void userManager().then(async (manager) => {
       const user = await manager.signinRedirectCallback();
-      history.replaceState(
-        {},
-        "",
-        (user.state as { next?: string } | undefined)?.next || "/",
-      );
+      const requested = (user.state as { next?: string } | undefined)?.next || "/";
+      history.replaceState({}, "", requested.startsWith("/") && !requested.startsWith("//") ? requested : "/");
       location.reload();
     });
   }, []);

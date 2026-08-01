@@ -39,9 +39,13 @@ def principal_from_claims(claims: dict[str, Any], settings: AuthSettings) -> Pri
     subject = claims.get(oidc.subject_claim)
     if not isinstance(subject, str) or not subject:
         raise SecurityError("mandatory_claim_missing", "Access token subject is missing")
-    principal_type = (
-        "service" if claims.get("client_id") and claims.get("preferred_username") == "service-account" else "user"
-    )
+    client_id = claims.get("client_id") or claims.get("azp")
+    principal_type = "service" if isinstance(client_id, str) and client_id in oidc.allowed_service_clients else "user"
+    if principal_type == "service" and oidc.require_jti_for_service_tokens and not claims.get("jti"):
+        raise SecurityError("service_principal_denied", "Service access token requires a token identifier")
+    if principal_type == "service":
+        # Service identities never inherit browser group/bootstrap authority.
+        roles = set()
     return Principal(
         subject=subject,
         issuer=str(claims.get("iss", oidc.issuer)),

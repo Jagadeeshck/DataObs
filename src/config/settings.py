@@ -38,6 +38,11 @@ class ElasticsearchSettings:
     password: str = ""
     api_key: str | None = None
     verify_tls: bool = True
+    ca_certs: str | None = None
+    ssl_assert_fingerprint: str | None = None
+    connect_timeout: float = 5.0
+    request_timeout: float = 30.0
+    max_retries: int = 2
 
     @property
     def host_for_logs(self) -> str:
@@ -53,6 +58,8 @@ class AuthSettings:
     allow_unauthenticated_dev: bool = False
     provider: str = "local"
     oidc: "OIDCSettings" = field(default_factory=lambda: OIDCSettings())
+    authorization_source: Literal["claims", "bindings", "intersection"] = "claims"
+    bootstrap_enabled: bool = True
 
 
 @dataclass(frozen=True)
@@ -75,6 +82,29 @@ class OIDCSettings:
     platform_admin_groups: frozenset[str] = frozenset()
     group_role_mappings: dict[str, tuple[str, ...]] = field(default_factory=dict)
     maximum_token_bytes: int = 16384
+    maximum_token_lifetime_seconds: int = 3600
+    allowed_authorised_parties: frozenset[str] = frozenset()
+    allowed_token_types: frozenset[str] = frozenset({"Bearer", "at+jwt"})
+    allowed_service_clients: frozenset[str] = frozenset()
+    require_jti_for_service_tokens: bool = True
+
+
+@dataclass(frozen=True)
+class CORSSettings:
+    allowed_origins: tuple[str, ...] = ()
+    allowed_methods: tuple[str, ...] = ("GET", "POST", "PATCH", "DELETE")
+    allowed_headers: tuple[str, ...] = (
+        "Authorization",
+        "Content-Type",
+        "X-Request-ID",
+        "X-DataObs-Tenant",
+        "X-DataObs-Environment",
+        "Idempotency-Key",
+        "If-Match",
+    )
+    exposed_headers: tuple[str, ...] = ("X-Request-ID", "ETag", "Retry-After")
+    allow_credentials: bool = False
+    max_age: int = 600
 
 
 @dataclass(frozen=True)
@@ -96,6 +126,8 @@ class AppSettings:
     tenant: TenantSettings
     observability: ObservabilitySettings
     store_backend: str = "memory"
+    cors: CORSSettings = field(default_factory=CORSSettings)
+    external_scheme: str = "http"
 
     @property
     def api_token(self) -> str | None:
@@ -194,6 +226,11 @@ def load_settings() -> AppSettings:
                 os.getenv("ELASTICSEARCH_VERIFY_TLS", _deep_get(config, "elasticsearch", "verify_tls", default=True)),
                 default=True,
             ),
+            ca_certs=os.getenv("ELASTICSEARCH_CA_CERTS") or None,
+            ssl_assert_fingerprint=os.getenv("ELASTICSEARCH_SSL_ASSERT_FINGERPRINT") or None,
+            connect_timeout=float(os.getenv("ELASTICSEARCH_CONNECT_TIMEOUT", "5")),
+            request_timeout=float(os.getenv("ELASTICSEARCH_REQUEST_TIMEOUT", "30")),
+            max_retries=int(os.getenv("ELASTICSEARCH_MAX_RETRIES", "2")),
         ),
         auth=AuthSettings(
             api_token=os.getenv("API_TOKEN", _deep_get(config, "auth", "api_token", default=None)) or None,
@@ -205,6 +242,8 @@ def load_settings() -> AppSettings:
                 default=False,
             ),
             provider=str(os.getenv("DATAOBS_AUTH_PROVIDER", _deep_get(config, "auth", "provider", default="local"))),
+            authorization_source=str(os.getenv("DATAOBS_AUTHORIZATION_SOURCE", "claims")),
+            bootstrap_enabled=_to_bool(os.getenv("DATAOBS_SECURITY_BOOTSTRAP_ENABLED", True), True),
             oidc=OIDCSettings(
                 issuer=str(
                     os.getenv("DATAOBS_OIDC_ISSUER", _deep_get(config, "auth", "oidc", "issuer", default=""))
@@ -264,6 +303,17 @@ def load_settings() -> AppSettings:
                         {},
                     ).items()
                 },
+                maximum_token_lifetime_seconds=int(os.getenv("DATAOBS_OIDC_MAXIMUM_TOKEN_LIFETIME_SECONDS", "3600")),
+                allowed_authorised_parties=frozenset(
+                    _structured(os.getenv("DATAOBS_OIDC_ALLOWED_AUTHORISED_PARTIES"), [])
+                ),
+                allowed_token_types=frozenset(
+                    _structured(os.getenv("DATAOBS_OIDC_ALLOWED_TOKEN_TYPES"), ["Bearer", "at+jwt"])
+                ),
+                allowed_service_clients=frozenset(_structured(os.getenv("DATAOBS_OIDC_ALLOWED_SERVICE_CLIENTS"), [])),
+                require_jti_for_service_tokens=_to_bool(
+                    os.getenv("DATAOBS_OIDC_REQUIRE_JTI_FOR_SERVICE_TOKENS", True), True
+                ),
             ),
         ),
         tenant=TenantSettings(
@@ -277,6 +327,21 @@ def load_settings() -> AppSettings:
         store_backend=str(
             os.getenv("DATAOBS_STORE_BACKEND", _deep_get(config, "store", "backend", default="memory"))
         ).lower(),
+        cors=CORSSettings(
+            allowed_origins=tuple(_structured(os.getenv("DATAOBS_CORS_ALLOWED_ORIGINS"), [])),
+            allowed_methods=tuple(
+                _structured(os.getenv("DATAOBS_CORS_ALLOWED_METHODS"), ["GET", "POST", "PATCH", "DELETE"])
+            ),
+            allowed_headers=tuple(
+                _structured(os.getenv("DATAOBS_CORS_ALLOWED_HEADERS"), list(CORSSettings().allowed_headers))
+            ),
+            exposed_headers=tuple(
+                _structured(os.getenv("DATAOBS_CORS_EXPOSED_HEADERS"), list(CORSSettings().exposed_headers))
+            ),
+            allow_credentials=_to_bool(os.getenv("DATAOBS_CORS_ALLOW_CREDENTIALS", False)),
+            max_age=int(os.getenv("DATAOBS_CORS_MAX_AGE", "600")),
+        ),
+        external_scheme=os.getenv("DATAOBS_EXTERNAL_SCHEME", "http").lower(),
     )
 
     _validate(settings)
@@ -307,8 +372,13 @@ def _validate(settings: AppSettings) -> None:
             raise ConfigurationError("Production requires Elasticsearch credentials or API key.")
         if settings.elasticsearch.password and settings.elasticsearch.password.lower() in banned:
             raise ConfigurationError("Production forbids default/changeme Elasticsearch passwords.")
+        parsed_es = urlsplit(settings.elasticsearch.url)
+        if parsed_es.scheme != "https" or parsed_es.username or parsed_es.password:
+            raise ConfigurationError("Production Elasticsearch requires HTTPS and forbids URL-embedded credentials.")
         if settings.auth.provider != "oidc":
             raise ConfigurationError("Production requires DATAOBS_AUTH_PROVIDER=oidc; shared tokens are forbidden.")
+        if settings.auth.authorization_source == "claims":
+            raise ConfigurationError("Production forbids claims-only authorization.")
         oidc = settings.auth.oidc
         if not oidc.issuer.startswith("https://") or not oidc.audience:
             raise ConfigurationError("Production OIDC requires an HTTPS issuer and explicit audience.")
@@ -320,6 +390,10 @@ def _validate(settings: AppSettings) -> None:
             raise ConfigurationError("Production requires at least one trusted OIDC authorisation mapping.")
         if not settings.elasticsearch.verify_tls:
             raise ConfigurationError("Production requires TLS verification.")
+        if "*" in settings.cors.allowed_origins:
+            raise ConfigurationError("Production CORS requires exact origins.")
+        if settings.cors.allow_credentials and not settings.cors.allowed_origins:
+            raise ConfigurationError("Credentialed CORS requires an explicit origin.")
 
     if settings.runtime.env in {"development", "poc", "test"} and not settings.elasticsearch.verify_tls:
         logger.warning("ELASTICSEARCH_VERIFY_TLS=false in %s mode.", settings.runtime.env)

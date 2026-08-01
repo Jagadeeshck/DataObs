@@ -14,6 +14,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, ConfigDict
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.middleware.cors import CORSMiddleware
 
 from packages.domain_model.incident import IncidentState
 from packages.domain_model.investigation import PathwayRouteEdge, PathwayRouteNode, PathwaySearchRequest
@@ -29,6 +30,10 @@ from services.incident_manager.repository import VersionConflict
 from services.monitoring.elasticsearch_repository import ElasticsearchMonitorRepository
 from services.product_query import ElasticsearchConsoleRepository
 from services.product_query.path_search import search_paths
+from services.security.audit_repository import SecurityAuditEvent
+from services.security.elasticsearch_audit_repository import ElasticsearchAuditRepository
+from services.security.elasticsearch_role_binding_repository import ElasticsearchRoleBindingRepository
+from services.security.role_binding_repository import RoleBinding, RoleBindingConflict, RoleBindingNotFound
 from src.api.data_product_routes import create_data_product_router
 from src.api.incident_routes import create_incident_workbench_router
 from src.api.monitor_routes import router as monitor_router
@@ -44,6 +49,7 @@ from src.security.authentication import Authenticator
 from src.security.authorization import authorize
 from src.security.errors import SecurityError
 from src.security.permissions import Permission
+from src.security.route_policy import permission_for
 from src.security.tenant_context import resolve_tenant_context
 
 logger = logging.getLogger(__name__)
@@ -229,11 +235,23 @@ def settings_from_env() -> AppSettings:
 
 
 def make_es_client(settings: AppSettings) -> Elasticsearch:
-    return Elasticsearch(
-        [settings.elasticsearch.url],
-        basic_auth=(settings.elasticsearch.user, settings.elasticsearch.password),
-        request_timeout=30,
-    )
+    es = settings.elasticsearch
+    kwargs: dict[str, Any] = {
+        "verify_certs": es.verify_tls,
+        "request_timeout": es.request_timeout,
+        "max_retries": max(0, min(es.max_retries, 5)),
+        "retry_on_status": (429, 502, 503, 504),
+        "retry_on_timeout": False,
+    }
+    if es.ca_certs:
+        kwargs["ca_certs"] = es.ca_certs
+    if es.ssl_assert_fingerprint:
+        kwargs["ssl_assert_fingerprint"] = es.ssl_assert_fingerprint
+    if es.api_key:
+        kwargs["api_key"] = es.api_key
+    elif es.user or es.password:
+        kwargs["basic_auth"] = (es.user, es.password)
+    return Elasticsearch(es.url, **kwargs)
 
 
 def create_store_bundle(settings: AppSettings) -> StoreBundle:
@@ -273,9 +291,21 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
     resolved_settings = settings or settings_from_env()
     resolved_bundle = store_bundle or create_store_bundle(resolved_settings)
     app = FastAPI(title="DataObs API", version="1.1.0")
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=list(resolved_settings.cors.allowed_origins),
+        allow_methods=list(resolved_settings.cors.allowed_methods),
+        allow_headers=list(resolved_settings.cors.allowed_headers),
+        expose_headers=list(resolved_settings.cors.exposed_headers),
+        allow_credentials=resolved_settings.cors.allow_credentials,
+        max_age=resolved_settings.cors.max_age,
+    )
     app.state.settings = resolved_settings
     app.state.authenticator = Authenticator(resolved_settings.auth)
     app.state.store_bundle = resolved_bundle
+    security_es = (
+        make_es_client(resolved_settings) if resolved_settings.store_backend.lower() == "elasticsearch" else None
+    )
     if resolved_settings.store_backend.lower() == "elasticsearch":
         repo = ElasticsearchCollectionRepository(make_es_client(resolved_settings))
     else:
@@ -299,6 +329,8 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
     )
     app.state.role_bindings = {}
     app.state.security_audit_events = []
+    app.state.role_binding_repository = ElasticsearchRoleBindingRepository(security_es) if security_es else None
+    app.state.audit_repository = ElasticsearchAuditRepository(security_es) if security_es else None
     if resolved_settings.store_backend.lower() == "elasticsearch":
         from services.data_products.elasticsearch_repository import ElasticsearchDataProductRepository
 
@@ -310,13 +342,24 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
 
     @app.middleware("http")
     async def request_context_middleware(request: Request, call_next):
-        request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+        supplied = request.headers.get("X-Request-ID", "")
+        request_id = (
+            supplied
+            if len(supplied) <= 128 and supplied.replace("-", "").replace("_", "").isalnum()
+            else str(uuid.uuid4())
+        )
         request.state.request_id = request_id
         response = await call_next(request)
         response.headers["X-Request-ID"] = request_id
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["Referrer-Policy"] = "no-referrer"
         response.headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'"
+        response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+        if request.url.path.startswith(("/api/v1/auth", "/api/v1/iam")):
+            response.headers["Cache-Control"] = "no-store"
+            response.headers["Pragma"] = "no-cache"
+        if resolved_settings.external_scheme == "https":
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         return response
 
     def get_settings(request: Request) -> AppSettings:
@@ -361,7 +404,13 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
                 _request_id(request),
                 request.headers.get("traceparent"),
             )
-            permission = _permission_for_request(request.method, request.url.path)
+            route = request.scope.get("route")
+            if route is None:
+                raise SecurityError("route_policy_missing", "Route is not authorised", status_code=404)
+            try:
+                permission = permission_for(request.method, route.path)
+            except LookupError as exc:
+                raise SecurityError("route_policy_missing", "Route is not authorised", status_code=403) from exc
             authorize(principal, permission)
             request.state.principal = principal
             request.state.tenant_context = context
@@ -437,6 +486,10 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
 
     @app.get("/api/v1/iam/role-bindings", tags=["iam"], dependencies=[Depends(require_auth)])
     async def list_role_bindings(request: Request) -> Dict[str, Any]:
+        repository = request.app.state.role_binding_repository
+        if repository:
+            items, cursor = repository.list(request.state.tenant_id)
+            return {"items": [item.document() for item in items], "next_cursor": cursor}
         return {
             "items": [v for v in request.app.state.role_bindings.values() if v["tenant_id"] == request.state.tenant_id]
         }
@@ -444,6 +497,33 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
     @app.post("/api/v1/iam/role-bindings", status_code=201, tags=["iam"], dependencies=[Depends(require_auth)])
     async def create_role_binding(payload: RoleBindingRequest, request: Request) -> Dict[str, Any]:
         document = _binding_document(payload, request)
+        repository = request.app.state.role_binding_repository
+        if repository:
+            binding = RoleBinding(
+                **{**document, "environments": tuple(document["environments"]), "roles": tuple(document["roles"])}
+            )
+            try:
+                stored = repository.create(binding)
+                request.app.state.audit_repository.append(
+                    SecurityAuditEvent(
+                        timestamp=datetime.utcnow().isoformat() + "Z",
+                        event_action="role_binding_created",
+                        event_category="iam",
+                        event_outcome="success",
+                        reason_code="created",
+                        request_id=_request_id(request),
+                        principal_subject=request.state.principal.subject,
+                        principal_type=request.state.principal.principal_type,
+                        issuer=stored.issuer,
+                        tenant_id=stored.tenant_id,
+                        binding_id=stored.binding_id,
+                    )
+                )
+                return stored.document()
+            except RoleBindingConflict as exc:
+                raise HTTPException(
+                    status_code=409, detail={"code": "role_binding_conflict", "message": str(exc)}
+                ) from exc
         existing = request.app.state.role_bindings.get(document["binding_id"])
         if existing:
             return existing
@@ -458,8 +538,61 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
         )
         return document
 
+    @app.patch("/api/v1/iam/role-bindings/{binding_id}", tags=["iam"], dependencies=[Depends(require_auth)])
+    async def patch_role_binding(
+        binding_id: str,
+        payload: RoleBindingPatch,
+        request: Request,
+        if_match: str | None = Header(default=None),
+    ) -> Dict[str, Any]:
+        if not if_match:
+            raise HTTPException(
+                status_code=428, detail={"code": "if_match_required", "message": "If-Match is required"}
+            )
+        repository = request.app.state.role_binding_repository
+        if not repository:
+            raise HTTPException(
+                status_code=503, detail={"code": "durable_iam_required", "message": "Durable IAM is unavailable"}
+            )
+        try:
+            updated = repository.update(
+                binding_id,
+                request.state.tenant_id,
+                payload.model_dump(exclude_none=True),
+                if_match,
+                request.state.principal.subject,
+            )
+            request.app.state.audit_repository.append(
+                SecurityAuditEvent(
+                    timestamp=datetime.utcnow().isoformat() + "Z",
+                    event_action="role_binding_updated",
+                    event_category="iam",
+                    event_outcome="success",
+                    reason_code="updated",
+                    request_id=_request_id(request),
+                    principal_subject=request.state.principal.subject,
+                    tenant_id=request.state.tenant_id,
+                    binding_id=binding_id,
+                )
+            )
+            return updated.document()
+        except RoleBindingNotFound as exc:
+            raise HTTPException(
+                status_code=404, detail={"code": "role_binding_not_found", "message": "Role binding not found"}
+            ) from exc
+        except RoleBindingConflict as exc:
+            raise HTTPException(status_code=409, detail={"code": "etag_mismatch", "message": str(exc)}) from exc
+
     @app.get("/api/v1/iam/role-bindings/{binding_id}", tags=["iam"], dependencies=[Depends(require_auth)])
     async def get_role_binding(binding_id: str, request: Request) -> Dict[str, Any]:
+        repository = request.app.state.role_binding_repository
+        if repository:
+            try:
+                return repository.get(binding_id, request.state.tenant_id).document()
+            except RoleBindingNotFound as exc:
+                raise HTTPException(
+                    status_code=404, detail={"code": "role_binding_not_found", "message": "Role binding not found"}
+                ) from exc
         document = request.app.state.role_bindings.get(binding_id)
         if not document or document["tenant_id"] != request.state.tenant_id:
             raise HTTPException(status_code=404, detail="Role binding not found")
@@ -471,6 +604,39 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
     async def delete_role_binding(
         binding_id: str, request: Request, if_match: str | None = Header(default=None)
     ) -> Response:
+        repository = request.app.state.role_binding_repository
+        if repository:
+            try:
+                current = repository.get(binding_id, request.state.tenant_id)
+                if "platform_admin" in current.roles and repository.count_active_platform_administrators() <= 1:
+                    raise HTTPException(
+                        status_code=409,
+                        detail={
+                            "code": "last_administrator_protected",
+                            "message": "Cannot disable the last platform administrator",
+                        },
+                    )
+                repository.disable(binding_id, request.state.tenant_id, if_match or "", request.state.principal.subject)
+                request.app.state.audit_repository.append(
+                    SecurityAuditEvent(
+                        timestamp=datetime.utcnow().isoformat() + "Z",
+                        event_action="role_binding_disabled",
+                        event_category="iam",
+                        event_outcome="success",
+                        reason_code="disabled",
+                        request_id=_request_id(request),
+                        principal_subject=request.state.principal.subject,
+                        tenant_id=request.state.tenant_id,
+                        binding_id=binding_id,
+                    )
+                )
+                return Response(status_code=204)
+            except RoleBindingNotFound as exc:
+                raise HTTPException(
+                    status_code=404, detail={"code": "role_binding_not_found", "message": "Role binding not found"}
+                ) from exc
+            except RoleBindingConflict as exc:
+                raise HTTPException(status_code=409, detail={"code": "etag_mismatch", "message": str(exc)}) from exc
         document = request.app.state.role_bindings.get(binding_id)
         if not document or document["tenant_id"] != request.state.tenant_id:
             raise HTTPException(status_code=404, detail="Role binding not found")

@@ -9,5 +9,10 @@ data:
   elasticsearch-url: {{ .Values.external.elasticsearch.url | quote }}
   oidc-issuer: {{ .Values.external.oidc.issuer | quote }}
   oidc-audience: {{ .Values.external.oidc.audience | quote }}
+  authorization-source: {{ .Values.api.security.authorizationSource | quote }}
+  bootstrap-enabled: {{ .Values.api.security.bootstrapEnabled | quote }}
+  external-scheme: {{ .Values.api.security.externalScheme | quote }}
+  trusted-proxy-cidrs: {{ .Values.api.security.trustedProxyCidrs | toJson | quote }}
+  cors: {{ .Values.api.security.cors | toJson | quote }}
   console-runtime.js: |
     window.__DATAOBS_CONFIG__ = Object.freeze({apiBaseUrl: {{ .Values.console.apiBaseUrl | toJson }}, oidcIssuer: {{ .Values.external.oidc.issuer | toJson }}, oidcClientId: {{ .Values.external.oidc.clientId | toJson }}});

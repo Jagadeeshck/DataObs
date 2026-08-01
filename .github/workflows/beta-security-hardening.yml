@@ -1,0 +1,48 @@
+name: Beta security hardening
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  security:
+    runs-on: ubuntu-latest
+    services:
+      elasticsearch:
+        image: docker.elastic.co/elasticsearch/elasticsearch:9.4.2
+        env:
+          discovery.type: single-node
+          xpack.security.enabled: "false"
+        ports: ["9200:9200"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install -r requirements.txt
+      - name: Compile and validate explicit route policy
+        run: |
+          python -m compileall -q src services tests scripts
+          python scripts/security/check_route_permissions.py
+      - name: OIDC, JWKS, IAM, tenant and HTTP security tests
+        run: python -m pytest tests/security tests/certification -q --junitxml=security.xml
+      - name: Migration immutability
+        run: python scripts/check_migration_immutability.py --base-ref origin/main
+      - name: Console PKCE and browser security
+        working-directory: ui/dataobs-console
+        run: corepack enable && pnpm install --frozen-lockfile && pnpm test && pnpm build
+      - name: Helm security rendering
+        run: helm lint helm/dataobs && helm template dataobs helm/dataobs --values helm/dataobs/values-production.yaml >/tmp/dataobs-security-production.yaml
+      - name: Build exact-commit evidence
+        run: |
+          mkdir -p beta-security-hardening-evidence
+          printf '{"repository":"%s","final_sha":"%s","base_sha":"%s","elasticsearch_version":"9.4.2","terminal_migration":"0021_lineage_analysis_explorer","certification_status":"functional_unvalidated"}\n' "$GITHUB_REPOSITORY" "$GITHUB_SHA" "${{ github.event.pull_request.base.sha || github.event.before }}" > beta-security-hardening-evidence/manifest.json
+          cp security.xml beta-security-hardening-evidence/
+          python -m json.tool beta-security-hardening-evidence/manifest.json >/dev/null
+          ! grep -RInE 'Bearer[[:space:]]+[A-Za-z0-9._-]+|client_secret|private_key' beta-security-hardening-evidence
+      - uses: actions/upload-artifact@v4
+        with:
+          name: beta-security-hardening-evidence
+          path: beta-security-hardening-evidence
+          retention-days: 30

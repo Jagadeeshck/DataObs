@@ -80,6 +80,18 @@
             },
             "verifyCertificates": {
               "type": "boolean"
+            },
+            "caSecretName": {
+              "type": "string",
+              "minLength": 1
+            },
+            "fingerprintSecretName": {
+              "type": "string",
+              "minLength": 1
+            },
+            "fingerprintKey": {
+              "type": "string",
+              "minLength": 1
             }
           }
         },
@@ -205,6 +217,98 @@
               "maximum": 65535
             }
           }
+        },
+        "security": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "authorizationSource": {
+              "enum": [
+                "claims",
+                "bindings",
+                "intersection"
+              ]
+            },
+            "bootstrapEnabled": {
+              "type": "boolean"
+            },
+            "trustedProxyCidrs": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "externalScheme": {
+              "enum": [
+                "http",
+                "https"
+              ]
+            },
+            "cors": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "allowedOrigins": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "allowedMethods": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "allowedHeaders": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "exposedHeaders": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "allowCredentials": {
+                  "type": "boolean"
+                },
+                "maxAge": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 86400
+                }
+              }
+            }
+          }
+        },
+        "oidc": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "maximumTokenLifetimeSeconds": {
+              "type": "integer",
+              "minimum": 60,
+              "maximum": 86400
+            },
+            "allowedAuthorisedParties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "allowedTokenTypes": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "requireJtiForServiceTokens": {
+              "type": "boolean"
+            }
+          }
         }
       }
     },
@@ -297,6 +401,27 @@
               "type": "integer",
               "minimum": 1,
               "maximum": 65535
+            }
+          }
+        },
+        "securityHeaders": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "contentSecurityPolicy": {
+              "type": "string"
+            },
+            "strictTransportSecurity": {
+              "type": "string"
+            },
+            "xContentTypeOptions": {
+              "type": "string"
+            },
+            "referrerPolicy": {
+              "type": "string"
+            },
+            "permissionsPolicy": {
+              "type": "string"
             }
           }
         }

@@ -1,0 +1,2 @@
+# Production security configuration
+Set OIDC issuer/audience and asymmetric algorithms, `DATAOBS_AUTHORIZATION_SOURCE=bindings` (or `intersection`), Elasticsearch HTTPS credentials plus CA or fingerprint, TLS verification, exact CORS origins, trusted proxy CIDRs, and authoritative external HTTPS scheme. Production rejects claims-only authorization, dev auth, URL credentials, insecure Elasticsearch, unsafe CORS, missing stores, and malformed bootstrap. Health errors are sanitized.

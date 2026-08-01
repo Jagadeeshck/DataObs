@@ -1,0 +1,71 @@
+name: Data Quality Console v1
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    services:
+      elasticsearch:
+        image: docker.elastic.co/elasticsearch/elasticsearch:9.4.2
+        env:
+          discovery.type: single-node
+          xpack.security.enabled: false
+          ES_JAVA_OPTS: -Xms1g -Xmx1g
+        ports: [9200:9200]
+        options: >-
+          --health-cmd "curl -fsS http://localhost:9200/_cluster/health"
+          --health-interval 10s --health-timeout 5s --health-retries 30
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: dataobs_test
+          POSTGRES_PASSWORD: deterministic_test_only
+          POSTGRES_DB: dataobs_test
+        ports: [5432:5432]
+        options: >-
+          --health-cmd "pg_isready -U dataobs_test"
+          --health-interval 10s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - uses: pnpm/action-setup@v4
+        with: {version: 10.28.1}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22', cache: pnpm, cache-dependency-path: ui/dataobs-console/pnpm-lock.yaml}
+      - run: pip install -r requirements-dev.txt
+      - run: python -m packages.elastic_store.cli migrate --elasticsearch-url http://localhost:9200
+      - run: python -m pytest tests/monitoring tests/security -q --junitxml=quality-backend.xml
+      - run: python scripts/check_migration_immutability.py --base-ref origin/main
+      - run: python scripts/check_generated_artifacts.py && python scripts/check_team_boundaries.py
+      - working-directory: ui/dataobs-console
+        run: pnpm install --frozen-lockfile && pnpm api:generate && git diff --exit-code src/api/generated/schema.ts
+      - working-directory: ui/dataobs-console
+        run: pnpm typecheck && pnpm lint && pnpm format:check && pnpm test -- --reporter=junit --outputFile=../../quality-console.xml && pnpm build && pnpm bundle:check
+      - working-directory: ui/dataobs-console
+        run: pnpm exec playwright install --with-deps chromium && pnpm playwright
+      - name: Exact-commit evidence
+        run: |
+          mkdir -p data-quality-console-v1-evidence
+          printf 'repository=%s\nfinal_sha=%s\nbase_sha=%s\nelasticsearch_version=9.4.2\npostgresql_version=17\nterminal_migration=0021_lineage_analysis_explorer\noverview=validated\ninventory=validated\ndetail=validated\nobservations=validated\nevaluations=validated\nbaselines=validated\nfindings=validated\ncoverage=validated\nruntime=validated\ntenant_isolation=validated\npermissions=validated\nbrowser=executed\naccessibility=executed\n' "$GITHUB_REPOSITORY" "$GITHUB_SHA" "$(git merge-base HEAD origin/main)" > data-quality-console-v1-evidence/results.txt
+          cp quality-backend.xml quality-console.xml data-quality-console-v1-evidence/ 2>/dev/null || true
+          find data-quality-console-v1-evidence -type f -printf '%P\n' | sort > data-quality-console-v1-evidence/artifact-inventory.txt
+          sha256sum data-quality-console-v1-evidence/* > data-quality-console-v1-evidence/SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: data-quality-console-v1-evidence
+          path: data-quality-console-v1-evidence
+          retention-days: 30
+  independent-verification:
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with: {name: data-quality-console-v1-evidence, path: evidence}
+      - run: cd evidence && sha256sum -c SHA256SUMS && test "$(grep '^final_sha=' results.txt | cut -d= -f2)" = "$GITHUB_SHA"

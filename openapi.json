@@ -5613,6 +5613,125 @@
           },
           {
             "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "in": "query",
+            "name": "health",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 32,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Health"
+            }
+          },
+          {
+            "in": "query",
+            "name": "retention_risk",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 32,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Retention Risk"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cluster_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 256,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cluster Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "consumer_group_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 256,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Consumer Group Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "has_lag",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Has Lag"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "topic",
+              "enum": [
+                "topic",
+                "last_observed",
+                "maximum_lag",
+                "throughput",
+                "retention_risk",
+                "health"
+              ],
+              "title": "Sort",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
             "name": "_root",
             "required": false,
             "schema": {
@@ -15238,6 +15357,219 @@
             }
           },
           {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "in": "query",
+            "name": "state",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "State"
+            }
+          },
+          {
+            "in": "query",
+            "name": "monitor_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Monitor Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "threshold_mode",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Threshold Mode"
+            }
+          },
+          {
+            "in": "query",
+            "name": "managed_by",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Managed By"
+            }
+          },
+          {
+            "in": "query",
+            "name": "creation_source",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Creation Source"
+            }
+          },
+          {
+            "in": "query",
+            "name": "asset_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Asset Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "field_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Field Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "source_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Source Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "has_open_findings",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Has Open Findings"
+            }
+          },
+          {
+            "in": "query",
+            "name": "has_incident",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Has Incident"
+            }
+          },
+          {
+            "in": "query",
+            "name": "is_stale",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Is Stale"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "last_updated",
+              "enum": [
+                "name",
+                "last_updated",
+                "state",
+                "monitor_type",
+                "last_observation",
+                "last_evaluation",
+                "open_findings",
+                "severity"
+              ],
+              "title": "Sort",
+              "type": "string"
+            }
+          },
+          {
             "in": "header",
             "name": "authorization",
             "required": false,
@@ -16300,6 +16632,18 @@
             }
           },
           {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
             "in": "header",
             "name": "authorization",
             "required": false,
@@ -16890,8 +17234,45 @@
     },
     "/api/v1/pathway-slos": {
       "get": {
-        "operationId": "pathway_slos_api_v1_pathway_slos_get",
+        "operationId": "slos_api_v1_pathway_slos_get",
         "parameters": [
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
           {
             "in": "header",
             "name": "authorization",
@@ -16945,7 +17326,11 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Slos Api V1 Pathway Slos Get",
+                  "type": "object"
+                }
               }
             },
             "description": "Successful Response"
@@ -16966,11 +17351,23 @@
             "HTTPBearer": []
           }
         ],
-        "summary": "Pathway Slos"
+        "summary": "Slos",
+        "tags": [
+          "pathways"
+        ]
       },
       "post": {
-        "operationId": "create_pathway_slo_api_v1_pathway_slos_post",
+        "operationId": "create_slo_api_v1_pathway_slos_post",
         "parameters": [
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
+              "type": "string"
+            }
+          },
           {
             "in": "header",
             "name": "authorization",
@@ -17036,7 +17433,11 @@
           "201": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Create Slo Api V1 Pathway Slos Post",
+                  "type": "object"
+                }
               }
             },
             "description": "Successful Response"
@@ -17057,12 +17458,15 @@
             "HTTPBearer": []
           }
         ],
-        "summary": "Create Pathway Slo"
+        "summary": "Create Slo",
+        "tags": [
+          "pathways"
+        ]
       }
     },
     "/api/v1/pathway-slos/{slo_id}": {
       "delete": {
-        "operationId": "delete_pathway_slo_api_v1_pathway_slos__slo_id__delete",
+        "operationId": "delete_slo_api_v1_pathway_slos__slo_id__delete",
         "parameters": [
           {
             "in": "path",
@@ -17071,6 +17475,31 @@
             "schema": {
               "title": "Slo Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "if-match",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "If-Match"
             }
           },
           {
@@ -17142,10 +17571,13 @@
             "HTTPBearer": []
           }
         ],
-        "summary": "Delete Pathway Slo"
+        "summary": "Delete Slo",
+        "tags": [
+          "pathways"
+        ]
       },
-      "patch": {
-        "operationId": "update_pathway_slo_api_v1_pathway_slos__slo_id__patch",
+      "get": {
+        "operationId": "get_slo_api_v1_pathway_slos__slo_id__get",
         "parameters": [
           {
             "in": "path",
@@ -17153,6 +17585,119 @@
             "required": true,
             "schema": {
               "title": "Slo Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DataObs-Tenant",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dataobs-Tenant"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DataObs-Environment",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dataobs-Environment"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Slo Api V1 Pathway Slos  Slo Id  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Slo",
+        "tags": [
+          "pathways"
+        ]
+      },
+      "patch": {
+        "operationId": "patch_slo_api_v1_pathway_slos__slo_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slo_id",
+            "required": true,
+            "schema": {
+              "title": "Slo Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
               "type": "string"
             }
           },
@@ -17237,7 +17782,11 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Patch Slo Api V1 Pathway Slos  Slo Id  Patch",
+                  "type": "object"
+                }
               }
             },
             "description": "Successful Response"
@@ -17258,13 +17807,53 @@
             "HTTPBearer": []
           }
         ],
-        "summary": "Update Pathway Slo"
+        "summary": "Patch Slo",
+        "tags": [
+          "pathways"
+        ]
       }
     },
     "/api/v1/pathways": {
       "get": {
         "operationId": "pathways_api_v1_pathways_get",
         "parameters": [
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
           {
             "in": "header",
             "name": "authorization",
@@ -17318,7 +17907,11 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Pathways Api V1 Pathways Get",
+                  "type": "object"
+                }
               }
             },
             "description": "Successful Response"
@@ -17339,7 +17932,981 @@
             "HTTPBearer": []
           }
         ],
-        "summary": "Pathways"
+        "summary": "Pathways",
+        "tags": [
+          "pathways"
+        ]
+      }
+    },
+    "/api/v1/pathways/search": {
+      "post": {
+        "operationId": "pathway_search_api_v1_pathways_search_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DataObs-Tenant",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dataobs-Tenant"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DataObs-Environment",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dataobs-Environment"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Pathway Search Api V1 Pathways Search Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Pathway Search",
+        "tags": [
+          "pathways"
+        ]
+      }
+    },
+    "/api/v1/pathways/{pathway_id}": {
+      "get": {
+        "operationId": "pathway_api_v1_pathways__pathway_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "pathway_id",
+            "required": true,
+            "schema": {
+              "title": "Pathway Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DataObs-Tenant",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dataobs-Tenant"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DataObs-Environment",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dataobs-Environment"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Pathway Api V1 Pathways  Pathway Id  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Pathway",
+        "tags": [
+          "pathways"
+        ]
+      }
+    },
+    "/api/v1/pathways/{pathway_id}/bottlenecks": {
+      "get": {
+        "operationId": "pathway_bottlenecks_api_v1_pathways__pathway_id__bottlenecks_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "pathway_id",
+            "required": true,
+            "schema": {
+              "title": "Pathway Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "view",
+            "required": false,
+            "schema": {
+              "default": "latency",
+              "pattern": "^(latency|reliability|backlog|retention_risk)$",
+              "title": "View",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DataObs-Tenant",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dataobs-Tenant"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DataObs-Environment",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dataobs-Environment"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Pathway Bottlenecks Api V1 Pathways  Pathway Id  Bottlenecks Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Pathway Bottlenecks",
+        "tags": [
+          "pathways"
+        ]
+      }
+    },
+    "/api/v1/pathways/{pathway_id}/compare": {
+      "post": {
+        "operationId": "compare_api_v1_pathways__pathway_id__compare_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "pathway_id",
+            "required": true,
+            "schema": {
+              "title": "Pathway Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DataObs-Tenant",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dataobs-Tenant"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DataObs-Environment",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dataobs-Environment"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Compare Api V1 Pathways  Pathway Id  Compare Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Compare",
+        "tags": [
+          "pathways"
+        ]
+      }
+    },
+    "/api/v1/pathways/{pathway_id}/health": {
+      "get": {
+        "operationId": "health_api_v1_pathways__pathway_id__health_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "pathway_id",
+            "required": true,
+            "schema": {
+              "title": "Pathway Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DataObs-Tenant",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dataobs-Tenant"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DataObs-Environment",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dataobs-Environment"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Health Api V1 Pathways  Pathway Id  Health Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Health",
+        "tags": [
+          "pathways"
+        ]
+      }
+    },
+    "/api/v1/pathways/{pathway_id}/impact": {
+      "get": {
+        "operationId": "impact_api_v1_pathways__pathway_id__impact_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "pathway_id",
+            "required": true,
+            "schema": {
+              "title": "Pathway Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DataObs-Tenant",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dataobs-Tenant"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DataObs-Environment",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dataobs-Environment"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Impact Api V1 Pathways  Pathway Id  Impact Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Impact",
+        "tags": [
+          "pathways"
+        ]
+      }
+    },
+    "/api/v1/pathways/{pathway_id}/latency": {
+      "get": {
+        "operationId": "pathway_latency_api_v1_pathways__pathway_id__latency_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "pathway_id",
+            "required": true,
+            "schema": {
+              "title": "Pathway Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DataObs-Tenant",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dataobs-Tenant"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DataObs-Environment",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dataobs-Environment"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Pathway Latency Api V1 Pathways  Pathway Id  Latency Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Pathway Latency",
+        "tags": [
+          "pathways"
+        ]
+      }
+    },
+    "/api/v1/pathways/{pathway_id}/metrics": {
+      "get": {
+        "operationId": "metrics_api_v1_pathways__pathway_id__metrics_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "pathway_id",
+            "required": true,
+            "schema": {
+              "title": "Pathway Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DataObs-Tenant",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dataobs-Tenant"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DataObs-Environment",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dataobs-Environment"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Metrics Api V1 Pathways  Pathway Id  Metrics Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Metrics",
+        "tags": [
+          "pathways"
+        ]
+      }
+    },
+    "/api/v1/pathways/{pathway_id}/topology": {
+      "get": {
+        "operationId": "topology_api_v1_pathways__pathway_id__topology_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "pathway_id",
+            "required": true,
+            "schema": {
+              "title": "Pathway Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DataObs-Tenant",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dataobs-Tenant"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DataObs-Environment",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dataobs-Environment"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Topology Api V1 Pathways  Pathway Id  Topology Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Topology",
+        "tags": [
+          "pathways"
+        ]
       }
     },
     "/api/v1/pillars": {
@@ -17598,10 +19165,173 @@
         ]
       }
     },
-    "/api/v1/quality/monitors": {
+    "/api/v1/quality/findings": {
       "get": {
-        "operationId": "list_monitors_api_v1_quality_monitors_get",
+        "operationId": "global_findings_api_v1_quality_findings_get",
         "parameters": [
+          {
+            "in": "query",
+            "name": "state",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "State"
+            }
+          },
+          {
+            "in": "query",
+            "name": "severity",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Severity"
+            }
+          },
+          {
+            "in": "query",
+            "name": "monitor_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Monitor Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "asset_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Asset Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "incident_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Incident Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "product_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Product Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "in": "query",
+            "name": "start",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Start"
+            }
+          },
+          {
+            "in": "query",
+            "name": "end",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "End"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "newest",
+              "enum": [
+                "newest",
+                "oldest",
+                "severity",
+                "state"
+              ],
+              "title": "Sort",
+              "type": "string"
+            }
+          },
           {
             "in": "query",
             "name": "limit",
@@ -17683,9 +19413,332 @@
           "200": {
             "content": {
               "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/MonitorPage"
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Global Findings",
+        "tags": [
+          "monitoring"
+        ]
+      }
+    },
+    "/api/v1/quality/monitors": {
+      "get": {
+        "operationId": "list_monitors_api_v1_quality_monitors_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "in": "query",
+            "name": "state",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "State"
+            }
+          },
+          {
+            "in": "query",
+            "name": "monitor_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Monitor Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "threshold_mode",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Threshold Mode"
+            }
+          },
+          {
+            "in": "query",
+            "name": "managed_by",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Managed By"
+            }
+          },
+          {
+            "in": "query",
+            "name": "creation_source",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Creation Source"
+            }
+          },
+          {
+            "in": "query",
+            "name": "asset_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Asset Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "field_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Field Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "source_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Source Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "has_open_findings",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Has Open Findings"
+            }
+          },
+          {
+            "in": "query",
+            "name": "has_incident",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Has Incident"
+            }
+          },
+          {
+            "in": "query",
+            "name": "is_stale",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Is Stale"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "last_updated",
+              "enum": [
+                "name",
+                "last_updated",
+                "state",
+                "monitor_type",
+                "last_observation",
+                "last_evaluation",
+                "open_findings",
+                "severity"
+              ],
+              "title": "Sort",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DataObs-Tenant",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dataobs-Tenant"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DataObs-Environment",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dataobs-Environment"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
               }
             },
             "description": "Successful Response"
@@ -17979,9 +20032,7 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MonitorDefinition"
-                }
+                "schema": {}
               }
             },
             "description": "Successful Response"
@@ -18792,6 +20843,18 @@
             }
           },
           {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
             "in": "header",
             "name": "authorization",
             "required": false,
@@ -19482,6 +21545,91 @@
           }
         ],
         "summary": "Create Suppression",
+        "tags": [
+          "monitoring"
+        ]
+      }
+    },
+    "/api/v1/quality/overview": {
+      "get": {
+        "description": "Bounded definition summary; unavailable evidence remains explicitly unknown.",
+        "operationId": "quality_overview_api_v1_quality_overview_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DataObs-Tenant",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dataobs-Tenant"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DataObs-Environment",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dataobs-Environment"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Quality Overview",
         "tags": [
           "monitoring"
         ]
@@ -22570,6 +24718,125 @@
           },
           {
             "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "in": "query",
+            "name": "health",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 32,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Health"
+            }
+          },
+          {
+            "in": "query",
+            "name": "retention_risk",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 32,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Retention Risk"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cluster_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 256,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cluster Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "consumer_group_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 256,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Consumer Group Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "has_lag",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Has Lag"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "topic",
+              "enum": [
+                "topic",
+                "last_observed",
+                "maximum_lag",
+                "throughput",
+                "retention_risk",
+                "health"
+              ],
+              "title": "Sort",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
             "name": "_root",
             "required": false,
             "schema": {
@@ -23637,6 +25904,125 @@
           },
           {
             "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "in": "query",
+            "name": "health",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 32,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Health"
+            }
+          },
+          {
+            "in": "query",
+            "name": "retention_risk",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 32,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Retention Risk"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cluster_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 256,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cluster Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "consumer_group_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 256,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Consumer Group Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "has_lag",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Has Lag"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "topic",
+              "enum": [
+                "topic",
+                "last_observed",
+                "maximum_lag",
+                "throughput",
+                "retention_risk",
+                "health"
+              ],
+              "title": "Sort",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
             "name": "_root",
             "required": false,
             "schema": {
@@ -23863,27 +26249,151 @@
             "name": "environment",
             "required": true,
             "schema": {
+              "maxLength": 64,
+              "minLength": 1,
               "title": "Environment",
               "type": "string"
             }
           },
           {
             "in": "query",
-            "name": "_root",
+            "name": "limit",
             "required": false,
             "schema": {
-              "default": "stream-clusters",
-              "title": " Root",
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "in": "query",
+            "name": "health",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 32,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Health"
+            }
+          },
+          {
+            "in": "query",
+            "name": "retention_risk",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 32,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Retention Risk"
+            }
+          },
+          {
+            "in": "query",
+            "name": "has_lag",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Has Lag"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 32,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sort"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_section",
+            "required": false,
+            "schema": {
+              "default": "brokers",
+              "title": " Section",
               "type": "string"
             }
           },
           {
             "in": "query",
-            "name": "_name",
+            "name": "_related_resource",
             "required": false,
             "schema": {
               "default": "brokers",
-              "title": " Name",
+              "title": " Related Resource",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_default_sort",
+            "required": false,
+            "schema": {
+              "default": "name",
+              "title": " Default Sort",
               "type": "string"
             }
           },
@@ -23965,7 +26475,7 @@
             "HTTPBearer": []
           }
         ],
-        "summary": "Get Stream-Clusters Brokers",
+        "summary": "Get Stream Clusters Brokers",
         "tags": [
           "stream-360"
         ]
@@ -23973,7 +26483,7 @@
     },
     "/api/v1/stream-clusters/{resource_id}/changes": {
       "get": {
-        "operationId": "get_stream_clusters_changes_api_v1_stream_clusters__resource_id__changes_get",
+        "operationId": "cluster_changes_api_v1_stream_clusters__resource_id__changes_get",
         "parameters": [
           {
             "in": "path",
@@ -23990,26 +26500,6 @@
             "required": true,
             "schema": {
               "title": "Environment",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "_root",
-            "required": false,
-            "schema": {
-              "default": "stream-clusters",
-              "title": " Root",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "_name",
-            "required": false,
-            "schema": {
-              "default": "changes",
-              "title": " Name",
               "type": "string"
             }
           },
@@ -24068,7 +26558,7 @@
               "application/json": {
                 "schema": {
                   "additionalProperties": true,
-                  "title": "Response Get Stream Clusters Changes Api V1 Stream Clusters  Resource Id  Changes Get",
+                  "title": "Response Cluster Changes Api V1 Stream Clusters  Resource Id  Changes Get",
                   "type": "object"
                 }
               }
@@ -24091,7 +26581,7 @@
             "HTTPBearer": []
           }
         ],
-        "summary": "Get Stream-Clusters Changes",
+        "summary": "Cluster Changes",
         "tags": [
           "stream-360"
         ]
@@ -24241,27 +26731,151 @@
             "name": "environment",
             "required": true,
             "schema": {
+              "maxLength": 64,
+              "minLength": 1,
               "title": "Environment",
               "type": "string"
             }
           },
           {
             "in": "query",
-            "name": "_root",
+            "name": "limit",
             "required": false,
             "schema": {
-              "default": "stream-clusters",
-              "title": " Root",
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "in": "query",
+            "name": "health",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 32,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Health"
+            }
+          },
+          {
+            "in": "query",
+            "name": "retention_risk",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 32,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Retention Risk"
+            }
+          },
+          {
+            "in": "query",
+            "name": "has_lag",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Has Lag"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 32,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sort"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_section",
+            "required": false,
+            "schema": {
+              "default": "connectors",
+              "title": " Section",
               "type": "string"
             }
           },
           {
             "in": "query",
-            "name": "_name",
+            "name": "_related_resource",
             "required": false,
             "schema": {
               "default": "connectors",
-              "title": " Name",
+              "title": " Related Resource",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_default_sort",
+            "required": false,
+            "schema": {
+              "default": "name",
+              "title": " Default Sort",
               "type": "string"
             }
           },
@@ -24343,7 +26957,7 @@
             "HTTPBearer": []
           }
         ],
-        "summary": "Get Stream-Clusters Connectors",
+        "summary": "Get Stream Clusters Connectors",
         "tags": [
           "stream-360"
         ]
@@ -24367,27 +26981,151 @@
             "name": "environment",
             "required": true,
             "schema": {
+              "maxLength": 64,
+              "minLength": 1,
               "title": "Environment",
               "type": "string"
             }
           },
           {
             "in": "query",
-            "name": "_root",
+            "name": "limit",
             "required": false,
             "schema": {
-              "default": "stream-clusters",
-              "title": " Root",
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "in": "query",
+            "name": "health",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 32,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Health"
+            }
+          },
+          {
+            "in": "query",
+            "name": "retention_risk",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 32,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Retention Risk"
+            }
+          },
+          {
+            "in": "query",
+            "name": "has_lag",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Has Lag"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 32,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sort"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_section",
+            "required": false,
+            "schema": {
+              "default": "consumer-groups",
+              "title": " Section",
               "type": "string"
             }
           },
           {
             "in": "query",
-            "name": "_name",
+            "name": "_related_resource",
             "required": false,
             "schema": {
-              "default": "consumer-groups",
-              "title": " Name",
+              "default": "consumer_groups",
+              "title": " Related Resource",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_default_sort",
+            "required": false,
+            "schema": {
+              "default": "name",
+              "title": " Default Sort",
               "type": "string"
             }
           },
@@ -24469,7 +27207,7 @@
             "HTTPBearer": []
           }
         ],
-        "summary": "Get Stream-Clusters Consumer-Groups",
+        "summary": "Get Stream Clusters Consumer-Groups",
         "tags": [
           "stream-360"
         ]
@@ -24477,7 +27215,7 @@
     },
     "/api/v1/stream-clusters/{resource_id}/health": {
       "get": {
-        "operationId": "get_stream_clusters_health_api_v1_stream_clusters__resource_id__health_get",
+        "operationId": "cluster_health_api_v1_stream_clusters__resource_id__health_get",
         "parameters": [
           {
             "in": "path",
@@ -24494,26 +27232,6 @@
             "required": true,
             "schema": {
               "title": "Environment",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "_root",
-            "required": false,
-            "schema": {
-              "default": "stream-clusters",
-              "title": " Root",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "_name",
-            "required": false,
-            "schema": {
-              "default": "health",
-              "title": " Name",
               "type": "string"
             }
           },
@@ -24572,7 +27290,7 @@
               "application/json": {
                 "schema": {
                   "additionalProperties": true,
-                  "title": "Response Get Stream Clusters Health Api V1 Stream Clusters  Resource Id  Health Get",
+                  "title": "Response Cluster Health Api V1 Stream Clusters  Resource Id  Health Get",
                   "type": "object"
                 }
               }
@@ -24595,7 +27313,7 @@
             "HTTPBearer": []
           }
         ],
-        "summary": "Get Stream-Clusters Health",
+        "summary": "Cluster Health",
         "tags": [
           "stream-360"
         ]
@@ -24603,7 +27321,7 @@
     },
     "/api/v1/stream-clusters/{resource_id}/incidents": {
       "get": {
-        "operationId": "get_stream_clusters_incidents_api_v1_stream_clusters__resource_id__incidents_get",
+        "operationId": "cluster_incidents_api_v1_stream_clusters__resource_id__incidents_get",
         "parameters": [
           {
             "in": "path",
@@ -24620,26 +27338,6 @@
             "required": true,
             "schema": {
               "title": "Environment",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "_root",
-            "required": false,
-            "schema": {
-              "default": "stream-clusters",
-              "title": " Root",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "_name",
-            "required": false,
-            "schema": {
-              "default": "incidents",
-              "title": " Name",
               "type": "string"
             }
           },
@@ -24698,7 +27396,7 @@
               "application/json": {
                 "schema": {
                   "additionalProperties": true,
-                  "title": "Response Get Stream Clusters Incidents Api V1 Stream Clusters  Resource Id  Incidents Get",
+                  "title": "Response Cluster Incidents Api V1 Stream Clusters  Resource Id  Incidents Get",
                   "type": "object"
                 }
               }
@@ -24721,7 +27419,7 @@
             "HTTPBearer": []
           }
         ],
-        "summary": "Get Stream-Clusters Incidents",
+        "summary": "Cluster Incidents",
         "tags": [
           "stream-360"
         ]
@@ -24745,27 +27443,151 @@
             "name": "environment",
             "required": true,
             "schema": {
+              "maxLength": 64,
+              "minLength": 1,
               "title": "Environment",
               "type": "string"
             }
           },
           {
             "in": "query",
-            "name": "_root",
+            "name": "limit",
             "required": false,
             "schema": {
-              "default": "stream-clusters",
-              "title": " Root",
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "in": "query",
+            "name": "health",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 32,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Health"
+            }
+          },
+          {
+            "in": "query",
+            "name": "retention_risk",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 32,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Retention Risk"
+            }
+          },
+          {
+            "in": "query",
+            "name": "has_lag",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Has Lag"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 32,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sort"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_section",
+            "required": false,
+            "schema": {
+              "default": "topics",
+              "title": " Section",
               "type": "string"
             }
           },
           {
             "in": "query",
-            "name": "_name",
+            "name": "_related_resource",
             "required": false,
             "schema": {
-              "default": "topics",
-              "title": " Name",
+              "default": "streams",
+              "title": " Related Resource",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_default_sort",
+            "required": false,
+            "schema": {
+              "default": "topic",
+              "title": " Default Sort",
               "type": "string"
             }
           },
@@ -24847,7 +27669,7 @@
             "HTTPBearer": []
           }
         ],
-        "summary": "Get Stream-Clusters Topics",
+        "summary": "Get Stream Clusters Topics",
         "tags": [
           "stream-360"
         ]
@@ -24894,6 +27716,125 @@
                 }
               ],
               "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "in": "query",
+            "name": "health",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 32,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Health"
+            }
+          },
+          {
+            "in": "query",
+            "name": "retention_risk",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 32,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Retention Risk"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cluster_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 256,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cluster Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "consumer_group_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 256,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Consumer Group Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "has_lag",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Has Lag"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "topic",
+              "enum": [
+                "topic",
+                "last_observed",
+                "maximum_lag",
+                "throughput",
+                "retention_risk",
+                "health"
+              ],
+              "title": "Sort",
+              "type": "string"
             }
           },
           {
@@ -26080,6 +29021,15 @@
         "operationId": "stream_topology_api_v1_stream_topology_get",
         "parameters": [
           {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
+              "type": "string"
+            }
+          },
+          {
             "in": "header",
             "name": "authorization",
             "required": false,
@@ -26132,7 +29082,11 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Stream Topology Api V1 Stream Topology Get",
+                  "type": "object"
+                }
               }
             },
             "description": "Successful Response"
@@ -26153,13 +29107,73 @@
             "HTTPBearer": []
           }
         ],
-        "summary": "Stream Topology"
+        "summary": "Stream Topology",
+        "tags": [
+          "pathways"
+        ]
       }
     },
     "/api/v1/stream-topology/edges": {
       "get": {
-        "operationId": "stream_edges_api_v1_stream_topology_edges_get",
+        "operationId": "stream_topology_edges_api_v1_stream_topology_edges_get",
         "parameters": [
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_suffix",
+            "required": false,
+            "schema": {
+              "default": "stream-topology/edges",
+              "title": " Suffix",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_index",
+            "required": false,
+            "schema": {
+              "default": "dataobs-pathway-definitions-v1-read",
+              "title": " Index",
+              "type": "string"
+            }
+          },
           {
             "in": "header",
             "name": "authorization",
@@ -26213,7 +29227,11 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Stream Topology Edges Api V1 Stream Topology Edges Get",
+                  "type": "object"
+                }
               }
             },
             "description": "Successful Response"
@@ -26234,13 +29252,73 @@
             "HTTPBearer": []
           }
         ],
-        "summary": "Stream Edges"
+        "summary": "Stream-Topology Edges",
+        "tags": [
+          "pathways"
+        ]
       }
     },
     "/api/v1/stream-topology/nodes": {
       "get": {
-        "operationId": "stream_nodes_api_v1_stream_topology_nodes_get",
+        "operationId": "stream_topology_nodes_api_v1_stream_topology_nodes_get",
         "parameters": [
+          {
+            "in": "query",
+            "name": "environment",
+            "required": true,
+            "schema": {
+              "title": "Environment",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_suffix",
+            "required": false,
+            "schema": {
+              "default": "stream-topology/nodes",
+              "title": " Suffix",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "_index",
+            "required": false,
+            "schema": {
+              "default": "dataobs-pathway-nodes-v1-read",
+              "title": " Index",
+              "type": "string"
+            }
+          },
           {
             "in": "header",
             "name": "authorization",
@@ -26294,7 +29372,11 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Stream Topology Nodes Api V1 Stream Topology Nodes Get",
+                  "type": "object"
+                }
               }
             },
             "description": "Successful Response"
@@ -26315,7 +29397,10 @@
             "HTTPBearer": []
           }
         ],
-        "summary": "Stream Nodes"
+        "summary": "Stream-Topology Nodes",
+        "tags": [
+          "pathways"
+        ]
       }
     },
     "/api/v1/streams": {
@@ -26359,6 +29444,125 @@
                 }
               ],
               "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "in": "query",
+            "name": "health",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 32,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Health"
+            }
+          },
+          {
+            "in": "query",
+            "name": "retention_risk",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 32,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Retention Risk"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cluster_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 256,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cluster Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "consumer_group_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 256,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Consumer Group Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "has_lag",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Has Lag"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "topic",
+              "enum": [
+                "topic",
+                "last_observed",
+                "maximum_lag",
+                "throughput",
+                "retention_risk",
+                "health"
+              ],
+              "title": "Sort",
+              "type": "string"
             }
           },
           {

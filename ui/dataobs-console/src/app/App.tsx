@@ -1,10 +1,37 @@
-import { lazy, Suspense, type ComponentType } from "react";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { lazy, Suspense, type ComponentType, type ReactNode } from "react";
+import {
+  BrowserRouter,
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+} from "react-router-dom";
 import { AppShell } from "../layouts/AppShell";
 import { ProductContextProvider } from "../state/context";
 import { NotFound, RouteBoundary } from "./RouteStates";
 import { consoleRoutes } from "./routes";
 import { NavigationTelemetry } from "../observability";
+import { useProductContext } from "../state/context";
+
+function PermissionGate({
+  permission,
+  children,
+}: {
+  permission?: string;
+  children: ReactNode;
+}) {
+  const { identity } = useProductContext();
+  const location = useLocation();
+  const allowed =
+    !permission ||
+    permission === "console:read" ||
+    identity?.permissions.includes(permission);
+  return allowed ? (
+    children
+  ) : (
+    <Navigate to="/unauthorised" replace state={{ from: location.pathname }} />
+  );
+}
 
 const lazyComponents = new Map<string, ComponentType>();
 
@@ -20,7 +47,7 @@ function componentFor(route: (typeof consoleRoutes)[number]) {
       <Suspense
         fallback={
           <p className="route-loading" role="status">
-            Loading {route.name}…
+            {route.loadingLabel}
           </p>
         }
       >
@@ -51,7 +78,11 @@ export function App() {
               <Route
                 key={route.id}
                 path={route.path}
-                element={componentFor(route)}
+                element={
+                  <PermissionGate permission={route.requiredPermission}>
+                    {componentFor(route)}
+                  </PermissionGate>
+                }
               />
             ))}
             <Route path="*" element={<NotFound />} />

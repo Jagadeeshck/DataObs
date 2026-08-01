@@ -1,0 +1,106 @@
+name: data-quality-console-v1
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  certify:
+    name: certify
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    services:
+      elasticsearch:
+        image: docker.elastic.co/elasticsearch/elasticsearch:9.4.2
+        env:
+          discovery.type: single-node
+          xpack.security.enabled: "false"
+        ports: ["9200:9200"]
+        options: >-
+          --health-cmd "curl --fail http://localhost:9200/_cluster/health"
+          --health-interval 10s --health-timeout 5s --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt pytest pytest-cov ruff black
+      - name: Bounded Elasticsearch readiness and version check
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p data-quality-console-v1-evidence/results
+          for attempt in {1..30}; do curl --fail --silent http://localhost:9200 >/tmp/es.json && break; sleep 2; done
+          test -s /tmp/es.json || { docker logs "${{ job.services.elasticsearch.id }}"; exit 1; }
+          python -c 'import json; d=json.load(open("/tmp/es.json")); assert d["version"]["number"] == "9.4.2"; print(d["version"]["number"])' | tee data-quality-console-v1-evidence/elasticsearch-version.txt
+      - name: Migration immutability
+        run: python scripts/check_migration_immutability.py --base-ref "${{ github.event.pull_request.base.sha || github.event.before || 'HEAD^' }}"
+      - uses: pnpm/action-setup@v4
+        with:
+          version: "10.28.1"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: ui/dataobs-console/pnpm-lock.yaml
+      - name: Quality monitor, lifecycle, tenancy and security tests
+        env:
+          ELASTICSEARCH_URL: http://localhost:9200
+        run: python -m pytest tests/monitoring tests/security tests/certification -q --junitxml=data-quality-console-v1-evidence/results/backend.xml
+      - name: Console static, unit and production checks
+        working-directory: ui/dataobs-console
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm api:generate
+          pnpm typecheck
+          pnpm lint
+          pnpm format:check
+          pnpm test -- --reporter=junit --outputFile=../../data-quality-console-v1-evidence/results/console.xml
+          pnpm build
+          pnpm bundle:check
+      - name: Install supported Playwright browser
+        working-directory: ui/dataobs-console
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Browser and accessibility tests
+        working-directory: ui/dataobs-console
+        env:
+          PLAYWRIGHT_JUNIT_OUTPUT_NAME: ../../data-quality-console-v1-evidence/results/browser.xml
+        run: pnpm exec playwright test --config=playwright.config.ts --reporter=junit,html
+      - name: Resolve numeric job ID and generate exact-commit evidence
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          JOB_ID=$(curl --fail --silent --retry 3 -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json"             "${{ github.api_url }}/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/jobs?per_page=100"             | python -c 'import json,sys; jobs=[j for j in json.load(sys.stdin)["jobs"] if j["name"] == "certify"]; assert len(jobs)==1; print(jobs[0]["id"])')
+          python scripts/certification/verify_product_evidence.py generate             --directory data-quality-console-v1-evidence --repository "${{ github.repository }}" --workflow "${{ github.workflow }}"             --run-id "${{ github.run_id }}" --job-id "$JOB_ID" --event "${{ github.event_name }}"             --elasticsearch-version "$(cat data-quality-console-v1-evidence/elasticsearch-version.txt)"             --python-version "$(python --version | cut -d' ' -f2)" --node-version "$(node --version)" --required-suite elasticsearch --required-suite quality --required-suite security --required-suite tenant --required-suite browser --required-suite accessibility
+      - name: Upload evidence and failure diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: data-quality-console-v1-evidence
+          path: |
+            data-quality-console-v1-evidence
+            /tmp/es.json
+          if-no-files-found: error
+          retention-days: 30
+  verify-evidence:
+    name: independently verify evidence
+    if: always()
+    needs: certify
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: data-quality-console-v1-evidence
+          path: downloaded-evidence
+      - name: Validate provenance, service version, migration and test XML
+        run: python scripts/certification/verify_product_evidence.py verify --directory downloaded-evidence/data-quality-console-v1-evidence --repository "${{ github.repository }}" --workflow "${{ github.workflow }}" --run-id "${{ github.run_id }}" --expected-sha "$(git rev-parse HEAD)" --required-suite elasticsearch --required-suite quality --required-suite security --required-suite tenant --required-suite browser --required-suite accessibility

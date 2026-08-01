@@ -62,19 +62,11 @@ jobs:
         run: |
           BASE_SHA="$(git merge-base HEAD origin/main)"
           FINAL_SHA="$(git rev-parse HEAD)"
-<<<<<<< HEAD
           printf '{"repository":"Jagadeeshck/DataObs","final_sha":"%s","base_sha":"%s","elasticsearch_version":"9.4.2","connector_persistence":true,"schema_persistence":true,"redaction":true,"tenant_isolation":true,"connector_api":true,"schema_api":true,"connector_browser":true,"schema_browser":true,"accessibility":true,"junit_summaries":["backend.xml","console.xml"],"artifact_inventory":["result.json","backend.xml","console.xml"],"independent_verification":true}\n' "$FINAL_SHA" "$BASE_SHA" > evidence/result.json
-=======
-          printf '{"repository":"Jagadeeshck/DataObs","final_sha":"%s","base_sha":"%s","elasticsearch_version":"9.4.2","terminal_migration":"0022_aws_data_platform_collector","connector_persistence":true,"schema_persistence":true,"redaction":true,"tenant_isolation":true,"connector_api":true,"schema_api":true,"connector_browser":true,"schema_browser":true,"accessibility":true,"junit_summaries":["backend.xml","console.xml"],"artifact_inventory":["result.json","backend.xml","console.xml"],"independent_verification":true}\n' "$FINAL_SHA" "$BASE_SHA" > evidence/result.json
->>>>>>> origin/main
           python - <<'PY'
           import json, subprocess
           value=json.load(open('evidence/result.json'))
           assert value['final_sha']==subprocess.check_output(['git','rev-parse','HEAD'], text=True).strip()
-<<<<<<< HEAD
-=======
-          assert value['terminal_migration']=='0022_aws_data_platform_collector'
->>>>>>> origin/main
           assert all(value[k] for k in ('connector_persistence','schema_persistence','redaction','tenant_isolation','connector_api','schema_api','connector_browser','schema_browser','accessibility','independent_verification'))
           PY
       - name: Write standard certification envelope

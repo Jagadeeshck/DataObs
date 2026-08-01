@@ -13,14 +13,13 @@ import urllib.parse
 import urllib.request
 import zipfile
 from collections.abc import Callable, Mapping, Sequence
-from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 import yaml  # type: ignore[import-untyped]
 
 SHA = re.compile(r"^[0-9a-f]{40}$")
-SUPPORTED_EVIDENCE_SCHEMAS = {"1.0", "1.1"}
+SUPPORTED_EVIDENCE_SCHEMAS = {"1.0"}
 
 
 def _get_json(url: str, token: str) -> Mapping[str, Any]:
@@ -76,7 +75,6 @@ def validate_evidence(
         errors.append("JUnit or equivalent test summary is missing")
     if not isinstance(evidence.get("tool_versions"), dict):
         errors.append("tool version metadata is missing")
-<<<<<<< HEAD
     if evidence.get("workflow_file") != entry.get("workflow"):
         errors.append("workflow file mismatch")
     if run is not None:
@@ -94,28 +92,6 @@ def validate_evidence(
     missing = set(entry.get("required_test_categories", ())) - categories
     if missing:
         errors.append("required test categories are missing")
-=======
-    if schema == "1.1":
-        if evidence.get("status") != "pass":
-            errors.append("mandatory evidence status is not pass")
-        if evidence.get("repository") != entry.get("repository", evidence.get("repository")):
-            errors.append("evidence repository mismatch")
-        if evidence.get("event") != "workflow_dispatch":
-            errors.append("evidence event is not workflow_dispatch")
-        if not isinstance(evidence.get("migration_count"), int) or evidence["migration_count"] < 1:
-            errors.append("migration count is missing")
-        if evidence.get("redaction_status") not in {"pass", "passed"}:
-            errors.append("redaction status is not pass")
-        if evidence.get("independent_verification_result") not in {"pass", "passed"}:
-            errors.append("independent verification is not pass")
-        skipped = evidence.get("skipped_test_summary", [])
-        if skipped not in ([], {}, None, {"count": 0}):
-            errors.append("mandatory evidence contains skipped tests")
-        categories = {x.get("category") for x in summaries if isinstance(x, dict)}
-        missing = set(entry.get("required_test_categories", [])) - categories
-        if missing:
-            errors.append("mandatory test categories are missing")
->>>>>>> origin/main
     return errors
 
 
@@ -175,28 +151,8 @@ def verify_entry(
             errors.append("required artifact is missing or ambiguous")
     if len(matching_artifacts) == 1:
         try:
-<<<<<<< HEAD
             evidence = load_evidence(matching_artifacts[0])
             errors.extend(validate_evidence(entry, evidence, target_sha, terminal, selected))
-=======
-            payload = load_evidence(matching_artifacts[0])
-            enriched = dict(entry)
-            enriched["repository"] = repository
-            errors.extend(validate_evidence(enriched, payload, target_sha, terminal))
-            run = candidates[0]
-            if payload.get("workflow_path") not in (None, run.get("path")):
-                errors.append("evidence workflow path mismatch")
-            if payload.get("workflow_run_attempt") not in (None, run.get("run_attempt")):
-                errors.append("workflow attempt mismatch")
-            if run.get("run_started_at") and payload.get("generated_at"):
-                if datetime.fromisoformat(payload["generated_at"].replace("Z", "+00:00")) < datetime.fromisoformat(
-                    run["run_started_at"].replace("Z", "+00:00")
-                ):
-                    errors.append("evidence predates workflow start")
-            for item in payload.get("artifact_inventory", []):
-                if isinstance(item, dict) and "sha256" in item and not re.fullmatch(r"[0-9a-f]{64}", item["sha256"]):
-                    errors.append("invalid artifact file hash")
->>>>>>> origin/main
         except (ValueError, KeyError, json.JSONDecodeError, zipfile.BadZipFile):
             errors.append("invalid evidence JSON")
     mandatory = bool(entry["mandatory_for_beta"])

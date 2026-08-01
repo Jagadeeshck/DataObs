@@ -9,6 +9,8 @@ import json
 import re
 from pathlib import Path
 
+from scripts.release.current_terminal_migration import migration_report
+
 SECRET = re.compile(
     r"(?i)(authorization:\s*bearer|api[_-]?key\s*[=:]|client[_-]?secret\s*[=:]|-----BEGIN .*PRIVATE KEY-----)"
 )
@@ -21,7 +23,11 @@ def verify(manifest_path: Path, evidence_dir: Path) -> dict:
         errors.append("publish status must be not_published")
     if not re.fullmatch(r"[0-9a-f]{40}", str(m.get("target_sha", ""))):
         errors.append("target SHA is invalid")
-    if m.get("terminal_migration") != "0022_aws_data_platform_collector" or m.get("migration_count") != 22:
+    migration = migration_report()
+    if (
+        m.get("terminal_migration") != migration["terminal_migration"]
+        or m.get("migration_count") != migration["migration_count"]
+    ):
         errors.append("migration registry metadata mismatch")
     for key in (
         "capability_evidence",

@@ -1,4 +1,4 @@
-name: Beta backup restore resilience
+name: Team 0 backup restore resilience
 on:
   workflow_dispatch:
   push: {branches: [main]}
@@ -31,4 +31,4 @@ jobs:
             --test-category tenant-isolation --supporting-file evidence/results/backup-restore.xml \
             --supporting-file evidence/results/backup-restore.json --tool-version "python=$(python --version | cut -d' ' -f2)"
       - uses: actions/upload-artifact@v4
-        with: {name: beta-backup-restore-v1-evidence, path: evidence, retention-days: 30}
+        with: {name: team-0-backup-restore-v1-evidence, path: evidence, retention-days: 30}

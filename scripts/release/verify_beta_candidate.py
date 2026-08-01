@@ -55,7 +55,10 @@ def _download_evidence(url: str, token: str) -> Mapping[str, Any]:
 
 
 def validate_evidence(
-    entry: Mapping[str, Any], evidence: Mapping[str, Any], target_sha: str, terminal: str,
+    entry: Mapping[str, Any],
+    evidence: Mapping[str, Any],
+    target_sha: str,
+    terminal: str,
     run: Mapping[str, Any] | None = None,
 ) -> list[str]:
     errors: list[str] = []
@@ -88,7 +91,9 @@ def validate_evidence(
         errors.append("redaction status is not pass")
     if evidence.get("status") != "pass":
         errors.append("overall evidence status is not pass")
-    categories = {item.get("category") for item in summaries if isinstance(item, dict)} if isinstance(summaries, list) else set()
+    categories = (
+        {item.get("category") for item in summaries if isinstance(item, dict)} if isinstance(summaries, list) else set()
+    )
     missing = set(entry.get("required_test_categories", ())) - categories
     if missing:
         errors.append("required test categories are missing")
@@ -104,6 +109,7 @@ def verify_entry(
     runs: Sequence[Mapping[str, Any]],
     artifacts: Sequence[Mapping[str, Any]],
     load_evidence: Callable[[Mapping[str, Any]], Mapping[str, Any]],
+    compatibility_aliases: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     expected_workflow = entry["workflow"]
     accepted_events = set(entry.get("accepted_events", ["workflow_dispatch"]))
@@ -140,13 +146,24 @@ def verify_entry(
     evidence: Mapping[str, Any] = {}
     if selected is not None and not errors:
         run_id = selected.get("id")
+        alias = (compatibility_aliases or {}).get(str(entry["artifact"]), {})
+        accepted_names = {str(entry["artifact"]), *alias.get("legacy_names", [])}
         matching_artifacts = [
             artifact
             for artifact in artifacts
             if artifact.get("workflow_run", {}).get("id") == run_id
-            and artifact.get("name") == entry["artifact"]
+            and artifact.get("name") in accepted_names
             and not artifact.get("expired", False)
         ]
+        if len(matching_artifacts) > 1 and alias.get("allow_byte_identical_coexistence"):
+            payloads = [load_evidence(item) for item in matching_artifacts]
+            encoded = {json.dumps(item, sort_keys=True, separators=(",", ":")) for item in payloads}
+            if len(encoded) == 1:
+                # The canonical artifact is authoritative when an explicitly allowed
+                # legacy upload is proven byte-identical.
+                canonical = [item for item in matching_artifacts if item.get("name") == entry["artifact"]]
+                if len(canonical) == 1:
+                    matching_artifacts = canonical
         if len(matching_artifacts) != 1:
             errors.append("required artifact is missing or ambiguous")
     if len(matching_artifacts) == 1:
@@ -207,6 +224,7 @@ def main() -> int:
                 runs=runs,
                 artifacts=artifacts,
                 load_evidence=lambda artifact: _download_evidence(artifact["archive_download_url"], token),
+                compatibility_aliases=manifest.get("compatibility_aliases", {}),
             )
         )
     report = {"schema_version": "1.0", "repository": args.repository, "target_sha": args.target_sha, "results": results}

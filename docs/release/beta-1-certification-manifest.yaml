@@ -1,4 +1,4 @@
-schema_version: "1.0"
+schema_version: '1.0'
 release: beta-1
 release_candidate: rc1
 repository: Jagadeeshck/DataObs
@@ -6,31 +6,282 @@ target_elasticsearch_version: 9.4.2
 terminal_migration: 0023_stream_pathway_reliability_runtime
 orchestration_model: two-phase
 capabilities:
-  - {capability_id: team6.identity-security, owning_team: Team 6, workflow: beta-security-hardening.yml, artifact: beta-security-hardening-evidence, required_conclusion: success, mandatory_for_beta: true, evidence_schema_version: "1.0", expected_elasticsearch_version: 9.4.2, accepted_events: [workflow_dispatch], required_test_categories: [security, rbac, tenant-isolation]}
-  - {capability_id: team6.deployment-packaging, owning_team: Team 6, workflow: beta-deployment-packaging.yml, artifact: beta-deployment-packaging-evidence, required_conclusion: success, mandatory_for_beta: true, evidence_schema_version: "1.0", expected_elasticsearch_version: 9.4.2, accepted_events: [workflow_dispatch], required_test_categories: [helm, kind, upgrade, rollback]}
-  - {capability_id: team6.backup-restore, owning_team: Team 6, workflow: beta-backup-restore.yml, artifact: beta-backup-restore-v1-evidence, required_conclusion: success, mandatory_for_beta: true, evidence_schema_version: "1.0", expected_elasticsearch_version: 9.4.2, accepted_events: [workflow_dispatch], required_test_categories: [backup, restore, tenant-isolation]}
-  - {capability_id: team1.stream-observer, owning_team: Team 1, workflow: stream-observer-backend.yml, artifact: stream-observer-backend-v1-evidence, required_conclusion: success, mandatory_for_beta: true, evidence_schema_version: "1.0", expected_elasticsearch_version: 9.4.2, accepted_events: [workflow_dispatch], required_test_categories: [kafka, integration, security]}
-  - {capability_id: team1.pathway-intelligence, owning_team: Team 1, workflow: pathway-intelligence-backend.yml, artifact: pathway-intelligence-backend-v1-evidence, required_conclusion: success, mandatory_for_beta: true, evidence_schema_version: "1.0", expected_elasticsearch_version: 9.4.2, accepted_events: [workflow_dispatch], required_test_categories: [pathways, tenant-isolation]}
-  - {capability_id: team1.stream-pathway-reliability, owning_team: Team 1, workflow: stream-pathway-reliability-runtime-v1.yml, artifact: stream-pathway-reliability-runtime-v1-evidence, required_conclusion: success, mandatory_for_beta: true, evidence_schema_version: "1.0", expected_elasticsearch_version: 9.4.2, accepted_events: [workflow_dispatch], required_test_categories: [reliability, tenant-isolation, browser, accessibility]}
-  - {capability_id: team1.stream-360-console, owning_team: Team 1, workflow: stream-360-core-console.yml, artifact: stream-360-core-console-v1-evidence, required_conclusion: success, mandatory_for_beta: true, evidence_schema_version: "1.0", expected_elasticsearch_version: 9.4.2, accepted_events: [workflow_dispatch], required_test_categories: [api, browser, accessibility]}
-  - {capability_id: team1.cluster-360-console, owning_team: Team 1, workflow: cluster-360-console.yml, artifact: cluster-360-console-v1-evidence, required_conclusion: success, mandatory_for_beta: true, evidence_schema_version: "1.0", expected_elasticsearch_version: 9.4.2, accepted_events: [workflow_dispatch], required_test_categories: [api, browser, accessibility]}
-  - {capability_id: team1.connector-schema-360, owning_team: Team 1, workflow: connector-schema-360-console.yml, artifact: connector-schema-360-console-v1-evidence, required_conclusion: success, mandatory_for_beta: true, evidence_schema_version: "1.0", expected_elasticsearch_version: 9.4.2, accepted_events: [workflow_dispatch], required_test_categories: [api, redaction, browser]}
-  - {capability_id: team1.pathway-explorer, owning_team: Team 1, workflow: pathway-explorer-console.yml, artifact: pathway-explorer-console-v1-evidence, required_conclusion: success, mandatory_for_beta: true, evidence_schema_version: "1.0", expected_elasticsearch_version: 9.4.2, accepted_events: [workflow_dispatch], required_test_categories: [pathways, browser, tenant-isolation]}
-  - {capability_id: team2.data-quality-monitoring, owning_team: Team 2, workflow: data-quality-monitoring.yml, artifact: data-quality-monitoring-v1-evidence, required_conclusion: success, mandatory_for_beta: true, evidence_schema_version: "1.0", expected_elasticsearch_version: 9.4.2, accepted_events: [workflow_dispatch], required_test_categories: [quality, integration, security]}
-  - {capability_id: team2.data-quality-console, owning_team: Team 2, workflow: data-quality-console-v1.yml, artifact: data-quality-console-v1-evidence, required_conclusion: success, mandatory_for_beta: true, evidence_schema_version: "1.0", expected_elasticsearch_version: 9.4.2, accepted_events: [workflow_dispatch], required_test_categories: [quality, browser, accessibility]}
-  - {capability_id: team2.job-run-backend, owning_team: Team 2, workflow: job-run-backend.yml, artifact: job-run-backend-evidence, required_conclusion: success, mandatory_for_beta: true, evidence_schema_version: "1.0", expected_elasticsearch_version: 9.4.2, accepted_events: [workflow_dispatch], required_test_categories: [openlineage, ordering, tenant-isolation]}
-  - {capability_id: team2.lineage-console, owning_team: Team 2, workflow: lineage-analysis-console.yml, artifact: lineage-analysis-console-evidence, required_conclusion: success, mandatory_for_beta: true, evidence_schema_version: "1.0", expected_elasticsearch_version: 9.4.2, accepted_events: [workflow_dispatch], required_test_categories: [lineage, browser, accessibility]}
-  - {capability_id: team3.incident-workbench, owning_team: Team 3, workflow: incident-workbench-certification.yml, artifact: incident-workbench-v1-evidence, required_conclusion: success, mandatory_for_beta: true, evidence_schema_version: "1.0", expected_elasticsearch_version: 9.4.2, accepted_events: [workflow_dispatch], required_test_categories: [occ, append-semantics, redaction, tenant-isolation]}
-  - {capability_id: team4.integration-sdk, owning_team: Team 4, workflow: integration-sdk-certification.yml, artifact: integration-sdk-v1-evidence, required_conclusion: success, mandatory_for_beta: true, evidence_schema_version: "1.0", expected_elasticsearch_version: 9.4.2, accepted_events: [workflow_dispatch], required_test_categories: [unit, redaction, tenant-isolation]}
-  - capability_id: team4.aws-collector
-    owning_team: Team 4
-    workflow: aws-data-platform-collector-v1.yml
-    artifact: aws-data-platform-collector-v1-evidence
-    required_conclusion: success
-    mandatory_for_beta: false
-    optional_reason: AWS collection is implemented, but live AWS certification and a packaged Collection Manager workload remain outside the supported Beta package.
-    evidence_schema_version: "1.0"
-    expected_elasticsearch_version: 9.4.2
-    accepted_events: [workflow_dispatch]
-    required_test_categories: [unit, redaction, tenant-isolation]
-  - {capability_id: team5.console-experience, owning_team: Team 5, workflow: console-product-experience.yml, artifact: console-product-experience-v1-evidence, required_conclusion: success, mandatory_for_beta: true, evidence_schema_version: "1.0", expected_elasticsearch_version: 9.4.2, accepted_events: [workflow_dispatch], required_test_categories: [typecheck, browser, accessibility, build]}
+- capability_id: team0.identity-security
+  owning_team: Team 0
+  workflow: beta-security-hardening.yml
+  artifact: team-0-security-hardening-evidence
+  required_conclusion: success
+  mandatory_for_beta: true
+  evidence_schema_version: '1.0'
+  expected_elasticsearch_version: 9.4.2
+  accepted_events:
+  - workflow_dispatch
+  required_test_categories:
+  - security
+  - rbac
+  - tenant-isolation
+- capability_id: team0.deployment-packaging
+  owning_team: Team 0
+  workflow: beta-deployment-packaging.yml
+  artifact: team-0-deployment-packaging-evidence
+  required_conclusion: success
+  mandatory_for_beta: true
+  evidence_schema_version: '1.0'
+  expected_elasticsearch_version: 9.4.2
+  accepted_events:
+  - workflow_dispatch
+  required_test_categories:
+  - helm
+  - kind
+  - upgrade
+  - rollback
+- capability_id: team0.backup-restore
+  owning_team: Team 0
+  workflow: beta-backup-restore.yml
+  artifact: team-0-backup-restore-v1-evidence
+  required_conclusion: success
+  mandatory_for_beta: true
+  evidence_schema_version: '1.0'
+  expected_elasticsearch_version: 9.4.2
+  accepted_events:
+  - workflow_dispatch
+  required_test_categories:
+  - backup
+  - restore
+  - tenant-isolation
+- capability_id: team1.stream-observer
+  owning_team: Team 1
+  workflow: stream-observer-backend.yml
+  artifact: stream-observer-backend-v1-evidence
+  required_conclusion: success
+  mandatory_for_beta: true
+  evidence_schema_version: '1.0'
+  expected_elasticsearch_version: 9.4.2
+  accepted_events:
+  - workflow_dispatch
+  required_test_categories:
+  - kafka
+  - integration
+  - security
+- capability_id: team1.pathway-intelligence
+  owning_team: Team 1
+  workflow: pathway-intelligence-backend.yml
+  artifact: pathway-intelligence-backend-v1-evidence
+  required_conclusion: success
+  mandatory_for_beta: true
+  evidence_schema_version: '1.0'
+  expected_elasticsearch_version: 9.4.2
+  accepted_events:
+  - workflow_dispatch
+  required_test_categories:
+  - pathways
+  - tenant-isolation
+- capability_id: team1.stream-pathway-reliability
+  owning_team: Team 1
+  workflow: stream-pathway-reliability-runtime-v1.yml
+  artifact: stream-pathway-reliability-runtime-v1-evidence
+  required_conclusion: success
+  mandatory_for_beta: true
+  evidence_schema_version: '1.0'
+  expected_elasticsearch_version: 9.4.2
+  accepted_events:
+  - workflow_dispatch
+  required_test_categories:
+  - reliability
+  - tenant-isolation
+  - browser
+  - accessibility
+- capability_id: team1.stream-360-console
+  owning_team: Team 1
+  workflow: stream-360-core-console.yml
+  artifact: stream-360-core-console-v1-evidence
+  required_conclusion: success
+  mandatory_for_beta: true
+  evidence_schema_version: '1.0'
+  expected_elasticsearch_version: 9.4.2
+  accepted_events:
+  - workflow_dispatch
+  required_test_categories:
+  - api
+  - browser
+  - accessibility
+- capability_id: team1.cluster-360-console
+  owning_team: Team 1
+  workflow: cluster-360-console.yml
+  artifact: cluster-360-console-v1-evidence
+  required_conclusion: success
+  mandatory_for_beta: true
+  evidence_schema_version: '1.0'
+  expected_elasticsearch_version: 9.4.2
+  accepted_events:
+  - workflow_dispatch
+  required_test_categories:
+  - api
+  - browser
+  - accessibility
+- capability_id: team1.connector-schema-360
+  owning_team: Team 1
+  workflow: connector-schema-360-console.yml
+  artifact: connector-schema-360-console-v1-evidence
+  required_conclusion: success
+  mandatory_for_beta: true
+  evidence_schema_version: '1.0'
+  expected_elasticsearch_version: 9.4.2
+  accepted_events:
+  - workflow_dispatch
+  required_test_categories:
+  - api
+  - redaction
+  - browser
+- capability_id: team1.pathway-explorer
+  owning_team: Team 1
+  workflow: pathway-explorer-console.yml
+  artifact: pathway-explorer-console-v1-evidence
+  required_conclusion: success
+  mandatory_for_beta: true
+  evidence_schema_version: '1.0'
+  expected_elasticsearch_version: 9.4.2
+  accepted_events:
+  - workflow_dispatch
+  required_test_categories:
+  - pathways
+  - browser
+  - tenant-isolation
+- capability_id: team2.data-quality-monitoring
+  owning_team: Team 2
+  workflow: data-quality-monitoring.yml
+  artifact: data-quality-monitoring-v1-evidence
+  required_conclusion: success
+  mandatory_for_beta: true
+  evidence_schema_version: '1.0'
+  expected_elasticsearch_version: 9.4.2
+  accepted_events:
+  - workflow_dispatch
+  required_test_categories:
+  - quality
+  - integration
+  - security
+- capability_id: team2.data-quality-console
+  owning_team: Team 2
+  workflow: data-quality-console-v1.yml
+  artifact: data-quality-console-v1-evidence
+  required_conclusion: success
+  mandatory_for_beta: true
+  evidence_schema_version: '1.0'
+  expected_elasticsearch_version: 9.4.2
+  accepted_events:
+  - workflow_dispatch
+  required_test_categories:
+  - quality
+  - browser
+  - accessibility
+- capability_id: team2.job-run-backend
+  owning_team: Team 2
+  workflow: job-run-backend.yml
+  artifact: job-run-backend-evidence
+  required_conclusion: success
+  mandatory_for_beta: true
+  evidence_schema_version: '1.0'
+  expected_elasticsearch_version: 9.4.2
+  accepted_events:
+  - workflow_dispatch
+  required_test_categories:
+  - openlineage
+  - ordering
+  - tenant-isolation
+- capability_id: team2.lineage-console
+  owning_team: Team 2
+  workflow: lineage-analysis-console.yml
+  artifact: lineage-analysis-console-evidence
+  required_conclusion: success
+  mandatory_for_beta: true
+  evidence_schema_version: '1.0'
+  expected_elasticsearch_version: 9.4.2
+  accepted_events:
+  - workflow_dispatch
+  required_test_categories:
+  - lineage
+  - browser
+  - accessibility
+- capability_id: team3.incident-workbench
+  owning_team: Team 3
+  workflow: incident-workbench-certification.yml
+  artifact: incident-workbench-v1-evidence
+  required_conclusion: success
+  mandatory_for_beta: true
+  evidence_schema_version: '1.0'
+  expected_elasticsearch_version: 9.4.2
+  accepted_events:
+  - workflow_dispatch
+  required_test_categories:
+  - occ
+  - append-semantics
+  - redaction
+  - tenant-isolation
+- capability_id: team4.integration-sdk
+  owning_team: Team 4
+  workflow: integration-sdk-certification.yml
+  artifact: integration-sdk-v1-evidence
+  required_conclusion: success
+  mandatory_for_beta: true
+  evidence_schema_version: '1.0'
+  expected_elasticsearch_version: 9.4.2
+  accepted_events:
+  - workflow_dispatch
+  required_test_categories:
+  - unit
+  - redaction
+  - tenant-isolation
+- capability_id: team4.aws-collector
+  owning_team: Team 4
+  workflow: aws-data-platform-collector-v1.yml
+  artifact: aws-data-platform-collector-v1-evidence
+  required_conclusion: success
+  mandatory_for_beta: false
+  optional_reason: AWS collection is implemented, but live AWS certification and a
+    packaged Collection Manager workload remain outside the supported Beta package.
+  evidence_schema_version: '1.0'
+  expected_elasticsearch_version: 9.4.2
+  accepted_events:
+  - workflow_dispatch
+  required_test_categories:
+  - unit
+  - redaction
+  - tenant-isolation
+- capability_id: team5.console-experience
+  owning_team: Team 5
+  workflow: console-product-experience.yml
+  artifact: console-beta-integration-v1-evidence
+  required_conclusion: success
+  mandatory_for_beta: true
+  evidence_schema_version: '1.0'
+  expected_elasticsearch_version: 9.4.2
+  accepted_events:
+  - workflow_dispatch
+  required_test_categories:
+  - typecheck
+  - browser
+  - accessibility
+  - build
+compatibility_aliases:
+  team-0-security-hardening-evidence:
+    legacy_names:
+    - beta-security-hardening-evidence
+    - team-6-beta-security-hardening-evidence
+    schema_versions:
+    - '1.0'
+    allow_byte_identical_coexistence: true
+  team-0-deployment-packaging-evidence:
+    legacy_names:
+    - beta-deployment-packaging-evidence
+    - team-6-beta-deployment-packaging-evidence
+    schema_versions:
+    - '1.0'
+    allow_byte_identical_coexistence: true
+  team-0-backup-restore-v1-evidence:
+    legacy_names:
+    - beta-backup-restore-v1-evidence
+    - team-6-beta-backup-restore-v1-evidence
+    schema_versions:
+    - '1.0'
+    allow_byte_identical_coexistence: true

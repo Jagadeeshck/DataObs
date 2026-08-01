@@ -12,11 +12,11 @@ ROOT = Path(__file__).parents[2]
 
 def test_terminal_migration_comes_from_ordered_registry():
     report = migration_report()
-    assert report["terminal_migration"] == "0022_aws_data_platform_collector"
-    assert report["migration_count"] == 22
+    assert report["terminal_migration"] == "0023_stream_pathway_reliability_runtime"
+    assert report["migration_count"] == 23
     assert report["ordered_migration_ids"][-2:] == [
-        "0021_lineage_analysis_explorer",
         "0022_aws_data_platform_collector",
+        "0023_stream_pathway_reliability_runtime",
     ]
     assert len(report["registry_checksum"]) == 64
 
@@ -29,7 +29,7 @@ def test_certification_manifest_is_bound_to_real_producers():
 def test_manifest_validator_rejects_missing_workflow(tmp_path):
     source = (ROOT / "docs/release/beta-1-certification-manifest.yaml").read_text()
     path = tmp_path / "manifest.yaml"
-    path.write_text(source.replace("beta-1-release-candidate.yml", "missing.yml"))
+    path.write_text(source.replace("beta-security-hardening.yml", "missing.yml"))
     assert any("does not exist" in item for item in validate(path, ROOT)["errors"])
 
 

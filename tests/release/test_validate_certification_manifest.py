@@ -20,8 +20,8 @@ def _fixture(tmp_path: Path) -> Path:
         "terminal_migration": terminal_migration(),
         "capabilities": [
             {
-                "capability_id": "team6.proof",
-                "owning_team": "Team 6",
+                "capability_id": "team0.proof",
+                "owning_team": "Team 0",
                 "workflow": "proof.yml",
                 "artifact": "proof-evidence",
                 "mandatory_for_beta": True,

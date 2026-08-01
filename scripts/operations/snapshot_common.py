@@ -1,4 +1,4 @@
-"""Minimal redaction-safe Elasticsearch snapshot client used by Team 6 scripts."""
+"""Minimal redaction-safe Elasticsearch snapshot client used by Team 0 scripts."""
 
 from __future__ import annotations
 

@@ -143,6 +143,9 @@ class Evaluation:
     latency_method: str | None
     missing_inputs: tuple[str, ...]
     evidence_refs: tuple[str, ...]
+    evidence_type: str
+    confidence: float | None
+    source_coverage: float | None
     warnings: tuple[str, ...] = field(default_factory=tuple)
 
 
@@ -171,6 +174,9 @@ def evaluate(definition: Definition, observation: Observation, previous: Previou
         latency_method=observation.latency_method,
         missing_inputs=observation.missing_inputs,
         evidence_refs=observation.evidence_refs,
+        evidence_type=observation.evidence_type,
+        confidence=observation.confidence,
+        source_coverage=observation.source_coverage,
     )
     if not definition.enabled:
         return Evaluation(

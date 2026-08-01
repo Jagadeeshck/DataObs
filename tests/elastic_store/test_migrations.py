@@ -115,6 +115,23 @@ def test_released_migration_history_is_immutable():
     assert {migration.migration_id: migration.checksum for migration in released} == expected
 
 
+def test_reliability_production_closure_is_forward_only_and_explicit():
+    from packages.elastic_store.manifest import migrations
+
+    migration = migrations()[-1]
+    assert migration.migration_id == "0025_stream_pathway_reliability_production_closure"
+    assert migration.dependencies == ["0024_job_run_reliability_runtime"]
+    assert set(migration.operations["mapping_updates"]) == {
+        "dataobs-stream-slo-definitions-v1",
+        "dataobs-reliability-status-v1",
+        "dataobs-reliability-runtime-state-v1",
+    }
+    contracts = migration.operations["data_stream_contracts"]
+    assert contracts["metrics-dataobs.stream-slo-evaluation-*"]["retention"] == "90d"
+    assert contracts["logs-dataobs.reliability-signal-*"]["retention"] == "365d"
+    assert all(contract["properties"]["@timestamp"]["type"] == "date" for contract in contracts.values())
+
+
 def test_strict_mapping_covers_every_serialized_incident_field():
     from packages.domain_model.incident import Finding, Incident
     from packages.elastic_store.registry import _mapping

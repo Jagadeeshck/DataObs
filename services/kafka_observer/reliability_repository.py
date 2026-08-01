@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 from dataclasses import asdict
 from datetime import datetime, timezone
 from typing import Any
@@ -87,7 +88,7 @@ class ElasticsearchReliabilityRepository:
 
     def previous(self, definition: Definition) -> PreviousState:
         try:
-            source = self.es.get(index=STATUS_READ, id=definition.id)["_source"]
+            source = self.es.get(index=STATUS_READ, id=self.status_id(definition))["_source"]
         except NotFoundError:
             return PreviousState()
         if source.get("tenant_id") != definition.tenant_id or source.get("environment") != definition.environment:
@@ -99,6 +100,11 @@ class ElasticsearchReliabilityRepository:
             int(source.get("consecutive_recoveries", 0)),
             datetime.fromisoformat(first) if first else None,
         )
+
+    @staticmethod
+    def status_id(definition: Definition) -> str:
+        raw = f"{definition.tenant_id}\0{definition.environment}\0{definition.id}"
+        return hashlib.sha256(raw.encode()).hexdigest()
 
     def persist(self, evaluation: Evaluation, definition: Definition, fencing_token: int) -> bool:
         self._assert_fence(f"{definition.tenant_id}:{definition.environment}", fencing_token)
@@ -125,18 +131,123 @@ class ElasticsearchReliabilityRepository:
             return False
         return True
 
-    def checkpoint(self, definition: Definition, evaluation_id: str, fencing_token: int) -> None:
+    def project(self, evaluation: Evaluation, definition: Definition, fencing_token: int) -> None:
         self._assert_fence(f"{definition.tenant_id}:{definition.environment}", fencing_token)
-        interval = f"now+{definition.evaluation_interval_seconds}s"
-        self.es.update(
-            index=DEFINITIONS,
-            id=definition.id,
-            script={
-                "source": "ctx._source.latest_evaluation_id=params.id; ctx._source.next_evaluation_at=params.next",
-                "params": {"id": evaluation_id, "next": interval},
-            },
-            refresh="wait_for",
+        doc_id = self.status_id(definition)
+        document = asdict(evaluation) | {
+            "status_id": doc_id,
+            "definition_id": definition.id,
+            "tenant_id": definition.tenant_id,
+            "environment": definition.environment,
+            "resource_type": definition.resource_type,
+            "resource_id": definition.resource_id,
+            "metric": definition.metric,
+            "threshold": definition.threshold,
+            "operator": definition.operator,
+            "unit": "unknown",
+            "current_status": evaluation.status.value,
+            "previous_status": evaluation.previous_status.value,
+            "latest_evaluation_id": evaluation.evaluation_id,
+            "transition_at": evaluation.evaluated_at,
+            "revision": 1,
+            "schema_version": "v1",
+        }
+        try:
+            current = self.es.get(index=STATUS_READ, id=doc_id, seq_no_primary_term=True)
+        except NotFoundError:
+            try:
+                self.es.index(index=STATUS, id=doc_id, document=document, op_type="create", refresh="wait_for")
+            except ConflictError:
+                raise StaleWriter("status projection was concurrently created") from None
+            return
+        document["revision"] = int(current["_source"].get("revision", 0)) + 1
+        try:
+            self.es.index(
+                index=STATUS,
+                id=doc_id,
+                document=document,
+                if_seq_no=current["_seq_no"],
+                if_primary_term=current["_primary_term"],
+                refresh="wait_for",
+            )
+        except ConflictError:
+            raise StaleWriter("status projection OCC conflict") from None
+
+    def signal(self, evaluation: Evaluation, definition: Definition, fencing_token: int) -> None:
+        self._assert_fence(f"{definition.tenant_id}:{definition.environment}", fencing_token)
+        transition = None
+        if evaluation.status == Status.BREACHING and evaluation.previous_status != Status.BREACHING:
+            transition = "breach"
+        elif evaluation.status == Status.HEALTHY and evaluation.previous_status in {
+            Status.BREACHING,
+            Status.RECOVERING,
+        }:
+            transition = "recovery"
+        if transition is None:
+            return
+        signal_id = hashlib.sha256(
+            f"{definition.tenant_id}\0{definition.environment}\0{definition.id}\0{transition}\0{evaluation.evaluation_id}".encode()
+        ).hexdigest()
+        self.persist_signal(
+            {
+                "signal_id": signal_id,
+                "definition_id": definition.id,
+                "tenant_id": definition.tenant_id,
+                "environment": definition.environment,
+                "resource_type": definition.resource_type,
+                "resource_id": definition.resource_id,
+                "metric": definition.metric,
+                "previous_status": evaluation.previous_status.value,
+                "current_status": evaluation.status.value,
+                "observed_value": evaluation.observed_value,
+                "threshold": definition.threshold,
+                "operator": definition.operator,
+                "severity": "critical" if transition == "breach" else "resolved",
+                "first_breach_at": evaluation.first_breach_at,
+                "transition_at": evaluation.evaluated_at,
+                "latest_evaluation_id": evaluation.evaluation_id,
+                "reason_codes": evaluation.reason_codes,
+                "evidence_refs": evaluation.evidence_refs,
+                "confidence": evaluation.confidence,
+                "source_coverage": evaluation.source_coverage,
+                "schema_version": "v1",
+                "@timestamp": evaluation.evaluated_at,
+            }
         )
+
+    def checkpoint(self, definition: Definition, evaluation_id: str, fencing_token: int, now: datetime) -> None:
+        self._assert_fence(f"{definition.tenant_id}:{definition.environment}", fencing_token)
+        from datetime import timedelta
+
+        current = self.es.get(index=DEFINITIONS_READ, id=definition.id, seq_no_primary_term=True)
+        next_at = (now.astimezone(timezone.utc) + timedelta(seconds=definition.evaluation_interval_seconds)).isoformat()
+        try:
+            self.es.update(
+                index=DEFINITIONS,
+                id=definition.id,
+                doc={"latest_evaluation_id": evaluation_id, "next_evaluation_at": next_at},
+                if_seq_no=current["_seq_no"],
+                if_primary_term=current["_primary_term"],
+                refresh="wait_for",
+            )
+        except ConflictError:
+            raise StaleWriter("definition checkpoint OCC conflict") from None
+
+    def persist_health(self, scope: str, health: Any, fencing_token: int) -> None:
+        self._assert_fence(scope, fencing_token, health.worker_id)
+        document = asdict(health) | {
+            "scope": scope,
+            "heartbeat_at": datetime.now(timezone.utc),
+            "runtime_version": "v1",
+            "lease_owner": health.worker_id,
+        }
+        self.es.index(index=RUNTIME, id=f"health:{scope}", document=document, refresh="wait_for")
+
+    def runtime_health(self, tenant: str, environment: str) -> dict[str, Any] | None:
+        try:
+            return self.es.get(index=RUNTIME, id=f"health:{tenant}:{environment}")["_source"]
+        except NotFoundError:
+            return None
 
     def inventory(
         self, tenant: str, environment: str, *, size: int = 100, filters: dict[str, Any] | None = None
@@ -175,7 +286,9 @@ class ElasticsearchReliabilityRepository:
 
     def current_status(self, definition: Definition) -> dict[str, Any] | None:
         try:
-            source = self.es.get(index=STATUS_READ, id=definition.id, source_excludes=["evidence"])["_source"]
+            source = self.es.get(index=STATUS_READ, id=self.status_id(definition), source_excludes=["evidence"])[
+                "_source"
+            ]
         except NotFoundError:
             return None
         if source.get("tenant_id") != definition.tenant_id or source.get("environment") != definition.environment:

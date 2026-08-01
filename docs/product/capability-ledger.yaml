@@ -1779,6 +1779,7 @@ capabilities:
     - metrics-dataobs.pathway-slo-evaluation-*
     migrations:
     - 0023_stream_pathway_reliability_runtime
+    - 0025_stream_pathway_reliability_production_closure
   validation:
     unit: passed
     integration: defined_not_run
@@ -1837,3 +1838,5 @@ migration_checksums:
   0021_lineage_analysis_explorer: 48708bb08b183788d378f5666c19ab9d4294d073fca6df44ef1849b7af2bcd7e
   0022_aws_data_platform_collector: adb36e8f60ffe41e85bbc910de537a6b1b415da362a9b79eda6f13f69f9f50f8
   0023_stream_pathway_reliability_runtime: 04f5ec259ee4187c4ee423b0944d7b026e27f92f20755bb71330175bfec26149
+  0024_job_run_reliability_runtime: a3a7bcbd8594a51802a6c0e3f42a98c822b708e8ae7fa68bb664f96c5472666d
+  0025_stream_pathway_reliability_production_closure: 5d68f3c0acb2b265181276f3080f15d3acbf8abc39585b85715d9f5f6691fb30

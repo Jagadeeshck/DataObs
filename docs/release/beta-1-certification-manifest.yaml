@@ -3,7 +3,7 @@ release: beta-1
 release_candidate: rc1
 repository: Jagadeeshck/DataObs
 target_elasticsearch_version: 9.4.2
-terminal_migration: 0023_stream_pathway_reliability_runtime
+terminal_migration: 0025_stream_pathway_reliability_production_closure
 orchestration_model: two-phase
 capabilities:
 - capability_id: team0.identity-security
@@ -78,8 +78,8 @@ capabilities:
   - tenant-isolation
 - capability_id: team1.stream-pathway-reliability
   owning_team: Team 1
-  workflow: stream-pathway-reliability-runtime-v1.yml
-  artifact: stream-pathway-reliability-runtime-v1-evidence
+  workflow: stream-pathway-reliability-production-closure-v1.yml
+  artifact: stream-pathway-reliability-production-closure-v1-evidence
   required_conclusion: success
   mandatory_for_beta: true
   evidence_schema_version: '1.0'

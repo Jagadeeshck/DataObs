@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dataobs.example/schemas/integration-v1.json",
+  "title": "DataObs integration configuration v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "integration_id", "provider_type", "enabled", "timeout_seconds", "allowed_capabilities", "provider"],
+  "properties": {
+    "schema_version": {"const": "v1"},
+    "integration_id": {"type": "string", "minLength": 1, "maxLength": 128},
+    "provider_type": {"type": "string", "pattern": "^[a-z][a-z0-9_]{1,62}$"},
+    "enabled": {"type": "boolean"},
+    "schedule": {"type": ["string", "null"], "maxLength": 128},
+    "timeout_seconds": {"type": "number", "exclusiveMinimum": 0, "maximum": 3600},
+    "allowed_capabilities": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
+    "resource_filters": {"type": "object", "additionalProperties": {"type": "array", "maxItems": 100, "items": {"type": "string", "maxLength": 256}}},
+    "rate_limit_per_second": {"type": "number", "exclusiveMinimum": 0, "maximum": 100},
+    "checkpoint": {"type": "object", "additionalProperties": false, "properties": {"enabled": {"type": "boolean"}}},
+    "credential_ref": {
+      "type": ["object", "null"], "additionalProperties": false,
+      "required": ["kind", "reference"],
+      "properties": {
+        "kind": {"enum": ["environment", "kubernetes_secret", "cloud_secret_manager", "external_secret"]},
+        "reference": {"type": "string", "minLength": 1, "maxLength": 512}
+      }
+    },
+    "provider": {"type": "object", "not": {"anyOf": [{"required": ["tenant_id"]}, {"required": ["password"]}, {"required": ["token"]}, {"required": ["access_key"]}, {"required": ["secret_key"]}]}},
+    "redaction": {"type": "object"},
+    "tags": {"type": "object", "maxProperties": 50, "additionalProperties": {"type": "string", "maxLength": 128}}
+  }
+}

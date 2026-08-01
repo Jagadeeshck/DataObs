@@ -1,0 +1,14 @@
+schema_version: '1.0'
+owner_team: team:streams
+connectors:
+  - {tenant_id: tenant-healthy, environment: test, cluster_id: cluster-a, connector_id: source-orders, connector_type: source, state: RUNNING, task_count: 2, failed_task_count: 0, data_status: complete}
+  - {tenant_id: tenant-healthy, environment: test, cluster_id: cluster-a, connector_id: sink-warehouse, connector_type: sink, state: RUNNING, task_count: 2, failed_task_count: 1, data_status: complete}
+  - {tenant_id: tenant-healthy, environment: test, cluster_id: cluster-a, connector_id: failed-output, connector_type: sink, state: FAILED, task_count: 1, failed_task_count: 1, data_status: complete}
+  - {tenant_id: tenant-healthy, environment: test, cluster_id: cluster-a, connector_id: unknown-tasks, state: RUNNING, task_count: null, failed_task_count: null, data_status: partial}
+  - {tenant_id: tenant-healthy, environment: test, cluster_id: cluster-a, connector_id: stale-source, state: RUNNING, data_status: stale}
+  - {tenant_id: tenant-other, environment: test, cluster_id: cluster-a, connector_id: source-orders, state: RUNNING, data_status: complete}
+schemas:
+  - {tenant_id: tenant-healthy, environment: test, cluster_id: cluster-a, subject_id: orders-value, schema_type: AVRO, latest_version: 3, compatibility: BACKWARD, data_status: complete, change: additive}
+  - {tenant_id: tenant-healthy, environment: test, cluster_id: cluster-a, subject_id: partial-value, schema_type: AVRO, latest_version: 2, compatibility: UNKNOWN, data_status: partial, change: unknown}
+  - {tenant_id: tenant-healthy, environment: test, cluster_id: cluster-a, subject_id: breaking-value, schema_type: AVRO, latest_version: 4, compatibility: BACKWARD, data_status: complete, change: breaking, compatibility_evidence: explicit}
+  - {tenant_id: tenant-other, environment: test, cluster_id: cluster-a, subject_id: orders-value, schema_type: AVRO, data_status: complete}

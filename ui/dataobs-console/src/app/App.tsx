@@ -4,6 +4,7 @@ import { AppShell } from "../layouts/AppShell";
 import { ProductContextProvider } from "../state/context";
 import { NotFound, RouteBoundary } from "./RouteStates";
 import { consoleRoutes } from "./routes";
+import { NavigationTelemetry } from "../observability";
 
 const lazyComponents = new Map<string, ComponentType>();
 
@@ -36,6 +37,7 @@ export function App() {
   return (
     <ProductContextProvider>
       <BrowserRouter>
+        <NavigationTelemetry />
         <Routes>
           {publicRoutes.map((route) => (
             <Route

@@ -1,4 +1,5 @@
 import { accessToken } from "../auth/oidc";
+import { instrumentedFetch } from "../observability";
 import { ApiError, type DataStatus, type HealthState } from "./common";
 
 export interface EvidenceEnvelope {
@@ -140,7 +141,7 @@ const request = async <T>(
   init: RequestInit = {},
 ): Promise<WithEtag<T>> => {
   const token = await accessToken();
-  const response = await fetch(path, {
+  const response = await instrumentedFetch(path, {
     ...init,
     credentials: "include",
     headers: {

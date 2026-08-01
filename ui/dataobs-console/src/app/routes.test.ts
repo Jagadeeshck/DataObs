@@ -66,9 +66,9 @@ describe("console route registry", () => {
         incidents: "configured",
       }).actionable,
     ).toBe(true);
-    expect(
-      resolveRouteState(incidents, ["incidents:read"]).configuration,
-    ).toBe("configured");
+    expect(resolveRouteState(incidents, ["incidents:read"]).configuration).toBe(
+      "configured",
+    );
     expect(visibleRoutes([]).some((r) => r.id === "incidents")).toBe(false);
   });
   it("matches dynamic routes and creates safe metadata", () => {

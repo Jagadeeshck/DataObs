@@ -1,0 +1,80 @@
+name: Console self-observability v1
+on:
+  pull_request:
+    paths:
+      [
+        "ui/dataobs-console/**",
+        "docs/**/console-*.md",
+        "docs/architecture/browser-telemetry-contract.md",
+        "docs/security/browser-telemetry-data-handling.md",
+        ".github/workflows/console-self-observability-v1.yml",
+      ]
+  push: { branches: [main] }
+  workflow_dispatch:
+permissions: { contents: read }
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      CERT_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: "${{ env.CERT_SHA }}", fetch-depth: 0 }
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.28.1 }
+      - uses: actions/setup-node@v4
+        with:
+          {
+            node-version: "22",
+            cache: pnpm,
+            cache-dependency-path: ui/dataobs-console/pnpm-lock.yaml,
+          }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - name: Frozen install and generated API drift
+        working-directory: ui/dataobs-console
+        run: pnpm install --frozen-lockfile && pnpm api:generate && git diff --exit-code src/api/generated/schema.ts
+      - name: Static, unit, policy, and redaction tests
+        working-directory: ui/dataobs-console
+        run: mkdir -p ../../evidence && pnpm typecheck && pnpm lint && pnpm format:check && pnpm test -- --reporter=junit --outputFile=../../evidence/console-observability-junit.xml
+      - name: Production, bundle, performance, and source-map gates
+        working-directory: ui/dataobs-console
+        run: pnpm build && pnpm bundle:check | tee ../../evidence/bundle-report.txt && pnpm performance:check | tee ../../evidence/performance-budget.txt && ! find dist -name '*.map' -print -quit | grep .
+      - name: Browser, accessibility, and mock OTLP journeys
+        working-directory: ui/dataobs-console
+        run: pnpm exec playwright install --with-deps chromium && pnpm playwright
+      - name: Repository policy gates
+        run: |
+          python scripts/check_merge_conflict_markers.py | tee evidence/merge-markers.txt
+          python scripts/check_team_boundaries.py | tee evidence/team-boundaries.txt
+          python scripts/check_generated_artifacts.py | tee evidence/generated-artifacts.txt
+          python scripts/check_docs_links.py | tee evidence/docs-links.txt
+          python scripts/check_migration_immutability.py --base-ref "$(python scripts/resolve_ci_base.py)" | tee evidence/migrations.txt
+      - name: Exact-commit evidence envelope
+        run: |
+          printf '{"service":"dataobs-console","telemetry_default":"disabled","otlp_capture":"unit-mock-passed","redaction":"passed","attribute_policy":"passed","trace_propagation":"allowlist-only","source_maps_public":"absent","known_warnings":["hosted collector deployment is not enabled by this workflow"],"skipped_gates":[]}' > evidence/console-observability.json
+          python scripts/certification/write_evidence_envelope.py --output evidence/evidence.json \
+            --repository "$GITHUB_REPOSITORY" --producer-sha "$CERT_SHA" --workflow-file console-self-observability-v1.yml \
+            --workflow-run-id "$GITHUB_RUN_ID" --workflow-run-attempt "$GITHUB_RUN_ATTEMPT" --event "$GITHUB_EVENT_NAME" \
+            --status pass --test-category typecheck --test-category browser --test-category accessibility --test-category build --test-category security \
+            --supporting-file evidence/console-observability-junit.xml --supporting-file evidence/console-observability.json --supporting-file evidence/performance-budget.txt \
+            --tool-version "node=$(node --version)" --tool-version "pnpm=$(pnpm --version)" --tool-version "otel=$(node -p \"require('./ui/dataobs-console/node_modules/@opentelemetry/api/package.json').version\")"
+      - uses: actions/upload-artifact@v4
+        with:
+          {
+            name: console-self-observability-v1-evidence,
+            path: evidence/,
+            retention-days: 30,
+            if-no-files-found: error,
+          }
+  independent-verification:
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { name: console-self-observability-v1-evidence, path: evidence }
+      - name: Verify exact-commit evidence independently
+        env:
+          EXPECTED_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: python -c 'import json,os; e=json.load(open("evidence/evidence.json")); assert e["producer"]["sha"]==os.environ["EXPECTED_SHA"] and e["status"]=="pass"'

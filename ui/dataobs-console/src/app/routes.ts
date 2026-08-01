@@ -181,7 +181,10 @@ export const consoleRoutes: readonly ConsoleRoute[] = [
     capabilityId: "streams",
     owner: "team-1",
     parentId: "streams",
-    loader: load("../features/streams/StreamsReliability", "StreamsReliability"),
+    loader: load(
+      "../features/streams/StreamsReliability",
+      "StreamsReliability",
+    ),
   }),
   route({
     id: "cluster-360",
@@ -421,6 +424,22 @@ export const consoleRoutes: readonly ConsoleRoute[] = [
     loader: load("../features/onboarding/Onboarding", "Onboarding"),
   }),
   route({
+    id: "console-diagnostics",
+    path: "/diagnostics/console",
+    name: "Console diagnostics",
+    group: "System",
+    capabilityId: "console-observability",
+    owner: "team-5",
+    requiredPermission: "console:admin",
+    navigation: false,
+    quickFind: false,
+    searchEligible: false,
+    loader: load(
+      "../features/diagnostics/ConsoleDiagnostics",
+      "ConsoleDiagnostics",
+    ),
+  }),
+  route({
     id: "login",
     path: "/login",
     name: "Sign in",
@@ -586,6 +605,8 @@ export function titleForPath(pathname: string) {
   if (!current) return "DataObs — Page not found";
   const params = matchRoute(current.path, pathname) ?? {};
   const entityParam = current.entityParameters?.[0];
-  const label = entityParam ? params[entityParam.name] || current.name : current.name;
+  const label = entityParam
+    ? params[entityParam.name] || current.name
+    : current.name;
   return `DataObs — ${current.name}${entityParam && label !== current.name ? ` ${label}` : ""}`;
 }

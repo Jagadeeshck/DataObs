@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { accessToken } from "../../auth/oidc";
+import { instrumentedFetch } from "../../observability";
 import {
   DataStatusBanner,
   HealthBadge,
@@ -40,7 +41,7 @@ async function loadCatalog(
   signal: AbortSignal,
 ): Promise<IntegrationMetadata[]> {
   const token = await accessToken();
-  const response = await fetch(
+  const response = await instrumentedFetch(
     `/api/v1/integrations/metadata?environment=${encodeURIComponent(environment)}`,
     {
       signal,

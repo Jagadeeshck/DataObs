@@ -16,4 +16,4 @@ data:
   cors: {{ .Values.api.security.cors | toJson | quote }}
   console-security-headers: {{ .Values.console.securityHeaders | toJson | quote }}
   console-runtime.js: |
-    window.__DATAOBS_CONFIG__ = Object.freeze({apiBaseUrl: {{ .Values.console.apiBaseUrl | toJson }}, oidcIssuer: {{ .Values.external.oidc.issuer | toJson }}, oidcClientId: {{ .Values.external.oidc.clientId | toJson }}});
+    window.__DATAOBS_CONFIG__ = Object.freeze({apiBaseUrl: {{ .Values.console.apiBaseUrl | toJson }}, oidcIssuer: {{ .Values.external.oidc.issuer | toJson }}, oidcClientId: {{ .Values.external.oidc.clientId | toJson }}, observability: {{ .Values.console.observability | toJson }}});

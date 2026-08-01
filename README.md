@@ -76,3 +76,7 @@ The tenant-scoped `/streams`, Topic 360, and Consumer Group 360 investigation vi
 ## Parallel team delivery
 
 Delivery governance is defined by [team ownership](docs/development/team-ownership.md), [GitHub development workflow](docs/development/github-delivery-conventions.md), the [ADR process](docs/architecture/adr/README.md), [migration ownership](docs/development/migration-ownership.md), the planned [Beta 1 delivery plan](docs/product/beta-1-delivery-plan.md), and the [certification evidence contract](docs/development/certification-evidence-contract.md). Beta 1 remains planned until hosted certification evidence supports promotion.
+
+## Beta Kubernetes deployment package
+
+The functional-but-unvalidated Beta chart is under [`helm/dataobs`](helm/dataobs/README.md). It packages runnable components against external Elasticsearch only; review the release manifest and Kubernetes production guides before evaluation.

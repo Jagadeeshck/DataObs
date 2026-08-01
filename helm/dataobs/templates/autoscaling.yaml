@@ -1,0 +1,17 @@
+{{- range $name, $cfg := dict "api" .Values.api "console" .Values.console "otel-collector" .Values.otelCollector }}
+{{- if and $cfg.enabled $cfg.autoscaling.enabled }}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata: {name: {{ include "dataobs.fullname" $ }}-{{ $name }}}
+spec:
+  scaleTargetRef: {apiVersion: apps/v1, kind: Deployment, name: {{ include "dataobs.fullname" $ }}-{{ $name }}}
+  minReplicas: {{ $cfg.autoscaling.minReplicas }}
+  maxReplicas: {{ $cfg.autoscaling.maxReplicas }}
+  metrics:
+  - {type: Resource, resource: {name: cpu, target: {type: Utilization, averageUtilization: {{ $cfg.autoscaling.targetCPUUtilizationPercentage }}}}}
+  {{- with $cfg.autoscaling.targetMemoryUtilizationPercentage }}
+  - {type: Resource, resource: {name: memory, target: {type: Utilization, averageUtilization: {{ . }}}}}
+  {{- end }}
+{{- end }}
+{{- end }}

@@ -1,0 +1,3 @@
+# Kubernetes configuration
+
+Non-sensitive environment, tenant, endpoints, browser OIDC metadata and runtime browser configuration use ConfigMaps. Credentials use existing Kubernetes Secret names/keys. Scanner source YAML is projected from `scannerWorker.scanner.configSecretName`; database passwords must remain in referenced Secrets. Kafka Admin, consumer groups, offsets, Connect and Schema Registry can be independently enabled and their SASL/TLS material is Secret-backed. Use extra egress CIDRs for sources. Default resources are conservative starting points, not sizing evidence; load test before enabling API, Console or Collector HPA.

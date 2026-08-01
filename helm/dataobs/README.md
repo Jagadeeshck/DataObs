@@ -1,48 +1,21 @@
-# DataObs Helm Chart
+# DataObs Beta deployment chart
+
+This single chart packages API, Console, five independently configured workers, optional bundled OpenTelemetry Collector, and a migration hook. It deploys neither Elasticsearch, Kibana, identity, ingress controllers, nor Collection Manager. It is **functional but unvalidated**, not production certified.
 
 ## Install
 
-```bash
-helm upgrade --install dataobs ./helm/dataobs -n dataobs --create-namespace
-```
-
-## Key values
-- `api.enabled`: deploy API service
-- `quality.enabled`: deploy quality engine
-- `otelCollector.enabled`: deploy collector (disable when reusing existing OTEL infra)
-- `config.dataobsYaml`: inline DataObs product configuration
-- `config.otelCollectorYaml`: inline OTEL collector config
-
-## Reuse existing OTEL and Elasticsearch
-Set:
-
-```yaml
-otelCollector:
-  enabled: false
-
-config:
-  dataobsYaml: |
-    deployment:
-      telemetry_mode: external_otel
-      storage_mode: external_elasticsearch
-    external_otel:
-      enabled: true
-      endpoint: "https://otel-gateway.company.net:4317"
-    elasticsearch:
-      existing_cluster: true
-      url: "https://es-prod.company.net:9200"
-```
-
-## Packaging status and immutable versions
-
-This chart is a deployment **foundation**, not a production-ready installation. It currently packages only the DataObs API, quality worker, and an optional OpenTelemetry Collector. Console, scanner, monitor-runtime, pathway-worker, Kafka-observer, Collection Manager, Elasticsearch, Kibana, identity, HA, and backup/restore lifecycle are not managed by this chart.
-
-The checked-in `0.1.0` image tags are placeholders aligned with the chart application version, not a recommendation to deploy that release. For an actual release candidate, override each repository and pin the exact semantic tag or, preferably, digest from `dataobs-release-manifest.json`; never deploy `latest`:
+Create the referenced Elasticsearch, application, OIDC, scanner and Kafka Secrets first. Pin every image by digest, then run:
 
 ```bash
-helm upgrade --install dataobs ./helm/dataobs \
-  --set api.image.tag=1.2.3 \
-  --set quality.image.tag=1.2.3
+helm upgrade --install dataobs ./helm/dataobs -n dataobs --create-namespace -f helm/dataobs/values-production.yaml
 ```
 
-The images and chart are proprietary software owned by KJC InfoTech Limited and distributed only under the repository's All Rights Reserved licence.
+`values-minimal.yaml`, `values-external-otel.yaml`, and visibly non-production `values-development.yaml` are overlays on defaults. The external cluster must support Elasticsearch 9.4.2 APIs and grant runtime least privilege; the migration identity additionally manages templates, indices/data streams, aliases and mappings. No secret value belongs in values: only Secret names and keys are rendered.
+
+Digests take precedence over tags. NetworkPolicy is enabled and requires a compatible CNI; add explicit egress CIDRs for databases, Kafka, Connect, Schema Registry, OIDC, Elasticsearch and external OTel. API and Console have two replicas, rolling updates, topology configuration, PDBs and optional HPAs. OTel defaults to two replicas. Every worker defaults to one replica; despite leases in pathway/Kafka runtimes, horizontal and rollout-overlap safety is not certified.
+
+The migration Job executes `python -m packages.elastic_store.cli apply` once as a pre-install/pre-upgrade hook with a deadline and retained completion logs. Disable only under a controlled external migration process. Helm rollback restores Kubernetes resources; it never reverses Elasticsearch schema changes.
+
+Console runtime configuration is a ConfigMap-backed browser object containing only API URL and public OIDC settings. Immutable assets remain nginx-served; Elasticsearch is never browser-exposed. API probes use `/readyz` and `/livez`; Console uses `/healthz`; OTel uses port 13133. Workers expose no HTTP service.
+
+See the Kubernetes production guides and `docs/development/beta-deployment-packaging-audit.md` for security, permissions, exclusions, sizing and failure diagnosis.

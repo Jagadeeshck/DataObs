@@ -1,0 +1,4 @@
+telemetry:
+  mode: external
+  endpoint: https://otel.example.invalid:4317
+otelCollector: {enabled: false}

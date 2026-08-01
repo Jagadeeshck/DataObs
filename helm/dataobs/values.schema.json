@@ -1,0 +1,918 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "global",
+    "external",
+    "telemetry",
+    "api",
+    "console",
+    "qualityWorker",
+    "scannerWorker",
+    "monitorRuntime",
+    "pathwayWorker",
+    "kafkaObserver",
+    "otelCollector",
+    "migrationJob",
+    "networkPolicy"
+  ],
+  "definitions": {
+    "resources": {
+      "type": "object",
+      "required": [
+        "cpu",
+        "memory"
+      ],
+      "properties": {
+        "cpu": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]*(m)?$"
+        },
+        "memory": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]*(Ei|Pi|Ti|Gi|Mi|Ki)$"
+        }
+      }
+    }
+  },
+  "properties": {
+    "global": {
+      "type": "object"
+    },
+    "external": {
+      "type": "object",
+      "required": [
+        "elasticsearch",
+        "oidc"
+      ],
+      "properties": {
+        "elasticsearch": {
+          "type": "object",
+          "required": [
+            "url",
+            "secretName",
+            "usernameKey",
+            "passwordKey",
+            "caKey",
+            "verifyCertificates"
+          ],
+          "properties": {
+            "url": {
+              "type": "string",
+              "pattern": "^https?://.+"
+            },
+            "secretName": {
+              "type": "string",
+              "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+            },
+            "usernameKey": {
+              "type": "string",
+              "minLength": 1
+            },
+            "passwordKey": {
+              "type": "string",
+              "minLength": 1
+            },
+            "caKey": {
+              "type": "string",
+              "minLength": 1
+            },
+            "verifyCertificates": {
+              "type": "boolean"
+            }
+          }
+        },
+        "oidc": {
+          "type": "object"
+        }
+      }
+    },
+    "telemetry": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "enum": [
+            "bundled",
+            "external"
+          ]
+        },
+        "endpoint": {
+          "type": "string"
+        },
+        "protocol": {
+          "enum": [
+            "grpc",
+            "http/protobuf"
+          ]
+        },
+        "tls": {
+          "type": "object"
+        }
+      }
+    },
+    "networkPolicy": {
+      "type": "object"
+    },
+    "api": {
+      "type": "object",
+      "required": [
+        "enabled",
+        "replicaCount",
+        "image",
+        "resources"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "replicaCount": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "image": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "repository",
+            "tag",
+            "digest",
+            "pullPolicy"
+          ],
+          "properties": {
+            "repository": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^[a-z0-9][a-z0-9._/-]*$"
+            },
+            "tag": {
+              "type": "string",
+              "pattern": "^(?!latest$)(?:[0-9]+\\.[0-9]+\\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?|[0-9a-f]{7,64})$"
+            },
+            "digest": {
+              "type": "string",
+              "pattern": "^$|^sha256:[0-9a-f]{64}$"
+            },
+            "pullPolicy": {
+              "enum": [
+                "Always",
+                "IfNotPresent",
+                "Never"
+              ]
+            }
+          }
+        },
+        "resources": {
+          "type": "object",
+          "required": [
+            "requests",
+            "limits"
+          ],
+          "properties": {
+            "requests": {
+              "$ref": "#/definitions/resources"
+            },
+            "limits": {
+              "$ref": "#/definitions/resources"
+            }
+          }
+        },
+        "terminationGracePeriodSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3600
+        },
+        "env": {
+          "type": "array"
+        },
+        "envFrom": {
+          "type": "array"
+        },
+        "service": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "enum": [
+                "ClusterIP",
+                "NodePort",
+                "LoadBalancer"
+              ]
+            },
+            "port": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535
+            }
+          }
+        }
+      }
+    },
+    "console": {
+      "type": "object",
+      "required": [
+        "enabled",
+        "replicaCount",
+        "image",
+        "resources"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "replicaCount": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "image": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "repository",
+            "tag",
+            "digest",
+            "pullPolicy"
+          ],
+          "properties": {
+            "repository": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^[a-z0-9][a-z0-9._/-]*$"
+            },
+            "tag": {
+              "type": "string",
+              "pattern": "^(?!latest$)(?:[0-9]+\\.[0-9]+\\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?|[0-9a-f]{7,64})$"
+            },
+            "digest": {
+              "type": "string",
+              "pattern": "^$|^sha256:[0-9a-f]{64}$"
+            },
+            "pullPolicy": {
+              "enum": [
+                "Always",
+                "IfNotPresent",
+                "Never"
+              ]
+            }
+          }
+        },
+        "resources": {
+          "type": "object",
+          "required": [
+            "requests",
+            "limits"
+          ],
+          "properties": {
+            "requests": {
+              "$ref": "#/definitions/resources"
+            },
+            "limits": {
+              "$ref": "#/definitions/resources"
+            }
+          }
+        },
+        "terminationGracePeriodSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3600
+        },
+        "env": {
+          "type": "array"
+        },
+        "envFrom": {
+          "type": "array"
+        },
+        "service": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "enum": [
+                "ClusterIP",
+                "NodePort",
+                "LoadBalancer"
+              ]
+            },
+            "port": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535
+            }
+          }
+        }
+      }
+    },
+    "qualityWorker": {
+      "type": "object",
+      "required": [
+        "enabled",
+        "replicaCount",
+        "image",
+        "resources"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "replicaCount": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "image": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "repository",
+            "tag",
+            "digest",
+            "pullPolicy"
+          ],
+          "properties": {
+            "repository": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^[a-z0-9][a-z0-9._/-]*$"
+            },
+            "tag": {
+              "type": "string",
+              "pattern": "^(?!latest$)(?:[0-9]+\\.[0-9]+\\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?|[0-9a-f]{7,64})$"
+            },
+            "digest": {
+              "type": "string",
+              "pattern": "^$|^sha256:[0-9a-f]{64}$"
+            },
+            "pullPolicy": {
+              "enum": [
+                "Always",
+                "IfNotPresent",
+                "Never"
+              ]
+            }
+          }
+        },
+        "resources": {
+          "type": "object",
+          "required": [
+            "requests",
+            "limits"
+          ],
+          "properties": {
+            "requests": {
+              "$ref": "#/definitions/resources"
+            },
+            "limits": {
+              "$ref": "#/definitions/resources"
+            }
+          }
+        },
+        "terminationGracePeriodSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3600
+        },
+        "env": {
+          "type": "array"
+        },
+        "envFrom": {
+          "type": "array"
+        },
+        "service": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "enum": [
+                "ClusterIP",
+                "NodePort",
+                "LoadBalancer"
+              ]
+            },
+            "port": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535
+            }
+          }
+        }
+      }
+    },
+    "scannerWorker": {
+      "type": "object",
+      "required": [
+        "enabled",
+        "replicaCount",
+        "image",
+        "resources"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "replicaCount": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "image": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "repository",
+            "tag",
+            "digest",
+            "pullPolicy"
+          ],
+          "properties": {
+            "repository": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^[a-z0-9][a-z0-9._/-]*$"
+            },
+            "tag": {
+              "type": "string",
+              "pattern": "^(?!latest$)(?:[0-9]+\\.[0-9]+\\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?|[0-9a-f]{7,64})$"
+            },
+            "digest": {
+              "type": "string",
+              "pattern": "^$|^sha256:[0-9a-f]{64}$"
+            },
+            "pullPolicy": {
+              "enum": [
+                "Always",
+                "IfNotPresent",
+                "Never"
+              ]
+            }
+          }
+        },
+        "resources": {
+          "type": "object",
+          "required": [
+            "requests",
+            "limits"
+          ],
+          "properties": {
+            "requests": {
+              "$ref": "#/definitions/resources"
+            },
+            "limits": {
+              "$ref": "#/definitions/resources"
+            }
+          }
+        },
+        "terminationGracePeriodSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3600
+        },
+        "env": {
+          "type": "array"
+        },
+        "envFrom": {
+          "type": "array"
+        },
+        "service": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "enum": [
+                "ClusterIP",
+                "NodePort",
+                "LoadBalancer"
+              ]
+            },
+            "port": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535
+            }
+          }
+        }
+      }
+    },
+    "monitorRuntime": {
+      "type": "object",
+      "required": [
+        "enabled",
+        "replicaCount",
+        "image",
+        "resources"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "replicaCount": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "image": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "repository",
+            "tag",
+            "digest",
+            "pullPolicy"
+          ],
+          "properties": {
+            "repository": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^[a-z0-9][a-z0-9._/-]*$"
+            },
+            "tag": {
+              "type": "string",
+              "pattern": "^(?!latest$)(?:[0-9]+\\.[0-9]+\\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?|[0-9a-f]{7,64})$"
+            },
+            "digest": {
+              "type": "string",
+              "pattern": "^$|^sha256:[0-9a-f]{64}$"
+            },
+            "pullPolicy": {
+              "enum": [
+                "Always",
+                "IfNotPresent",
+                "Never"
+              ]
+            }
+          }
+        },
+        "resources": {
+          "type": "object",
+          "required": [
+            "requests",
+            "limits"
+          ],
+          "properties": {
+            "requests": {
+              "$ref": "#/definitions/resources"
+            },
+            "limits": {
+              "$ref": "#/definitions/resources"
+            }
+          }
+        },
+        "terminationGracePeriodSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3600
+        },
+        "env": {
+          "type": "array"
+        },
+        "envFrom": {
+          "type": "array"
+        },
+        "service": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "enum": [
+                "ClusterIP",
+                "NodePort",
+                "LoadBalancer"
+              ]
+            },
+            "port": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535
+            }
+          }
+        }
+      }
+    },
+    "pathwayWorker": {
+      "type": "object",
+      "required": [
+        "enabled",
+        "replicaCount",
+        "image",
+        "resources"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "replicaCount": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "image": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "repository",
+            "tag",
+            "digest",
+            "pullPolicy"
+          ],
+          "properties": {
+            "repository": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^[a-z0-9][a-z0-9._/-]*$"
+            },
+            "tag": {
+              "type": "string",
+              "pattern": "^(?!latest$)(?:[0-9]+\\.[0-9]+\\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?|[0-9a-f]{7,64})$"
+            },
+            "digest": {
+              "type": "string",
+              "pattern": "^$|^sha256:[0-9a-f]{64}$"
+            },
+            "pullPolicy": {
+              "enum": [
+                "Always",
+                "IfNotPresent",
+                "Never"
+              ]
+            }
+          }
+        },
+        "resources": {
+          "type": "object",
+          "required": [
+            "requests",
+            "limits"
+          ],
+          "properties": {
+            "requests": {
+              "$ref": "#/definitions/resources"
+            },
+            "limits": {
+              "$ref": "#/definitions/resources"
+            }
+          }
+        },
+        "terminationGracePeriodSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3600
+        },
+        "env": {
+          "type": "array"
+        },
+        "envFrom": {
+          "type": "array"
+        },
+        "service": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "enum": [
+                "ClusterIP",
+                "NodePort",
+                "LoadBalancer"
+              ]
+            },
+            "port": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535
+            }
+          }
+        }
+      }
+    },
+    "kafkaObserver": {
+      "type": "object",
+      "required": [
+        "enabled",
+        "replicaCount",
+        "image",
+        "resources"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "replicaCount": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "image": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "repository",
+            "tag",
+            "digest",
+            "pullPolicy"
+          ],
+          "properties": {
+            "repository": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^[a-z0-9][a-z0-9._/-]*$"
+            },
+            "tag": {
+              "type": "string",
+              "pattern": "^(?!latest$)(?:[0-9]+\\.[0-9]+\\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?|[0-9a-f]{7,64})$"
+            },
+            "digest": {
+              "type": "string",
+              "pattern": "^$|^sha256:[0-9a-f]{64}$"
+            },
+            "pullPolicy": {
+              "enum": [
+                "Always",
+                "IfNotPresent",
+                "Never"
+              ]
+            }
+          }
+        },
+        "resources": {
+          "type": "object",
+          "required": [
+            "requests",
+            "limits"
+          ],
+          "properties": {
+            "requests": {
+              "$ref": "#/definitions/resources"
+            },
+            "limits": {
+              "$ref": "#/definitions/resources"
+            }
+          }
+        },
+        "terminationGracePeriodSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3600
+        },
+        "env": {
+          "type": "array"
+        },
+        "envFrom": {
+          "type": "array"
+        },
+        "service": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "enum": [
+                "ClusterIP",
+                "NodePort",
+                "LoadBalancer"
+              ]
+            },
+            "port": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535
+            }
+          }
+        }
+      }
+    },
+    "otelCollector": {
+      "type": "object",
+      "required": [
+        "enabled",
+        "replicaCount",
+        "image",
+        "resources"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "replicaCount": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "image": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "repository",
+            "tag",
+            "digest",
+            "pullPolicy"
+          ],
+          "properties": {
+            "repository": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^[a-z0-9][a-z0-9._/-]*$"
+            },
+            "tag": {
+              "type": "string",
+              "pattern": "^(?!latest$)(?:[0-9]+\\.[0-9]+\\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?|[0-9a-f]{7,64})$"
+            },
+            "digest": {
+              "type": "string",
+              "pattern": "^$|^sha256:[0-9a-f]{64}$"
+            },
+            "pullPolicy": {
+              "enum": [
+                "Always",
+                "IfNotPresent",
+                "Never"
+              ]
+            }
+          }
+        },
+        "resources": {
+          "type": "object",
+          "required": [
+            "requests",
+            "limits"
+          ],
+          "properties": {
+            "requests": {
+              "$ref": "#/definitions/resources"
+            },
+            "limits": {
+              "$ref": "#/definitions/resources"
+            }
+          }
+        },
+        "terminationGracePeriodSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3600
+        },
+        "env": {
+          "type": "array"
+        },
+        "envFrom": {
+          "type": "array"
+        },
+        "service": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "enum": [
+                "ClusterIP",
+                "NodePort",
+                "LoadBalancer"
+              ]
+            },
+            "port": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535
+            }
+          }
+        }
+      }
+    },
+    "migrationJob": {
+      "type": "object",
+      "required": [
+        "enabled",
+        "image",
+        "terminalMigration"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "image": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "repository",
+            "tag",
+            "digest",
+            "pullPolicy"
+          ],
+          "properties": {
+            "repository": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^[a-z0-9][a-z0-9._/-]*$"
+            },
+            "tag": {
+              "type": "string",
+              "pattern": "^(?!latest$)(?:[0-9]+\\.[0-9]+\\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?|[0-9a-f]{7,64})$"
+            },
+            "digest": {
+              "type": "string",
+              "pattern": "^$|^sha256:[0-9a-f]{64}$"
+            },
+            "pullPolicy": {
+              "enum": [
+                "Always",
+                "IfNotPresent",
+                "Never"
+              ]
+            }
+          }
+        },
+        "terminalMigration": {
+          "const": "0021_lineage_analysis_explorer"
+        }
+      }
+    }
+  }
+}

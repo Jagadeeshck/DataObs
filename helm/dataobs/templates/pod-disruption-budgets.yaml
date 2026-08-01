@@ -1,0 +1,11 @@
+{{- range $name, $cfg := dict "api" .Values.api "console" .Values.console "otel-collector" .Values.otelCollector }}
+{{- if and $cfg.enabled $cfg.pdb.enabled (gt (int $cfg.replicaCount) 1) }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata: {name: {{ include "dataobs.fullname" $ }}-{{ $name }} }
+spec:
+  minAvailable: {{ $cfg.pdb.minAvailable }}
+  selector: {matchLabels: {app.kubernetes.io/name: {{ include "dataobs.name" $ }}, app.kubernetes.io/instance: {{ $.Release.Name }}, app.kubernetes.io/component: {{ $name }}}}
+{{- end }}
+{{- end }}

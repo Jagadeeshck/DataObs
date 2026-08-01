@@ -364,9 +364,14 @@ export const api = {
       tenant,
       signal,
     ),
-  commandCenter: (tenant: string, env: string, signal?: AbortSignal) =>
+  commandCenter: (
+    tenant: string,
+    env: string,
+    range?: { start: string; end: string },
+    signal?: AbortSignal,
+  ) =>
     read<CommandCenter>(
-      `/api/v1/command-center?environment=${encodeURIComponent(env)}`,
+      `/api/v1/command-center?environment=${encodeURIComponent(env)}${range ? `&start=${encodeURIComponent(range.start)}&end=${encodeURIComponent(range.end)}` : ""}`,
       tenant,
       signal,
     ),

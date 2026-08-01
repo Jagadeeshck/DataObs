@@ -1,179 +1,159 @@
+import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { qualityMonitors } from "../../api/quality";
+import { qualityApi, type MonitorDefinition } from "../../api/quality";
 import { useProductContext } from "../../state/context";
-import {
-  display,
-  QualityStatusBanner,
-  StatusBadge,
-} from "./components/QualityComponents";
-import { useQualityRequest } from "./useQualityRequest";
-const filters = [
-  ["search", "Search"],
-  ["state", "State"],
-  ["monitor_type", "Monitor type"],
-  ["threshold_mode", "Threshold mode"],
-  ["managed_by", "Managed by"],
-  ["creation_source", "Creation source"],
-  ["source_type", "Source type"],
-];
+import { shown } from "./Evidence";
 export function MonitorInventory() {
   const { tenant, environment } = useProductContext();
   const [params, setParams] = useSearchParams();
-  const query = new URLSearchParams(params);
-  query.delete("tab");
-  const key = query.toString();
-  const { data, error, loading, refresh } = useQualityRequest(
-    (s) => qualityMonitors(tenant, environment, query, s),
-    [tenant, environment, key],
-  );
-  const update = (k: string, v: string) => {
-    const n = new URLSearchParams(params);
-    if (v) n.set(k, v);
-    else n.delete(k);
-    n.delete("cursor");
-    setParams(n);
+  const [items, setItems] = useState<MonitorDefinition[]>([]);
+  const [next, setNext] = useState<string | null>(null);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    const c = new AbortController();
+    qualityApi
+      .monitors(tenant, environment, params, c.signal)
+      .then((x) => {
+        setItems(x.data.items);
+        setNext(x.data.next_cursor);
+        setError("");
+      })
+      .catch((e: Error) => setError(e.message))
+      .finally(() => setLoading(false));
+    return () => c.abort();
+  }, [tenant, environment, params]);
+  const update = (key: string, value: string) => {
+    const q = new URLSearchParams(params);
+    if (value) q.set(key, value);
+    else q.delete(key);
+    q.delete("cursor");
+    setParams(q);
   };
   return (
-    <section aria-labelledby="monitor-inventory">
-      <h2 id="monitor-inventory">Monitor inventory</h2>
-      <form
-        className="quality-filters"
-        onSubmit={(e) => e.preventDefault()}
-        aria-label="Monitor filters"
-      >
-        {filters.map(([k, l]) => (
-          <label key={k}>
-            {l}
-            <input
-              value={params.get(k) ?? ""}
-              onChange={(e) => update(k, e.target.value)}
-            />
-          </label>
-        ))}
-        {[
-          ["has_open_findings", "Open findings"],
-          ["has_incident", "Incident linked"],
-          ["is_stale", "Stale"],
-        ].map(([k, l]) => (
-          <label key={k}>
-            {l}
-            <select
-              value={params.get(k) ?? ""}
-              onChange={(e) => update(k, e.target.value)}
-            >
-              <option value="">Any</option>
-              <option value="true">Yes</option>
-              <option value="false">No</option>
-            </select>
-          </label>
-        ))}
+    <section className="quality-page">
+      <nav aria-label="Breadcrumb">
+        <Link to="/quality">Quality</Link> / Monitors
+      </nav>
+      <div className="quality-heading">
+        <div>
+          <h1>Monitor inventory</h1>
+          <p>
+            Bounded server-side results for the current tenant and environment.
+          </p>
+        </div>
+        <Link className="primary-action" to="/quality/monitors/new">
+          Create monitor
+        </Link>
+      </div>
+      <form className="stream-filters" onSubmit={(e) => e.preventDefault()}>
         <label>
-          Sort
+          Search
+          <input
+            value={params.get("search") ?? ""}
+            onChange={(e) => update("search", e.target.value)}
+          />
+        </label>
+        <label>
+          State
           <select
-            value={params.get("sort") ?? "last_updated"}
-            onChange={(e) => update("sort", e.target.value)}
+            value={params.get("state") ?? ""}
+            onChange={(e) => update("state", e.target.value)}
           >
+            <option value="">All states</option>
             {[
-              "name",
-              "last_updated",
-              "state",
-              "monitor_type",
-              "last_observation",
-              "last_evaluation",
-              "open_findings",
-              "severity",
+              "draft",
+              "enabled",
+              "disabled",
+              "learning",
+              "active",
+              "degraded",
+              "error",
+              "archived",
             ].map((x) => (
               <option key={x}>{x}</option>
             ))}
           </select>
         </label>
+        <label>
+          Type
+          <input
+            value={params.get("monitor_type") ?? ""}
+            onChange={(e) => update("monitor_type", e.target.value)}
+          />
+        </label>
+        <label>
+          Source
+          <select
+            value={params.get("source_type") ?? ""}
+            onChange={(e) => update("source_type", e.target.value)}
+          >
+            <option value="">All sources</option>
+            <option value="postgresql">PostgreSQL</option>
+            <option value="deterministic_test">Deterministic test</option>
+          </select>
+        </label>
         <button
           type="button"
-          onClick={() => {
-            const n = new URLSearchParams();
-            n.set("tab", "monitors");
-            setParams(n);
-          }}
+          onClick={() => setParams({ limit: "50", sort: "name" })}
         >
-          Clear all
-        </button>
-        <button type="button" onClick={refresh}>
-          Refresh
+          Reset filters
         </button>
       </form>
-      {loading && <p role="status">Loading monitors…</p>}
-      {error && <p role="alert">{error}</p>}
-      {data && (
-        <>
-          <QualityStatusBanner evidence={data} />
-          {!data.items.length ? (
-            <p>No monitors match these filters.</p>
-          ) : (
-            <div className="table-scroll">
-              <table>
-                <caption>Quality monitors and measured evidence</caption>
-                <thead>
-                  <tr>
-                    {[
-                      "Monitor",
-                      "Type",
-                      "Target",
-                      "State",
-                      "Schedule",
-                      "Threshold",
-                      "Last value",
-                      "Last evaluation",
-                      "Anomaly score",
-                      "Open findings",
-                      "Severity",
-                      "Incident",
-                      "Cold-start state",
-                      "Observed",
-                    ].map((x) => (
-                      <th key={x}>{x}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.items.map((m) => (
-                    <tr key={m.id}>
-                      <th>
-                        <Link
-                          to={`/quality/monitors/${encodeURIComponent(m.id)}`}
-                        >
-                          {m.name}
-                        </Link>
-                        {m.stale && <span className="stale-label"> Stale</span>}
-                      </th>
-                      <td>{m.monitor_type}</td>
-                      <td>{m.target_display_name}</td>
-                      <td>
-                        <StatusBadge value={m.state} />
-                      </td>
-                      <td>{m.schedule_interval}</td>
-                      <td>{m.threshold_mode}</td>
-                      <td>
-                        {display(m.last_value, m.unit ? ` ${m.unit}` : "")}
-                      </td>
-                      <td>{display(m.last_evaluation_status)}</td>
-                      <td>{display(m.anomaly_score)}</td>
-                      <td>{display(m.open_finding_count)}</td>
-                      <td>{display(m.highest_open_severity)}</td>
-                      <td>{display(m.incident_count)}</td>
-                      <td>{display(m.cold_start_state)}</td>
-                      <td>{display(m.last_observation_at)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-          {data.next_cursor && (
-            <button onClick={() => update("cursor", data.next_cursor!)}>
-              Next page
-            </button>
-          )}
-        </>
+      {loading && <p role="status">Loading monitor inventory…</p>}
+      {error && <p role="alert">Monitor inventory unavailable: {error}</p>}
+      {!loading && !error && items.length === 0 && (
+        <p>
+          No monitors match these filters. Missing results are not counted as
+          zero.
+        </p>
+      )}
+      <div className="table-scroll">
+        <table>
+          <caption>Quality monitors</caption>
+          <thead>
+            <tr>
+              <th>Monitor</th>
+              <th>Type / target</th>
+              <th>State</th>
+              <th>Schedule</th>
+              <th>Threshold</th>
+              <th>Revision</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((m) => (
+              <tr key={m.id}>
+                <th>
+                  <Link to={`/quality/monitors/${encodeURIComponent(m.id)}`}>
+                    {m.name || m.id}
+                  </Link>
+                  <small>{m.id}</small>
+                </th>
+                <td>
+                  {m.monitor_type}
+                  <small>
+                    {shown(
+                      m.target.asset_id ??
+                        `${m.target.schema_name ?? ""}.${m.target.table_name ?? ""}`,
+                    )}
+                  </small>
+                </td>
+                <td>
+                  <span className={`state state-${m.state}`}>{m.state}</span>
+                </td>
+                <td>
+                  {m.schedule.interval} · {m.schedule.timezone}
+                </td>
+                <td>{m.threshold.mode}</td>
+                <td>{m.revision}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {next && (
+        <button onClick={() => update("cursor", next)}>Next page</button>
       )}
     </section>
   );

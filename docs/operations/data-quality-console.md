@@ -1,7 +1,11 @@
-# Operating the Data Quality Console
+# Data Quality Console operations
 
-Serve the API with a tenant-scoped monitor repository and optional runtime-health object, then build the Console normally. `/api/v1/quality/overview` deliberately returns partial evidence when finding, coverage, observation or runtime sources are missing. A disconnected runtime returns typed HTTP 503 and must be investigated rather than interpreted as zero workers or zero backlog.
+The Console reads canonical quality evidence at `/quality`. An unavailable card means the provider or request is unavailable; unknown means no conclusion exists; not configured means an optional provider is absent. Zero is shown only when the API measured and returned zero. Inspect the displayed source and observation timestamp before acting.
 
-The Console defaults to manual refresh. Operators should verify tenant and environment selectors before interpreting evidence. Warnings, missing inputs, source coverage and request IDs support investigation. A stale monitor indicates collection recency risk, not necessarily a failed check. Recommendation rows are proposals only.
+Monitor authoring is capability-driven and creates a draft. It accepts an opaque connection reference, never credentials or unrestricted SQL. Enablement is a separate confirmed operation. Run now returns an execution identifier and **queued** status only; use runtime evidence to establish eventual completion.
 
-Certification requires the feature workflow to execute backend isolation/permission tests, Console typecheck/test/build, Chromium Playwright and axe against Elasticsearch 9.4.2 and PostgreSQL, retain exact-commit `data-quality-console-v1-evidence`, and independently verify it. Until that succeeds the capability is functional but unvalidated.
+Lifecycle requests use the monitor ETag. On HTTP 412 the Console refreshes and requires the operator to review before retrying. Do not bypass this control. Archive, enable, and disable require confirmation. Tenant and environment are obtained from authenticated application context, not form data.
+
+For incident investigation, open Findings in Monitor 360 and follow an incident link only when the backend supplies an incident identity. Absence of that identity does not mean absence of impact. If runtime or evidence APIs fail, preserve the request ID from the error and inspect API/runtime logs without logging tokens, connection references, or evidence payloads.
+
+Rollback is an application deployment rollback; this feature has no migration. Canonical monitors created before rollback remain intact.

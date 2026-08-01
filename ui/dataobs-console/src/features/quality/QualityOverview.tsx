@@ -1,117 +1,173 @@
-import { qualityOverview } from "../../api/quality";
-import { useProductContext } from "../../state/context";
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import {
-  display,
-  MissingEvidencePanel,
-  QualityMetricCard,
-  QualityStatusBanner,
-  StatusBadge,
-} from "./components/QualityComponents";
-import { useQualityRequest } from "./useQualityRequest";
-export function QualityOverviewView() {
+  qualityApi,
+  type Coverage,
+  type MonitorDefinition,
+  type Recommendation,
+  type RuntimeHealth,
+} from "../../api/quality";
+import { useProductContext } from "../../state/context";
+import { Evidence, shown } from "./Evidence";
+
+export function QualityOverview() {
   const { tenant, environment } = useProductContext();
-  const { data, error, loading, refresh } = useQualityRequest(
-    (s) => qualityOverview(tenant, environment, s),
-    [tenant, environment],
+  const [monitors, setMonitors] = useState<MonitorDefinition[]>([]);
+  const [coverage, setCoverage] = useState<Coverage>({ state: "unknown" });
+  const [runtime, setRuntime] = useState<RuntimeHealth>();
+  const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
+  const [warnings, setWarnings] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    const c = new AbortController();
+    Promise.allSettled([
+      qualityApi.monitors(
+        tenant,
+        environment,
+        new URLSearchParams({ limit: "50" }),
+        c.signal,
+      ),
+      qualityApi.coverage(tenant, environment, c.signal),
+      qualityApi.runtime(tenant, environment, "health", c.signal),
+      qualityApi.recommendations(tenant, environment, c.signal),
+    ]).then(([m, co, r, re]) => {
+      const w: string[] = [];
+      if (m.status === "fulfilled") setMonitors(m.value.data.items);
+      else w.push("Monitor inventory unavailable");
+      if (co.status === "fulfilled") setCoverage(co.value.data);
+      else w.push("Coverage has not been calculated");
+      if (r.status === "fulfilled") setRuntime(r.value.data);
+      else w.push("Runtime health unavailable");
+      if (re.status === "fulfilled") setRecommendations(re.value.data.items);
+      else w.push("Recommendations unavailable");
+      setWarnings(w);
+      setLoading(false);
+    });
+    return () => c.abort();
+  }, [tenant, environment]);
+  if (loading) return <p role="status">Loading quality evidence…</p>;
+  const states = Object.entries(
+    monitors.reduce<Record<string, number>>(
+      (a, m) => ({ ...a, [m.state]: (a[m.state] ?? 0) + 1 }),
+      {},
+    ),
   );
-  if (loading) return <p role="status">Loading quality overview…</p>;
-  if (error)
-    return (
-      <div role="alert">
-        <p>{error}</p>
-        <button onClick={refresh}>Retry</button>
-      </div>
-    );
-  if (!data) return null;
-  const cards = [
-    ...["monitor_count", "Total monitors"],
-    ["active_monitor_count", "Active monitors"],
-    ["learning_monitor_count", "Learning monitors"],
-    ["degraded_monitor_count", "Degraded monitors"],
-    ["error_monitor_count", "Error monitors"],
-    ["stale_monitor_count", "Stale monitors"],
-    ["open_finding_count", "Open findings"],
-    ["critical_finding_count", "Critical findings"],
-    ["coverage_percentage", "Coverage"],
-    ["runtime_backlog", "Runtime backlog"],
-  ] as [keyof typeof data, string][];
   return (
-    <div>
-      <QualityStatusBanner evidence={data} />
-      <button onClick={refresh}>Refresh evidence</button>
-      <div className="metric-grid">
-        {cards.map(([key, label]) => (
-          <QualityMetricCard
-            key={key as string}
-            label={label}
-            value={display(
-              data[key],
-              key === "coverage_percentage" && data[key] !== null ? "%" : "",
-            )}
-          />
-        ))}
+    <section className="quality-page">
+      <nav aria-label="Breadcrumb">Home / Quality</nav>
+      <div className="quality-heading">
+        <div>
+          <h1>Data Quality</h1>
+          <p>
+            Measured monitoring health, coverage, findings and recommendations.
+          </p>
+        </div>
+        <Link className="primary-action" to="/quality/monitors/new">
+          Create monitor
+        </Link>
       </div>
-      <section>
-        <h2>Monitor state distribution</h2>
-        <p aria-label="Monitor state summary">
-          Enabled {data.enabled_monitor_count}; active{" "}
-          {data.active_monitor_count}; learning {data.learning_monitor_count};
-          degraded {data.degraded_monitor_count}; error{" "}
-          {data.error_monitor_count}; suppressed {data.suppressed_monitor_count}
-          ; archived {data.archived_monitor_count}.
-        </p>
-        <table>
-          <caption>Monitor states (count)</caption>
-          <thead>
-            <tr>
-              <th>State</th>
-              <th>Count</th>
-            </tr>
-          </thead>
-          <tbody>
-            {[
-              "active",
-              "learning",
-              "degraded",
-              "error",
-              "suppressed",
-              "archived",
-            ].map((x) => (
-              <tr key={x}>
-                <th>
-                  <StatusBadge value={x} />
-                </th>
-                <td>
-                  {data[`${x}_monitor_count` as keyof typeof data] as number}
-                </td>
-              </tr>
+      {warnings.length > 0 && (
+        <aside role="status" className="quality-warning">
+          <strong>Partial evidence</strong>
+          <ul>
+            {warnings.map((x) => (
+              <li key={x}>{x}</li>
             ))}
-          </tbody>
-        </table>
-      </section>
-      <section>
-        <h2>Coverage and runtime</h2>
-        <dl className="detail-grid">
-          <dt>Coverage state</dt>
-          <dd>{display(data.coverage_state)}</dd>
-          <dt>Exact coverage</dt>
-          <dd>
-            {display(data.coverage_numerator)} /{" "}
-            {display(data.coverage_denominator)}
-          </dd>
-          <dt>High-risk gaps</dt>
-          <dd>{display(data.high_risk_gap_count)}</dd>
-          <dt>Runtime state</dt>
-          <dd>
-            <StatusBadge value={data.runtime_state} />
-          </dd>
-          <dt>Runtime backlog</dt>
-          <dd>{display(data.runtime_backlog)}</dd>
-          <dt>Recommendations</dt>
-          <dd>{display(data.recommendation_count)}</dd>
-        </dl>
-      </section>
-      <MissingEvidencePanel evidence={data} />
-    </div>
+          </ul>
+        </aside>
+      )}
+      <div className="quality-grid">
+        <Evidence
+          status={coverage.state === "unknown" ? "unknown" : "available"}
+        >
+          <h2>Coverage</h2>
+          <b>
+            {coverage.numerator !== undefined &&
+            coverage.denominator !== undefined
+              ? `${coverage.numerator} / ${coverage.denominator}`
+              : "Not calculated"}
+          </b>
+          <p>{coverage.high_risk_gaps?.length ?? 0} high-risk gaps</p>
+        </Evidence>
+        <Evidence
+          status={runtime ? "available" : "unavailable"}
+          timestamp={runtime?.observed_at}
+          source={runtime?.provider}
+        >
+          <h2>Runtime health</h2>
+          <b>{shown(runtime?.state)}</b>
+          <p>Backlog: {shown(runtime?.backlog)}</p>
+        </Evidence>
+        <Evidence status="available">
+          <h2>Monitors</h2>
+          <b>{monitors.length}</b>
+          <p>
+            {states.map(([s, n]) => `${s}: ${n}`).join(" · ") ||
+              "No monitors exist"}
+          </p>
+        </Evidence>
+        <Evidence status="available">
+          <h2>Recommendations</h2>
+          <b>{recommendations.length}</b>
+          <p>
+            {coverage.recommendation_count !== undefined
+              ? `Coverage reports ${coverage.recommendation_count}`
+              : "Coverage count unavailable"}
+          </p>
+        </Evidence>
+      </div>
+      <h2>Attention required</h2>
+      <ul>
+        {coverage.stale_or_broken_monitors?.map((id) => (
+          <li key={id}>
+            <Link to={`/quality/monitors/${encodeURIComponent(id)}`}>{id}</Link>{" "}
+            — stale or broken
+          </li>
+        ))}
+        {!coverage.stale_or_broken_monitors?.length && (
+          <li>No stale or broken monitor was reported.</li>
+        )}
+      </ul>
+      <Link to="/quality/monitors">View monitor inventory</Link>
+      <Recommendations items={recommendations} />
+    </section>
+  );
+}
+function Recommendations({ items }: { items: Recommendation[] }) {
+  return (
+    <section>
+      <h2>Recommendations</h2>
+      {items.length === 0 ? (
+        <p>No recommendations are available.</p>
+      ) : (
+        <div className="table-scroll">
+          <table>
+            <caption>Recommended monitors</caption>
+            <thead>
+              <tr>
+                <th>Type</th>
+                <th>Rationale</th>
+                <th>Confidence</th>
+                <th>Cost</th>
+                <th>Risk</th>
+                <th>State</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((x) => (
+                <tr key={x.id}>
+                  <th>{x.monitor_type}</th>
+                  <td>{x.rationale}</td>
+                  <td>{x.confidence}</td>
+                  <td>{x.expected_compute_cost}</td>
+                  <td>{x.risk}</td>
+                  <td>{x.state}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
   );
 }

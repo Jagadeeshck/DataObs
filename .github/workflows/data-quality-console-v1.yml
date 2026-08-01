@@ -1,4 +1,4 @@
-name: Data Quality Console v1
+name: data-quality-console-v1
 on:
   pull_request:
   push:
@@ -6,66 +6,101 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+  actions: read
 jobs:
-  validate:
+  certify:
+    name: certify
     runs-on: ubuntu-latest
+    timeout-minutes: 50
     services:
       elasticsearch:
         image: docker.elastic.co/elasticsearch/elasticsearch:9.4.2
         env:
           discovery.type: single-node
-          xpack.security.enabled: false
-          ES_JAVA_OPTS: -Xms1g -Xmx1g
-        ports: [9200:9200]
+          xpack.security.enabled: "false"
+        ports: ["9200:9200"]
         options: >-
-          --health-cmd "curl -fsS http://localhost:9200/_cluster/health"
-          --health-interval 10s --health-timeout 5s --health-retries 30
-      postgres:
-        image: postgres:17
-        env:
-          POSTGRES_USER: dataobs_test
-          POSTGRES_PASSWORD: deterministic_test_only
-          POSTGRES_DB: dataobs_test
-        ports: [5432:5432]
-        options: >-
-          --health-cmd "pg_isready -U dataobs_test"
-          --health-interval 10s --health-timeout 5s --health-retries 10
+          --health-cmd "curl --fail http://localhost:9200/_cluster/health"
+          --health-interval 10s --health-timeout 5s --health-retries 12
     steps:
       - uses: actions/checkout@v4
-        with: {fetch-depth: 0}
       - uses: actions/setup-python@v5
-        with: {python-version: '3.12'}
-      - uses: pnpm/action-setup@v4
-        with: {version: 10.28.1}
-      - uses: actions/setup-node@v4
-        with: {node-version: '22', cache: pnpm, cache-dependency-path: ui/dataobs-console/pnpm-lock.yaml}
-      - run: pip install -r requirements-dev.txt
-      - run: python -m packages.elastic_store.cli migrate --elasticsearch-url http://localhost:9200
-      - run: python -m pytest tests/monitoring tests/security -q --junitxml=quality-backend.xml
-      - run: python scripts/check_migration_immutability.py --base-ref origin/main
-      - run: python scripts/check_generated_artifacts.py && python scripts/check_team_boundaries.py
-      - working-directory: ui/dataobs-console
-        run: pnpm install --frozen-lockfile && pnpm api:generate && git diff --exit-code src/api/generated/schema.ts
-      - working-directory: ui/dataobs-console
-        run: pnpm typecheck && pnpm lint && pnpm format:check && pnpm test -- --reporter=junit --outputFile=../../quality-console.xml && pnpm build && pnpm bundle:check
-      - working-directory: ui/dataobs-console
-        run: pnpm exec playwright install --with-deps chromium && pnpm playwright
-      - name: Exact-commit evidence
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt pytest pytest-cov ruff black
+      - name: Bounded Elasticsearch readiness and version check
+        shell: bash
         run: |
-          mkdir -p data-quality-console-v1-evidence
-          printf 'repository=%s\nfinal_sha=%s\nbase_sha=%s\nelasticsearch_version=9.4.2\npostgresql_version=17\nterminal_migration=0021_lineage_analysis_explorer\noverview=validated\ninventory=validated\ndetail=validated\nobservations=validated\nevaluations=validated\nbaselines=validated\nfindings=validated\ncoverage=validated\nruntime=validated\ntenant_isolation=validated\npermissions=validated\nbrowser=executed\naccessibility=executed\n' "$GITHUB_REPOSITORY" "$GITHUB_SHA" "$(git merge-base HEAD origin/main)" > data-quality-console-v1-evidence/results.txt
-          cp quality-backend.xml quality-console.xml data-quality-console-v1-evidence/ 2>/dev/null || true
-          find data-quality-console-v1-evidence -type f -printf '%P\n' | sort > data-quality-console-v1-evidence/artifact-inventory.txt
-          sha256sum data-quality-console-v1-evidence/* > data-quality-console-v1-evidence/SHA256SUMS
-      - uses: actions/upload-artifact@v4
+          set -euo pipefail
+          mkdir -p data-quality-console-v1-evidence/results
+          for attempt in {1..30}; do curl --fail --silent http://localhost:9200 >/tmp/es.json && break; sleep 2; done
+          test -s /tmp/es.json || { docker logs "${{ job.services.elasticsearch.id }}"; exit 1; }
+          python -c 'import json; d=json.load(open("/tmp/es.json")); assert d["version"]["number"] == "9.4.2"; print(d["version"]["number"])' | tee data-quality-console-v1-evidence/elasticsearch-version.txt
+      - name: Migration immutability
+        run: python scripts/check_migration_immutability.py --base-ref "${{ github.event.pull_request.base.sha || github.event.before || 'HEAD^' }}"
+      - uses: pnpm/action-setup@v4
+        with:
+          version: "10.28.1"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: ui/dataobs-console/pnpm-lock.yaml
+      - name: Quality monitor, lifecycle, tenancy and security tests
+        env:
+          ELASTICSEARCH_URL: http://localhost:9200
+        run: python -m pytest tests/monitoring tests/security tests/certification -q --junitxml=data-quality-console-v1-evidence/results/backend.xml
+      - name: Console static, unit and production checks
+        working-directory: ui/dataobs-console
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm api:generate
+          pnpm typecheck
+          pnpm lint
+          pnpm format:check
+          pnpm test -- --reporter=junit --outputFile=../../data-quality-console-v1-evidence/results/console.xml
+          pnpm build
+          pnpm bundle:check
+      - name: Install supported Playwright browser
+        working-directory: ui/dataobs-console
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Browser and accessibility tests
+        working-directory: ui/dataobs-console
+        env:
+          PLAYWRIGHT_JUNIT_OUTPUT_NAME: ../../data-quality-console-v1-evidence/results/browser.xml
+        run: pnpm exec playwright test --config=playwright.config.ts --reporter=junit,html
+      - name: Resolve numeric job ID and generate exact-commit evidence
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          JOB_ID=$(curl --fail --silent --retry 3 -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json"             "${{ github.api_url }}/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/jobs?per_page=100"             | python -c 'import json,sys; jobs=[j for j in json.load(sys.stdin)["jobs"] if j["name"] == "certify"]; assert len(jobs)==1; print(jobs[0]["id"])')
+          python scripts/certification/verify_product_evidence.py generate             --directory data-quality-console-v1-evidence --repository "${{ github.repository }}" --workflow "${{ github.workflow }}"             --run-id "${{ github.run_id }}" --job-id "$JOB_ID" --event "${{ github.event_name }}"             --elasticsearch-version "$(cat data-quality-console-v1-evidence/elasticsearch-version.txt)"             --python-version "$(python --version | cut -d' ' -f2)" --node-version "$(node --version)" --required-suite elasticsearch --required-suite quality --required-suite security --required-suite tenant --required-suite browser --required-suite accessibility
+      - name: Upload evidence and failure diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
           name: data-quality-console-v1-evidence
-          path: data-quality-console-v1-evidence
+          path: |
+            data-quality-console-v1-evidence
+            /tmp/es.json
+          if-no-files-found: error
           retention-days: 30
-  independent-verification:
-    needs: validate
+  verify-evidence:
+    name: independently verify evidence
+    if: always()
+    needs: certify
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
-        with: {name: data-quality-console-v1-evidence, path: evidence}
-      - run: cd evidence && sha256sum -c SHA256SUMS && test "$(grep '^final_sha=' results.txt | cut -d= -f2)" = "$GITHUB_SHA"
+        with:
+          name: data-quality-console-v1-evidence
+          path: downloaded-evidence
+      - name: Validate provenance, service version, migration and test XML
+        run: python scripts/certification/verify_product_evidence.py verify --directory downloaded-evidence/data-quality-console-v1-evidence --repository "${{ github.repository }}" --workflow "${{ github.workflow }}" --run-id "${{ github.run_id }}" --expected-sha "$(git rev-parse HEAD)" --required-suite elasticsearch --required-suite quality --required-suite security --required-suite tenant --required-suite browser --required-suite accessibility

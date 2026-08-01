@@ -1,0 +1,49 @@
+name: Pathway Explorer Console v1
+on:
+  pull_request:
+    paths: ["packages/pathways/**", "services/pathway_worker/**", "src/api/pathway_routes.py", "ui/dataobs-console/src/features/pathways/**", "ui/dataobs-console/src/api/pathways.ts", "tests/pathways/**", "docs/**", ".github/workflows/pathway-explorer-console.yml"]
+  push: {branches: [main]}
+  workflow_dispatch:
+jobs:
+  exact-commit-evidence:
+    runs-on: ubuntu-latest
+    services:
+      elasticsearch:
+        image: docker.elastic.co/elasticsearch/elasticsearch:9.4.2
+        env: {discovery.type: single-node, xpack.security.enabled: "false", ES_JAVA_OPTS: -Xms1g -Xmx1g}
+        ports: ["9200:9200"]
+        options: --health-cmd "curl -fsS http://localhost:9200/_cluster/health" --health-interval 10s --health-timeout 5s --health-retries 30
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - uses: pnpm/action-setup@v4
+        with: {version: 10.28.1}
+      - uses: actions/setup-node@v4
+        with: {node-version: "22", cache: pnpm, cache-dependency-path: ui/dataobs-console/pnpm-lock.yaml}
+      - run: pip install -r requirements.txt
+      - name: Boundaries, migrations, seed, and backend tests
+        env: {ELASTICSEARCH_URL: "http://localhost:9200"}
+        run: |
+          mkdir -p evidence
+          python scripts/check_team_boundaries.py
+          python scripts/check_generated_artifacts.py
+          python scripts/check_migration_immutability.py --base-ref origin/main
+          python -m packages.elastic_store.cli apply
+          python scripts/seed_console_demo.py
+          python -m pytest tests/pathways tests/stream_360 tests/security -q --junitxml=evidence/backend.xml
+      - name: Console, Playwright, and axe
+        working-directory: ui/dataobs-console
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm api:generate
+          git diff --exit-code src/api/generated/schema.ts
+          pnpm typecheck && pnpm lint && pnpm format:check && pnpm test -- --reporter=junit --outputFile=../../evidence/console.xml
+          pnpm build && pnpm bundle:check
+          pnpm exec playwright install --with-deps chromium
+          pnpm playwright
+      - name: Exact commit evidence
+        run: printf '{"repository":"Jagadeeshck/DataObs","final_sha":"%s","elasticsearch_version":"9.4.2","tenant_environment_isolation":true,"non_causal_semantics":true,"migration_added":false}\n' "$(git rev-parse HEAD)" > evidence/result.json
+      - uses: actions/upload-artifact@v4
+        with: {name: pathway-explorer-console-v1-evidence, path: evidence/, retention-days: 30}

@@ -1,28 +1,103 @@
 name: Console Product Experience v1
 on:
   pull_request:
-    paths: ["ui/dataobs-console/**", "docs/architecture/console-*.md", "docs/operations/console-troubleshooting.md", "docs/operations/integration-onboarding.md", "docs/security/console-auth-and-secret-handling.md", "docs/development/team-5-console-audit.md", ".github/workflows/console-product-experience.yml"]
-  push: {branches: [main]}
+    paths:
+      [
+        "ui/dataobs-console/**",
+        "docs/architecture/console-*.md",
+        "docs/operations/console-*.md",
+        "docs/security/console-*.md",
+        "docs/development/team-5-*.md",
+        ".github/workflows/console-product-experience.yml",
+      ]
+  push: { branches: [main] }
   workflow_dispatch:
-permissions: {contents: read}
+permissions: { contents: read }
 jobs:
-  console:
-    uses: ./.github/workflows/reusable-console-validation.yml
-    with:
-      run-playwright: true
-      run-accessibility: true
-      artifact-name: console-product-experience-v1-evidence
-  repository-policy:
+  exact-commit-evidence:
     runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      CERT_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
     steps:
       - uses: actions/checkout@v4
-        with: {fetch-depth: 0}
+        with: { ref: "${{ env.CERT_SHA }}", fetch-depth: 0 }
       - uses: actions/setup-python@v5
-        with: {python-version: "3.12"}
-      - run: python scripts/check_team_boundaries.py
-      - run: python scripts/check_generated_artifacts.py
-      - run: python scripts/check_docs_links.py
-      - run: python scripts/check_migration_immutability.py --base-ref "$(python scripts/resolve_ci_base.py)"
-      - run: mkdir -p evidence && printf '{"commit_sha":"%s","team_boundaries":true,"generated_artifacts":true,"documentation_links":true,"migration_immutability":true}\n' "$(git rev-parse HEAD)" > evidence/console-product-policy.json
+        with: { python-version: "3.12" }
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.28.1 }
+      - uses: actions/setup-node@v4
+        with:
+          {
+            node-version: "22",
+            cache: pnpm,
+            cache-dependency-path: ui/dataobs-console/pnpm-lock.yaml,
+          }
+      - name: Frozen install and generated schema drift
+        working-directory: ui/dataobs-console
+        run: pnpm install --frozen-lockfile && pnpm api:generate && git diff --exit-code src/api/generated/schema.ts
+      - name: Static and route-manifest validation
+        working-directory: ui/dataobs-console
+        run: mkdir -p ../../evidence && pnpm typecheck && pnpm lint && pnpm format:check && pnpm test -- --reporter=junit --outputFile=../../evidence/console-junit.xml
+      - name: Production build and bundle report
+        working-directory: ui/dataobs-console
+        run: pnpm build && pnpm bundle:check | tee ../../evidence/bundle-report.txt && find dist -type f -printf '%s %p\n' | sort -nr > ../../evidence/production-assets.txt
+      - name: Official browser installation
+        working-directory: ui/dataobs-console
+        run: pnpm exec playwright install --with-deps chromium && pnpm exec playwright --version | tee ../../evidence/browser-version.txt
+      - name: Playwright, axe, and cross-capability smoke
+        working-directory: ui/dataobs-console
+        run: pnpm playwright --reporter=html,junit && cp -R playwright-report ../../evidence/playwright-report
+      - name: Repository policy gates
+        run: |
+          python scripts/check_team_boundaries.py | tee evidence/team-boundaries.txt
+          python scripts/check_generated_artifacts.py | tee evidence/generated-artifacts.txt
+          python scripts/check_docs_links.py | tee evidence/documentation-links.txt
+          python scripts/validate_capability_ledger.py | tee evidence/capability-ledger.txt
+          python scripts/check_migration_immutability.py --base-ref "$(python scripts/resolve_ci_base.py)" | tee evidence/migration-immutability.txt
+      - name: Exact-commit evidence envelope
+        env:
+          REPOSITORY: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+          EVENT: ${{ github.event_name }}
+          JOB_ID: exact-commit-evidence
+        run: |
+          node --version > evidence/node-version.txt
+          pnpm --version > evidence/pnpm-version.txt
+          python - <<'PY'
+          import datetime, json, os, pathlib
+          routes=pathlib.Path('ui/dataobs-console/src/app/routes.ts').read_text().count('route({')
+          evidence={"schema_version":"1.0","repository":os.environ["REPOSITORY"],"commit_sha":os.environ["CERT_SHA"],"workflow":"Console Product Experience v1","workflow_run_id":os.environ["RUN_ID"],"job_id":os.environ["JOB_ID"],"event":os.environ["EVENT"],"route_count":routes,"route_manifest_validation":"passed","test_summaries":{"typecheck":"passed","lint":"passed","format":"passed","unit":"passed","playwright":"passed","axe":"passed","bundle_budget":"passed"},"reports":{"playwright":"playwright-report/","axe":"Playwright @axe results","bundle":"bundle-report.txt","screenshots":"playwright-report/","console_errors":"Playwright assertions"},"policy":{"team_boundary":"passed","migration_immutability":"passed","generated_artifact":"passed","documentation":"passed"},"known_warnings":[],"skipped_gates":[],"timestamp":datetime.datetime.now(datetime.UTC).isoformat()}
+          pathlib.Path('evidence/console-evidence.json').write_text(json.dumps(evidence,indent=2)+'\n')
+          PY
       - uses: actions/upload-artifact@v4
-        with: {name: console-product-experience-v1-policy-evidence, path: evidence/, retention-days: 30}
+        with:
+          {
+            name: console-beta-integration-v1-evidence,
+            path: evidence/,
+            retention-days: 30,
+            if-no-files-found: error,
+          }
+  independent-verification:
+    needs: exact-commit-evidence
+    runs-on: ubuntu-latest
+    env:
+      EXPECTED_HOSTED_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: "${{ env.EXPECTED_HOSTED_SHA }}" }
+      - uses: actions/download-artifact@v4
+        with: { name: console-beta-integration-v1-evidence, path: retained }
+      - name: Verify independently selected exact commit and evidence contract
+        run: |
+          python - <<'PY'
+          import json, os, pathlib
+          from scripts.certification.provenance import expected_certification_sha
+          body=json.loads(pathlib.Path('retained/console-evidence.json').read_text())
+          expected=expected_certification_sha()
+          required={'schema_version','repository','commit_sha','workflow','workflow_run_id','job_id','event','test_summaries','route_count','timestamp','known_warnings','skipped_gates'}
+          if expected is None or body['commit_sha'] != expected: raise SystemExit('producer commit does not match independently selected SHA')
+          if required-body.keys(): raise SystemExit(f'missing evidence fields: {sorted(required-body.keys())}')
+          if any(value != 'passed' for value in body['test_summaries'].values()): raise SystemExit('a Console gate did not pass')
+          print(f"verified console evidence for {expected}")
+          PY

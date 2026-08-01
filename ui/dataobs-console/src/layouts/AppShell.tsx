@@ -1,7 +1,10 @@
+import { useEffect } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import {
+  breadcrumbsForPath,
   consoleRoutes,
-  routeForPath,
+  resolveRouteState,
+  titleForPath,
   visibleRoutes,
   type NavigationGroup,
 } from "../app/routes";
@@ -136,7 +139,8 @@ export function PrimaryNavigation() {
     "Respond",
     "Configure",
   ];
-  const routes = visibleRoutes(identity?.permissions ?? []);
+  const permissions = identity?.permissions ?? [];
+  const routes = visibleRoutes(permissions);
   return (
     <nav aria-label="Primary">
       {groups.map((group) => (
@@ -144,16 +148,26 @@ export function PrimaryNavigation() {
           <h2 id={`nav-${group}`}>{group}</h2>
           {routes
             .filter((route) => route.group === group && route.navigation)
-            .map((route) =>
-              route.availability === "available" ||
-              route.availability === "preview" ? (
+            .map((route) => {
+              const state = resolveRouteState(
+                route,
+                permissions,
+                identity?.capabilities,
+              );
+              const configured =
+                state.configuration === "unknown"
+                  ? route.implementation
+                  : state.configuration;
+              return state.authorised &&
+                (configured === "available" || configured === "preview") ? (
                 <NavLink
                   key={route.id}
                   to={route.path}
                   end={route.path === "/"}
                 >
-                  {route.icon} <span>{route.name}</span>
-                  {route.availability === "preview" && <em>Preview</em>}
+                  {route.icon} <span>{route.navigationLabel}</span>
+                  {(route.implementation === "preview" ||
+                    configured === "preview") && <em>Preview</em>}
                 </NavLink>
               ) : (
                 <span
@@ -161,11 +175,11 @@ export function PrimaryNavigation() {
                   key={route.id}
                   aria-disabled="true"
                 >
-                  {route.icon} <b>{route.name}</b>
-                  <em>{route.availability.replace("_", " ")}</em>
+                  {route.icon} <b>{route.navigationLabel}</b>
+                  <em>{configured.replace("_", " ")}</em>
                 </span>
-              ),
-            )}
+              );
+            })}
         </section>
       ))}
     </nav>
@@ -173,12 +187,29 @@ export function PrimaryNavigation() {
 }
 export function Breadcrumbs() {
   const location = useLocation();
-  const route = routeForPath(location.pathname);
+  const crumbs = breadcrumbsForPath(location.pathname);
+  useEffect(() => {
+    document.title = titleForPath(location.pathname);
+  }, [location.pathname]);
   return (
     <nav className="breadcrumbs" aria-label="Breadcrumb">
       <NavLink to="/">DataObs</NavLink>
-      <span aria-hidden="true">/</span>
-      <span aria-current="page">{route?.breadcrumb ?? "Unknown route"}</span>
+      {crumbs.map((crumb, index) => (
+        <span key={crumb.id} className="breadcrumb-item">
+          <span aria-hidden="true">/</span>
+          {index === crumbs.length - 1 ? (
+            <span aria-current="page">{crumb.label}</span>
+          ) : (
+            <NavLink to={crumb.path}>{crumb.label}</NavLink>
+          )}
+        </span>
+      ))}
+      {!crumbs.length && (
+        <>
+          <span aria-hidden="true">/</span>
+          <span aria-current="page">Unknown route</span>
+        </>
+      )}
     </nav>
   );
 }
@@ -231,6 +262,7 @@ export function AppShell() {
       <AppHeader />
       <aside>
         <PrimaryNavigation />
+      </aside>
       <main id="main-content" tabIndex={-1}>
         <Breadcrumbs />
         <ConnectivityBanner />

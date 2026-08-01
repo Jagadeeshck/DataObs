@@ -79,7 +79,7 @@ describe("console route registry", () => {
       ),
     ).toEqual(["Data Quality", "Monitors", "orders freshness"]);
     expect(titleForPath("/incidents/INC-123")).toBe(
-      "DataObs — Incidents INC-123",
+      "DataObs — Incident INC-123",
     );
     expect(titleForPath("/missing")).toBe("DataObs — Page not found");
   });

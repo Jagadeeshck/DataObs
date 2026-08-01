@@ -29,7 +29,7 @@ The canonical target remains six pillars: **Platform**, **Data Pipeline**, **Dat
 
 Data Product runtime foundations now include tenant-scoped product CRUD, membership proposals and decisions, dependency traversal, impact and revisions, reconciliation services, API routes, and Console list/detail routes. Automated monitoring, baselines, recommendations, quality execution, findings, deduplicated incidents, notification delivery persistence, and an OpenTelemetry quality-to-incident integration contract also exist. Their strongest supported state and remaining hosted-evidence blockers are recorded in the ledger.
 
-The immutable Elasticsearch migration registry currently spans `0001` through `0021_lineage_analysis_explorer`. Released migrations must never be edited; forward corrections require a new additive migration.
+The immutable Elasticsearch migration registry currently spans `0001` through the dynamically resolved executable terminal (`0022_aws_data_platform_collector` at this audit). Released migrations must never be edited; forward corrections require a new additive migration.
 
 ## Development and evidence
 
@@ -46,7 +46,7 @@ The workflow retains its evidence as `e2e-signal-path` when executed successfull
 
 ## Deployment and releases
 
-Compose, Kubernetes manifests, and a limited Helm foundation exist, but none establishes production readiness. The Helm chart currently covers only the API, quality worker, and an OpenTelemetry Collector foundation. Release images should be pinned to a semantic version, Git SHA, or digest; do not rely on `latest`.
+Compose, Kubernetes manifests, and a limited Helm foundation exist, but none establishes production readiness. The Helm chart packages the API, Console, quality/scanner/monitor/pathway/Kafka workers, migration job, and optional OpenTelemetry collector; Collection Manager remains excluded. Release images should be pinned to a semantic version, Git SHA, or digest; do not rely on `latest`.
 
 POC, demo, and sample assets—including the Grafana Alloy sample application—are examples only and are not supported production runtime components.
 

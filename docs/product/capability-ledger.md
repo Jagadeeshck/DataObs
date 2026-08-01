@@ -81,7 +81,7 @@ Evidence-led status for quality and drift evidence.
 
 ### `monitoring.data_quality_console_v1` — Data Quality Console v1
 
-Read-only quality overview, inventory, findings and Monitor 360 evidence.
+Evidence-aware quality investigation with bounded authoring and safe mutations.
 
 - **State:** `functional_unvalidated`
 - **Release readiness:** `blocked`

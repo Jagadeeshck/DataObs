@@ -7,7 +7,7 @@ import re
 import sys
 from pathlib import Path
 
-import yaml
+import yaml  # type: ignore[import-untyped]
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from scripts.release.current_terminal_migration import migration_report

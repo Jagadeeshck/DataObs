@@ -11,7 +11,17 @@ import urllib.request
 from dataclasses import dataclass
 from typing import Any
 
-TERMINAL_MIGRATION = "0021_lineage_analysis_explorer"
+from packages.elastic_store.manifest import migrations, registered_mutable_resources
+
+TERMINAL_MIGRATION = migrations()[-1].migration_id
+
+
+def snapshot_resources() -> tuple[str, ...]:
+    """Return only registered DataObs indices and data streams."""
+    resources = set(registered_mutable_resources())
+    for migration in migrations():
+        resources.update(migration.operations.get("data_streams", ()))
+    return tuple(sorted(resources))
 
 
 class SnapshotError(RuntimeError):

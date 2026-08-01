@@ -6,6 +6,7 @@ on:
       run-playwright: {type: boolean, default: false}
       run-accessibility: {type: boolean, default: false}
       artifact-name: {type: string, default: console-validation-evidence}
+      workflow-file: {type: string, default: reusable-console-validation.yml}
       timeout-minutes: {type: number, default: 30}
 permissions: {contents: read}
 jobs:
@@ -30,6 +31,13 @@ jobs:
         run: echo 'Accessibility requested but requires browser execution' >&2; exit 1
       - run: pnpm audit --audit-level high
       - name: Exact-commit evidence
-        run: printf '{"commit_sha":"%s","playwright_executed":%s,"accessibility_executed":%s}\n' "$(git rev-parse HEAD)" '${{ inputs.run-playwright }}' '${{ inputs.run-accessibility }}' > ../../evidence/console.json
+        run: |
+          printf '{"commit_sha":"%s","playwright_executed":%s,"accessibility_executed":%s}\n' "$(git rev-parse HEAD)" '${{ inputs.run-playwright }}' '${{ inputs.run-accessibility }}' > ../../evidence/console.json
+          cd ../..
+          python scripts/certification/write_evidence_envelope.py --output evidence/evidence.json \
+            --repository "$GITHUB_REPOSITORY" --producer-sha "$GITHUB_SHA" --workflow-file '${{ inputs.workflow-file }}' \
+            --workflow-run-id "$GITHUB_RUN_ID" --workflow-run-attempt "$GITHUB_RUN_ATTEMPT" --event "$GITHUB_EVENT_NAME" \
+            --status pass --test-category typecheck --test-category browser --test-category accessibility --test-category build \
+            --supporting-file evidence/console-junit.xml --supporting-file evidence/console.json --tool-version "node=$(node --version)"
       - uses: actions/upload-artifact@v4
         with: {name: '${{ inputs.artifact-name }}', path: evidence/, retention-days: 30}

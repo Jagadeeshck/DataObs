@@ -78,11 +78,14 @@ export const incidentsApi = {
     environment: string,
     id: string,
     body: Record<string, unknown>,
+    idempotencyKey: string,
   ) =>
     write<IncidentDetail>(
       `/api/v1/incident-workbench/${encodeURIComponent(id)}/mutations?environment=${encodeURIComponent(environment)}`,
       tenant,
       body,
+      undefined,
+      { "Idempotency-Key": idempotencyKey },
     ),
   preview: (
     tenant: string,

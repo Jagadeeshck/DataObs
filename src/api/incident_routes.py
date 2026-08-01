@@ -97,6 +97,11 @@ def create_incident_workbench_router(auth_dependency: Callable[..., Any]) -> API
             return workbench.timeline(
                 request.state.tenant_id, environment, incident_id, page_size=page_size, cursor=cursor
             )
+        except CursorMismatch as exc:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid timeline cursor; restart pagination",
+            ) from exc
         except KeyError as exc:
             raise HTTPException(status_code=404, detail="Incident not found") from exc
 

@@ -52,6 +52,8 @@ The AWS data-platform provider supports bounded, read-only collection for RDS an
 
 The AWS provider uses migration `0022_aws_data_platform_collector`; it is not the terminal migration. Live AWS certification remains pending, and Collection Manager does not yet have a supported packaged production workload or dedicated Docker image. AWS collection is therefore optional for the packaged Beta runtime.
 
+The explicitly registered Snowflake provider generation 1 adds bounded account, warehouse, catalog, SQL-free query-history, load, metering-consumption, storage and metadata-freshness evidence. It reuses migration 0022 mappings and adds no migration. Its hosted suite has not run, so it remains `functional_unvalidated`; complete coverage, freshness, lineage, cost observability and production readiness are not claimed.
+
 ## 8. Console and product experience
 
 The Console has a typed route registry that is the source of truth for route metadata, navigation, breadcrumbs, document titles, permissions, configuration state, lazy loading and entity links. Command Center, Unified Data Flow, Quick Find, tenant and environment context, time-range selection, global refresh, route error isolation, integrations catalogue and onboarding are implemented.

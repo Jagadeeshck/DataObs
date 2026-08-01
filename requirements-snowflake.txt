@@ -1,0 +1,3 @@
+# Optional Snowflake provider dependency. Never installed dynamically at runtime.
+-r requirements.txt
+snowflake-connector-python>=3.14,<5

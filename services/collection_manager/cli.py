@@ -7,12 +7,15 @@ import signal
 
 from integrations.aws import AwsDataPlatformProvider
 from integrations.aws.configuration import parse_configuration
+from integrations.snowflake import SnowflakeWarehouseProvider
+from integrations.snowflake.configuration import parse_configuration as parse_snowflake_configuration
 from packages.collectors.sdk import ProviderRegistry
 
 
 def build_registry():
     registry = ProviderRegistry()
     registry.register(AwsDataPlatformProvider)
+    registry.register(SnowflakeWarehouseProvider)
     return registry
 
 
@@ -28,7 +31,9 @@ def main(argv=None):
 
         if not args.config:
             parser.error("--config is required")
-        parse_configuration(yaml.safe_load(open(args.config, encoding="utf-8"))["provider"])
+        payload = yaml.safe_load(open(args.config, encoding="utf-8"))
+        parser = parse_snowflake_configuration if payload.get("provider_type") == "snowflake" else parse_configuration
+        parser(payload["provider"])
         print(json.dumps({"valid": True}))
         return 0
     # Runtime commands fail closed until Elasticsearch readiness and the trusted tenant/environment are present.

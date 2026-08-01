@@ -1,0 +1,29 @@
+integration_id: snowflake-warehouse-dev
+provider_type: snowflake
+enabled: false
+allowed_capabilities: [resource_discovery, metadata_collection, metric_collection, query_history, schema_discovery, health_check, incremental_collection]
+timeout_seconds: 300
+provider:
+  account_identifier: synthetic-org.synthetic-account
+  user: DATAOBS_COLLECTOR
+  role: DATAOBS_MONITOR
+  authentication:
+    type: key_pair
+    private_key_ref: env:DATAOBS_SNOWFLAKE_PRIVATE_KEY
+    private_key_passphrase_ref: env:DATAOBS_SNOWFLAKE_KEY_PASSPHRASE
+  collector_warehouse: DATAOBS_MONITOR_WH
+  include_databases: [ANALYTICS, CURATED]
+  exclude_schemas: [INFORMATION_SCHEMA]
+  history:
+    query_lookback_seconds: 3600
+    query_overlap_seconds: 900
+    warehouse_lookback_seconds: 86400
+    maximum_query_rows: 5000
+  catalog:
+    maximum_databases: 100
+    maximum_schemas: 2000
+    maximum_objects: 50000
+    maximum_columns: 200000
+  session:
+    statement_timeout_seconds: 60
+    network_timeout_seconds: 30

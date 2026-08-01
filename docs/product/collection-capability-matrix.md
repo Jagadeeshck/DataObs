@@ -17,7 +17,7 @@ cloud provider implemented. Provider status is governed by the capability ledger
 | MySQL | Yes mysql | Yes | Yes | ops metrics plus schema/freshness/profile | secret ref | information_schema/select opt-in | dataobs database streams |
 | Microsoft SQL Server | Yes mssql | Yes | Yes | ops metrics plus schema/freshness/profile | secret ref | view definition/select opt-in | dataobs database streams |
 | Oracle | Yes oracle | Yes | Yes | ops metrics plus schema/freshness/profile | secret ref | dictionary/select opt-in | dataobs database streams |
-| Snowflake | Partial | Yes | Yes | warehouse/query/schema/profile | key pair/secret ref | monitor/select opt-in | dataobs warehouse streams |
+| Snowflake | Partial | Yes | Yes, v1 functional-unvalidated | bounded account/warehouse/catalog/query-history (SQL-free)/load/metering/storage metadata | key pair, OAuth or supported workload identity via secret refs | dedicated read-only role; MONITOR USAGE/imported privileges as needed | generic provider evidence |
 | Redshift | Yes aws/redshift | Yes | Yes | cluster/query/schema/profile | IAM/secret ref | system table/select opt-in | dataobs warehouse streams |
 | BigQuery | Yes gcp | Yes | Yes | jobs/schema/profile | service account | metadata viewer/data viewer opt-in | dataobs warehouse streams |
 | Databricks | Partial | Yes | Yes | jobs/lakehouse/schema/lineage | PAT/OIDC secret ref | read metadata/jobs | dataobs lakehouse streams |

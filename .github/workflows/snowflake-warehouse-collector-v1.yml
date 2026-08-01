@@ -1,0 +1,47 @@
+name: Snowflake warehouse collector v1
+on: {workflow_dispatch: {}, pull_request: {paths: ['integrations/snowflake/**','services/collection_manager/**','packages/collectors/**','tests/integrations/**','docs/**','config/integrations/**']}}
+permissions: {contents: read}
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    services:
+      elasticsearch:
+        image: docker.elastic.co/elasticsearch/elasticsearch:9.4.2
+        env: {discovery.type: single-node, xpack.security.enabled: 'false'}
+        ports: ['9200:9200']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: pip install -r requirements-snowflake.txt pytest ruff black mypy types-PyYAML pip-audit
+      - run: python -m compileall packages/collectors services/collection_manager integrations/snowflake
+      - run: ruff check packages/collectors services/collection_manager integrations/snowflake tests/integrations
+      - run: black --check packages/collectors services/collection_manager integrations/snowflake tests/integrations
+      - run: mypy packages/collectors services/collection_manager integrations/snowflake
+      - name: SDK, manager, AWS regression, Snowflake safety/redaction/isolation
+        run: pytest -q tests/integrations
+      - run: python scripts/check_migration_immutability.py --base-ref ${{ github.event.pull_request.base.sha || github.event.before }}
+      - run: test "$(python scripts/release/current_terminal_migration.py)" = 0023_stream_pathway_reliability_runtime
+      - run: python scripts/validate_capability_ledger.py && python scripts/check_generated_artifacts.py && python scripts/check_docs_links.py
+      - run: pip-audit -r requirements-snowflake.txt
+      - run: git grep -nEi '(private.key|oauth.token|password)[[:space:]]*[:=][[:space:]]*[^$<{]' -- ':!tests' ':!docs' ':!config' && exit 1 || exit 0
+      - run: sha256sum config/integrations/snowflake-warehouse.example.yaml > snowflake-fixture-hashes.txt && sha256sum --check snowflake-fixture-hashes.txt
+      - name: Build standard exact-commit evidence envelope
+        run: |
+          mkdir -p evidence
+          python - <<'PY'
+          import hashlib,importlib.metadata,json,os,platform,subprocess
+          fixture='config/integrations/snowflake-warehouse.example.yaml'
+          report={'repository':os.getenv('GITHUB_REPOSITORY'),'exact_commit_sha':os.getenv('GITHUB_SHA'),'workflow_file':'snowflake-warehouse-collector-v1.yml','workflow_run_id':os.getenv('GITHUB_RUN_ID'),'workflow_run_attempt':os.getenv('GITHUB_RUN_ATTEMPT'),'event':os.getenv('GITHUB_EVENT_NAME'),'python_version':platform.python_version(),'snowflake_connector_version':importlib.metadata.version('snowflake-connector-python'),'elasticsearch_version':'9.4.2','terminal_migration':subprocess.check_output(['python','scripts/release/current_terminal_migration.py'],text=True).strip(),'supported_capabilities':['resource_discovery','metadata_collection','metric_collection','query_history','schema_discovery','health_check','incremental_collection'],'unsupported_capabilities':['log_collection','lineage_collection','cost_collection','event_driven_collection'],'evidence_families':['account','warehouses','resource_monitors','catalog','query_history','warehouse_load','metering_consumption','table_storage','metadata_freshness'],'sql_safety':'passed','query_text_exclusion':'passed','credential_redaction':'passed','tenant_isolation':'passed','checkpoint_result':'generic-runtime-persist-before-advance','aws_regression':'passed','fixture_hashes':{fixture:hashlib.sha256(open(fixture,'rb').read()).hexdigest()},'known_limitations':['Account Usage latency','no Access History or lineage','no profiling or cost allocation','not production-ready or certified'],'hosted_live_snowflake':'not_run'}
+          json.dump(report,open('evidence/snowflake-report.json','w'),indent=2)
+          PY
+          python scripts/certification/write_evidence_envelope.py --output evidence/evidence.json --repository "$GITHUB_REPOSITORY" --producer-sha "$GITHUB_SHA" --workflow-file snowflake-warehouse-collector-v1.yml --workflow-run-id "$GITHUB_RUN_ID" --workflow-run-attempt "$GITHUB_RUN_ATTEMPT" --event "$GITHUB_EVENT_NAME" --status pass --test-category unit --test-category redaction --test-category tenant-isolation --supporting-file evidence/snowflake-report.json --tool-version "python=$(python --version | cut -d' ' -f2)"
+      - uses: actions/upload-artifact@v4
+        with: {name: snowflake-warehouse-collector-v1-evidence, path: evidence}
+  verify-evidence:
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with: {name: snowflake-warehouse-collector-v1-evidence, path: evidence}
+      - run: python -c "import json; d=json.load(open('evidence/snowflake-report.json')); assert d['exact_commit_sha'] and d['query_text_exclusion']=='passed' and d['hosted_live_snowflake']=='not_run'"

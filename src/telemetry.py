@@ -26,7 +26,9 @@ Optional env vars with sensible defaults:
 
 import os
 import socket
+import threading
 import uuid
+from dataclasses import dataclass
 
 from opentelemetry import metrics, trace
 
@@ -43,6 +45,31 @@ from opentelemetry.sdk.resources import OTELResourceDetector, Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.sdk.trace.sampling import ParentBased, TraceIdRatioBased
+
+_lock = threading.Lock()
+_initialized = False
+_providers: list[object] = []
+
+
+@dataclass(frozen=True)
+class TelemetryStatus:
+    enabled: bool
+    initialized: bool
+    exporter_state: str
+    reason_code: str
+
+
+def telemetry_status() -> TelemetryStatus:
+    return TelemetryStatus(
+        not _disabled(),
+        _initialized,
+        "unknown" if _initialized else "disabled",
+        "exporter_evidence_unavailable" if _initialized else "telemetry_disabled",
+    )
+
+
+def _disabled() -> bool:
+    return os.getenv("OTEL_SDK_DISABLED", "true").lower() == "true" or not os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
 
 
 def _build_resource() -> Resource:
@@ -89,6 +116,9 @@ def _build_resource() -> Resource:
         # ── DataObs custom attributes (dataobs.* namespace) ───────────────────
         "dataobs.product": "dataobs",
         "dataobs.version": os.getenv("DATAOBS_VERSION", "1.0.0"),
+        "dataobs.component": os.getenv("DATAOBS_COMPONENT", os.getenv("OTEL_SERVICE_NAME", "unknown")),
+        "dataobs.release.sha": os.getenv("DATAOBS_RELEASE_SHA", "unknown"),
+        "dataobs.chart.version": os.getenv("DATAOBS_CHART_VERSION", "unknown"),
     }
 
     # Merge with attributes from OTEL_RESOURCE_ATTRIBUTES env var (highest priority).
@@ -100,7 +130,7 @@ def _build_resource() -> Resource:
 def init_telemetry(
     sample_rate: float = 1.0,
     export_timeout_ms: int = 30_000,
-) -> None:
+) -> TelemetryStatus:
     """
     Initialize OTel SDK: traces, metrics, logs.
 
@@ -109,44 +139,67 @@ def init_telemetry(
                           is sampled, child inherits. Defaults to 1.0 (sample everything).
         export_timeout_ms: OTLP export timeout in milliseconds.
     """
-    if os.getenv("OTEL_SDK_DISABLED", "false").lower() == "true":
-        return
+    global _initialized
+    if _disabled():
+        return telemetry_status()
+    with _lock:
+        if _initialized:
+            return telemetry_status()
 
-    resource = _build_resource()
-    endpoint = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4317")
+        sample_rate = min(1.0, max(0.0, float(os.getenv("OTEL_TRACES_SAMPLER_ARG", sample_rate))))
+        export_timeout_ms = min(30_000, max(100, int(os.getenv("OTEL_EXPORTER_OTLP_TIMEOUT_MS", export_timeout_ms))))
+        queue_size = min(8192, max(64, int(os.getenv("DATAOBS_OTEL_QUEUE_SIZE", "2048"))))
+        batch_size = min(queue_size, max(1, int(os.getenv("DATAOBS_OTEL_BATCH_SIZE", "256"))))
 
-    # ── Traces ────────────────────────────────────────────────────────────────
-    sampler = ParentBased(root=TraceIdRatioBased(sample_rate))
-    tracer_provider = TracerProvider(resource=resource, sampler=sampler)
-    tracer_provider.add_span_processor(
-        BatchSpanProcessor(
-            OTLPSpanExporter(endpoint=endpoint, timeout=export_timeout_ms // 1000),
-            max_queue_size=4096,
-            max_export_batch_size=512,
+        resource = _build_resource()
+        endpoint = os.environ["OTEL_EXPORTER_OTLP_ENDPOINT"].split("?", 1)[0]
+
+        # Traces
+        sampler = ParentBased(root=TraceIdRatioBased(sample_rate))
+        tracer_provider = TracerProvider(resource=resource, sampler=sampler)
+        tracer_provider.add_span_processor(
+            BatchSpanProcessor(
+                OTLPSpanExporter(endpoint=endpoint, timeout=export_timeout_ms // 1000),
+                max_queue_size=queue_size,
+                max_export_batch_size=batch_size,
+                export_timeout_millis=export_timeout_ms,
+            )
+        )
+        trace.set_tracer_provider(tracer_provider)
+
+        # Metrics
+        metric_reader = PeriodicExportingMetricReader(
+            OTLPMetricExporter(endpoint=endpoint, timeout=export_timeout_ms // 1000),
+            export_interval_millis=30_000,
             export_timeout_millis=export_timeout_ms,
         )
-    )
-    trace.set_tracer_provider(tracer_provider)
+        meter_provider = MeterProvider(resource=resource, metric_readers=[metric_reader])
+        metrics.set_meter_provider(meter_provider)
 
-    # ── Metrics ───────────────────────────────────────────────────────────────
-    # Metric names follow semconv: https://opentelemetry.io/docs/specs/semconv/general/metrics/
-    # Custom DataObs metrics use the dataobs.* namespace.
-    metric_reader = PeriodicExportingMetricReader(
-        OTLPMetricExporter(endpoint=endpoint, timeout=export_timeout_ms // 1000),
-        export_interval_millis=30_000,
-        export_timeout_millis=export_timeout_ms,
-    )
-    meter_provider = MeterProvider(resource=resource, metric_readers=[metric_reader])
-    metrics.set_meter_provider(meter_provider)
-
-    # ── Logs ──────────────────────────────────────────────────────────────────
-    logger_provider = LoggerProvider(resource=resource)
-    logger_provider.add_log_record_processor(
-        BatchLogRecordProcessor(
-            OTLPLogExporter(endpoint=endpoint, timeout=export_timeout_ms // 1000),
-            max_queue_size=2048,
-            max_export_batch_size=256,
-            export_timeout_millis=export_timeout_ms,
+        # Logs
+        logger_provider = LoggerProvider(resource=resource)
+        logger_provider.add_log_record_processor(
+            BatchLogRecordProcessor(
+                OTLPLogExporter(endpoint=endpoint, timeout=export_timeout_ms // 1000),
+                max_queue_size=queue_size,
+                max_export_batch_size=batch_size,
+                export_timeout_millis=export_timeout_ms,
+            )
         )
-    )
-    set_logger_provider(logger_provider)
+        set_logger_provider(logger_provider)
+        _providers.extend((tracer_provider, meter_provider, logger_provider))
+        _initialized = True
+        return telemetry_status()
+
+
+def shutdown_telemetry(timeout_ms: int = 5_000) -> bool:
+    """Flush providers within a caller-bounded deadline; exporter errors fail open."""
+    ok = True
+    for provider in tuple(_providers):
+        try:
+            result = provider.shutdown(timeout_millis=min(30_000, max(0, timeout_ms)))
+            ok = ok and result is not False
+        except Exception:
+            # SDK provider signatures differ; telemetry shutdown cannot break service shutdown.
+            ok = False
+    return ok

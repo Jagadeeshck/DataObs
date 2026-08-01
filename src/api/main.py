@@ -24,6 +24,9 @@ from src.api.app import create_app, settings_from_env
 
 
 def main() -> None:
+    from src.telemetry import init_telemetry
+
+    init_telemetry()
     settings = settings_from_env()
     logging.basicConfig(
         level=settings.log_level,

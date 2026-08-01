@@ -11,7 +11,7 @@ from dataclasses import dataclass
 
 from .permissions import Permission
 
-PUBLIC_ROUTES = frozenset({("GET", "/livez"), ("GET", "/readyz"), ("GET", "/health"), ("GET", "/api/v1/auth/config")})
+PUBLIC_ROUTES = frozenset({("GET", "/livez"), ("GET", "/startupz"), ("GET", "/readyz"), ("GET", "/health"), ("GET", "/api/v1/auth/config")})
 
 # Legacy templates are deliberately enumerated while the API converges on /api/v1.
 EXPLICIT_ROUTES = {
@@ -46,6 +46,7 @@ EXPLICIT_ROUTES = {
     ("GET", "/api/v1/entities/{node_id}/summary"): Permission.ASSETS_READ,
     ("GET", "/api/v1/events/stream"): Permission.AUTH_READ,
     ("GET", "/strategy/enterprise-backlog"): Permission.PLATFORM_ADMIN,
+    ("GET", "/api/v1/platform/{section}"): Permission.PLATFORM_OPERATIONS_READ,
 }
 
 

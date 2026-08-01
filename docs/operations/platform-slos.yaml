@@ -1,0 +1,51 @@
+version: 1
+status: targets_defined_evidence_unvalidated
+slos:
+  - id: api-serving-availability
+    objective: 0.995
+    window: 30d
+    sli: successful eligible non-probe requests / eligible non-probe requests
+    exclusions: [health_endpoints, approved_synthetic_probes, client_4xx_except_429]
+    missing_data: insufficient_data
+  - id: api-read-latency
+    objective: 0.99
+    window: 30d
+    sli: eligible read requests below 500ms / eligible read requests
+    route_class: read
+    missing_data: insufficient_data
+  - id: api-mutation-latency
+    objective: 0.99
+    window: 30d
+    sli: eligible mutation requests below 1000ms / eligible mutation requests
+    route_class: mutation
+    missing_data: insufficient_data
+  - id: worker-execution-reliability
+    objective: 0.99
+    window: 30d
+    sli: successful terminal work outcomes / all terminal work outcomes
+    retries_are_events: false
+    missing_data: insufficient_data
+  - id: worker-freshness
+    objective: 0.99
+    window: 30d
+    sli: intervals within component checkpoint threshold / evaluated intervals
+    missing_data: insufficient_data
+  - id: security-control-availability
+    objective: 0.999
+    window: 30d
+    sli: available authentication, route-policy and audit-persistence intervals / evaluated intervals
+    missing_data: insufficient_data
+  - id: backup-protection
+    objective: null
+    window: 30d
+    sli: snapshot age, completion status and restore rehearsal recency
+    state: pending_approval_and_measurement
+    missing_data: insufficient_data
+  - id: release-integrity
+    objective: 1.0
+    window: release
+    sli: digest, signature, terminal migration and support-matrix evidence all verified
+    missing_data: insufficient_data
+error_budget:
+  fields: [window_seconds, good_events, total_events, achieved_ratio, objective, budget_remaining, burn_rate, data_completeness, evaluation_state]
+  states: [healthy, at_risk, exhausted, insufficient_data, not_evaluated]

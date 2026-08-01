@@ -1,0 +1,5 @@
+# Team 0 to Team 5 platform operations handoff
+
+All `/api/v1/platform/{section}` reads require authentication plus `platform_operations:read`; clients must not infer this permission from another role. Sections are `health`, `components`, `workers`, `migrations`, `backups`, `release`, `slos`, and `error-budgets`. Health objects use stable component/check identifiers and `healthy`, `degraded`, `unhealthy`, `unknown`, or `disabled`; release/support evidence may additionally be `unvalidated`. Missing evidence is never rendered as success.
+
+Lists use `items`; an empty list means no authoritative records, not zero activity. A future cursor/limit contract is required before lists become unbounded. Loading is client-local, 401 requires sign-in, 403 is an explicit access denial, 404 is unsupported section, and 5xx is a retryable platform failure. Responses contain bounded reason/remediation codes, never secrets, claims, raw tenant identifiers, exception text, internal hosts or index names. Team 5 should preserve unknown/unvalidated states and show the returned request ID for support. No browser telemetry or Console UI change is part of this handoff.

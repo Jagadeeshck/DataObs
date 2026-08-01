@@ -1,0 +1,32 @@
+name: Team 0 platform operations v1
+on:
+  workflow_dispatch:
+    inputs:
+      target_sha:
+        description: Exact commit SHA to certify
+        required: true
+        type: string
+permissions: {contents: read}
+jobs:
+  static-contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: "${{ inputs.target_sha }}"}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install -r requirements.txt
+      - run: python scripts/operations/validate_platform_contracts.py
+      - run: pytest -q tests/platform_operations
+      - run: python scripts/check_migration_immutability.py
+      - run: python scripts/check_team_boundaries.py
+      - run: python scripts/check_merge_conflict_markers.py
+      - run: helm lint helm/dataobs
+      - run: helm template dataobs helm/dataobs -f helm/dataobs/values-production.yaml > production.yaml
+      - run: helm template dataobs helm/dataobs --set monitoring.serviceMonitor.enabled=true --set monitoring.prometheusRule.enabled=true > monitoring.yaml
+      - name: Record hosted tests as pending
+        run: |
+          mkdir -p evidence
+          printf '%s\n' '{"state":"pending","reason":"secured hosted dependencies and failure-injection infrastructure not configured","target_sha":"${{ inputs.target_sha }}"}' > evidence/evidence.json
+      - uses: actions/upload-artifact@v4
+        with: {name: team-0-platform-operations-v1-evidence, path: evidence}

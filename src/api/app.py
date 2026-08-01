@@ -63,12 +63,14 @@ def _permission_for_request(method: str, path: str) -> Permission:
         return Permission.IAM_WRITE if write else Permission.IAM_READ
     if path == "/api/v1/auth/me":
         return Permission.AUTH_READ
+    if path == "/api/v1/migrations":
+        return Permission.PLATFORM_ADMIN
     if "/approvals/" in path or path.endswith(("/approve", "/reject")):
         return Permission.WORKFLOWS_APPROVE
     if "workflow" in path or "/actions/" in path:
         return Permission.WORKFLOWS_EXECUTE if write else Permission.WORKFLOWS_READ
     domains = (
-        (("asset", "command-center", "topology", "pillar"), Permission.ASSETS_READ, Permission.ASSETS_WRITE),
+        (("asset", "dataset", "entity", "command-center", "topology", "pillar"), Permission.ASSETS_READ, Permission.ASSETS_WRITE),
         (("lineage", "pathway"), Permission.LINEAGE_READ, Permission.LINEAGE_WRITE),
         (("quality", "rule"), Permission.QUALITY_READ, Permission.QUALITY_WRITE),
         (("monitor", "baseline"), Permission.MONITORS_READ, Permission.MONITORS_WRITE),

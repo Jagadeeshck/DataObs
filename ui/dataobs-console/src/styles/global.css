@@ -37,6 +37,116 @@ input {
 button {
   cursor: pointer;
 }
+.quality-page {
+  max-width: 1240px;
+  margin: 0 auto;
+}
+.quality-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 20px;
+}
+.quality-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 14px;
+  margin: 20px 0;
+}
+.quality-evidence {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--green);
+  border-radius: 8px;
+  background: var(--surface2);
+}
+.quality-evidence > strong,
+.quality-evidence small,
+.quality-page table small {
+  display: block;
+  color: var(--muted);
+}
+.evidence-unknown,
+.evidence-missing,
+.evidence-not_configured {
+  border-left-color: var(--yellow);
+}
+.evidence-unavailable {
+  border-left-color: var(--red);
+}
+.quality-warning {
+  padding: 12px 18px;
+  border: 1px solid var(--yellow);
+  border-radius: 8px;
+}
+.primary-action {
+  display: inline-block;
+  padding: 10px 15px;
+  border: 0;
+  border-radius: 6px;
+  color: #07101e;
+  background: var(--cyan);
+  font-weight: 700;
+  text-decoration: none;
+}
+.quality-form {
+  display: grid;
+  gap: 14px;
+  max-width: 760px;
+}
+.quality-form label {
+  display: grid;
+  gap: 5px;
+}
+.quality-form input,
+.quality-form select,
+.quality-form textarea,
+.quality-form fieldset {
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface2);
+}
+.quality-form fieldset {
+  display: grid;
+  gap: 10px;
+}
+.review-json {
+  overflow: auto;
+  max-height: 60vh;
+  padding: 16px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+}
+.quality-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.quality-actions button {
+  padding: 8px 12px;
+  color: inherit;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.quality-actions button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.state {
+  display: inline-block;
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: 99px;
+}
+.state-error,
+.state-degraded {
+  color: var(--red);
+}
 .route-graph {
   display: flex;
   align-items: stretch;

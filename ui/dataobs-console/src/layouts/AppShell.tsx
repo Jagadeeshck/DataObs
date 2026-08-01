@@ -84,6 +84,9 @@ export function AppShell() {
           <NavLink to="/lineage">
             ↝ <span>Lineage</span>
           </NavLink>
+          <NavLink to="/quality">
+            ✓ <span>Data Quality</span>
+          </NavLink>
           {future.map((x) => (
             <span className="future" key={x}>
               ○ <b>{x}</b>

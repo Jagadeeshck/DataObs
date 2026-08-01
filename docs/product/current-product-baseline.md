@@ -18,7 +18,7 @@ The console baseline includes tenant-scoped Jobs inventory, Job 360, Run 360, ru
 
 ## Data Quality Console v1
 
-The Console implements canonical `/quality`, `/quality/monitors`, `/quality/monitors/new` and `/quality/monitors/:monitorId` routes for overview, monitor inventory, findings, recommendation proposals, coverage, runtime, observations, evaluations, baselines, incident relationships, suppressions, history and evidence. Missing evidence is not converted to zero, runtime absence is unavailable, and target display is allowlisted. Capability-driven draft authoring, confirmed lifecycle operations, queued runs, baseline reset, suppression creation and recommendation decisions are implemented; autonomous remediation remains excluded. The capability is `functional_unvalidated` pending exact-commit hosted Elasticsearch, browser, accessibility and independent-verification evidence.
+The Console implements read-only `/quality` and `/quality/monitors/:monitorId` routes for overview, monitor inventory, findings, recommendation proposals, coverage, runtime, observations, evaluations, baselines, incident relationships, suppressions, history and evidence. Missing evidence is not converted to zero, runtime absence is unavailable, and target display is allowlisted. Authoring and all monitor mutations remain deferred. The capability is `functional_unvalidated` pending exact-commit hosted Elasticsearch, browser, accessibility and independent-verification evidence.
 
 ## Kafka Stream Observer backend v1
 
@@ -34,11 +34,7 @@ Certification definitions pin Elasticsearch and Kibana **9.4.2**. Compatibility 
 
 ## 3. Storage migrations
 
-<<<<<<< HEAD
 The released forward migration registry spans `0001_product_foundation` through the executable terminal migration (`0022_aws_data_platform_collector` at this audit). Existing migrations remain immutable. The registry checksum ledger and the comparison against the branch base are mandatory gates.
-=======
-The released forward migration registry spans `0001_product_foundation` through `0022_aws_data_platform_collector`. Existing migrations remain immutable. The registry checksum ledger and the comparison against the branch base are mandatory gates.
->>>>>>> origin/main
 
 Focused hosted certification is defined by `data-quality-monitoring`, `job-run-backend`, and `lineage-analysis-console`. Their exact-commit artifacts must pass a separate download-and-verification job; until a successful final-head run exists, the related capabilities remain functional but unvalidated.
 
@@ -52,7 +48,7 @@ Implemented routes are `/`, `/flow`, `/assets`, `/assets/:assetId`, `/pathways`,
 
 ## 6. Workers and services
 
-Runnable Dockerfiles exist for the API, Console, quality worker, scanner worker, monitor runtime, pathway worker, and Kafka observer. Collection Manager has an implemented CLI entrypoint but no dedicated packaged production workload or Dockerfile, so release packaging must not invent its image.
+Runnable Dockerfiles exist for the API, Console, quality worker, scanner worker, monitor runtime, pathway worker, and Kafka observer. Collection Manager has an implemented service library but no dedicated production Dockerfile/entrypoint, so release packaging must not invent its image.
 
 ## 7. Collection mechanisms
 
@@ -72,11 +68,7 @@ The release inventory is limited to components with Dockerfiles and supported en
 
 ## 11. Security posture
 
-<<<<<<< HEAD
 Services and repositories contain tenant-scoping, strict Elasticsearch mappings, OCC/idempotency controls, redaction tests, dependency auditing, image scanning, and SBOM gates. OIDC/RBAC and tenant route enforcement are implemented and locally validated. HA, hosted backup/restore, and the exact-commit release rehearsal remain pending hosted validation. Evidence bundles must exclude tokens, webhooks, authorization headers, and raw sensitive payloads.
-=======
-Services and repositories contain tenant-scoping, strict Elasticsearch mappings, OCC/idempotency controls, redaction tests, dependency auditing, image scanning, and SBOM gates. OIDC/RBAC and tenant-security implementation exists; hosted OIDC, HA, backup/restore, browser, and release evidence remain incomplete. Evidence bundles must exclude tokens, webhooks, authorization headers, and raw sensitive payloads.
->>>>>>> origin/main
 
 ## 12. Known blockers
 
@@ -88,11 +80,11 @@ Services and repositories contain tenant-scoping, strict Elasticsearch mappings,
 
 ## 13. Explicitly unsupported
 
-FinOps, Business Observability, AI/Agent Observability, autonomous remediation, new cloud and messaging providers, are not delivered by this baseline; Beta deployment packaging is implemented but remains uncertified. POC/demo/sample assets are not supported production runtime.
+FinOps, Business Observability, AI/Agent Observability, autonomous remediation, new cloud and messaging providers, and full beta deployment hardening are not delivered by this baseline. POC/demo/sample assets are not supported production runtime.
 
 ## 14. Next milestone
 
-The next release gate is exact-commit hosted Beta 1 certification after all mandatory feature PRs merge; publication requires a later explicit approval.
+The recommended next focused branch is `codex/oidc-rbac-tenant-enforcement`, followed only by core Data Quality Monitoring, Job/Run Explorer, Data Streams Monitoring, Incident and Automation Workbench, and full beta deployment hardening as evidence gates allow.
 
 ## Stream 360 Core Console v1
 
@@ -122,9 +114,8 @@ identity, and checkpoint contracts. The SDK does not add a supported cloud provi
 providers remain future work. Status is `functional_unvalidated` pending exact-commit hosted evidence and independent
 verification.
 
-## AWS data platform collector v2
+## AWS data platform collector v1
 
 The Team 4 Integration SDK now has a bounded, tenant/environment-scoped AWS provider for RDS/Aurora, Glue, Athena,
-EMR Serverless, S3, Lambda, SageMaker, MWAA, Redshift and Redshift Serverless and allowlisted CloudWatch metrics. V1
-configuration remains valid. Its durable v2 evidence workflow is defined, but exact-commit
+EMR Serverless and their allowlisted CloudWatch metrics. Its durable evidence workflow is defined, but exact-commit
 hosted evidence is pending; status remains `functional_unvalidated`, not production-ready or certified.

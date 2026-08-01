@@ -44,11 +44,7 @@ jobs:
           python - <<'PY'
           import json,os,platform,subprocess,datetime,pathlib
           sha=subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip()
-<<<<<<< HEAD
           data={'repository':os.getenv('GITHUB_REPOSITORY'),'commit_sha':sha,'base_sha':os.getenv('GITHUB_BASE_SHA'),'workflow':os.getenv('GITHUB_WORKFLOW'),'workflow_run_id':os.getenv('GITHUB_RUN_ID'),'job':'validate','event':os.getenv('GITHUB_EVENT_NAME'),'branch':os.getenv('GITHUB_REF_NAME'),'generated_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'tool_versions':{'python':platform.python_version()},'Elasticsearch_version':'9.4.2' if '${{ inputs.requires-elasticsearch }}' == 'true' else None,'terminal_migration':__import__('packages.elastic_store.manifest',fromlist=['migrations']).migrations()[-1].migration_id,'test_summaries':['junit.xml'],'artifact_inventory':['junit.xml'],'security_scan_summary':'not requested by profile','tenant_isolation_result':'covered by supplied scope','migration_immutability_result':'passed','independent_verification_result':'pending','evidence_profile':'${{ inputs.evidence-profile }}'}
-=======
-          data={'repository':os.getenv('GITHUB_REPOSITORY'),'commit_sha':sha,'base_sha':os.getenv('GITHUB_BASE_SHA'),'workflow':os.getenv('GITHUB_WORKFLOW'),'workflow_run_id':os.getenv('GITHUB_RUN_ID'),'job':'validate','event':os.getenv('GITHUB_EVENT_NAME'),'branch':os.getenv('GITHUB_REF_NAME'),'generated_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'tool_versions':{'python':platform.python_version()},'Elasticsearch_version':'9.4.2' if '${{ inputs.requires-elasticsearch }}' == 'true' else None,'terminal_migration':'0022_aws_data_platform_collector','test_summaries':['junit.xml'],'artifact_inventory':['junit.xml'],'security_scan_summary':'not requested by profile','tenant_isolation_result':'covered by supplied scope','migration_immutability_result':'passed','independent_verification_result':'pending','evidence_profile':'${{ inputs.evidence-profile }}'}
->>>>>>> origin/main
           pathlib.Path('evidence/team-delivery.json').write_text(json.dumps(data,indent=2)+'\n')
           PY
           test "$(jq -r .commit_sha evidence/team-delivery.json)" = "$(git rev-parse HEAD)"

@@ -1197,3 +1197,44 @@ header {
     max-height: none;
   }
 }
+
+.cluster-heading,
+.filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
+}
+.filter-row label {
+  display: grid;
+  gap: 0.25rem;
+}
+.responsive-table {
+  max-width: 100%;
+  overflow-x: auto;
+}
+.responsive-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.responsive-table th,
+.responsive-table td {
+  padding: 0.65rem;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--border);
+}
+.wrap-anywhere {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cluster-360 *,
+  .cluster-360 *::before,
+  .cluster-360 *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

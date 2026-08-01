@@ -331,6 +331,86 @@ export const api = {
       "incidents",
       signal,
     ),
+  cluster: (tenant: string, env: string, id: string, signal?: AbortSignal) =>
+    streamRead<KafkaCluster>(
+      tenant,
+      env,
+      "stream-clusters",
+      id,
+      undefined,
+      signal,
+    ),
+  clusterBrokers: (
+    tenant: string,
+    env: string,
+    id: string,
+    query = new URLSearchParams(),
+    signal?: AbortSignal,
+  ) => clusterList<KafkaBroker>(tenant, env, id, "brokers", query, signal),
+  clusterTopics: (
+    tenant: string,
+    env: string,
+    id: string,
+    query = new URLSearchParams(),
+    signal?: AbortSignal,
+  ) =>
+    clusterList<ClusterTopicSummary>(tenant, env, id, "topics", query, signal),
+  clusterConsumerGroups: (
+    tenant: string,
+    env: string,
+    id: string,
+    query = new URLSearchParams(),
+    signal?: AbortSignal,
+  ) =>
+    clusterList<ClusterConsumerGroupSummary>(
+      tenant,
+      env,
+      id,
+      "consumer-groups",
+      query,
+      signal,
+    ),
+  clusterConnectors: (
+    tenant: string,
+    env: string,
+    id: string,
+    query = new URLSearchParams(),
+    signal?: AbortSignal,
+  ) =>
+    clusterList<ClusterConnectorSummary>(
+      tenant,
+      env,
+      id,
+      "connectors",
+      query,
+      signal,
+    ),
+  clusterHealth: (
+    tenant: string,
+    env: string,
+    id: string,
+    signal?: AbortSignal,
+  ) =>
+    read<ClusterHealthSummary & EvidenceEnvelope>(
+      `/api/v1/stream-clusters/${encodeURIComponent(id)}/health?environment=${encodeURIComponent(env)}`,
+      tenant,
+      signal,
+    ),
+  clusterChanges: (
+    tenant: string,
+    env: string,
+    id: string,
+    query = new URLSearchParams(),
+    signal?: AbortSignal,
+  ) => clusterList<ClusterChange>(tenant, env, id, "changes", query, signal),
+  clusterIncidents: (
+    tenant: string,
+    env: string,
+    id: string,
+    query = new URLSearchParams(),
+    signal?: AbortSignal,
+  ) =>
+    clusterList<IncidentSummary>(tenant, env, id, "incidents", query, signal),
   streamSection: (
     tenant: string,
     env: string,
@@ -483,6 +563,100 @@ function streamRead<T>(
     signal,
   );
 }
+function clusterList<T>(
+  tenant: string,
+  env: string,
+  id: string,
+  section: string,
+  query: URLSearchParams,
+  signal?: AbortSignal,
+) {
+  const params = new URLSearchParams(query);
+  params.set("environment", env);
+  return read<ClusterListResponse<T>>(
+    `/api/v1/stream-clusters/${encodeURIComponent(id)}/${section}?${params.toString()}`,
+    tenant,
+    signal,
+  );
+}
+export interface ClusterListResponse<T> extends EvidenceEnvelope {
+  items: T[];
+  next_cursor: string | null;
+}
+export interface KafkaCluster {
+  cluster_id: string;
+  name?: string;
+  health?: string;
+  controller_id?: string | number | null;
+  broker_count?: number | null;
+  topic_count?: number | null;
+  partition_count?: number | null;
+  consumer_group_count?: number | null;
+  connector_count?: number | null;
+  reason_codes?: string[];
+  observed_at?: string;
+  source_coverage?: string[];
+}
+export interface KafkaBroker {
+  broker_id: string;
+  cluster_id: string;
+  host?: string | null;
+  port?: number | null;
+  rack?: string | null;
+  controller?: boolean | null;
+  health?: string;
+  reason_codes?: string[];
+  observed_at?: string;
+  source_coverage?: string[];
+}
+export type ClusterTopicSummary = StreamItem;
+export type ClusterConsumerGroupSummary = ConsumerGroup;
+export interface ClusterConnectorSummary {
+  connector_id: string;
+  name?: string;
+  connector_type?: string;
+  classification?: string;
+  state?: string;
+  task_count?: number | null;
+  failed_task_count?: number | null;
+  worker_count?: number | null;
+  observed_at?: string;
+  data_status?: DataStatus;
+}
+export interface ClusterHealthSummary {
+  cluster_id: string;
+  health: string;
+  reason_codes: string[];
+  confidence: number | null;
+  data_status: DataStatus;
+  observed_at?: string;
+  source_coverage: string[];
+  missing_inputs: string[];
+  broker_count: number | null;
+  topic_count: number | null;
+  partition_count: number | null;
+  consumer_group_count: number | null;
+  connector_count: number | null;
+  healthy_brokers: number | null;
+  unhealthy_brokers: number | null;
+  under_replicated_partition_count: number | null;
+  leaderless_partition_count: number | null;
+  offline_replica_count: number | null;
+  degraded_topic_count: number | null;
+  critical_topic_count: number | null;
+  failed_connector_count: number | null;
+  stale_resource_count: number | null;
+}
+export interface ClusterChange {
+  observed_at: string;
+  resource_type: string;
+  resource_id: string;
+  change_type: string;
+  previous_fingerprint?: string;
+  new_fingerprint?: string;
+  source?: string;
+  confidence?: number | null;
+}
 export interface Partition {
   partition: number;
   leader?: number | null;
@@ -601,7 +775,13 @@ export interface PathwaySummary {
 export interface IncidentSummary {
   incident_id: string;
   status?: string;
+  state?: string;
   title?: string;
+  severity?: string;
+  affected_resource?: string;
+  opened_at?: string;
+  observed_at?: string;
+  relationship?: "direct" | "correlated" | "inferred" | "unknown";
 }
 export interface StreamList {
   items: StreamItem[];

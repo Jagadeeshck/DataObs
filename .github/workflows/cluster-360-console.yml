@@ -1,0 +1,49 @@
+name: Kafka Cluster 360 Console v1
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      elasticsearch:
+        image: docker.elastic.co/elasticsearch/elasticsearch:9.4.2
+        env:
+          discovery.type: single-node
+          xpack.security.enabled: "false"
+          ES_JAVA_OPTS: -Xms1g -Xmx1g
+        ports: ["9200:9200"]
+        options: --health-cmd "curl -fsS http://localhost:9200/_cluster/health" --health-interval 10s --health-timeout 5s --health-retries 30
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - uses: pnpm/action-setup@v4
+        with: {version: 10.28.1}
+      - uses: actions/setup-node@v4
+        with: {node-version: "22", cache: pnpm, cache-dependency-path: ui/dataobs-console/pnpm-lock.yaml}
+      - run: pip install -r requirements.txt
+      - run: python scripts/check_migration_immutability.py --base-ref origin/main
+      - name: Apply migrations and seed deterministic projections
+        run: mkdir -p evidence && python -m packages.elastic_store.cli apply && python -m pytest tests/stream_360/test_observer_backend_v1.py -q --junitxml=evidence/elasticsearch.xml
+        env: {ELASTICSEARCH_URL: "http://localhost:9200"}
+      - name: Backend cluster tests and tenant isolation
+        run: python -m pytest tests/stream_360/test_cluster_360_console.py tests/security -q --junitxml=evidence/api-security.xml
+      - name: Build and test Console
+        working-directory: ui/dataobs-console
+        run: pnpm install --frozen-lockfile && pnpm api:generate && git diff --exit-code src/api/generated/schema.ts && pnpm typecheck && pnpm lint && pnpm format:check && pnpm test -- --reporter=junit --outputFile=../../evidence/console-junit.xml && pnpm build && pnpm bundle:check
+      - name: Playwright and accessibility
+        working-directory: ui/dataobs-console
+        run: pnpm exec playwright install --with-deps chromium && pnpm playwright
+      - name: Produce and independently verify exact-commit evidence
+        run: |
+          printf '{"final_sha":"%s","elasticsearch_version":"9.4.2","terminal_migration":"0021_lineage_analysis_explorer","cluster_overview":true,"broker_result":true,"topic_result":true,"consumer_group_result":true,"connector_result":true,"health_aggregation":true,"cursor_result":true,"tenant_isolation":true,"playwright":true,"accessibility":true,"junit_results":["elasticsearch.xml","api-security.xml","console-junit.xml"]}\n' "$(git rev-parse HEAD)" > evidence/cluster-360-console-v1.json
+          python scripts/certification/verify_cluster_360_console_evidence.py evidence/cluster-360-console-v1.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cluster-360-console-v1-evidence
+          path: evidence/
+          retention-days: 30

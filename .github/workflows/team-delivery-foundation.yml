@@ -1,0 +1,14 @@
+name: Team delivery foundation
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  backend:
+    uses: ./.github/workflows/reusable-backend-validation.yml
+    with: {test-path: 'tests/test_team_delivery_foundation.py', artifact-name: team-delivery-foundation-evidence, evidence-profile: team-foundation}
+  console:
+    uses: ./.github/workflows/reusable-console-validation.yml
+    with: {artifact-name: team-delivery-foundation-console-evidence, run-playwright: false, run-accessibility: false}

@@ -5,6 +5,20 @@ on:
     branches: [main]
   workflow_dispatch:
 jobs:
+  reusable-backend-proof:
+    uses: ./.github/workflows/reusable-backend-validation.yml
+    with:
+      test-path: tests/stream_360
+      mypy-scope: services/kafka_observer
+      requires-elasticsearch: true
+      artifact-name: cluster-360-reusable-backend-evidence
+      evidence-profile: cluster-360
+  reusable-console-proof:
+    uses: ./.github/workflows/reusable-console-validation.yml
+    with:
+      artifact-name: cluster-360-reusable-console-evidence
+      run-playwright: false
+      run-accessibility: false
   verify:
     runs-on: ubuntu-latest
     services:

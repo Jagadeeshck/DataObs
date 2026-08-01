@@ -1,0 +1,1 @@
+[{"tenant_id":"tenant-healthy","environment":"test","data_status":"complete"},{"tenant_id":"tenant-partial","environment":"test","data_status":"partial","missing_inputs":["cost"]},{"tenant_id":"tenant-stale","environment":"test","data_status":"stale","observed_at":"2020-01-01T00:00:00Z"}]

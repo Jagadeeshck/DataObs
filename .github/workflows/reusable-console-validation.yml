@@ -1,0 +1,35 @@
+name: Reusable Console validation
+on:
+  workflow_call:
+    inputs:
+      working-directory: {type: string, default: ui/dataobs-console}
+      run-playwright: {type: boolean, default: false}
+      run-accessibility: {type: boolean, default: false}
+      artifact-name: {type: string, default: console-validation-evidence}
+      timeout-minutes: {type: number, default: 30}
+permissions: {contents: read}
+jobs:
+  validate:
+    timeout-minutes: ${{ inputs.timeout-minutes }}
+    runs-on: ubuntu-latest
+    defaults: {run: {working-directory: '${{ inputs.working-directory }}'}}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: {version: 10.28.1}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22', cache: pnpm, cache-dependency-path: ui/dataobs-console/pnpm-lock.yaml}
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm api:generate && git diff --exit-code src/api/generated/schema.ts
+      - run: pnpm typecheck && pnpm lint && pnpm format:check
+      - run: mkdir -p ../../evidence && pnpm test -- --reporter=junit --outputFile=../../evidence/console-junit.xml
+      - run: pnpm build && pnpm bundle:check
+      - if: inputs.run-playwright
+        run: pnpm exec playwright install --with-deps chromium && pnpm playwright
+      - if: inputs.run-accessibility && !inputs.run-playwright
+        run: echo 'Accessibility requested but requires browser execution' >&2; exit 1
+      - run: pnpm audit --audit-level high
+      - name: Exact-commit evidence
+        run: printf '{"commit_sha":"%s","playwright_executed":%s,"accessibility_executed":%s}\n' "$(git rev-parse HEAD)" '${{ inputs.run-playwright }}' '${{ inputs.run-accessibility }}' > ../../evidence/console.json
+      - uses: actions/upload-artifact@v4
+        with: {name: '${{ inputs.artifact-name }}', path: evidence/, retention-days: 30}

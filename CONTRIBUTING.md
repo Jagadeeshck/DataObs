@@ -142,3 +142,7 @@ Commits to `main` are not required to be signed, but GPG-signed commits are welc
 
 For general questions, open a [Discussion](https://github.com/Jagadeeshck/DataObs/discussions).
 For bug reports, open an [Issue](https://github.com/Jagadeeshck/DataObs/issues).
+
+## Team delivery workflow
+
+Use `codex/<capability-name>` branches and identify the owning team in PR metadata. Follow [team ownership](docs/development/team-ownership.md), submit shared changes through the [contract sequence](docs/development/shared-contract-rules.md), and use an [ADR](docs/architecture/adr/README.md) only for cross-team decisions. Released migrations remain immutable under the [migration rules](docs/development/migration-ownership.md).

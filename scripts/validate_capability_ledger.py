@@ -55,6 +55,16 @@ def load(path: Path = LEDGER):
 def validate(data: dict) -> list[str]:
     e = []
     caps = data.get("capabilities", [])
+    ownership_schema = data.get("ownership_metadata_schema", {})
+    expected_optional = {
+        "owner_team",
+        "release_target",
+        "contract_status",
+        "implementation_status",
+        "certification_status",
+    }
+    if set(ownership_schema.get("optional_fields", [])) != expected_optional:
+        e.append("ownership metadata schema must declare the five backward-compatible optional fields")
     ids = [c.get("id") for c in caps]
     if data.get("canonical_pillars") != PILLARS:
         e.append("canonical_pillars must use the six-pillar order")

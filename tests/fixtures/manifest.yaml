@@ -1,0 +1,10 @@
+schema_version: '1.0'
+fixtures:
+  - {name: healthy-tenant, owner_team: Team 0, schema_version: '1.0', tenant_id: tenant-healthy, environment: test, purpose: healthy baseline, contains_sensitive_data: false, used_by: [foundation]}
+  - {name: partial-evidence-tenant, owner_team: Team 2, schema_version: '1.0', tenant_id: tenant-partial, environment: test, purpose: missing evidence semantics, contains_sensitive_data: false, used_by: [quality]}
+  - {name: stale-evidence, owner_team: Team 0, schema_version: '1.0', tenant_id: tenant-stale, environment: test, purpose: stale evidence semantics, contains_sensitive_data: false, used_by: [foundation]}
+  - {name: cross-tenant-isolation, owner_team: Team 0, schema_version: '1.0', tenant_id: tenant-healthy, environment: test, purpose: isolation denial, contains_sensitive_data: false, used_by: [security]}
+  - {name: kafka-pathway, owner_team: Team 1, schema_version: '1.0', tenant_id: tenant-healthy, environment: test, purpose: cluster topic group pathway, contains_sensitive_data: false, used_by: [streams]}
+  - {name: openlineage-flow, owner_team: Team 2, schema_version: '1.0', tenant_id: tenant-healthy, environment: test, purpose: job run lineage, contains_sensitive_data: false, used_by: [jobs]}
+  - {name: quality-finding, owner_team: Team 2, schema_version: '1.0', tenant_id: tenant-partial, environment: test, purpose: quality finding, contains_sensitive_data: false, used_by: [quality]}
+  - {name: incident, owner_team: Team 3, schema_version: '1.0', tenant_id: tenant-healthy, environment: test, purpose: incident workflow, contains_sensitive_data: false, used_by: [incidents]}

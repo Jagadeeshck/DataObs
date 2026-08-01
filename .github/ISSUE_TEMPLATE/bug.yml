@@ -1,0 +1,67 @@
+name: Bug report
+description: Capture outcomes without prescribing implementation before discovery.
+title: "[bug] "
+body:
+  - type: textarea
+    id: team
+    attributes:
+      label: Team
+      description: Record what is known; discovery may refine this.
+    validations:
+      required: true
+  - type: textarea
+    id: release
+    attributes:
+      label: Release
+      description: Record what is known; discovery may refine this.
+    validations:
+      required: true
+  - type: textarea
+    id: pillar
+    attributes:
+      label: Product pillar
+      description: Record what is known; discovery may refine this.
+    validations:
+      required: true
+  - type: textarea
+    id: priority
+    attributes:
+      label: Priority
+      description: Record what is known; discovery may refine this.
+    validations:
+      required: true
+  - type: textarea
+    id: dependency
+    attributes:
+      label: Dependencies
+      description: Record what is known; discovery may refine this.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Record what is known; discovery may refine this.
+    validations:
+      required: true
+  - type: textarea
+    id: security
+    attributes:
+      label: Security impact
+      description: Record what is known; discovery may refine this.
+    validations:
+      required: true
+  - type: textarea
+    id: tenant
+    attributes:
+      label: Tenant impact
+      description: Record what is known; discovery may refine this.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence required
+      description: Record what is known; discovery may refine this.
+    validations:
+      required: true

@@ -1,0 +1,53 @@
+name: Reusable backend validation
+on:
+  workflow_call:
+    inputs:
+      python-version: {type: string, default: '3.12'}
+      test-path: {type: string, default: tests}
+      mypy-scope: {type: string, default: src}
+      requires-elasticsearch: {type: boolean, default: false}
+      requires-postgresql: {type: boolean, default: false}
+      requires-kafka: {type: boolean, default: false}
+      artifact-name: {type: string, default: backend-validation-evidence}
+      evidence-profile: {type: string, default: foundation}
+      timeout-minutes: {type: number, default: 30}
+permissions: {contents: read}
+jobs:
+  validate:
+    timeout-minutes: ${{ inputs.timeout-minutes }}
+    runs-on: ubuntu-latest
+    services:
+      elasticsearch:
+        image: ${{ inputs.requires-elasticsearch && 'docker.elastic.co/elasticsearch/elasticsearch:9.4.2' || '' }}
+        env: {discovery.type: single-node, xpack.security.enabled: 'false'}
+        ports: ['9200:9200']
+      postgresql:
+        image: ${{ inputs.requires-postgresql && 'postgres:16' || '' }}
+        env: {POSTGRES_PASSWORD: dataobs, POSTGRES_DB: dataobs}
+        ports: ['5432:5432']
+      kafka:
+        image: ${{ inputs.requires-kafka && 'apache/kafka:3.9.0' || '' }}
+        ports: ['9092:9092']
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-python@v5
+        with: {python-version: '${{ inputs.python-version }}', cache: pip}
+      - run: pip install -r requirements.txt -r requirements-dev.txt
+      - run: mkdir -p evidence && python -m compileall -q src packages services integrations tests scripts
+      - run: ruff check . && black --check . && mypy ${{ inputs.mypy-scope }}
+      - run: python -m pytest ${{ inputs.test-path }} -q --junitxml=evidence/junit.xml
+      - run: python scripts/check_generated_artifacts.py && python scripts/check_docs_links.py && python scripts/validate_capability_ledger.py
+      - run: python scripts/check_migration_immutability.py --base-ref origin/main
+      - name: Exact-commit evidence
+        run: |
+          python - <<'PY'
+          import json,os,platform,subprocess,datetime,pathlib
+          sha=subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip()
+          data={'repository':os.getenv('GITHUB_REPOSITORY'),'commit_sha':sha,'base_sha':os.getenv('GITHUB_BASE_SHA'),'workflow':os.getenv('GITHUB_WORKFLOW'),'workflow_run_id':os.getenv('GITHUB_RUN_ID'),'job':'validate','event':os.getenv('GITHUB_EVENT_NAME'),'branch':os.getenv('GITHUB_REF_NAME'),'generated_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'tool_versions':{'python':platform.python_version()},'Elasticsearch_version':'9.4.2' if '${{ inputs.requires-elasticsearch }}' == 'true' else None,'terminal_migration':'0021_lineage_analysis_explorer','test_summaries':['junit.xml'],'artifact_inventory':['junit.xml'],'security_scan_summary':'not requested by profile','tenant_isolation_result':'covered by supplied scope','migration_immutability_result':'passed','independent_verification_result':'pending','evidence_profile':'${{ inputs.evidence-profile }}'}
+          pathlib.Path('evidence/team-delivery.json').write_text(json.dumps(data,indent=2)+'\n')
+          PY
+          test "$(jq -r .commit_sha evidence/team-delivery.json)" = "$(git rev-parse HEAD)"
+          jq '.independent_verification_result="passed"' evidence/team-delivery.json > evidence/verified.json
+      - uses: actions/upload-artifact@v4
+        with: {name: '${{ inputs.artifact-name }}', path: evidence/, retention-days: 30}

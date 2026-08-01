@@ -1636,6 +1636,18 @@ LINEAGE_ANALYSIS_EXPLORER_MIGRATION = Migration(
     },
 )
 
+AWS_DATA_PLATFORM_COLLECTOR_MIGRATION = Migration(
+    "0022_aws_data_platform_collector",
+    "Add tenant-scoped provider checkpoints, observations and collection-run evidence",
+    "v1",
+    dependencies=["0021_lineage_analysis_explorer"],
+    rollback_strategy="stop AWS collection writers; retain append-only evidence and checkpoint/run audit state",
+    operations={
+        "mutable_indices": ["dataobs-provider-checkpoints-v1"],
+        "data_streams": ["logs-dataobs.provider-observation-*", "logs-dataobs.collection-run-*"],
+    },
+)
+
 
 def migrations() -> List[Migration]:
     return [
@@ -1660,6 +1672,7 @@ def migrations() -> List[Migration]:
         DATA_PRODUCT_CLAIM_EXPIRES_DATE_MIGRATION,
         IDENTITY_RBAC_TENANT_BINDINGS_MIGRATION,
         LINEAGE_ANALYSIS_EXPLORER_MIGRATION,
+        AWS_DATA_PLATFORM_COLLECTOR_MIGRATION,
     ]
 
 

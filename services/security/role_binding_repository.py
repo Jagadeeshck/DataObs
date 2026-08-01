@@ -7,6 +7,8 @@ from typing import Protocol
 
 PRINCIPAL_TYPES = frozenset({"user", "group", "service"})
 
+ROLE_BINDING_ALIAS = "dataobs-role-bindings-v1"
+
 
 class RoleBindingError(Exception):
     """Base error safe for translation to an API error."""

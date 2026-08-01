@@ -2065,11 +2065,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Pathway Slos */
-        get: operations["pathway_slos_api_v1_pathway_slos_get"];
+        /** Slos */
+        get: operations["slos_api_v1_pathway_slos_get"];
         put?: never;
-        /** Create Pathway Slo */
-        post: operations["create_pathway_slo_api_v1_pathway_slos_post"];
+        /** Create Slo */
+        post: operations["create_slo_api_v1_pathway_slos_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2083,15 +2083,16 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** Get Slo */
+        get: operations["get_slo_api_v1_pathway_slos__slo_id__get"];
         put?: never;
         post?: never;
-        /** Delete Pathway Slo */
-        delete: operations["delete_pathway_slo_api_v1_pathway_slos__slo_id__delete"];
+        /** Delete Slo */
+        delete: operations["delete_slo_api_v1_pathway_slos__slo_id__delete"];
         options?: never;
         head?: never;
-        /** Update Pathway Slo */
-        patch: operations["update_pathway_slo_api_v1_pathway_slos__slo_id__patch"];
+        /** Patch Slo */
+        patch: operations["patch_slo_api_v1_pathway_slos__slo_id__patch"];
         trace?: never;
     };
     "/api/v1/pathways": {
@@ -2103,6 +2104,159 @@ export interface paths {
         };
         /** Pathways */
         get: operations["pathways_api_v1_pathways_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pathways/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Pathway Search */
+        post: operations["pathway_search_api_v1_pathways_search_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pathways/{pathway_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Pathway */
+        get: operations["pathway_api_v1_pathways__pathway_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pathways/{pathway_id}/bottlenecks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Pathway Bottlenecks */
+        get: operations["pathway_bottlenecks_api_v1_pathways__pathway_id__bottlenecks_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pathways/{pathway_id}/compare": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Compare */
+        post: operations["compare_api_v1_pathways__pathway_id__compare_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pathways/{pathway_id}/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Health */
+        get: operations["health_api_v1_pathways__pathway_id__health_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pathways/{pathway_id}/impact": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Impact */
+        get: operations["impact_api_v1_pathways__pathway_id__impact_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pathways/{pathway_id}/latency": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Pathway Latency */
+        get: operations["pathway_latency_api_v1_pathways__pathway_id__latency_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pathways/{pathway_id}/metrics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Metrics */
+        get: operations["metrics_api_v1_pathways__pathway_id__metrics_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pathways/{pathway_id}/topology": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Topology */
+        get: operations["topology_api_v1_pathways__pathway_id__topology_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2154,6 +2308,23 @@ export interface paths {
         };
         /** Coverage */
         get: operations["coverage_api_v1_quality_coverage_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/quality/findings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Global Findings */
+        get: operations["global_findings_api_v1_quality_findings_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2398,6 +2569,26 @@ export interface paths {
         put?: never;
         /** Create Suppression */
         post: operations["create_suppression_api_v1_quality_monitors__monitor_id__suppressions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/quality/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Quality Overview
+         * @description Bounded definition summary; unavailable evidence remains explicitly unknown.
+         */
+        get: operations["quality_overview_api_v1_quality_overview_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3043,7 +3234,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get Stream-Clusters Brokers */
+        /** Get Stream Clusters Brokers */
         get: operations["get_stream_clusters_brokers_api_v1_stream_clusters__resource_id__brokers_get"];
         put?: never;
         post?: never;
@@ -3060,8 +3251,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get Stream-Clusters Changes */
-        get: operations["get_stream_clusters_changes_api_v1_stream_clusters__resource_id__changes_get"];
+        /** Cluster Changes */
+        get: operations["cluster_changes_api_v1_stream_clusters__resource_id__changes_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3094,7 +3285,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get Stream-Clusters Connectors */
+        /** Get Stream Clusters Connectors */
         get: operations["get_stream_clusters_connectors_api_v1_stream_clusters__resource_id__connectors_get"];
         put?: never;
         post?: never;
@@ -3111,7 +3302,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get Stream-Clusters Consumer-Groups */
+        /** Get Stream Clusters Consumer-Groups */
         get: operations["get_stream_clusters_consumer_groups_api_v1_stream_clusters__resource_id__consumer_groups_get"];
         put?: never;
         post?: never;
@@ -3128,8 +3319,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get Stream-Clusters Health */
-        get: operations["get_stream_clusters_health_api_v1_stream_clusters__resource_id__health_get"];
+        /** Cluster Health */
+        get: operations["cluster_health_api_v1_stream_clusters__resource_id__health_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3145,8 +3336,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get Stream-Clusters Incidents */
-        get: operations["get_stream_clusters_incidents_api_v1_stream_clusters__resource_id__incidents_get"];
+        /** Cluster Incidents */
+        get: operations["cluster_incidents_api_v1_stream_clusters__resource_id__incidents_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3162,7 +3353,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get Stream-Clusters Topics */
+        /** Get Stream Clusters Topics */
         get: operations["get_stream_clusters_topics_api_v1_stream_clusters__resource_id__topics_get"];
         put?: never;
         post?: never;
@@ -3350,8 +3541,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Stream Edges */
-        get: operations["stream_edges_api_v1_stream_topology_edges_get"];
+        /** Stream-Topology Edges */
+        get: operations["stream_topology_edges_api_v1_stream_topology_edges_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3367,8 +3558,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Stream Nodes */
-        get: operations["stream_nodes_api_v1_stream_topology_nodes_get"];
+        /** Stream-Topology Nodes */
+        get: operations["stream_topology_nodes_api_v1_stream_topology_nodes_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -6084,6 +6275,13 @@ export interface operations {
                 environment: string;
                 limit?: number;
                 cursor?: string | null;
+                search?: string | null;
+                health?: string | null;
+                retention_risk?: string | null;
+                cluster_id?: string | null;
+                consumer_group_id?: string | null;
+                has_lag?: boolean | null;
+                sort?: "topic" | "last_observed" | "maximum_lag" | "throughput" | "retention_risk" | "health";
                 _root?: string;
             };
             header?: {
@@ -9400,6 +9598,19 @@ export interface operations {
             query?: {
                 limit?: number;
                 cursor?: string | null;
+                search?: string | null;
+                state?: string | null;
+                monitor_type?: string | null;
+                threshold_mode?: string | null;
+                managed_by?: string | null;
+                creation_source?: string | null;
+                asset_id?: string | null;
+                field_id?: string | null;
+                source_type?: string | null;
+                has_open_findings?: boolean | null;
+                has_incident?: boolean | null;
+                is_stale?: boolean | null;
+                sort?: "name" | "last_updated" | "state" | "monitor_type" | "last_observation" | "last_evaluation" | "open_findings" | "severity";
             };
             header?: {
                 authorization?: string | null;
@@ -9768,7 +9979,9 @@ export interface operations {
     };
     findings_api_v1_monitors__monitor_id__findings_get: {
         parameters: {
-            query?: never;
+            query?: {
+                limit?: number;
+            };
             header?: {
                 authorization?: string | null;
                 "X-DataObs-Tenant"?: string | null;
@@ -9990,9 +10203,13 @@ export interface operations {
             };
         };
     };
-    pathway_slos_api_v1_pathway_slos_get: {
+    slos_api_v1_pathway_slos_get: {
         parameters: {
-            query?: never;
+            query: {
+                environment: string;
+                limit?: number;
+                cursor?: string | null;
+            };
             header?: {
                 authorization?: string | null;
                 "X-DataObs-Tenant"?: string | null;
@@ -10009,7 +10226,9 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
             /** @description Validation Error */
@@ -10023,9 +10242,11 @@ export interface operations {
             };
         };
     };
-    create_pathway_slo_api_v1_pathway_slos_post: {
+    create_slo_api_v1_pathway_slos_post: {
         parameters: {
-            query?: never;
+            query: {
+                environment: string;
+            };
             header?: {
                 authorization?: string | null;
                 "X-DataObs-Tenant"?: string | null;
@@ -10048,7 +10269,9 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
             /** @description Validation Error */
@@ -10062,10 +10285,52 @@ export interface operations {
             };
         };
     };
-    delete_pathway_slo_api_v1_pathway_slos__slo_id__delete: {
+    get_slo_api_v1_pathway_slos__slo_id__get: {
         parameters: {
-            query?: never;
+            query: {
+                environment: string;
+            };
             header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                slo_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_slo_api_v1_pathway_slos__slo_id__delete: {
+        parameters: {
+            query: {
+                environment: string;
+            };
+            header?: {
+                "if-match"?: string | null;
                 authorization?: string | null;
                 "X-DataObs-Tenant"?: string | null;
                 "X-DataObs-Environment"?: string | null;
@@ -10095,9 +10360,11 @@ export interface operations {
             };
         };
     };
-    update_pathway_slo_api_v1_pathway_slos__slo_id__patch: {
+    patch_slo_api_v1_pathway_slos__slo_id__patch: {
         parameters: {
-            query?: never;
+            query: {
+                environment: string;
+            };
             header?: {
                 "if-match"?: string | null;
                 authorization?: string | null;
@@ -10123,7 +10390,9 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
             /** @description Validation Error */
@@ -10139,7 +10408,11 @@ export interface operations {
     };
     pathways_api_v1_pathways_get: {
         parameters: {
-            query?: never;
+            query: {
+                environment: string;
+                limit?: number;
+                cursor?: string | null;
+            };
             header?: {
                 authorization?: string | null;
                 "X-DataObs-Tenant"?: string | null;
@@ -10156,7 +10429,369 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    pathway_search_api_v1_pathways_search_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    pathway_api_v1_pathways__pathway_id__get: {
+        parameters: {
+            query: {
+                environment: string;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                pathway_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    pathway_bottlenecks_api_v1_pathways__pathway_id__bottlenecks_get: {
+        parameters: {
+            query: {
+                environment: string;
+                view?: string;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                pathway_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    compare_api_v1_pathways__pathway_id__compare_post: {
+        parameters: {
+            query: {
+                environment: string;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                pathway_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    health_api_v1_pathways__pathway_id__health_get: {
+        parameters: {
+            query: {
+                environment: string;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                pathway_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    impact_api_v1_pathways__pathway_id__impact_get: {
+        parameters: {
+            query: {
+                environment: string;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                pathway_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    pathway_latency_api_v1_pathways__pathway_id__latency_get: {
+        parameters: {
+            query: {
+                environment: string;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                pathway_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    metrics_api_v1_pathways__pathway_id__metrics_get: {
+        parameters: {
+            query: {
+                environment: string;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                pathway_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    topology_api_v1_pathways__pathway_id__topology_get: {
+        parameters: {
+            query: {
+                environment: string;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                pathway_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
             /** @description Validation Error */
@@ -10271,9 +10906,19 @@ export interface operations {
             };
         };
     };
-    list_monitors_api_v1_quality_monitors_get: {
+    global_findings_api_v1_quality_findings_get: {
         parameters: {
             query?: {
+                state?: string | null;
+                severity?: string | null;
+                monitor_id?: string | null;
+                asset_id?: string | null;
+                incident_id?: string | null;
+                product_id?: string | null;
+                search?: string | null;
+                start?: string | null;
+                end?: string | null;
+                sort?: "newest" | "oldest" | "severity" | "state";
                 limit?: number;
                 cursor?: string | null;
             };
@@ -10293,7 +10938,56 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["MonitorPage"];
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_monitors_api_v1_quality_monitors_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+                search?: string | null;
+                state?: string | null;
+                monitor_type?: string | null;
+                threshold_mode?: string | null;
+                managed_by?: string | null;
+                creation_source?: string | null;
+                asset_id?: string | null;
+                field_id?: string | null;
+                source_type?: string | null;
+                has_open_findings?: boolean | null;
+                has_incident?: boolean | null;
+                is_stale?: boolean | null;
+                sort?: "name" | "last_updated" | "state" | "monitor_type" | "last_observation" | "last_evaluation" | "open_findings" | "severity";
+            };
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */
@@ -10365,7 +11059,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["MonitorDefinition"];
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */
@@ -10680,7 +11374,9 @@ export interface operations {
     };
     findings_api_v1_quality_monitors__monitor_id__findings_get: {
         parameters: {
-            query?: never;
+            query?: {
+                limit?: number;
+            };
             header?: {
                 authorization?: string | null;
                 "X-DataObs-Tenant"?: string | null;
@@ -10918,6 +11614,39 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    quality_overview_api_v1_quality_overview_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -12030,6 +12759,13 @@ export interface operations {
                 environment: string;
                 limit?: number;
                 cursor?: string | null;
+                search?: string | null;
+                health?: string | null;
+                retention_risk?: string | null;
+                cluster_id?: string | null;
+                consumer_group_id?: string | null;
+                has_lag?: boolean | null;
+                sort?: "topic" | "last_observed" | "maximum_lag" | "throughput" | "retention_risk" | "health";
                 _root?: string;
             };
             header?: {
@@ -12389,6 +13125,13 @@ export interface operations {
                 environment: string;
                 limit?: number;
                 cursor?: string | null;
+                search?: string | null;
+                health?: string | null;
+                retention_risk?: string | null;
+                cluster_id?: string | null;
+                consumer_group_id?: string | null;
+                has_lag?: boolean | null;
+                sort?: "topic" | "last_observed" | "maximum_lag" | "throughput" | "retention_risk" | "health";
                 _root?: string;
             };
             header?: {
@@ -12467,8 +13210,16 @@ export interface operations {
         parameters: {
             query: {
                 environment: string;
-                _root?: string;
-                _name?: string;
+                limit?: number;
+                cursor?: string | null;
+                search?: string | null;
+                health?: string | null;
+                retention_risk?: string | null;
+                has_lag?: boolean | null;
+                sort?: string | null;
+                _section?: string;
+                _related_resource?: string;
+                _default_sort?: string;
             };
             header?: {
                 authorization?: string | null;
@@ -12504,12 +13255,10 @@ export interface operations {
             };
         };
     };
-    get_stream_clusters_changes_api_v1_stream_clusters__resource_id__changes_get: {
+    cluster_changes_api_v1_stream_clusters__resource_id__changes_get: {
         parameters: {
             query: {
                 environment: string;
-                _root?: string;
-                _name?: string;
             };
             header?: {
                 authorization?: string | null;
@@ -12593,8 +13342,16 @@ export interface operations {
         parameters: {
             query: {
                 environment: string;
-                _root?: string;
-                _name?: string;
+                limit?: number;
+                cursor?: string | null;
+                search?: string | null;
+                health?: string | null;
+                retention_risk?: string | null;
+                has_lag?: boolean | null;
+                sort?: string | null;
+                _section?: string;
+                _related_resource?: string;
+                _default_sort?: string;
             };
             header?: {
                 authorization?: string | null;
@@ -12634,8 +13391,16 @@ export interface operations {
         parameters: {
             query: {
                 environment: string;
-                _root?: string;
-                _name?: string;
+                limit?: number;
+                cursor?: string | null;
+                search?: string | null;
+                health?: string | null;
+                retention_risk?: string | null;
+                has_lag?: boolean | null;
+                sort?: string | null;
+                _section?: string;
+                _related_resource?: string;
+                _default_sort?: string;
             };
             header?: {
                 authorization?: string | null;
@@ -12671,12 +13436,10 @@ export interface operations {
             };
         };
     };
-    get_stream_clusters_health_api_v1_stream_clusters__resource_id__health_get: {
+    cluster_health_api_v1_stream_clusters__resource_id__health_get: {
         parameters: {
             query: {
                 environment: string;
-                _root?: string;
-                _name?: string;
             };
             header?: {
                 authorization?: string | null;
@@ -12712,12 +13475,10 @@ export interface operations {
             };
         };
     };
-    get_stream_clusters_incidents_api_v1_stream_clusters__resource_id__incidents_get: {
+    cluster_incidents_api_v1_stream_clusters__resource_id__incidents_get: {
         parameters: {
             query: {
                 environment: string;
-                _root?: string;
-                _name?: string;
             };
             header?: {
                 authorization?: string | null;
@@ -12757,8 +13518,16 @@ export interface operations {
         parameters: {
             query: {
                 environment: string;
-                _root?: string;
-                _name?: string;
+                limit?: number;
+                cursor?: string | null;
+                search?: string | null;
+                health?: string | null;
+                retention_risk?: string | null;
+                has_lag?: boolean | null;
+                sort?: string | null;
+                _section?: string;
+                _related_resource?: string;
+                _default_sort?: string;
             };
             header?: {
                 authorization?: string | null;
@@ -12800,6 +13569,13 @@ export interface operations {
                 environment: string;
                 limit?: number;
                 cursor?: string | null;
+                search?: string | null;
+                health?: string | null;
+                retention_risk?: string | null;
+                cluster_id?: string | null;
+                consumer_group_id?: string | null;
+                has_lag?: boolean | null;
+                sort?: "topic" | "last_observed" | "maximum_lag" | "throughput" | "retention_risk" | "health";
                 _root?: string;
             };
             header?: {
@@ -13200,7 +13976,9 @@ export interface operations {
     };
     stream_topology_api_v1_stream_topology_get: {
         parameters: {
-            query?: never;
+            query: {
+                environment: string;
+            };
             header?: {
                 authorization?: string | null;
                 "X-DataObs-Tenant"?: string | null;
@@ -13217,7 +13995,9 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
             /** @description Validation Error */
@@ -13231,9 +14011,15 @@ export interface operations {
             };
         };
     };
-    stream_edges_api_v1_stream_topology_edges_get: {
+    stream_topology_edges_api_v1_stream_topology_edges_get: {
         parameters: {
-            query?: never;
+            query: {
+                environment: string;
+                limit?: number;
+                cursor?: string | null;
+                _suffix?: string;
+                _index?: string;
+            };
             header?: {
                 authorization?: string | null;
                 "X-DataObs-Tenant"?: string | null;
@@ -13250,7 +14036,9 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
             /** @description Validation Error */
@@ -13264,9 +14052,15 @@ export interface operations {
             };
         };
     };
-    stream_nodes_api_v1_stream_topology_nodes_get: {
+    stream_topology_nodes_api_v1_stream_topology_nodes_get: {
         parameters: {
-            query?: never;
+            query: {
+                environment: string;
+                limit?: number;
+                cursor?: string | null;
+                _suffix?: string;
+                _index?: string;
+            };
             header?: {
                 authorization?: string | null;
                 "X-DataObs-Tenant"?: string | null;
@@ -13283,7 +14077,9 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
             /** @description Validation Error */
@@ -13303,6 +14099,13 @@ export interface operations {
                 environment: string;
                 limit?: number;
                 cursor?: string | null;
+                search?: string | null;
+                health?: string | null;
+                retention_risk?: string | null;
+                cluster_id?: string | null;
+                consumer_group_id?: string | null;
+                has_lag?: boolean | null;
+                sort?: "topic" | "last_observed" | "maximum_lag" | "throughput" | "retention_risk" | "health";
                 _root?: string;
             };
             header?: {

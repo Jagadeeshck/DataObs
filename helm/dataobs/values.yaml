@@ -28,11 +28,11 @@ external:
     secretName: dataobs-elasticsearch
     usernameKey: username
     passwordKey: password
-    caKey: ca.crt
+    verifyCertificates: true
     caSecretName: dataobs-elasticsearch-ca
+    caKey: ca.crt
     fingerprintSecretName: dataobs-elasticsearch-fingerprint
     fingerprintKey: fingerprint
-    verifyCertificates: true
   oidc:
     issuer: https://identity.example.invalid
     audience: dataobs-api
@@ -50,6 +50,23 @@ networkPolicy:
   additionalEgressCIDRs: []
   ingressNamespaceSelector: {}
 api:
+  security:
+    authorizationSource: bindings
+    bootstrapEnabled: false
+    trustedProxyCidrs: []
+    externalScheme: https
+    cors:
+      allowedOrigins: []
+      allowedMethods: [GET, POST, PATCH, DELETE]
+      allowedHeaders: [Authorization, Content-Type, X-Request-ID, X-DataObs-Tenant, X-DataObs-Environment, Idempotency-Key, If-Match]
+      exposedHeaders: [X-Request-ID, ETag, Retry-After]
+      allowCredentials: false
+      maxAge: 600
+  oidc:
+    maximumTokenLifetimeSeconds: 3600
+    allowedAuthorisedParties: []
+    allowedTokenTypes: [Bearer, at+jwt]
+    requireJtiForServiceTokens: true
   enabled: true
   replicaCount: 2
   image:
@@ -138,6 +155,12 @@ api:
     timeoutSeconds: 3
     failureThreshold: 3
 console:
+  securityHeaders:
+    contentSecurityPolicy: "default-src 'self'; connect-src 'self'; frame-ancestors 'none'"
+    strictTransportSecurity: "max-age=31536000; includeSubDomains"
+    xContentTypeOptions: nosniff
+    referrerPolicy: no-referrer
+    permissionsPolicy: "camera=(), microphone=(), geolocation=()"
   enabled: true
   replicaCount: 2
   image:

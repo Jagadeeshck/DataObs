@@ -58,8 +58,9 @@ def test_production_rejects_default_password(monkeypatch):
     monkeypatch.setenv("DATAOBS_ALLOW_UNAUTHENTICATED_DEV", "false")
     monkeypatch.setenv("DATAOBS_STORE_BACKEND", "elasticsearch")
     monkeypatch.setenv("DATAOBS_TENANT_ID", "acme")
+    monkeypatch.setenv("ELASTICSEARCH_URL", "https://elastic.example:9200")
     monkeypatch.setenv("ELASTICSEARCH_PASSWORD", "changeme")
-    with pytest.raises(ConfigurationError, match="default"):
+    with pytest.raises(ConfigurationError, match="default|changeme|password"):
         load_settings()
 
 

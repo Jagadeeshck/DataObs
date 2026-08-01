@@ -7,6 +7,7 @@ import pytest
 
 from packages.collectors.sdk import (
     Capability,
+    InMemoryCheckpointStore,
     IntegrationConfiguration,
     IntegrationContext,
     ProviderCapabilities,
@@ -17,6 +18,13 @@ from packages.collectors.sdk import (
 )
 from packages.collectors.sdk.errors import CollectionTimeoutError
 from services.collection_manager.provider_runtime import ProviderRuntime
+from services.collection_manager.provider_storage import InMemoryObservationRepository, InMemoryRunRepository
+
+
+def runtime_for(registry, **kwargs):
+    return ProviderRuntime(
+        registry, InMemoryCheckpointStore(), InMemoryObservationRepository(), InMemoryRunRepository(), **kwargs
+    )
 
 
 class RuntimeProvider:
@@ -73,7 +81,7 @@ def test_runtime_deduplicates_and_advances_tenant_checkpoint():
     async def scenario():
         registry = ProviderRegistry()
         registry.register(RuntimeProvider)
-        runtime = ProviderRuntime(registry, retry_policy=RetryPolicy(1, 1, 0, 0, 0))
+        runtime = runtime_for(registry, retry_policy=RetryPolicy(1, 1, 0, 0, 0))
         context, config = inputs()
         first = await runtime.execute(context, config)
         second = await runtime.execute(context, config)
@@ -89,7 +97,7 @@ def test_runtime_rejects_context_configuration_identity_mismatch():
     async def scenario():
         registry = ProviderRegistry()
         registry.register(RuntimeProvider)
-        runtime = ProviderRuntime(registry)
+        runtime = runtime_for(registry)
         context, config = inputs()
         other = IntegrationConfiguration(
             "v1", "integration-b", config.provider_type, True, 1, config.allowed_capabilities
@@ -105,7 +113,7 @@ def test_runtime_enforces_timeout_and_propagates_cancellation():
         RuntimeProvider.delay = 0.1
         registry = ProviderRegistry()
         registry.register(RuntimeProvider)
-        runtime = ProviderRuntime(registry)
+        runtime = runtime_for(registry)
         context, config = inputs(0.01)
         with pytest.raises(CollectionTimeoutError):
             await runtime.execute(context, config)

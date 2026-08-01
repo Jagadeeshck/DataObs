@@ -12,6 +12,7 @@ data:
   authorization-source: {{ .Values.api.security.authorizationSource | quote }}
   bootstrap-enabled: {{ .Values.api.security.bootstrapEnabled | quote }}
   external-scheme: {{ .Values.api.security.externalScheme | quote }}
+  trusted-proxy-cidrs: {{ .Values.api.security.trustedProxyCidrs | toJson | quote }}
   cors: {{ .Values.api.security.cors | toJson | quote }}
   console-security-headers: {{ .Values.console.securityHeaders | toJson | quote }}
   console-runtime.js: |

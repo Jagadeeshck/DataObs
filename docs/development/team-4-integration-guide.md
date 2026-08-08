@@ -1,5 +1,9 @@
 # Team 4 integration development guide
 
+## Azure Data Platform v1
+
+The Azure provider is explicitly registered as `azure` version `1` and reuses the Integration SDK and Collection Manager generic evidence/checkpoint stores. Install its lazy optional dependencies from `requirements-azure-data-platform.txt`; core and unrelated providers remain importable without them. Its closed configuration requires Azure Public Cloud, a tenant/subscription, and explicitly named ADF, Synapse, or ADLS resources. See the [architecture](../architecture/azure-data-platform-collector.md), [operations](../operations/azure-data-platform-collector.md), and [RBAC](../security/azure-data-platform-collector-rbac.md) guides.
+
 Use the provider lifecycle and contracts in [Integration SDK v1](../architecture/integration-sdk-v1.md). Team 4 owns
 provider-neutral collection and integrations except Kafka-family (Team 1) and Airflow/dbt/Spark (Team 2). Do not add
 onboarding UI, deployment assets, shared workflows, or incident delivery from a provider change.

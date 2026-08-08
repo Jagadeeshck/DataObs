@@ -1,0 +1,35 @@
+integration_id: azure-data-platform-dev
+provider_type: azure
+enabled: false
+allowed_capabilities: [resource_discovery, metadata_collection, metric_collection, health_check, incremental_collection]
+timeout_seconds: 300
+provider:
+  cloud: azure_public
+  tenant_id: 00000000-0000-0000-0000-000000000000
+  subscription_id: 11111111-1111-1111-1111-111111111111
+  authentication: {type: managed_identity}
+  data_factories:
+    - resource_group: rg-data-platform-dev
+      factory_name: adf-data-platform-dev
+      include_pipeline_metadata: true
+      include_trigger_metadata: true
+      runs: {enabled: true, lookback_seconds: 86400, overlap_seconds: 900, maximum_pipeline_runs: 10000, include_activity_runs: true, maximum_activity_runs: 50000}
+  synapse_workspaces:
+    - resource_group: rg-data-platform-dev
+      workspace_name: syn-data-platform-dev
+      include_sql_pools: true
+      include_spark_pools: true
+      include_pipeline_metadata: true
+      runs: {enabled: true, lookback_seconds: 86400, overlap_seconds: 900, maximum_pipeline_runs: 10000, include_activity_runs: true, maximum_activity_runs: 50000}
+  adls_gen2:
+    - resource_group: rg-data-platform-dev
+      storage_account: stdataobsdev
+      include_filesystems: true
+      prefix_observations:
+        enabled: false
+        maximum_prefixes: 50
+        maximum_paths_per_prefix: 10000
+        maximum_depth: 5
+        emit_path_names: false
+        prefixes: [{filesystem: curated, path: datasets/customer}]
+  limits: {maximum_factories: 50, maximum_workspaces: 50, maximum_storage_accounts: 50, maximum_pages: 1000, maximum_observations: 500000, maximum_concurrent_requests: 8, request_timeout_seconds: 30}

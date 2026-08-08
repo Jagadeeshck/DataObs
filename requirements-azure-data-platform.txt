@@ -1,0 +1,7 @@
+azure-core>=1.32,<2
+azure-identity>=1.19,<2
+azure-mgmt-resource>=23,<24
+azure-mgmt-datafactory>=9,<10
+azure-mgmt-synapse>=2.0,<3
+azure-mgmt-storage>=22,<24
+azure-storage-file-datalake>=12.17,<13

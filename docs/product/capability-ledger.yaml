@@ -2109,6 +2109,46 @@ capabilities:
   certification_status: functional_unvalidated
   last_audited_at: '2026-08-08'
   last_audited_commit: pending-final-sha
+- id: integration.presto
+  name: Presto SQL engine collector v1
+  summary: Independent PrestoDB provider with bounded metadata and runtime evidence over the shared SQL-engine foundation.
+  pillar: platform
+  domain: integrations
+  state: functional_unvalidated
+  release_readiness: blocked
+  implementation:
+    code_paths: [integrations/presto, integrations/sql_engine, services/collection_manager]
+    api_paths: []
+    ui_routes: []
+    storage_resources: [generic provider observations, runs, and checkpoints]
+    migrations: []
+  validation:
+    unit: defined_not_run
+    integration: defined_not_run
+    real_stack: defined_not_run
+    hosted_ci: defined_not_run
+    browser: not_applicable
+    accessibility: not_applicable
+    security: defined_not_run
+    scale: defined_not_run
+    upgrade: defined_not_run
+    release: defined_not_run
+  evidence:
+    tests: [tests/integrations/test_presto_provider.py, tests/integrations/test_presto_client_compatibility.py, tests/integrations/test_presto_live.py]
+    workflow_jobs: [presto-sql-engine-collector-v1.yml:validate]
+    audit_docs: [docs/development/presto-sql-engine-collector-v1-audit.md]
+    runbooks: [docs/operations/presto-sql-engine-collector.md]
+    artifacts: [presto-sql-engine-collector-v1-evidence]
+  blockers: [Live Presto 0.298.1 and hosted exact-commit evidence are not retained.]
+  non_goals: [No complete query history, materialized views, profiling, SQL text, user analytics, lineage, cost, or production readiness.]
+  next_gate: Run and independently verify the hosted exact-commit workflow with disposable Presto.
+  owner: team:integrations-collection
+  owner_team: team:integrations-collection
+  release_target: beta-1
+  implementation_status: implemented
+  certification_status: functional_unvalidated
+  last_audited_at: '2026-08-08'
+  last_audited_commit: pending-final-sha
 migration_checksums:
   0001_product_foundation: 71d939094a97b4dd7c61de60542b60dd41cb238fd6bebfd75d53d723b00f3556
   0002_postgres_observability: c2098fa24ddae209fcf2ffeb369f7040d57018d58682a8513db9e943c749aa2d

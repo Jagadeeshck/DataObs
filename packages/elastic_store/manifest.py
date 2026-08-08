@@ -1840,17 +1840,126 @@ STREAM_PATHWAY_RELIABILITY_PRODUCTION_CLOSURE_MIGRATION = Migration(
     },
 )
 
-LINEAGE_IMPACT_CHANGE_INTELLIGENCE_MIGRATION = Migration(
-    "0026_lineage_impact_change_intelligence",
-    "Add append-only lineage schema-change and impact-evaluation evidence",
+STREAM_INTELLIGENCE_PROPERTIES = {
+    **{
+        key: {"type": "keyword", "ignore_above": 1024}
+        for key in [
+            "id",
+            "detector_id",
+            "candidate_id",
+            "forecast_id",
+            "evaluation_id",
+            "tenant_id",
+            "environment",
+            "resource_type",
+            "resource_id",
+            "metric",
+            "method",
+            "direction",
+            "state",
+            "previous_state",
+            "owner",
+            "classification",
+            "schema_version",
+            "created_actor",
+            "updated_actor",
+            "worker_id",
+            "lease_status",
+            "error_fingerprint",
+            "reason_codes",
+            "missing_inputs",
+            "evidence_references",
+            "overlay_references",
+        ]
+    },
+    **{
+        key: {"type": "double"}
+        for key in [
+            "observed_value",
+            "expected_value",
+            "range_lower",
+            "range_upper",
+            "deviation_score",
+            "data_coverage",
+            "confidence",
+            "current_lag",
+            "current_backlog_age_seconds",
+            "current_backlog_bytes",
+            "production_rate",
+            "consumption_rate",
+            "net_backlog_growth_rate",
+            "estimated_drain_time_seconds",
+            "earliest_exhaustion_seconds",
+        ]
+    },
+    **{
+        key: {"type": "long"}
+        for key in [
+            "revision",
+            "sample_count",
+            "consecutive_anomalies",
+            "consecutive_recoveries",
+            "fencing_token",
+            "partition",
+        ]
+    },
+    **{key: {"type": "boolean"} for key in ["enabled", "configured"]},
+    **{
+        key: {"type": "date"}
+        for key in [
+            "@timestamp",
+            "created_at",
+            "updated_at",
+            "observed_at",
+            "evaluated_at",
+            "next_evaluation_at",
+            "heartbeat_at",
+        ]
+    },
+}
+
+STREAM_ANOMALY_RETENTION_INTELLIGENCE_MIGRATION = Migration(
+    "0026_stream_anomaly_retention_intelligence",
+    "Add strict Team 1 anomaly, retention forecast and metadata-only failure intelligence storage",
     "v1",
     dependencies=["0025_stream_pathway_reliability_production_closure"],
-    rollback_strategy="stop lineage intelligence writers; retain append-only change and impact evidence for audit",
+    rollback_strategy="stop intelligence workers; retain append-only evidence and signals; snapshot current projections before alias removal",
     operations={
-        "data_streams": [
-            "logs-dataobs.lineage-change-*",
-            "logs-dataobs.lineage-impact-evaluation-*",
+        "mutable_indices": [
+            "dataobs-stream-detector-definitions-v1",
+            "dataobs-stream-anomaly-current-v1",
+            "dataobs-stream-retention-forecast-current-v1",
+            "dataobs-stream-failure-candidate-current-v1",
+            "dataobs-stream-intelligence-runtime-state-v1",
         ],
+        "mapping_updates": {
+            name: STREAM_INTELLIGENCE_PROPERTIES
+            for name in [
+                "dataobs-stream-detector-definitions-v1",
+                "dataobs-stream-anomaly-current-v1",
+                "dataobs-stream-retention-forecast-current-v1",
+                "dataobs-stream-failure-candidate-current-v1",
+                "dataobs-stream-intelligence-runtime-state-v1",
+            ]
+        },
+        "data_stream_contracts": {
+            "metrics-dataobs.stream-anomaly-evaluation-*": {
+                "retention": "90d",
+                "properties": STREAM_INTELLIGENCE_PROPERTIES,
+            },
+            "metrics-dataobs.stream-retention-forecast-*": {
+                "retention": "90d",
+                "properties": STREAM_INTELLIGENCE_PROPERTIES,
+            },
+            "logs-dataobs.stream-failure-candidate-*": {
+                "retention": "180d",
+                "properties": STREAM_INTELLIGENCE_PROPERTIES,
+            },
+            "logs-dataobs.stream-intelligence-signal-*": {
+                "retention": "365d",
+                "properties": STREAM_INTELLIGENCE_PROPERTIES,
+            },
+        },
     },
 )
 
@@ -1882,7 +1991,7 @@ def migrations() -> List[Migration]:
         STREAM_PATHWAY_RELIABILITY_MIGRATION,
         JOB_RUN_RELIABILITY_MIGRATION,
         STREAM_PATHWAY_RELIABILITY_PRODUCTION_CLOSURE_MIGRATION,
-        LINEAGE_IMPACT_CHANGE_INTELLIGENCE_MIGRATION,
+        STREAM_ANOMALY_RETENTION_INTELLIGENCE_MIGRATION,
     ]
 
 

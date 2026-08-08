@@ -1,0 +1,59 @@
+name: Stream anomaly retention intelligence v1
+on:
+  workflow_dispatch:
+  pull_request:
+    paths: ['packages/streaming/**', 'services/kafka_observer/**intelligence*', 'services/kafka_observer/*forecast*', 'services/kafka_observer/*classifier*', 'src/api/stream_intelligence_routes.py', 'packages/elastic_store/**', 'ui/dataobs-console/**']
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install -r requirements.txt
+      - run: python scripts/check_merge_conflict_markers.py
+      - run: python scripts/check_team_boundaries.py
+      - run: python scripts/check_generated_artifacts.py
+      - run: python scripts/check_docs_links.py
+      - run: python scripts/validate_capability_ledger.py
+      - run: python scripts/release/check_release_metadata.py
+      - run: python scripts/check_migration_immutability.py --base-ref origin/main
+      - run: python scripts/security/check_route_permissions.py
+      - run: ruff check . && black --check . && mypy packages services src scripts
+      - run: python -m pytest tests/stream_360 tests/pathways tests/security -q
+  elasticsearch-9-4-2:
+    runs-on: ubuntu-latest
+    services:
+      elasticsearch:
+        image: docker.elastic.co/elasticsearch/elasticsearch:9.4.2
+        env: {discovery.type: single-node, xpack.security.enabled: 'false'}
+        ports: ['9200:9200']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install -r requirements.txt
+      - run: python scripts/migrate_to_es.py
+        env: {ELASTICSEARCH_URL: 'http://localhost:9200'}
+      - run: RUN_STREAM_INTELLIGENCE_ELASTICSEARCH_TESTS=1 python -m pytest tests/integration/stream_intelligence -q
+  console:
+    runs-on: ubuntu-latest
+    defaults: {run: {working-directory: ui/dataobs-console}}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm api:generate && pnpm typecheck && pnpm lint && pnpm format:check
+      - run: pnpm test && pnpm build && pnpm bundle:check && pnpm playwright
+  evidence:
+    if: github.event_name == 'workflow_dispatch'
+    needs: [contracts, elasticsearch-9-4-2, console]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          mkdir evidence
+          printf '{"producer_sha":"%s","workflow":"stream-anomaly-retention-intelligence-v1.yml","run_id":"%s","run_attempt":"%s","event":"%s","elasticsearch":"9.4.2","terminal_migration":"0026_stream_anomaly_retention_intelligence","status":"functional_unvalidated"}\n' "$GITHUB_SHA" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" "$GITHUB_EVENT_NAME" > evidence/envelope.json
+          sha256sum evidence/envelope.json > evidence/checksums.txt
+      - uses: actions/upload-artifact@v4
+        with: {name: stream-anomaly-retention-intelligence-v1-evidence, path: evidence, retention-days: 90}

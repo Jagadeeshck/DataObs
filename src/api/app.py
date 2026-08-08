@@ -52,6 +52,7 @@ from src.api.monitor_routes import router as monitor_router
 from src.api.pathway_routes import create_pathway_router
 from src.api.reliability_routes import create_reliability_router
 from src.api.store import StoreProtocol, get_store
+from src.api.stream_intelligence_routes import create_stream_intelligence_router
 from src.api.stream_routes import create_stream_router
 from src.config.settings import AppSettings, load_settings
 from src.core.enterprise_blueprint import enterprise_backlog
@@ -1881,6 +1882,7 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
         return {"backlog": enterprise_backlog(implemented_keys=[])}
 
     app.include_router(create_stream_router(get_console_repository, require_auth))
+    app.include_router(create_stream_intelligence_router(require_auth))
     app.include_router(create_reliability_router(get_console_repository, require_auth))
     app.include_router(create_pathway_router(get_console_repository, require_auth))
     app.include_router(create_data_product_router(get_data_product_repository, require_auth))

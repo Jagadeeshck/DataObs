@@ -1814,6 +1814,61 @@ capabilities:
   certification_status: functional_unvalidated
   last_audited_at: '2026-08-01'
   last_audited_commit: pending-final-sha
+- id: streaming.anomaly_retention_intelligence_v1
+  name: Stream anomaly, retention and failure intelligence v1
+  summary: Explainable tenant-scoped anomaly baselines, retention forecasts and metadata-only failure candidates.
+  pillar: data_pipeline
+  domain: streaming
+  state: functional_unvalidated
+  release_readiness: blocked
+  implementation:
+    code_paths:
+    - packages/streaming/intelligence.py
+    - services/kafka_observer/anomaly_engine.py
+    - services/kafka_observer/retention_forecaster.py
+    - services/kafka_observer/failure_classifier.py
+    api_paths: []
+    ui_routes:
+    - /streams/intelligence
+    storage_resources:
+    - dataobs-stream-anomaly-current-v1
+    - metrics-dataobs.stream-anomaly-evaluation-*
+    migrations:
+    - 0026_stream_anomaly_retention_intelligence
+  validation:
+    unit: passed
+    integration: defined_not_run
+    real_stack: defined_not_run
+    hosted_ci: missing
+    browser: defined_not_run
+    accessibility: defined_not_run
+    security: passed
+    scale: defined_not_run
+    upgrade: defined_not_run
+    release: missing
+  evidence:
+    tests:
+    - tests/stream_360/test_anomaly_retention_intelligence_v1.py
+    workflow_jobs:
+    - stream-anomaly-retention-intelligence-v1.yml:contracts
+    audit_docs:
+    - docs/development/stream-anomaly-retention-intelligence-v1-audit.md
+    runbooks:
+    - docs/operations/stream-anomaly-retention-intelligence.md
+    artifacts:
+    - stream-anomaly-retention-intelligence-v1-evidence (defined; hosted run pending)
+  blockers:
+  - Exact-commit hosted Elasticsearch, browser and accessibility evidence is not retained.
+  non_goals:
+  - Payload inspection, causal claims, Team 3 private writes and remediation are excluded.
+  next_gate: Complete API/runtime/Resource 360 closure and retain independently verified exact-commit hosted evidence.
+  owner: team:streams
+  owner_team: team:streams
+  release_target: beta-1
+  implementation_status: implemented
+  certification_status: functional_unvalidated
+  last_audited_at: '2026-08-08'
+  last_audited_commit: pending-final-sha
 migration_checksums:
   0001_product_foundation: 71d939094a97b4dd7c61de60542b60dd41cb238fd6bebfd75d53d723b00f3556
   0002_postgres_observability: c2098fa24ddae209fcf2ffeb369f7040d57018d58682a8513db9e943c749aa2d
@@ -1840,4 +1895,4 @@ migration_checksums:
   0023_stream_pathway_reliability_runtime: 04f5ec259ee4187c4ee423b0944d7b026e27f92f20755bb71330175bfec26149
   0024_job_run_reliability_runtime: a3a7bcbd8594a51802a6c0e3f42a98c822b708e8ae7fa68bb664f96c5472666d
   0025_stream_pathway_reliability_production_closure: 5d68f3c0acb2b265181276f3080f15d3acbf8abc39585b85715d9f5f6691fb30
-  0026_lineage_impact_change_intelligence: 9ae0dcb020fce377b8f48e0a6d4c7a83e0b3bc63e7ad36fac7b701437235b223
+  0026_stream_anomaly_retention_intelligence: dba7efc48003dc5877af8ac2f0e6949dd44878399e9cf3e2a77043f6d1009b44

@@ -1,0 +1,73 @@
+name: Team 0 Production Scale HA Certification v1
+on:
+  workflow_dispatch:
+    inputs:
+      target_sha: {description: "Exact 40-character main SHA", required: true, type: string}
+      profile: {description: "Certification profile", required: true, type: choice, options: [development, standard-ha, production-ha]}
+      target_environment: {description: "Must be test", required: true, default: test, type: string}
+      target_url: {description: "Disposable test URL", required: true, type: string}
+      allow_host: {description: "Exact allowed hostname (no wildcard)", required: true, type: string}
+      synthetic_marker: {description: "Must begin synthetic-", required: true, default: synthetic-team0, type: string}
+      maximum_duration: {description: "Seconds, finite", required: true, default: "1800", type: string}
+      maximum_concurrency: {description: "Finite concurrency ceiling", required: true, default: "50", type: string}
+permissions: {contents: read, id-token: write}
+concurrency: {group: "team0-scale-ha-${{ inputs.target_sha }}", cancel-in-progress: false}
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    outputs: {sha: "${{ steps.guard.outputs.sha }}"}
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: "${{ inputs.target_sha }}"}
+      - id: guard
+        env: {SHA: "${{ inputs.target_sha }}", ENVIRONMENT: "${{ inputs.target_environment }}", URL: "${{ inputs.target_url }}", HOST: "${{ inputs.allow_host }}", MARKER: "${{ inputs.synthetic_marker }}", DURATION: "${{ inputs.maximum_duration }}", CONCURRENCY: "${{ inputs.maximum_concurrency }}"}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SHA"; [[ "$SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$ENVIRONMENT" = test; [[ "$MARKER" == synthetic-* ]]; [[ "$HOST" != *'*'* ]]
+          test "$DURATION" -gt 0; test "$DURATION" -le 28800; test "$CONCURRENCY" -gt 0; test "$CONCURRENCY" -le 500
+          python - "$URL" "$HOST" <<'PY'
+          import sys
+          from urllib.parse import urlparse
+          host=(urlparse(sys.argv[1]).hostname or '').lower()
+          assert host == sys.argv[2].lower() and 'prod' not in host and host not in {'0.0.0.0','localhost'}, 'unsafe target'
+          PY
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+      - run: python -m pytest tests/performance/test_scale_certification.py
+  certify:
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 600
+    environment: team-0-scale-test
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: "${{ needs.validate.outputs.sha }}"}
+      - name: deploy
+        run: scripts/performance/certification_phase.sh deploy
+      - name: seed
+        run: scripts/performance/certification_phase.sh seed
+      - name: baseline
+        run: scripts/performance/certification_phase.sh baseline
+      - name: load
+        run: scripts/performance/certification_phase.sh load
+      - name: autoscale
+        run: scripts/performance/certification_phase.sh autoscale
+      - name: worker-scale
+        run: scripts/performance/certification_phase.sh worker-scale
+      - name: pod-failure
+        run: scripts/performance/certification_phase.sh pod-failure
+      - name: node-failure
+        run: scripts/performance/certification_phase.sh node-failure
+      - name: soak
+        run: scripts/performance/certification_phase.sh soak
+      - name: checksums
+        run: cd team-0-production-scale-ha-certification-v1-evidence && sha256sum *-report.json evidence.json tool-versions.json > checksums.sha256
+      - name: verify
+        run: python scripts/performance/verify_scale_certification.py team-0-production-scale-ha-certification-v1-evidence --sha '${{ needs.validate.outputs.sha }}' --profile '${{ inputs.profile }}'
+      - name: cleanup
+        if: always()
+        run: scripts/performance/certification_phase.sh cleanup
+      - name: upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with: {name: team-0-production-scale-ha-certification-v1-evidence, path: team-0-production-scale-ha-certification-v1-evidence, if-no-files-found: error}

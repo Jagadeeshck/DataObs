@@ -1,0 +1,11 @@
+schema_version: "1"
+kind: benchmark_regression_budget
+not_product_slo: true
+comparison_requires: [same_workload_hash, same_topology_class, verified_baseline]
+budgets:
+  p95_regression: {maximum_percent: 10, direction: lower_is_better}
+  throughput_regression: {maximum_percent: 10, direction: higher_is_better}
+  error_rate_regression: {maximum_absolute_percentage_points: 0.5, direction: lower_is_better}
+  memory_growth_regression: {maximum_percent: 10, direction: lower_is_better}
+  worker_backlog_regression: {maximum_percent: 10, direction: lower_is_better}
+missing_or_incomparable_baseline: unvalidated

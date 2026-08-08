@@ -1,0 +1,19 @@
+schema_version: "1"
+default_outcome: unvalidated
+rules: {unknown_external_side_effect: stop_and_reconcile, blind_retry: prohibited}
+workers:
+  quality-worker: &singleton {classification: singleton-only, evidence: pending}
+  scanner-worker: *singleton
+  monitor-runtime: *singleton
+  pathway-worker: *singleton
+  kafka-observer: *singleton
+boundaries:
+  - {boundary: before_claim, required: [work_remains_available, no_durable_result], outcome: unvalidated}
+  - {boundary: after_lease, required: [lease_expiry, replacement_takeover, fencing], outcome: unvalidated}
+  - {boundary: during_external_read, required: [bounded_retry, no_terminal_duplicate], outcome: unvalidated}
+  - {boundary: after_immutable_evidence_write, required: [duplicate_safe_evidence], outcome: unvalidated}
+  - {boundary: before_projection_update, required: [checkpoint_recovery], outcome: unvalidated}
+  - {boundary: after_projection_before_checkpoint, required: [idempotent_projection, monotonic_checkpoint], outcome: unvalidated}
+  - {boundary: during_retry, required: [persisted_backoff, no_retry_storm], outcome: unvalidated}
+  - {boundary: during_shutdown, required: [lease_release_or_expiry, no_lost_work], outcome: unvalidated}
+  - {boundary: ambiguous_external_outcome, applies_to: action_or_remediation, required: [reconcile_before_retry], outcome: unvalidated}

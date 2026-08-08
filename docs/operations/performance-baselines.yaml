@@ -1,0 +1,6 @@
+schema_version: "1"
+policy: actual_executed_evidence_only
+baselines: []
+# Entries are added only by verified evidence and contain exact_sha, certification_profile,
+# workload, topology, concurrency, tenant_count, throughput, p95, p99, error_rate, cpu,
+# memory, and evidence_artifact. No performance execution was retained for this change.

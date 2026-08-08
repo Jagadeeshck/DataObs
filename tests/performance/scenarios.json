@@ -1,0 +1,12 @@
+{
+  "schema_version": "1",
+  "stages_percent": [10, 25, 50, 75, 100, 125, 150],
+  "soak_seconds": {"short": 1800, "medium": 7200, "extended": 28800},
+  "scenarios": {
+    "api-reads": {"baseline_rps": 20, "operations": ["assets", "monitors", "incidents", "streams", "jobs", "lineage", "platform-health"]},
+    "api-writes": {"baseline_rps": 5, "operations": ["synthetic-metadata-upsert"]},
+    "ingestion": {"baseline_rps": 10, "operations": ["openlineage", "provider-observation", "quality-evidence", "stream-metric", "incident-finding"]},
+    "worker": {"baseline_rps": 10, "operations": ["claim", "lease", "checkpoint", "retry", "reconciliation"]},
+    "noisy-neighbour": {"baseline_rps": 20, "tenants": {"synthetic-a": 0.8, "synthetic-b": 0.15, "synthetic-c": 0.05}}
+  }
+}

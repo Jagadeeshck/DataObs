@@ -125,6 +125,13 @@ export function AppHeader() {
       </div>
       <div className="context">
         <QuickFind />
+        <NavLink
+          className="activity-indicator"
+          to="/activity"
+          aria-label="Open Activity Center"
+        >
+          ◉ <span>Activity</span>
+        </NavLink>
         <ProductContextSelector />
         <TimeRangeSelector />
         <GlobalRefreshControl />

@@ -1,0 +1,3 @@
+# Activity provider contract
+
+Providers declare ID, capability and owner, read permission, maximum lookback/results, timeout, filters, cursor model, emitted types, and attention source. Registration is compile-time and unique. Permission is checked before `supports` or `load`. Providers receive trusted tenant/environment context plus an AbortSignal and must use bounded summary reads: no inventories, details fan-out, arbitrary DSL, direct Elasticsearch, cross-tenant requests, mutations, or infinite retry. Provider failure, timeout, not-configured and permission-limited outcomes remain distinct.

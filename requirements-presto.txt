@@ -1,0 +1,2 @@
+# Optional PrestoDB collector dependency, validated by the compatibility gate.
+presto-python-client==0.8.4

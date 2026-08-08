@@ -1,0 +1,28 @@
+integration_id: presto-production
+provider_type: presto
+enabled: false
+allowed_capabilities: [resource_discovery, metadata_collection, metric_collection, query_history, schema_discovery, health_check, incremental_collection]
+timeout_seconds: 300
+provider:
+  host: presto.example.internal
+  port: 8443
+  authentication: {type: basic, username: dataobs_collector, password_ref: 'env:DATAOBS_PRESTO_PASSWORD'}
+  tls: {verify: true}
+  catalogs: {include: [hive, iceberg], exclude: [system, jmx]}
+  schemas: {include: [], exclude: [information_schema]}
+  metadata: {include_tables: true, include_views: true, include_columns: true}
+  runtime:
+    cluster_health: {enabled: true}
+    queries: {enabled: true, lookback_seconds: 1800, overlap_seconds: 300, maximum_queries: 5000}
+    tasks: {enabled: true, maximum_queries: 1000, maximum_tasks: 20000}
+  limits:
+    maximum_catalogs: 100
+    maximum_schemas_per_catalog: 5000
+    maximum_relations_per_schema: 50000
+    maximum_columns: 500000
+    fetch_size: 500
+    maximum_rows_per_statement: 50000
+    maximum_concurrent_catalogs: 4
+    statement_timeout_seconds: 30
+    total_timeout_seconds: 300
+    maximum_observations: 500000

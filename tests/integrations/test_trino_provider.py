@@ -19,7 +19,7 @@ BASE = {
 
 def test_registry_identity_and_capabilities():
     registry = build_registry()
-    assert registry.provider_types() == ("aws", "azure", "bigquery", "databricks", "snowflake", "trino")
+    assert registry.provider_types() == ("aws", "azure", "bigquery", "databricks", "presto", "snowflake", "trino")
     provider = registry.create("trino")
     assert (
         provider.provider_version == "1"

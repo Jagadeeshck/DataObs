@@ -1,0 +1,31 @@
+name: Presto SQL Engine Collector v1
+on: [pull_request, workflow_dispatch]
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.14'}
+      - run: pip install -r requirements.txt -r requirements-presto.txt ruff black mypy pip-audit
+      - run: '! git grep -nE "^(<<<<<<<|=======|>>>>>>>)"'
+      - run: python -m compileall integrations/sql_engine integrations/presto integrations/trino services/collection_manager
+      - run: ruff check integrations/sql_engine integrations/presto tests/integrations/test_presto_provider.py tests/integrations/test_presto_client_compatibility.py
+      - run: black --check integrations/sql_engine integrations/presto tests/integrations/test_presto_provider.py tests/integrations/test_presto_client_compatibility.py
+      - run: mypy --ignore-missing-imports integrations/sql_engine integrations/presto
+      - name: SDK, Collection Manager, SQL engine, provider and PostgreSQL regressions
+        run: pytest -q tests/integrations tests/elastic_store/test_migrations.py
+      - name: Presto safety, privacy, protocol, checkpoint and client gates
+        run: pytest -q tests/integrations/test_sql_engine_foundation.py tests/integrations/test_trino_provider.py tests/integrations/test_presto_provider.py tests/integrations/test_presto_client_compatibility.py tests/integrations/test_collection_manager_runtime.py
+      - run: python scripts/check_migration_immutability.py --base-ref "${{ github.event.pull_request.base.sha || github.event.before || 'HEAD^' }}"
+      - run: python scripts/release/current_terminal_migration.py && python scripts/release/check_release_metadata.py
+      - run: python scripts/validate_capability_ledger.py && python scripts/check_generated_artifacts.py && python scripts/check_docs_links.py
+      - run: pip-audit -r requirements-presto.txt
+      - name: Secret-pattern scan
+        run: '! git grep -nE "(BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY|password[[:space:]]*=[[:space:]]*[^$])" -- . ":!tests" ":!docs"'
+      - name: Evidence envelope
+        run: mkdir -p presto-sql-engine-collector-v1-evidence && python scripts/presto_evidence.py > presto-sql-engine-collector-v1-evidence/envelope.json
+      - run: python scripts/verify_presto_evidence.py presto-sql-engine-collector-v1-evidence/envelope.json
+      - uses: actions/upload-artifact@v4
+        with: {name: presto-sql-engine-collector-v1-evidence, path: presto-sql-engine-collector-v1-evidence}

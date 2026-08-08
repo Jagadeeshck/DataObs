@@ -21,4 +21,8 @@ The Snowflake warehouse collector v1 uses a lazy optional connector, closed auth
 
 ## Trino SQL engine v1
 
-Trino is explicitly registered on the reusable Integration SDK SQL-engine foundation. Use only its fixed metadata/runtime registry and optional official Python client; never add custom SQL, JDBC, profiling, or business-row reads. Trino is `functional_unvalidated`; Presto is `planned/not_implemented`.
+Trino is explicitly registered on the reusable Integration SDK SQL-engine foundation. Use only its fixed metadata/runtime registry and optional official Python client; never add custom SQL, JDBC, profiling, or business-row reads. Trino is `functional_unvalidated`.
+
+## Presto SQL engine v1
+
+PrestoDB is independently registered as `presto` and uses the same SQL-engine foundation without sharing Trino identity, authentication, headers, or dialect projections. Its optional official client, Basic-only authentication, fixed metadata/runtime SQL, and bounded-history semantics are documented in the Presto architecture, operations, and access guides. Presto is `functional_unvalidated` pending hosted exact-commit evidence.

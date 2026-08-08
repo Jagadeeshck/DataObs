@@ -46,8 +46,9 @@ class PreviewService:
             "actor": actor,
             "target_revision": normalized["target_revision"],
         }
-        preview_id = f"prv_{canonical_hash(identity)}"
-        action_fingerprint = canonical_hash({**identity, "preview_id": preview_id, "policy_hash": POLICY_HASH})
+        action_fingerprint = canonical_hash({**identity, "policy_hash": POLICY_HASH})
+        preview_generation = 1
+        preview_id = f"prv_{canonical_hash([action_fingerprint, preview_generation])}"
         decision = evaluate(
             definition,
             environment=environment,
@@ -59,6 +60,7 @@ class PreviewService:
         checked_at = now or datetime.now(timezone.utc)
         return Preview(
             preview_id=preview_id,
+            preview_generation=preview_generation,
             action_type=action_type,
             action_version=definition.action_version,
             catalogue_name=CATALOGUE_NAME,

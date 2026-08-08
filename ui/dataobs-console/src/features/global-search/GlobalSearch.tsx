@@ -7,6 +7,7 @@ import {
   type SearchSnapshot,
 } from "../../search";
 import { useProductContext } from "../../state/context";
+import { investigationPath } from "../../investigation/context";
 
 export function GlobalSearch() {
   const { tenant, environment, identity } = useProductContext();
@@ -115,6 +116,24 @@ export function GlobalSearch() {
                     {item.entityType.replaceAll("_", " ")} ·{" "}
                     {item.health ?? "Evidence state unavailable"}
                   </span>
+                </button>
+                <button
+                  onClick={() =>
+                    navigate(
+                      investigationPath(
+                        {
+                          entityType: item.entityType,
+                          entityId: item.identifier,
+                          label: item.label,
+                          routeId: item.routeId,
+                          routeParameters: item.routeParameters,
+                        },
+                        "/search",
+                      ),
+                    )
+                  }
+                >
+                  Investigate
                 </button>
               </li>
             )

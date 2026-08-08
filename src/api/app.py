@@ -1886,7 +1886,7 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
         return {"backlog": enterprise_backlog(implemented_keys=[])}
 
     app.include_router(create_stream_router(get_console_repository, require_auth))
-    app.include_router(create_stream_intelligence_router(require_auth))
+    app.include_router(create_stream_intelligence_router(get_console_repository, require_auth))
     app.include_router(create_reliability_router(get_console_repository, require_auth))
     app.include_router(create_pathway_router(get_console_repository, require_auth))
     app.include_router(create_data_product_router(get_data_product_repository, require_auth))

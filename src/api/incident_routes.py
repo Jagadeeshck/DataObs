@@ -153,6 +153,7 @@ def create_incident_workbench_router(auth_dependency: Callable[..., Any]) -> API
             from services.incident_manager.automation.elasticsearch_repository import ElasticsearchAutomationRepository
             from services.incident_manager.automation.preview import PreviewService
             from services.incident_manager.automation.repository import InMemoryAutomationRepository
+            from services.incident_manager.automation.targets import TargetSelectionRequired, resolve_target
 
             detail = workbench.detail(request.state.tenant_id, environment, incident_id, request.state.request_id)
             if detail["revision"] != body.incident_revision:
@@ -166,6 +167,19 @@ def create_incident_workbench_router(auth_dependency: Callable[..., Any]) -> API
                     else InMemoryAutomationRepository()
                 )
                 request.app.state.incident_automation_repository = repo
+            payload = body.payload
+            if body.action_type in {"rerun_scan", "freshness_recheck", "connection_test"}:
+                try:
+                    target = resolve_target(body.action_type, detail["latest_evidence"], body.payload or None)
+                except TargetSelectionRequired as exc:
+                    raise HTTPException(
+                        status_code=422,
+                        detail={
+                            "code": "target_selection_required",
+                            "candidates": [candidate.public() for candidate in exc.candidates],
+                        },
+                    ) from exc
+                payload = {"target_id": target.target_id, "target_revision": target.target_revision}
             result = PreviewService().create(
                 tenant_id=request.state.tenant_id,
                 environment=environment,
@@ -173,9 +187,9 @@ def create_incident_workbench_router(auth_dependency: Callable[..., Any]) -> API
                 incident_revision=body.incident_revision,
                 incident_state=detail["state"],
                 severity=detail["severity"],
-                affected_asset_count=len(detail["affected_assets"]),
+                affected_asset_count=int(detail["affected_asset_count"]),
                 action_type=body.action_type,
-                payload=body.payload,
+                payload=payload,
                 actor=authenticated_actor(request),
                 request_id=request.state.request_id,
             )

@@ -11,7 +11,7 @@ cloud provider implemented. Provider status is governed by the capability ledger
 | Kubernetes | Yes kubernetes | Yes k8s receivers | No | pods/nodes/events/logs/traces | service account | read cluster resources | kubernetes, otlp |
 | Docker | Yes container/docker logs | Yes | No | container metrics/logs | socket scoped | docker read | container datasets |
 | AWS | Yes aws | Yes | Yes for v2 data platform evidence | RDS/Aurora, Glue, Athena, EMR Serverless, S3, Lambda, SageMaker, MWAA, Redshift and Redshift Serverless bounded metadata and allowlisted metrics | AWS chain/web identity/optional AssumeRole | least-read IAM | dataobs provider evidence |
-| Azure | Yes azure | Yes | Sometimes | metrics/logs/data factories | managed identity/Key Vault | reader | azure, dataobs cloud |
+| Azure | Yes azure | Yes | Yes, v1 functional-unvalidated | explicitly configured ADF/Synapse metadata and bounded operational runs; ADLS inventory and optional aggregate prefix modification evidence | managed identity, workload identity, referenced service-principal secret | narrowly scoped management Reader; optional narrow Blob Data Reader | generic provider source evidence |
 | GCP | Yes gcp | Yes | Sometimes | metrics/logs/data services | workload identity/Secret Manager | viewer | gcp, dataobs cloud |
 | PostgreSQL | Yes postgresql | Yes | Yes | ops metrics plus schema/freshness/profile | secret ref | connect/catalog/select opt-in | dataobs database streams |
 | MySQL | Yes mysql | Yes | Yes | ops metrics plus schema/freshness/profile | secret ref | information_schema/select opt-in | dataobs database streams |
@@ -37,8 +37,8 @@ cloud provider implemented. Provider status is governed by the capability ledger
 | Spark | Yes where platform exists | Yes | Yes | jobs/stages/lineage | platform secret | event/log read | dataobs spark |
 | Glue | Yes aws | Yes | Yes | jobs/crawlers/lineage | IAM | glue read | aws.glue, dataobs jobs |
 | Lambda | Yes aws/lambda | Yes instrumentation | No | invocations/cold start/events | IAM/layer env | lambda exec/monitor | aws.lambda, otlp |
-| Azure Data Factory | Yes azure | Yes | Yes | pipelines/runs/lineage | managed identity | reader | azure.adf, dataobs jobs |
-| Synapse | Yes azure | Yes | Yes | jobs/sql/schema | managed identity | reader/select opt-in | dataobs synapse |
+| Azure Data Factory | Yes azure | Yes | Yes, v1 functional-unvalidated | safe pipeline/trigger metadata and bounded source run/activity evidence; no lineage | non-interactive Entra workload identity | narrow read-only actions | generic provider source evidence |
+| Synapse | Yes azure | Yes | Yes, v1 functional-unvalidated | workspace, SQL/Spark pool and pipeline metadata plus bounded source run/activity evidence; no SQL execution | non-interactive Entra workload identity | narrow read-only actions; no SQL grants | generic provider source evidence |
 | Dataflow | Yes gcp | Yes | Yes | jobs/metrics/lineage | workload identity | viewer | dataobs dataflow |
 | Cloud Composer | Yes gcp | Yes | Yes | Airflow managed runs | workload identity | composer viewer | dataobs jobs |
 | Tableau | Generic REST | No | Yes | workbooks/datasources/lineage | token secret | metadata API read | dataobs bi |

@@ -8,10 +8,11 @@ from pydantic import BaseModel, ConfigDict, Field
 
 class CaseProviderState(StrEnum):
     AVAILABLE = "available"
+    DISABLED = "disabled"
     NOT_CONFIGURED = "not_configured"
     FORBIDDEN = "forbidden"
     UNREACHABLE = "unreachable"
-    UNSUPPORTED = "unsupported"
+    UNSUPPORTED = "unsupported_version"
 
 
 class CaseLinkState(StrEnum):
@@ -20,6 +21,10 @@ class CaseLinkState(StrEnum):
     CREATE_SUBMITTED = "create_submitted"
     CREATE_RECONCILIATION_REQUIRED = "create_reconciliation_required"
     LINKED = "linked"
+    SYNC_REQUIRED = "sync_required"
+    SYNCED = "synced"
+    SYNC_FAILED = "sync_failed"
+    REMOTE_MISSING = "remote_missing"
 
 
 class CaseLink(BaseModel):

@@ -7,8 +7,18 @@ from typing import Any, Callable
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response
 
-from packages.pathways.intelligence import bottlenecks, compare_windows, latency, pathway_health
+from packages.pathways.intelligence import bottlenecks, latency, pathway_health
+from packages.pathways.investigation import (
+    HistoricalEdge,
+    HistoricalNode,
+    InvestigationAnchor,
+    TraversalRequest,
+    WindowMetric,
+    compare_metric,
+)
+from packages.pathways.traversal import traverse
 from services.product_query.stream_common import envelope
+from services.product_query.stream_investigation import StreamInvestigationRepository
 from services.product_query.stream_pagination import CursorCodec, CursorState, InvalidCursor
 
 SAFE_FIELDS = [
@@ -231,6 +241,14 @@ def create_pathway_router(get_es: Callable[..., Any], require_auth: Callable[...
     def repository(es: Any = Depends(get_es)) -> PathwayRepository:
         return PathwayRepository(es)
 
+    def trusted_scope(request: Request) -> tuple[str, str]:
+        tenant = getattr(request.state, "tenant_id", None)
+        environment = getattr(request.state, "environment", None)
+        principal = getattr(request.state, "principal", None)
+        if not tenant or not environment or principal is None:
+            raise HTTPException(401, detail="Trusted investigation context is required")
+        return tenant, environment
+
     def response_envelope(request: Request, found: bool, sources: list[str] | None = None) -> dict[str, Any]:
         return envelope(request.state.request_id, configured=True, found=found, sources=sources or [])
 
@@ -430,14 +448,334 @@ def create_pathway_router(get_es: Callable[..., Any], require_auth: Callable[...
         pathway_id: str,
         body: dict[str, Any],
         request: Request,
-        environment: str = Query(...),
         repo: PathwayRepository = Depends(repository),
     ) -> dict[str, Any]:
-        start, end = datetime.fromisoformat(body["start"]), datetime.fromisoformat(body["end"])
-        if end <= start or end - start > timedelta(days=31) or body.get("environment", environment) != environment:
-            raise HTTPException(400, detail="Comparison must stay in one environment and within 31 days")
+        _, environment = trusted_scope(request)
+        if any(key in body for key in ("tenant", "tenant_id", "environment", "actor")):
+            raise HTTPException(422, detail="Scope must come from trusted context")
+        allowed_dimensions = {"topology", "performance", "reliability", "intelligence", "changes"}
+        if not set(body.get("dimensions", [])).issubset(allowed_dimensions):
+            raise HTTPException(422, detail="Unknown comparison dimension")
+        try:
+            baseline, comparison = body["baseline"], body["comparison"]
+            windows = [
+                (datetime.fromisoformat(value["start"]), datetime.fromisoformat(value["end"]))
+                for value in (baseline, comparison)
+            ]
+        except (KeyError, TypeError, ValueError) as exc:
+            raise HTTPException(422, detail="Baseline and comparison windows are required") from exc
+        if any(end <= start or end - start > timedelta(days=31) for start, end in windows):
+            raise HTTPException(400, detail="Comparison windows must be valid and at most 31 days")
         await pathway(pathway_id, request, environment, repo)
-        return {"pathway_id": pathway_id, **compare_windows(body.get("baseline", {}), body.get("comparison", {}))}
+        metrics = []
+        for name in sorted(set(baseline.get("metrics", {})) | set(comparison.get("metrics", {}))):
+            result = compare_metric(
+                WindowMetric(
+                    name,
+                    baseline.get("metrics", {}).get(name),
+                    int(baseline.get("sample_count", 0)),
+                    float(baseline.get("coverage", 0)),
+                ),
+                WindowMetric(
+                    name,
+                    comparison.get("metrics", {}).get(name),
+                    int(comparison.get("sample_count", 0)),
+                    float(comparison.get("coverage", 0)),
+                ),
+            )
+            metrics.append(result.__dict__)
+        before_edges, after_edges = set(baseline.get("edge_ids", [])), set(comparison.get("edge_ids", []))
+        return {
+            "pathway_id": pathway_id,
+            "metrics": metrics,
+            "topology": {
+                "edges_added": sorted(after_edges - before_edges),
+                "edges_removed": sorted(before_edges - after_edges),
+            },
+            "causation_claimed": False,
+        }
+
+    @router.get("/pathways/{pathway_id}/snapshot")
+    async def historical_snapshot(
+        pathway_id: str, at: datetime, request: Request, es: Any = Depends(get_es)
+    ) -> dict[str, Any]:
+        tenant, environment = trusted_scope(request)
+        item = StreamInvestigationRepository(es).topology_as_of(tenant, environment, pathway_id, at)
+        if item is None:
+            return {
+                "pathway_id": pathway_id,
+                "at": at,
+                "data_status": "history_unavailable",
+                "topology": None,
+                "missing_evidence": ["topology_snapshot"],
+                "provenance": "unavailable",
+            }
+        return {
+            "pathway_id": pathway_id,
+            "at": at,
+            "data_status": "known_active",
+            "topology": item,
+            "provenance": "observed",
+            "missing_evidence": item.get("missing_inputs", []),
+        }
+
+    @router.get("/pathways/{pathway_id}/history")
+    async def snapshot_history(
+        pathway_id: str,
+        request: Request,
+        start: datetime,
+        end: datetime,
+        limit: int = Query(50, ge=1, le=100),
+        cursor: str | None = None,
+        es: Any = Depends(get_es),
+    ) -> dict[str, Any]:
+        tenant, environment = trusted_scope(request)
+        filters = {"pathway_id": pathway_id, "start": start.isoformat(), "end": end.isoformat(), "limit": limit}
+        after = None
+        if cursor:
+            try:
+                after = codec.decode(
+                    cursor,
+                    tenant=tenant,
+                    environment=environment,
+                    filters=filters,
+                    route="pathway-history",
+                    resource=pathway_id,
+                    sort={"effective_at": "desc", "snapshot_id": "asc"},
+                ).sort
+            except InvalidCursor as exc:
+                raise HTTPException(400, detail={"code": "invalid_cursor", "message": str(exc)}) from exc
+        try:
+            rows = StreamInvestigationRepository(es).topology_between(
+                tenant, environment, pathway_id, start, end, limit=limit + 1, after=after
+            )
+        except ValueError as exc:
+            raise HTTPException(400, detail=str(exc)) from exc
+        visible = rows[:limit]
+        next_cursor = (
+            codec.encode(
+                CursorState(visible[-1]["_sort"]),
+                tenant=tenant,
+                environment=environment,
+                filters=filters,
+                route="pathway-history",
+                resource=pathway_id,
+                sort={"effective_at": "desc", "snapshot_id": "asc"},
+            )
+            if len(rows) > limit
+            else None
+        )
+        return {
+            "items": [{k: v for k, v in row.items() if k != "_sort"} for row in visible],
+            "next_cursor": next_cursor,
+        }
+
+    @router.post("/pathways/{pathway_id}/blast-radius")
+    async def pathway_blast_radius(
+        pathway_id: str, body: dict[str, Any], request: Request, repo: PathwayRepository = Depends(repository)
+    ) -> dict[str, Any]:
+        tenant, environment = trusted_scope(request)
+        if any(key in body for key in ("tenant", "tenant_id", "environment", "actor")):
+            raise HTTPException(422, detail="Scope must come from trusted context")
+        item = repo.get("dataobs-pathway-definitions-v1-read", pathway_id, tenant, environment)
+        if not item:
+            raise HTTPException(404, detail="Pathway not found")
+        raw_nodes, raw_edges = item.get("nodes", []), item.get("edges", [])
+        nodes = [
+            HistoricalNode(
+                str(n.get("node_id") or n.get("id")),
+                str(n.get("node_type", "unknown")),
+                str(n.get("name", "")),
+                float(n.get("confidence", 1)),
+                tuple(n.get("source_coverage", [])),
+                tuple(n.get("evidence_refs", [])),
+                str(n.get("data_status", "complete")),
+            )
+            for n in raw_nodes
+        ]
+        edges = [
+            HistoricalEdge(
+                str(e.get("edge_id") or e.get("id")),
+                str(e["source_node_id"]),
+                str(e["destination_node_id"]),
+                str(e.get("edge_type", "unknown")),
+                e.get("topic"),
+                e.get("consumer_group"),
+                float(e.get("confidence", 1)),
+                tuple(e.get("source_coverage", [])),
+                tuple(e.get("evidence_refs", [])),
+                str(e.get("data_status", "complete")),
+            )
+            for e in raw_edges
+        ]
+        anchor_id = body.get("anchor_node_id") or (nodes[0].node_id if nodes else pathway_id)
+        if anchor_id not in {node.node_id for node in nodes}:
+            raise HTTPException(422, detail="Anchor is not a member of this pathway")
+        try:
+            result = traverse(
+                nodes,
+                edges,
+                TraversalRequest(
+                    InvestigationAnchor("pathway_node", anchor_id),
+                    body.get("direction", "downstream"),
+                    int(body.get("max_hops", 5)),
+                    min(int(body.get("max_nodes", 100)), 500),
+                    min(int(body.get("max_edges", 200)), 1000),
+                    min(int(body.get("max_paths", 100)), 500),
+                ),
+            )
+        except (ValueError, TypeError) as exc:
+            raise HTTPException(422, detail=str(exc)) from exc
+        return {
+            "pathway_id": pathway_id,
+            **result.__dict__,
+            "paths": [p.__dict__ for p in result.paths],
+            "candidates": [c.__dict__ for c in result.candidates],
+        }
+
+    @router.get("/pathways/{pathway_id}/investigation-evidence")
+    async def investigation_evidence(
+        pathway_id: str, request: Request, repo: PathwayRepository = Depends(repository)
+    ) -> dict[str, Any]:
+        tenant, environment = trusted_scope(request)
+        item = repo.get("dataobs-pathway-definitions-v1-read", pathway_id, tenant, environment)
+        if not item:
+            raise HTTPException(404, detail="Pathway not found")
+        evidence = [
+            {
+                "event_id": f"pathway:{pathway_id}",
+                "event_type": "pathway_observation",
+                "effective_at": item.get("observed_at"),
+                "observed_at": item.get("observed_at"),
+                "resource_type": "pathway",
+                "resource_id": pathway_id,
+                "severity": item.get("health", "unknown"),
+                "summary": "Pathway evidence observed",
+                "provenance": "observed",
+                "confidence": item.get("confidence", 0),
+                "source": "team1_pathways",
+                "evidence_ref": (item.get("evidence_refs") or [f"pathway:{pathway_id}"])[0],
+            }
+        ]
+        return {
+            "evidence": evidence,
+            "related_entities": item.get("impact_links", [])[:50],
+            "provider_status": "partial" if item.get("missing_inputs") else "complete",
+            "truncated": len(item.get("impact_links", [])) > 50,
+            "request_id": request.state.request_id,
+        }
+
+    @router.get("/pathways/{pathway_id}/investigation-timeline")
+    async def investigation_timeline(
+        pathway_id: str,
+        request: Request,
+        start: datetime,
+        end: datetime,
+        limit: int = Query(50, ge=1, le=100),
+        cursor: str | None = None,
+        es: Any = Depends(get_es),
+    ) -> dict[str, Any]:
+        # Snapshot changes are the initially authoritative Team 1 timeline source.
+        page = await snapshot_history(pathway_id, request, start, end, limit, cursor, es)
+        items = [
+            {
+                "event_id": row["snapshot_id"],
+                "event_type": "topology_change",
+                "effective_at": row["effective_at"],
+                "observed_at": row["observed_at"],
+                "resource_type": "pathway",
+                "resource_id": pathway_id,
+                "severity": "info",
+                "summary": "Pathway topology snapshot observed",
+                "provenance": "observed",
+                "confidence": row.get("confidence", 0),
+                "source": "pathway_topology_history",
+                "evidence_ref": f"snapshot:{row['snapshot_id']}",
+            }
+            for row in page["items"]
+        ]
+        return {
+            "items": items,
+            "next_cursor": page["next_cursor"],
+            "partial": True,
+            "missing_sources": ["deployment", "incident"],
+        }
+
+    @router.post("/stream-investigation/blast-radius")
+    async def stream_blast_radius(
+        body: dict[str, Any], request: Request, repo: PathwayRepository = Depends(repository)
+    ) -> dict[str, Any]:
+        tenant, environment = trusted_scope(request)
+        if any(
+            key in body for key in ("tenant", "tenant_id", "environment", "actor", "index", "query", "relation_types")
+        ):
+            raise HTTPException(422, detail="Only bounded traversal fields are accepted")
+        anchor_type, anchor_id = body.get("anchor_type"), body.get("anchor_id")
+        try:
+            anchor = InvestigationAnchor(anchor_type, anchor_id)
+        except (TypeError, ValueError) as exc:
+            raise HTTPException(422, detail="Invalid anchor") from exc
+        if not isinstance(anchor_id, str) or not anchor_id or len(anchor_id) > 512:
+            raise HTTPException(422, detail="Invalid anchor")
+        node = repo.get("dataobs-pathway-nodes-v1-read", anchor_id, tenant, environment)
+        if not node:
+            raise HTTPException(404, detail="Anchor not found")
+        # Bounded public projection query; no private cross-team indices are accessed.
+        hits = repo.search("dataobs-pathway-definitions-v1-read", tenant, environment, size=500)
+        edges_raw = [edge for hit in hits for edge in hit["document"].get("edges", [])][:1000]
+        ids = sorted(
+            {anchor_id}
+            | {str(e.get("source_node_id")) for e in edges_raw}
+            | {str(e.get("destination_node_id")) for e in edges_raw}
+        )[:500]
+        nodes_raw = repo.get_many("dataobs-pathway-nodes-v1-read", ids, tenant, environment)
+        nodes = [
+            HistoricalNode(
+                str(n.get("node_id") or n.get("id")),
+                str(n.get("node_type", "unknown")),
+                str(n.get("name", "")),
+                float(n.get("confidence", 1)),
+                tuple(n.get("source_coverage", [])),
+                tuple(n.get("evidence_refs", [])),
+                str(n.get("data_status", "complete")),
+            )
+            for n in nodes_raw
+        ]
+        edges = [
+            HistoricalEdge(
+                str(e.get("edge_id") or e.get("id")),
+                str(e["source_node_id"]),
+                str(e["destination_node_id"]),
+                str(e.get("edge_type", "unknown")),
+                e.get("topic"),
+                e.get("consumer_group"),
+                float(e.get("confidence", 1)),
+                tuple(e.get("source_coverage", [])),
+                tuple(e.get("evidence_refs", [])),
+                str(e.get("data_status", "complete")),
+            )
+            for e in edges_raw
+        ]
+        try:
+            result = traverse(
+                nodes,
+                edges,
+                TraversalRequest(
+                    anchor,
+                    body.get("direction", "downstream"),
+                    int(body.get("max_hops", 5)),
+                    min(int(body.get("max_nodes", 100)), 500),
+                    min(int(body.get("max_edges", 200)), 1000),
+                    min(int(body.get("max_paths", 100)), 500),
+                ),
+            )
+        except (ValueError, TypeError) as exc:
+            raise HTTPException(422, detail=str(exc)) from exc
+        return {
+            **result.__dict__,
+            "paths": [p.__dict__ for p in result.paths],
+            "candidates": [c.__dict__ for c in result.candidates],
+        }
 
     for suffix, index in (
         ("stream-topology/nodes", "dataobs-pathway-nodes-v1-read"),

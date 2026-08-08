@@ -1,0 +1,33 @@
+name: Pathway Investigation Blast Radius v1
+on:
+  pull_request:
+  workflow_dispatch:
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    services:
+      elasticsearch:
+        image: docker.elastic.co/elasticsearch/elasticsearch:9.4.2
+        env: {discovery.type: single-node, xpack.security.enabled: "false"}
+        ports: ["9200:9200"]
+        options: --health-cmd="curl -f http://localhost:9200/_cluster/health" --health-interval=10s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: pip install -r requirements.txt
+      - run: python scripts/check_merge_conflict_markers.py
+      - run: python scripts/check_team_boundaries.py && python scripts/check_generated_artifacts.py && python scripts/check_docs_links.py
+      - run: python scripts/validate_capability_ledger.py && python scripts/release/check_release_metadata.py
+      - run: python scripts/check_migration_immutability.py --base-ref origin/main && python scripts/security/check_route_permissions.py
+      - run: python scripts/migrate_to_es.py
+        env: {ELASTICSEARCH_URL: "http://localhost:9200"}
+      - run: python -m pytest tests/pathways tests/stream_360 tests/security -q
+      - run: python -m compileall -q src packages services tests scripts && ruff check . && black --check .
+      - uses: pnpm/action-setup@v4
+        with: {version: 9}
+      - run: pnpm install --frozen-lockfile && pnpm api:generate && pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm build && pnpm bundle:check
+        working-directory: ui/dataobs-console
+      - run: mkdir -p evidence/pathway-investigation && printf '{"producer_sha":"%s","workflow":"%s","run_id":"%s","run_attempt":"%s","event":"%s","elasticsearch_version":"9.4.2","terminal_migration":"0028_pathway_investigation_history","status":"functional_unvalidated"}\n' "$GITHUB_SHA" "$GITHUB_WORKFLOW" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" "$GITHUB_EVENT_NAME" > evidence/pathway-investigation/manifest.json && sha256sum evidence/pathway-investigation/manifest.json > evidence/pathway-investigation/checksums.txt
+      - uses: actions/upload-artifact@v4
+        with: {name: pathway-investigation-blast-radius-v1-evidence, path: evidence/pathway-investigation}

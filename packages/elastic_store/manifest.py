@@ -1997,6 +1997,49 @@ PLATFORM_LIFECYCLE_MIGRATION = Migration(
     },
 )
 
+PATHWAY_INVESTIGATION_PROPERTIES = {
+    **{key: {"type": "keyword"} for key in [
+        "snapshot_id", "tenant_id", "environment", "pathway_id", "graph_hash",
+        "classification", "schema_version", "node_ids", "edge_ids",
+        "change_reason_codes", "source_coverage", "missing_inputs", "evidence_refs",
+    ]},
+    **{key: {"type": "date"} for key in ["effective_at", "observed_at"]},
+    **{key: {"type": "integer"} for key in ["node_count", "edge_count"]},
+    "confidence": {"type": "double"},
+    "nodes": {"type": "nested", "dynamic": "strict", "properties": {
+        "node_id": {"type": "keyword"}, "node_type": {"type": "keyword"},
+        "display_name": {"type": "keyword"}, "confidence": {"type": "double"},
+        "source_coverage": {"type": "keyword"}, "evidence_refs": {"type": "keyword"},
+        "data_status": {"type": "keyword"},
+    }},
+    "edges": {"type": "nested", "dynamic": "strict", "properties": {
+        "edge_id": {"type": "keyword"}, "source_node_id": {"type": "keyword"},
+        "destination_node_id": {"type": "keyword"}, "relationship": {"type": "keyword"},
+        "topic": {"type": "keyword"}, "consumer_group": {"type": "keyword"},
+        "confidence": {"type": "double"}, "source_coverage": {"type": "keyword"},
+        "evidence_refs": {"type": "keyword"}, "data_status": {"type": "keyword"},
+    }},
+}
+
+PATHWAY_INVESTIGATION_HISTORY_MIGRATION = Migration(
+    "0028_pathway_investigation_history",
+    "Add strict forward-only pathway topology snapshots and fenced history state",
+    "v1",
+    dependencies=["0027_platform_environment_tenant_multicluster_lifecycle"],
+    rollback_strategy="stop history projector; retain append-only snapshots; remove write aliases only after export",
+    operations={
+        "mutable_indices": ["dataobs-pathway-history-state-v1"],
+        "mapping_updates": {"dataobs-pathway-history-state-v1": {
+            **{key: {"type": "keyword"} for key in ["tenant_id", "environment", "pathway_id", "graph_hash", "checkpoint", "lease_owner", "schema_version"]},
+            **{key: {"type": "date"} for key in ["last_snapshot_at", "latest_source_at", "lease_expires_at"]},
+            "fencing_token": {"type": "long"},
+        }},
+        "data_stream_contracts": {"logs-dataobs.pathway-topology-snapshot-*": {
+            "retention": "365d", "properties": PATHWAY_INVESTIGATION_PROPERTIES,
+        }},
+    },
+)
+
 
 def migrations() -> List[Migration]:
     return [
@@ -2027,6 +2070,7 @@ def migrations() -> List[Migration]:
         STREAM_PATHWAY_RELIABILITY_PRODUCTION_CLOSURE_MIGRATION,
         STREAM_ANOMALY_RETENTION_INTELLIGENCE_MIGRATION,
         PLATFORM_LIFECYCLE_MIGRATION,
+        PATHWAY_INVESTIGATION_HISTORY_MIGRATION,
     ]
 
 

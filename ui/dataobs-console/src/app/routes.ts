@@ -12,6 +12,14 @@ export type NavigationGroup =
   | "Respond"
   | "Configure"
   | "System";
+export type ConsoleWorkspace =
+  | "home"
+  | "observe"
+  | "investigate"
+  | "respond"
+  | "integrate"
+  | "admin";
+export type NavigationLevel = "secondary" | "contextual" | "hidden";
 export type ConfigurationState =
   | "configured"
   | "optional"
@@ -41,6 +49,10 @@ export interface ConsoleRoute {
   parentId?: string;
   entityParameters?: readonly EntityParameter[];
   navigation: boolean;
+  workspace: ConsoleWorkspace;
+  section: string;
+  navigationPriority: number;
+  navigationLevel: NavigationLevel;
   quickFind: boolean;
   searchEligible: boolean;
   documentTitle: string;
@@ -72,6 +84,7 @@ const streamDetail = (kind: "topic" | "group") => async () => {
   const { Stream360 } = await import("../features/streams/Stream360");
   return { default: () => createElement(Stream360, { kind }) };
 };
+let routePriority = 0;
 
 const route = (
   value: Partial<ConsoleRoute> &
@@ -79,21 +92,48 @@ const route = (
       ConsoleRoute,
       "id" | "path" | "name" | "group" | "capabilityId" | "owner" | "loader"
     >,
-): ConsoleRoute => ({
-  aliases: [],
-  icon: "·",
-  protected: true,
-  requiredPermission: "console:read",
-  availability: "available",
-  configuration: "configured",
-  breadcrumb: value.name,
-  navigation: false,
-  quickFind: true,
-  searchEligible: true,
-  documentTitle: `DataObs — ${value.name}`,
-  loadingLabel: `Loading ${value.name}…`,
-  ...value,
-});
+): ConsoleRoute => {
+  const workspace: ConsoleWorkspace =
+    value.workspace ??
+    (value.group === "Observe"
+      ? "observe"
+      : value.group === "Respond"
+        ? "respond"
+        : value.group === "Configure"
+          ? value.capabilityId === "integrations" ||
+            value.capabilityId === "onboarding"
+            ? "integrate"
+            : "admin"
+          : value.group === "System"
+            ? "admin"
+            : value.capabilityId === "global-search" ||
+                value.capabilityId === "investigation"
+              ? "investigate"
+              : "home");
+  return {
+    aliases: [],
+    icon: "·",
+    protected: true,
+    requiredPermission: "console:read",
+    availability: "available",
+    configuration: "configured",
+    breadcrumb: value.name,
+    navigation: false,
+    workspace,
+    section: value.capabilityId,
+    navigationPriority: (routePriority += 10),
+    navigationLevel: value.navigation
+      ? value.parentId
+        ? "contextual"
+        : "secondary"
+      : "hidden",
+    quickFind: true,
+    searchEligible: true,
+    documentTitle: `DataObs — ${value.name}`,
+    loadingLabel: `Loading ${value.name}…`,
+    ...value,
+  };
+};
 
 /** Authoritative routing, navigation, breadcrumb, permission and discovery model. */
 export const consoleRoutes: readonly ConsoleRoute[] = [
@@ -131,6 +171,7 @@ export const consoleRoutes: readonly ConsoleRoute[] = [
     capabilityId: "unified-data-flow",
     icon: "⌘",
     owner: "team-5",
+    workspace: "observe",
     navigation: true,
     loader: load("../features/flow-map/FlowMap", "FlowMap"),
   }),
@@ -240,6 +281,7 @@ export const consoleRoutes: readonly ConsoleRoute[] = [
     group: "Configure",
     capabilityId: "data-contracts",
     owner: "team-2",
+    workspace: "observe",
     parentId: "data-contracts",
     loader: load(
       "../features/data-contracts/DataContracts",
@@ -302,6 +344,7 @@ export const consoleRoutes: readonly ConsoleRoute[] = [
     capabilityId: "streams",
     owner: "team-1",
     parentId: "streams",
+    navigation: true,
     loader: load(
       "../features/streams/StreamsReliability",
       "StreamsReliability",
@@ -421,6 +464,7 @@ export const consoleRoutes: readonly ConsoleRoute[] = [
     capabilityId: "quality",
     owner: "team-4",
     parentId: "quality",
+    navigation: true,
     loader: load("../features/quality/MonitorInventory", "MonitorInventory"),
   }),
   route({
@@ -631,6 +675,7 @@ export const consoleRoutes: readonly ConsoleRoute[] = [
     owner: "team-5",
     requiredPermission: "iam:read",
     parentId: "administration",
+    navigation: true,
     loader: load(
       "../features/administration/Administration",
       "AccessInventory",
@@ -683,6 +728,7 @@ export const consoleRoutes: readonly ConsoleRoute[] = [
     owner: "team-5",
     requiredPermission: "auth:read",
     parentId: "administration",
+    navigation: true,
     loader: load(
       "../features/administration/Administration",
       "SystemInformation",
@@ -697,6 +743,7 @@ export const consoleRoutes: readonly ConsoleRoute[] = [
     owner: "team-5",
     requiredPermission: "auth:read",
     parentId: "administration",
+    navigation: true,
     loader: load("../features/administration/Administration", "Preferences"),
   }),
   route({
@@ -860,21 +907,166 @@ export function breadcrumbsForPath(pathname: string) {
   if (!current) return [];
   const chain: ConsoleRoute[] = [];
   let item: ConsoleRoute | undefined = current;
-  while (item) {
+  const visited = new Set<string>();
+  while (item && chain.length < 12) {
+    if (visited.has(item.id)) break;
+    visited.add(item.id);
     chain.unshift(item);
     item = item.parentId
       ? consoleRoutes.find((candidate) => candidate.id === item!.parentId)
       : undefined;
   }
   const params = matchRoute(current.path, pathname) ?? {};
-  return chain.map((entry) => ({
-    id: entry.id,
-    path: entry === current ? pathname : entry.path,
-    label:
-      entry === current && entry.entityParameters?.length
-        ? params[entry.entityParameters[0].name] || entry.breadcrumb
-        : entry.breadcrumb,
-  }));
+  const workspace = workspaceForId(current.workspace);
+  return [
+    {
+      id: `workspace-${workspace.id}`,
+      path: workspace.defaultPath,
+      label: workspace.label,
+    },
+    ...chain.map((entry) => ({
+      id: entry.id,
+      path: entry === current ? pathname : entry.path,
+      label:
+        entry === current && entry.entityParameters?.length
+          ? params[entry.entityParameters[0].name] || entry.breadcrumb
+          : entry.breadcrumb,
+    })),
+  ];
+}
+
+export interface ConsoleWorkspaceDefinition {
+  id: ConsoleWorkspace;
+  label: string;
+  description: string;
+  icon: string;
+  defaultRouteId: string;
+  defaultPath: string;
+  keyboardShortcut?: string;
+  keywords: readonly string[];
+}
+export const consoleWorkspaces: readonly ConsoleWorkspaceDefinition[] = [
+  {
+    id: "home",
+    label: "Home",
+    description: "Operational overview and starting points",
+    icon: "⌂",
+    defaultRouteId: "command-center",
+    defaultPath: "/",
+    keyboardShortcut: "g h",
+    keywords: ["command center", "activity", "dashboards"],
+  },
+  {
+    id: "observe",
+    label: "Observe",
+    description: "Understand systems and data movement",
+    icon: "◉",
+    defaultRouteId: "flow",
+    defaultPath: "/flow",
+    keyboardShortcut: "g o",
+    keywords: ["data", "pipelines", "messaging", "quality", "lineage"],
+  },
+  {
+    id: "investigate",
+    label: "Investigate",
+    description: "Find and understand problems",
+    icon: "⌕",
+    defaultRouteId: "investigation-workspace",
+    defaultPath: "/investigate",
+    keyboardShortcut: "g i",
+    keywords: ["search", "evidence", "timeline"],
+  },
+  {
+    id: "respond",
+    label: "Respond",
+    description: "Coordinate operational response",
+    icon: "!",
+    defaultRouteId: "incidents",
+    defaultPath: "/incidents",
+    keyboardShortcut: "g r",
+    keywords: ["incidents", "event storms", "cases"],
+  },
+  {
+    id: "integrate",
+    label: "Integrate",
+    description: "Connect platforms and telemetry sources",
+    icon: "+",
+    defaultRouteId: "integrations",
+    defaultPath: "/integrations",
+    keywords: ["providers", "setup", "onboarding"],
+  },
+  {
+    id: "admin",
+    label: "Admin",
+    description: "Access and system administration",
+    icon: "⚙",
+    defaultRouteId: "administration",
+    defaultPath: "/administration",
+    keywords: ["access", "system", "diagnostics", "preferences"],
+  },
+] as const;
+export function workspaceForId(id: ConsoleWorkspace) {
+  return consoleWorkspaces.find((workspace) => workspace.id === id)!;
+}
+export function visibleWorkspaces(permissions: readonly string[]) {
+  const routes = visibleRoutes(permissions);
+  return consoleWorkspaces.filter((workspace) =>
+    routes.some(
+      (route) => route.workspace === workspace.id && route.group !== "System",
+    ),
+  );
+}
+export function safeParentPath(route: ConsoleRoute) {
+  const visited = new Set<string>();
+  let current: ConsoleRoute | undefined = route;
+  while (current?.parentId && visited.size < 12) {
+    if (visited.has(current.id)) break;
+    visited.add(current.id);
+    const parent = consoleRoutes.find(
+      (candidate) => candidate.id === current!.parentId,
+    );
+    if (!parent) break;
+    if (!parent.path.includes(":")) return parent.path;
+    current = parent;
+  }
+  return workspaceForId(route.workspace).defaultPath;
+}
+
+export function validateNavigationRegistry(routes = consoleRoutes) {
+  const errors: string[] = [];
+  const ids = new Map(routes.map((route) => [route.id, route]));
+  const priorities = new Set<number>();
+  for (const route of routes) {
+    if (!consoleWorkspaces.some(({ id }) => id === route.workspace))
+      errors.push(`${route.id}: invalid workspace`);
+    if (!/^team-[0-5]$/.test(route.owner))
+      errors.push(`${route.id}: unknown owner`);
+    if (!route.capabilityId) errors.push(`${route.id}: invalid capability`);
+    if (priorities.has(route.navigationPriority))
+      errors.push(`${route.id}: duplicate navigation priority`);
+    priorities.add(route.navigationPriority);
+    if (
+      route.navigationLevel === "contextual" &&
+      (!route.parentId || !ids.has(route.parentId))
+    )
+      errors.push(`${route.id}: contextual route has no parent`);
+    if (route.entityParameters?.length && route.navigationLevel === "secondary")
+      errors.push(`${route.id}: detail route is top-level`);
+    const parent = route.parentId ? ids.get(route.parentId) : undefined;
+    if (parent && parent.workspace !== route.workspace)
+      errors.push(`${route.id}: workspace conflicts with parent`);
+    const visited = new Set<string>();
+    let item: ConsoleRoute | undefined = route;
+    while (item?.parentId && visited.size <= 12) {
+      if (visited.has(item.id)) {
+        errors.push(`${route.id}: breadcrumb parent cycle`);
+        break;
+      }
+      visited.add(item.id);
+      item = ids.get(item.parentId);
+    }
+  }
+  return errors;
 }
 export function titleForPath(pathname: string) {
   const current = routeForPath(pathname);

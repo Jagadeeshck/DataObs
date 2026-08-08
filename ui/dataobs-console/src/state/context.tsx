@@ -34,6 +34,7 @@ type ContextValue = {
   availableTenants: AuthenticatedContext["tenants"];
   timeRange: TimeRange;
   refreshGeneration: number;
+  contextSwitchGeneration: number;
   autoRefreshSeconds: number | null;
   setTenant: (v: string) => void;
   setEnvironment: (v: string) => void;
@@ -126,16 +127,13 @@ export function ProductContextProvider({
     initialContext ? "ready" : "loading",
   );
   const [attempt, setAttempt] = useState(0);
-  const requestedTenant = new URLSearchParams(location.search).get("tenant");
-  const requestedEnvironment = new URLSearchParams(location.search).get(
-    "environment",
-  );
   const [tenant, setTenantState] = useState("");
   const [environment, setEnvironmentState] = useState("");
   const [timeRange, setTimeRangeState] = useState(() =>
     parseTimeRange(new URLSearchParams(location.search).get("range")),
   );
   const [refreshGeneration, setRefreshGeneration] = useState(0);
+  const [contextSwitchGeneration, setContextSwitchGeneration] = useState(0);
   const [autoRefreshSeconds, setAutoRefreshSeconds] = useState<number | null>(
     null,
   );
@@ -161,19 +159,15 @@ export function ProductContextProvider({
   }, [attempt, initialContext]);
   useEffect(() => {
     if (!identity?.tenants.length) return;
-    const selectedTenant =
-      identity.tenants.find((item) => item.id === requestedTenant) ??
-      identity.tenants[0];
-    const selectedEnvironment = selectedTenant.environments.includes(
-      requestedEnvironment ?? "",
-    )
-      ? requestedEnvironment!
-      : selectedTenant.environments[0];
+    // Tenant and environment are selected only from the authenticated context;
+    // URL parameters are deliberately never treated as authority.
+    const selectedTenant = identity.tenants[0];
+    const selectedEnvironment = selectedTenant.environments[0];
     // eslint-disable-next-line react-hooks/set-state-in-effect -- trusted identity changes invalidate the selected context
     setTenantState(selectedTenant.id);
     setEnvironmentState(selectedEnvironment);
     setRefreshGeneration((value) => value + 1);
-  }, [identity, requestedEnvironment, requestedTenant]);
+  }, [identity]);
   const updateUrl = useCallback((values: Record<string, string>) => {
     const query = new URLSearchParams(location.search);
     Object.entries(values).forEach(([key, value]) => query.set(key, value));
@@ -186,20 +180,22 @@ export function ProductContextProvider({
       const nextEnvironment = trusted.environments[0];
       setTenantState(next);
       setEnvironmentState(nextEnvironment);
-      updateUrl({ tenant: next, environment: nextEnvironment });
       setRefreshGeneration((value) => value + 1);
+      setContextSwitchGeneration((value) => value + 1);
+      window.dispatchEvent(new Event("dataobs:context-change"));
     },
-    [identity, updateUrl],
+    [identity],
   );
   const setEnvironment = useCallback(
     (next: string) => {
       const trusted = identity?.tenants.find((item) => item.id === tenant);
       if (!trusted?.environments.includes(next)) return;
       setEnvironmentState(next);
-      updateUrl({ environment: next });
       setRefreshGeneration((value) => value + 1);
+      setContextSwitchGeneration((value) => value + 1);
+      window.dispatchEvent(new Event("dataobs:context-change"));
     },
-    [identity, tenant, updateUrl],
+    [identity, tenant],
   );
   const setTimeRange = useCallback(
     (next: TimeRange) => {
@@ -238,6 +234,7 @@ export function ProductContextProvider({
       availableTenants: identity?.tenants ?? [],
       timeRange,
       refreshGeneration,
+      contextSwitchGeneration,
       autoRefreshSeconds,
       setTenant,
       setEnvironment,
@@ -253,6 +250,7 @@ export function ProductContextProvider({
       environment,
       timeRange,
       refreshGeneration,
+      contextSwitchGeneration,
       autoRefreshSeconds,
       setTenant,
       setEnvironment,

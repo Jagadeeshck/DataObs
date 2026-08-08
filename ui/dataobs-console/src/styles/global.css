@@ -2186,3 +2186,181 @@ progress {
   max-width: 100%;
   overflow: auto;
 }
+
+/* Team 5 shell v2: compact workspace hierarchy and context zones. */
+:root {
+  --shell-header-height: 72px;
+  --shell-nav-width: 248px;
+  --shell-nav-collapsed-width: 68px;
+  --shell-focus: #69ccef;
+  --shell-breakpoint-medium: 1100px;
+  --shell-breakpoint-small: 767px;
+}
+.app-header {
+  min-height: var(--shell-header-height);
+  gap: 12px;
+}
+.header-search {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+.workspace-switcher select,
+.context-selector summary {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface2);
+  padding: 9px 12px;
+}
+.context-selector {
+  position: relative;
+}
+.context-selector summary {
+  cursor: pointer;
+  list-style: none;
+  min-width: 170px;
+}
+.context-selector summary small,
+.context-selector summary strong {
+  display: block;
+}
+.context-selector summary small {
+  color: var(--muted);
+  font-size: 9px;
+  text-transform: uppercase;
+}
+.context-selector-panel {
+  position: absolute;
+  z-index: 30;
+  right: 0;
+  top: calc(100% + 8px);
+  width: min(360px, 90vw);
+  padding: 16px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: 0 12px 35px rgb(0 0 0 / 0.45);
+}
+.context-selector-panel label {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+.context-selector-panel select {
+  border: 1px solid var(--border);
+  padding: 8px;
+  background: var(--surface2);
+}
+.app-shell > aside {
+  width: var(--shell-nav-width);
+  top: var(--shell-header-height);
+}
+.app-shell > aside.is-collapsed {
+  width: var(--shell-nav-collapsed-width);
+}
+.app-shell:has(> aside.is-collapsed) > main {
+  margin-left: var(--shell-nav-collapsed-width);
+}
+.app-shell > main {
+  margin-left: var(--shell-nav-width);
+  padding-top: var(--shell-header-height);
+}
+.workspace-navigation {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 10px;
+}
+.contextual-navigation {
+  border-top: 1px solid var(--border);
+  margin-top: 10px;
+  padding-top: 6px;
+}
+.nav-collapse {
+  margin-top: auto;
+  border: 0;
+  color: var(--muted);
+  background: transparent;
+  padding: 12px;
+}
+.collapsed a {
+  justify-content: center;
+}
+.collapsed a span:last-child {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.mobile-nav-trigger {
+  display: none;
+}
+.breadcrumb-item {
+  display: contents;
+}
+.navigation-backdrop {
+  display: none;
+}
+@media (max-width: 1100px) {
+  .header-search {
+    order: 3;
+    flex-basis: 100%;
+  }
+  .app-header {
+    height: auto;
+    flex-wrap: wrap;
+  }
+  .app-shell > aside {
+    top: 110px;
+  }
+  .app-shell > main {
+    padding-top: 110px;
+  }
+  .context label {
+    padding-right: 10px;
+  }
+}
+@media (max-width: 767px) {
+  .mobile-nav-trigger {
+    display: inline-block;
+  }
+  .workspace-switcher {
+    display: none;
+  }
+  .app-shell > aside,
+  .app-shell > aside.is-collapsed {
+    position: fixed;
+    z-index: 60;
+    inset: 0 auto 0 0;
+    width: min(300px, 86vw);
+    transform: translateX(-105%);
+    transition: transform 160ms ease;
+  }
+  .app-shell > aside.is-open {
+    transform: translateX(0);
+  }
+  .app-shell:has(> aside.is-collapsed) > main,
+  .app-shell > main {
+    margin-left: 0;
+    padding-top: 0;
+  }
+  .app-shell > aside nav {
+    flex-direction: column;
+    overflow: auto;
+  }
+  .app-shell nav section {
+    display: block;
+  }
+  .app-shell nav section h2 {
+    display: block;
+  }
+  .navigation-backdrop {
+    display: block;
+    position: fixed;
+    z-index: 55;
+    inset: 0;
+    border: 0;
+    background: rgb(0 0 0 / 0.55);
+  }
+  .context-selector summary {
+    min-width: 145px;
+  }
+}

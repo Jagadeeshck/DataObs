@@ -2154,6 +2154,120 @@ TEAM2_DATA_INTELLIGENCE_RECONCILIATION_MIGRATION = Migration(
 )
 
 
+MESSAGING_RUNTIME_PROPERTIES: Dict[str, Any] = {
+    **{
+        key: {"type": "keyword"}
+        for key in [
+            "tenant_id",
+            "environment",
+            "messaging_system",
+            "provider",
+            "provider_account_scope",
+            "cloud",
+            "region_or_location",
+            "resource_kind",
+            "resource_id",
+            "provider_resource_id",
+            "namespace_id",
+            "parent_resource_id",
+            "subscription_id",
+            "consumer_group_id",
+            "partition_id",
+            "shard_id",
+            "dead_letter_resource_id",
+            "data_status",
+            "measurement_method",
+            "collection_method",
+            "source_integration",
+            "schema_version",
+            "metric_family",
+            "lease_status",
+            "collection_state",
+            "projection_state",
+            "latest_error_code",
+            "checkpoint_scope",
+            "source_watermark",
+        ]
+    },
+    **{
+        key: {"type": "date"}
+        for key in [
+            "observed_at",
+            "ingested_at",
+            "last_observation_at",
+            "last_projection_at",
+            "heartbeat_at",
+            "last_successful_cycle",
+            "next_retry",
+            "latest_source_timestamp",
+        ]
+    },
+    **{
+        key: {"type": "long"}
+        for key in [
+            "fencing_token",
+            "failure_count",
+            "observations_read",
+            "observations_normalized",
+            "observations_rejected",
+            "projections_updated",
+            "stale_resource_count",
+            "partial_resource_count",
+            "pending_reconciliation_count",
+            "consecutive_failures",
+        ]
+    },
+    **{key: {"type": "double"} for key in ["confidence", "source_coverage", "value"]},
+    "configured": {"type": "boolean"},
+    "missing_inputs": {"type": "keyword"},
+    "continuation_token": {"type": "keyword", "index": False},
+    "provider_facets": {"type": "flattened"},
+}
+
+TEAM1_MULTI_BROKER_MESSAGING_RUNTIME_MIGRATION = Migration(
+    "0030_team1_multi_broker_messaging_runtime",
+    "Add strict provider-neutral messaging evidence, current projections, checkpoints, and runtime state",
+    "v1",
+    dependencies=["0029_team2_data_intelligence_reconciliation"],
+    rollback_strategy="stop messaging projection writers; retain append-only evidence and additive projections",
+    operations={
+        "mutable_indices": [
+            "dataobs-messaging-resources-v1",
+            "dataobs-messaging-backlog-current-v1",
+            "dataobs-messaging-throughput-current-v1",
+            "dataobs-messaging-delivery-current-v1",
+            "dataobs-messaging-dead-letter-current-v1",
+            "dataobs-messaging-runtime-state-v1",
+            "dataobs-messaging-checkpoints-v1",
+        ],
+        "mapping_updates": {
+            name: MESSAGING_RUNTIME_PROPERTIES
+            for name in [
+                "dataobs-messaging-resources-v1",
+                "dataobs-messaging-backlog-current-v1",
+                "dataobs-messaging-throughput-current-v1",
+                "dataobs-messaging-delivery-current-v1",
+                "dataobs-messaging-dead-letter-current-v1",
+                "dataobs-messaging-runtime-state-v1",
+                "dataobs-messaging-checkpoints-v1",
+            ]
+        },
+        "data_stream_contracts": {
+            name: {"retention": "365d", "properties": MESSAGING_RUNTIME_PROPERTIES}
+            for name in [
+                "metrics-dataobs.messaging-resource-*",
+                "metrics-dataobs.messaging-backlog-*",
+                "metrics-dataobs.messaging-throughput-*",
+                "metrics-dataobs.messaging-delivery-*",
+                "logs-dataobs.messaging-resource-event-*",
+                "logs-dataobs.messaging-dead-letter-event-*",
+            ]
+        },
+    },
+)
+
+
+
 def migrations() -> List[Migration]:
     return [
         FOUNDATION_MIGRATION,
@@ -2185,6 +2299,7 @@ def migrations() -> List[Migration]:
         PLATFORM_LIFECYCLE_MIGRATION,
         PATHWAY_INVESTIGATION_HISTORY_MIGRATION,
         TEAM2_DATA_INTELLIGENCE_RECONCILIATION_MIGRATION,
+        TEAM1_MULTI_BROKER_MESSAGING_RUNTIME_MIGRATION,
     ]
 
 

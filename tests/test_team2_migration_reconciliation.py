@@ -28,13 +28,14 @@ class _ES:
 
 def test_reconciliation_is_forward_only_after_released_chain():
     chain = migrations()
-    assert [migration.migration_id for migration in chain[-4:]] == [
+    assert [migration.migration_id for migration in chain[-5:]] == [
         "0026_stream_anomaly_retention_intelligence",
         "0027_platform_environment_tenant_multicluster_lifecycle",
         "0028_pathway_investigation_history",
         "0029_team2_data_intelligence_reconciliation",
+        "0030_team1_multi_broker_messaging_runtime",
     ]
-    resources = chain[-1].operations
+    resources = chain[-2].operations
     assert "dataobs-lineage-runtime-state-v1" in resources["mutable_indices"]
     assert "dataobs-data-contract-runtime-state-v1" in resources["mutable_indices"]
     assert resources["data_stream_contracts"]["logs-dataobs.data-contract-version-*"]["retention"] == "3650d"

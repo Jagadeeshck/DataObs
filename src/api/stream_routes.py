@@ -15,6 +15,7 @@ from services.product_query.stream_comparison import compare_samples
 from services.product_query.stream_pagination import CursorCodec, CursorState, InvalidCursor
 from services.product_query.stream_repository import StreamRepository
 from services.product_query.stream_sse import EventReplay
+from services.stream_observer.repository import MessagingRepository
 
 
 class CompareRequest(BaseModel):
@@ -92,25 +93,35 @@ def create_stream_router(get_es: Callable[..., Any], require_auth: Callable[...,
     events = EventReplay(int(os.getenv("DATAOBS_STREAM_SSE_REPLAY_SIZE", "500")))
 
     @router.get("/streams/providers", name="list_stream_providers")
-    async def providers(request: Request) -> dict[str, Any]:
+    async def providers(request: Request, es: Any = Depends(get_es)) -> dict[str, Any]:
         """Disclose semantic and collection capability independently per system."""
         scope(request, "streams:read")
+        persisted = {
+            (state["provider"], state["messaging_system"]): state
+            for state in MessagingRepository(es.es).search_runtime_states(
+                request.state.tenant_id, request.query_params.get("environment", "production")
+            )
+        }
         items = []
         for system, adapter_type in ADAPTERS.items():
             capability = adapter_type().capabilities()
             data = capability.model_dump(mode="json")
             state = data.pop("state")
             limitations = data.pop("limitations")
+            runtime = persisted.get((data["provider"], system), {})
             items.append(
                 {
                     "provider": data.pop("provider"),
                     "messaging_system": system,
-                    "configured": state not in {"not_configured", "not_implemented"},
-                    "collection_state": state,
+                    "configured": runtime.get("configured", state not in {"not_configured", "not_implemented"}),
+                    "contract_capability": state,
+                    "collection_capability": runtime.get("collection_state", "not_configured"),
+                    "runtime_state": runtime.get("projection_state", "not_configured"),
+                    "data_freshness": runtime.get("data_status", "not_configured"),
                     "capabilities": data,
                     "limitations": limitations,
-                    "latest_observation": None,
-                    "source_coverage": 0,
+                    "latest_observation": runtime.get("last_observation_at"),
+                    "source_coverage": runtime.get("source_coverage", 0),
                 }
             )
         return {

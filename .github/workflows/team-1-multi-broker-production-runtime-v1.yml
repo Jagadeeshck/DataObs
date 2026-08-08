@@ -1,0 +1,49 @@
+name: Team 1 multi-broker production runtime v1
+on:
+  pull_request:
+  workflow_dispatch:
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      elasticsearch:
+        image: docker.elastic.co/elasticsearch/elasticsearch:9.4.2
+        env:
+          discovery.type: single-node
+          xpack.security.enabled: "false"
+        ports: ["9200:9200"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: pip install -r requirements.txt
+      - name: Static and policy checks
+        run: |
+          python scripts/check_merge_conflict_markers.py
+          python scripts/check_team_boundaries.py
+          python scripts/check_generated_artifacts.py
+          python scripts/check_docs_links.py
+          python scripts/validate_capability_ledger.py
+          python scripts/release/check_release_metadata.py
+          python scripts/check_migration_immutability.py --base-ref origin/main
+          python scripts/security/check_route_permissions.py
+      - name: Migration doctor and Team 1 tests
+        run: |
+          python -m packages.elastic_store.cli doctor
+          python -m packages.elastic_store.cli apply
+          python -m pytest tests/stream_360 tests/pathways tests/security -q --junitxml=team-1-tests.xml
+      - uses: actions/upload-artifact@v4
+        with:
+          name: team-1-multi-broker-production-runtime-v1-evidence
+          path: team-1-tests.xml
+  console:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ui/dataobs-console
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm api:generate && pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm build && pnpm bundle:check
+      - run: pnpm playwright

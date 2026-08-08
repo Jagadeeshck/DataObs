@@ -11,7 +11,9 @@ from dataclasses import dataclass
 
 from .permissions import Permission
 
-PUBLIC_ROUTES = frozenset({("GET", "/livez"), ("GET", "/startupz"), ("GET", "/readyz"), ("GET", "/health"), ("GET", "/api/v1/auth/config")})
+PUBLIC_ROUTES = frozenset(
+    {("GET", "/livez"), ("GET", "/startupz"), ("GET", "/readyz"), ("GET", "/health"), ("GET", "/api/v1/auth/config")}
+)
 
 # Legacy templates are deliberately enumerated while the API converges on /api/v1.
 EXPLICIT_ROUTES = {
@@ -70,6 +72,35 @@ RULES = (
     _rule("GET", r"/api/v1/auth/me", Permission.AUTH_READ),
     _rule("GET", r"/api/v1/iam/role-bindings(?:/\{binding_id\})?", Permission.IAM_READ),
     _rule("POST PATCH DELETE", r"/api/v1/iam/role-bindings(?:/\{binding_id\})?", Permission.IAM_WRITE),
+    _rule("GET", r"/api/v1/iam/effective-access/me", Permission.AUTH_READ),
+    _rule("GET", r"/api/v1/iam/effective-access/\{principal_reference\}", Permission.EFFECTIVE_ACCESS_READ),
+    _rule("GET", r"/api/v1/iam/audit-events", Permission.AUDIT_READ),
+    _rule("GET", r"/api/v1/iam/service-principals(?:/\{service_principal_id\})?", Permission.SERVICE_PRINCIPALS_READ),
+    _rule(
+        "POST PATCH",
+        r"/api/v1/iam/service-principals(?:/\{service_principal_id\}(?:/(?:suspend|reactivate|revoke))?)?",
+        Permission.SERVICE_PRINCIPALS_WRITE,
+    ),
+    _rule("GET", r"/api/v1/iam/break-glass/requests(?:/\{request_id\})?", Permission.BREAK_GLASS_REQUEST),
+    _rule("POST", r"/api/v1/iam/break-glass/requests", Permission.BREAK_GLASS_REQUEST),
+    _rule(
+        "POST", r"/api/v1/iam/break-glass/requests/\{request_id\}/(?:approve|reject)", Permission.BREAK_GLASS_APPROVE
+    ),
+    _rule("POST", r"/api/v1/iam/break-glass/requests/\{request_id\}/activate", Permission.BREAK_GLASS_ACTIVATE),
+    _rule(
+        "POST",
+        r"/api/v1/iam/break-glass/requests/\{request_id\}/(?:revoke|review|close)",
+        Permission.BREAK_GLASS_REVOKE,
+    ),
+    _rule("GET", r"/api/v1/platform/credentials(?:/\{credential_id\})?", Permission.CREDENTIALS_READ),
+    _rule("GET", r"/api/v1/platform/credential-rotations(?:/\{rotation_id\})?", Permission.CREDENTIALS_READ),
+    _rule("POST", r"/api/v1/platform/credential-rotations", Permission.CREDENTIALS_ROTATE),
+    _rule("POST", r"/api/v1/platform/credential-rotations/\{rotation_id\}/approve", Permission.CREDENTIALS_APPROVE),
+    _rule(
+        "POST",
+        r"/api/v1/platform/credential-rotations/\{rotation_id\}/(?:stage|verify|promote|rollback|retire|complete)",
+        Permission.CREDENTIALS_ROTATE,
+    ),
     _rule(
         "POST",
         r"/(?:api/v1/openlineage/events|api/v1/lineage|api/data-observability/lineage/events)",
@@ -127,7 +158,11 @@ RULES = (
         Permission.STREAMS_READ,
         Permission.STREAMS_EXECUTE,
     ),
-    _rule("GET HEAD", r"/api(?:/v1)?/(?:incidents?|findings?|incident-correlation|incident-floods)(?:/.*)?", Permission.INCIDENTS_READ),
+    _rule(
+        "GET HEAD",
+        r"/api(?:/v1)?/(?:incidents?|findings?|incident-correlation|incident-floods)(?:/.*)?",
+        Permission.INCIDENTS_READ,
+    ),
     _rule(
         "POST PUT PATCH DELETE",
         r"/api(?:/v1)?/(?:incidents?|findings?)(?:/.*)?",

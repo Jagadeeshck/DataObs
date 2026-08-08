@@ -1,0 +1,3 @@
+# Credential lifecycle architecture
+
+DataObs inventories metadata and redacted/stable reference hashes only. External providers stage secret material. Rotation follows proposed, approved, staged, verification pending, verified, promoted, retired and completed, with rollback after promotion and before retirement. Requesters cannot approve; high-risk plans require two distinct approvers; failed verification cannot promote. Versioned HMAC keys sign with one active key and accept bounded previous verification keys. Application re-encryption and Elasticsearch/OIDC/TLS transitions require hosted proof and remain pending; zero-downtime is not claimed.

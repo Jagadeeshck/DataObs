@@ -15,6 +15,8 @@ from integrations.databricks import DatabricksLakehouseProvider
 from integrations.databricks.configuration import parse_configuration as parse_databricks_configuration
 from integrations.snowflake import SnowflakeWarehouseProvider
 from integrations.snowflake.configuration import parse_configuration as parse_snowflake_configuration
+from integrations.trino import TrinoSqlEngineProvider
+from integrations.trino.configuration import parse_configuration as parse_trino_configuration
 from packages.collectors.sdk import ProviderRegistry
 
 
@@ -25,6 +27,7 @@ def build_registry():
     registry.register(DatabricksLakehouseProvider)
     registry.register(BigQueryWarehouseProvider)
     registry.register(AzureDataPlatformProvider)
+    registry.register(TrinoSqlEngineProvider)
     return registry
 
 
@@ -47,6 +50,7 @@ def main(argv=None):
             "databricks": parse_databricks_configuration,
             "bigquery": parse_bigquery_configuration,
             "azure": parse_azure_configuration,
+            "trino": parse_trino_configuration,
         }
         config_parsers[payload.get("provider_type")](payload["provider"])
         print(json.dumps({"valid": True}))

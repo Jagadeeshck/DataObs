@@ -21,7 +21,8 @@ cloud provider implemented. Provider status is governed by the capability ledger
 | Redshift | Yes aws/redshift | Yes | Yes | cluster/query/schema/profile | IAM/secret ref | system table/select opt-in | dataobs warehouse streams |
 | BigQuery | Yes gcp | Yes | Yes | jobs/schema/profile | service account | metadata viewer/data viewer opt-in | dataobs warehouse streams |
 | Databricks | Partial | Yes | Yes | jobs/lakehouse/schema/lineage | PAT/OIDC secret ref | read metadata/jobs | dataobs lakehouse streams |
-| Trino/Presto | No generic | Yes | Yes | catalog/schema/query/profile | secret ref | information_schema/select opt-in | dataobs sql streams |
+| Trino v1 (`functional_unvalidated`) | Integration SDK SQL-engine foundation | Yes | No business rows | catalog/schema/relation/column and bounded runtime evidence | secret/file refs | fixed information_schema/system reads | direct HTTPS DBAPI |
+| Presto (`planned/not_implemented`) | No | No | No | none | none | none | roadmap only |
 | Athena | Yes aws | Yes | Yes | queries/schema/profile | IAM | Glue/Athena read | dataobs query streams |
 | MongoDB | Yes mongodb | Yes | Yes | ops metrics plus collection metadata | secret ref | clusterMonitor/read opt-in | dataobs documentdb streams |
 | Cassandra | Yes cassandra | Yes | Yes | ops metrics plus schema | secret ref | system_schema read | dataobs nosql streams |

@@ -1,0 +1,2 @@
+# Optional direct HTTPS/DBAPI client; tested with 0.338.0. No Java/JDBC runtime.
+trino>=0.338,<0.339

@@ -191,6 +191,21 @@ export const consoleRoutes: readonly ConsoleRoute[] = [
     ),
   }),
   route({
+    id: "streams-intelligence",
+    path: "/streams/intelligence",
+    name: "Stream Intelligence",
+    aliases: ["anomalies", "retention forecasts"],
+    group: "Observe",
+    capabilityId: "stream-intelligence",
+    owner: "team-1",
+    parentId: "streams",
+    navigation: true,
+    loader: load(
+      "../features/streams/StreamIntelligence",
+      "StreamIntelligence",
+    ),
+  }),
+  route({
     id: "cluster-360",
     path: "/streams/clusters/:clusterId",
     name: "Kafka cluster",

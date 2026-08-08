@@ -3,7 +3,7 @@ release: beta-1
 release_candidate: rc1
 repository: Jagadeeshck/DataObs
 target_elasticsearch_version: 9.4.2
-terminal_migration: 0025_stream_pathway_reliability_production_closure
+terminal_migration: 0026_stream_anomaly_retention_intelligence
 orchestration_model: two-phase
 capabilities:
 - capability_id: team0.identity-security

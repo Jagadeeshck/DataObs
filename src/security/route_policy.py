@@ -118,12 +118,12 @@ RULES = (
     ),
     _rule(
         "GET HEAD",
-        r"/api(?:/v1)?/(?:streams?|stream-connectors?|kafka|topics?|connectors?|schemas?)(?:/.*)?",
+        r"/api(?:/v1)?/(?:streams?|stream-connectors?|stream-intelligence|stream-detectors?|kafka|topics?|connectors?|schemas?)(?:/.*)?",
         Permission.STREAMS_READ,
     ),
     _rule(
         "POST PUT PATCH DELETE",
-        r"/api(?:/v1)?/(?:streams?|stream-connectors?|kafka|topics?|connectors?|schemas?)(?:/.*)?",
+        r"/api(?:/v1)?/(?:streams?|stream-connectors?|stream-intelligence|stream-detectors?|kafka|topics?|connectors?|schemas?)(?:/.*)?",
         Permission.STREAMS_READ,
         Permission.STREAMS_EXECUTE,
     ),

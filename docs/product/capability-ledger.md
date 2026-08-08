@@ -7,7 +7,7 @@ Audited commit: `5164762a6337a44a76ad2c7574a78edc048a70b3` · PR range: #82-#168
 ## State counts
 
 - **foundation**: 12
-- **functional_unvalidated**: 19
+- **functional_unvalidated**: 26
 - **not_started**: 6
 - **optional_integration**: 1
 - **scaffold**: 1
@@ -17,9 +17,9 @@ Audited commit: `5164762a6337a44a76ad2c7574a78edc048a70b3` · PR range: #82-#168
 - **ai_agent**: 2
 - **business**: 2
 - **data**: 5
-- **data_pipeline**: 10
+- **data_pipeline**: 16
 - **finops_cost**: 1
-- **platform**: 19
+- **platform**: 20
 
 ## Capabilities
 
@@ -134,6 +134,54 @@ Evidence-led status for openlineage ingest.
 - **State:** `functional_unvalidated`
 - **Release readiness:** `blocked`
 - **Next gate:** Run the focused workflow for the final PR head and independently verify its retained exact-commit artifact.
+
+### `pathways.pathway_before_after_compare_v1` — Pathway before/after comparison v1
+
+Bounded evidence-led pathway investigation; no root-cause claim.
+
+- **State:** `functional_unvalidated`
+- **Release readiness:** `blocked`
+- **Next gate:** Retain and independently verify exact-SHA hosted evidence.
+
+### `pathways.pathway_blast_radius_v1` — Pathway blast radius v1
+
+Bounded evidence-led pathway investigation; no root-cause claim.
+
+- **State:** `functional_unvalidated`
+- **Release readiness:** `blocked`
+- **Next gate:** Retain and independently verify exact-SHA hosted evidence.
+
+### `pathways.pathway_bottleneck_analysis_v1` — Pathway bottleneck analysis v1
+
+Bounded evidence-led pathway investigation; no root-cause claim.
+
+- **State:** `functional_unvalidated`
+- **Release readiness:** `blocked`
+- **Next gate:** Retain and independently verify exact-SHA hosted evidence.
+
+### `pathways.pathway_investigation_evidence_v1` — Pathway investigation evidence v1
+
+Bounded evidence-led pathway investigation; no root-cause claim.
+
+- **State:** `functional_unvalidated`
+- **Release readiness:** `blocked`
+- **Next gate:** Retain and independently verify exact-SHA hosted evidence.
+
+### `pathways.pathway_time_travel_v1` — Pathway time travel v1
+
+Bounded evidence-led pathway investigation; no root-cause claim.
+
+- **State:** `functional_unvalidated`
+- **Release readiness:** `blocked`
+- **Next gate:** Retain and independently verify exact-SHA hosted evidence.
+
+### `streaming.anomaly_retention_intelligence_v1` — Stream anomaly, retention and failure intelligence v1
+
+Explainable tenant-scoped anomaly baselines, retention forecasts and metadata-only failure candidates.
+
+- **State:** `functional_unvalidated`
+- **Release readiness:** `blocked`
+- **Next gate:** Complete API/runtime/Resource 360 closure and retain independently verified exact-commit hosted evidence.
 
 ### `data_pipeline.stream_pathway_reliability` — Stream and pathway reliability runtime v1
 
@@ -318,6 +366,14 @@ Evidence-led status for rolling-upgrade correctness.
 - **State:** `functional_unvalidated`
 - **Release readiness:** `blocked`
 - **Next gate:** Retain final-head migration/OCC and rolling-upgrade evidence from Elasticsearch 9.4.2.
+
+### `platform.environment_tenant_multicluster_lifecycle_v1` — Environment tenant and multi-cluster lifecycle v1
+
+Deterministic metadata-only registries, lifecycle state machines, staged tenant offboarding, fleet drift and release skew.
+
+- **State:** `functional_unvalidated`
+- **Release readiness:** `blocked`
+- **Next gate:** Retain exact-SHA two-cluster lifecycle, failure, upgrade, rollback, isolation and recovery evidence.
 
 ### `platform.iam` — OIDC and RBAC
 

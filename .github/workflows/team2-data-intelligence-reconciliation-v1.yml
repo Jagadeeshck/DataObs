@@ -1,0 +1,35 @@
+name: Team 2 data intelligence reconciliation v1
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install -r requirements.txt
+      - name: Shared guards and reconciliation tests
+        run: |
+          python scripts/check_merge_conflict_markers.py
+          python scripts/check_team_boundaries.py
+          python scripts/check_generated_artifacts.py
+          python scripts/check_docs_links.py
+          python scripts/validate_capability_ledger.py
+          python scripts/check_migration_immutability.py --base-ref HEAD^ || python scripts/check_migration_immutability.py
+          pytest -q tests/test_team2_migration_reconciliation.py tests/lineage_intelligence tests/data_contracts tests/monitoring/test_adaptive_anomaly_v1.py
+      - name: Exact-commit evidence manifest
+        run: |
+          mkdir -p team2-data-intelligence-reconciliation-v1-evidence
+          python -m packages.elastic_store.cli plan > team2-data-intelligence-reconciliation-v1-evidence/migrations.json
+          printf '{"repository":"%s","producer_sha":"%s","workflow":"%s","run_id":"%s","job_id":"%s","event":"%s","utc_timestamp":"%s","independent_verification":"defined_not_run"}\n' \
+            "$GITHUB_REPOSITORY" "$GITHUB_SHA" "$GITHUB_WORKFLOW" "$GITHUB_RUN_ID" "$GITHUB_JOB" "$GITHUB_EVENT_NAME" "$(date -u +%FT%TZ)" \
+            > team2-data-intelligence-reconciliation-v1-evidence/run.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: team2-data-intelligence-reconciliation-v1-evidence
+          path: team2-data-intelligence-reconciliation-v1-evidence
+          if-no-files-found: error

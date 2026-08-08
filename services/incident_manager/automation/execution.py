@@ -134,6 +134,7 @@ class ExecutionWorker:
     def _record_failure(
         self, item: Execution, error_code: str, *, retry_safe: bool = False, uncertain: bool = False
     ) -> None:
+        old_state = item.state
         item.error_code = error_code
         item.updated_at = datetime.now(timezone.utc)
         if retry_safe and item.attempt < item.max_attempts:
@@ -144,7 +145,46 @@ class ExecutionWorker:
             item.state = ExecutionState.RECONCILIATION_REQUIRED
         else:
             item.state = ExecutionState.FAILED
+        event_id = canonical_hash([item.execution_id, item.state.value, item.attempt])
+        item.transition_event_id = event_id
+        item.transition_event_pending = True
         self.repository.update_execution(item, item.lease_token)
+        try:
+            self.repository.append_event(
+                "remediation_action",
+                event_id,
+                {
+                    "@timestamp": item.updated_at.isoformat(),
+                    "tenant_id": item.tenant_id,
+                    "environment": item.environment,
+                    "incident_id": item.incident_id,
+                    "workflow_execution_id": item.execution_id,
+                    "event_type": f"execution_{item.state.value}",
+                    "action_type": item.action_type,
+                    "retry_count": max(item.attempt - 1, 0),
+                    "terminal_state": item.state
+                    in {ExecutionState.FAILED, ExecutionState.CANCELLED, ExecutionState.TIMED_OUT},
+                    "request_id": item.request_id,
+                    "correlation_id": item.action_fingerprint,
+                    "metadata": {
+                        "old_state": old_state.value,
+                        "new_state": item.state.value,
+                        "attempt": item.attempt,
+                        "error_code": error_code,
+                        "retryable": retry_safe,
+                        "outcome_known": not uncertain,
+                        "catalogue_hash": item.catalogue_hash,
+                        "policy_hash": item.policy_hash,
+                    },
+                },
+            )
+        except Exception:
+            return
+        item.transition_event_pending = False
+        try:
+            self.repository.update_execution(item, item.lease_token)
+        except Conflict:
+            pass
 
     def recover_expired(self, limit: int = MAX_BATCH, now: datetime | None = None) -> int:
         checked = now or datetime.now(timezone.utc)

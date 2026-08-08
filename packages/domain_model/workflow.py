@@ -20,13 +20,14 @@ class WorkflowTriggerType(StrEnum):
 class WorkflowExecutionStatus(StrEnum):
     PENDING = "pending"
     WAITING = "waiting"
-    WAITING_FOR_INPUT = "waiting-for-input"
+    WAITING_FOR_INPUT = "waiting_for_input"
     RUNNING = "running"
     COMPLETED = "completed"
     FAILED = "failed"
     CANCELLED = "cancelled"
     TIMED_OUT = "timed_out"
     SKIPPED = "skipped"
+    PROVIDER_STATUS_UNKNOWN = "provider_status_unknown"
 
 
 TERMINAL_WORKFLOW_STATES = {

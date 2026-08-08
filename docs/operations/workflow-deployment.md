@@ -1,3 +1,3 @@
 # Workflow deployment
 
-The safe-remediation runtime does not deploy Elastic Workflows and includes no provider plugin mechanism. Team 0 owns worker deployment/Helm packaging. Before enabling any executor, certify a bounded public service contract, lookup-after-restart, idempotency, cancellation declaration, redaction and action-specific verification at the exact release head.
+Use `python -m integrations.elastic.workflows.deployer validate`, `plan`, `deploy`, or `status`. Deployment also requires `DATAOBS_ELASTIC_WORKFLOW_DEPLOYMENT_ENABLED=true` in production composition. The deploy credential is separate from runtime and limited to workflow create/read/update. Plan/status are read-only; deploy creates or explicitly reconciles a reviewed definition and never deletes remote workflows. Remote checksum differences are drift and are not silently overwritten by background synchronization.

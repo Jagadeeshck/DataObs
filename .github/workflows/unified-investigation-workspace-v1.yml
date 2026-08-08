@@ -1,0 +1,44 @@
+name: Unified investigation workspace v1
+on:
+  pull_request:
+    paths:
+      [
+        "ui/dataobs-console/**",
+        "docs/**",
+        ".github/workflows/unified-investigation-workspace-v1.yml",
+      ]
+  workflow_dispatch:
+permissions: { contents: read }
+jobs:
+  console:
+    uses: ./.github/workflows/reusable-console-validation.yml
+    with:
+      run-playwright: true
+      run-accessibility: true
+      artifact-name: unified-investigation-workspace-v1-evidence
+      workflow-file: unified-investigation-workspace-v1.yml
+  investigation-contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python scripts/check_merge_conflict_markers.py
+      - run: python scripts/security/check_route_permissions.py
+      - run: python scripts/check_team_boundaries.py
+      - run: python scripts/check_generated_artifacts.py
+      - run: python scripts/check_docs_links.py
+      - run: python scripts/validate_capability_ledger.py
+      - run: python scripts/check_migration_immutability.py --base-ref origin/main
+      - name: Investigation privacy, isolation and bounds
+        working-directory: ui/dataobs-console
+        run: |
+          pnpm test -- src/investigation/investigation.test.ts
+          pnpm performance:check
+          ! rg 'localStorage|sessionStorage|elasticsearch' src/investigation src/features/investigation
+      - name: Exact-commit evidence manifest
+        run: |
+          mkdir -p unified-investigation-workspace-v1-evidence
+          printf 'producer_sha=%s\nworkflow=%s\nrun=%s\nattempt=%s\nconsole_version=0.1.0\nprovider_registry_count=4\ntimeline_limit=100\ngraph_limit=50_nodes_100_edges\nredaction_status=source-gate-passed\n' "$GITHUB_SHA" "$GITHUB_WORKFLOW" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" > unified-investigation-workspace-v1-evidence/manifest.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: unified-investigation-workspace-v1-evidence
+          path: unified-investigation-workspace-v1-evidence

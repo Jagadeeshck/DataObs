@@ -135,6 +135,22 @@ export const consoleRoutes: readonly ConsoleRoute[] = [
     loader: load("../features/global-search/GlobalSearch", "GlobalSearch"),
   }),
   route({
+    id: "investigation-workspace",
+    path: "/investigate",
+    name: "Investigation",
+    aliases: ["evidence", "timeline"],
+    group: "Overview",
+    capabilityId: "investigation",
+    icon: "⌖",
+    owner: "team-5",
+    navigation: true,
+    searchEligible: false,
+    loader: load(
+      "../features/investigation/InvestigationWorkspace",
+      "InvestigationWorkspace",
+    ),
+  }),
+  route({
     id: "pathways",
     path: "/pathways",
     name: "Pathways",

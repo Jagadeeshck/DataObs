@@ -178,6 +178,86 @@ body {
   outline: 3px solid var(--cyan);
   outline-offset: 2px;
 }
+.shell-investigate {
+  padding: 8px 28px 0;
+  text-align: right;
+}
+.shell-investigate a,
+.investigation a {
+  color: var(--cyan);
+}
+.investigation {
+  max-width: 1240px;
+  margin: 0 auto;
+}
+.investigation-header,
+.investigation-actions,
+.investigation-filters {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+.evidence-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+.evidence-summary article,
+.evidence-timeline li button {
+  padding: 14px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: inherit;
+  text-align: left;
+}
+.evidence-summary span,
+.evidence-timeline span,
+.evidence-timeline time {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+}
+.evidence-timeline {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.evidence-timeline button {
+  width: 100%;
+}
+.investigation table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.investigation th,
+.investigation td {
+  padding: 10px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+.evidence-drawer {
+  position: fixed;
+  z-index: 20;
+  inset: 5vh 3vw 5vh auto;
+  width: min(460px, 94vw);
+  overflow: auto;
+  padding: 24px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: 0 0 0 100vmax rgb(0 0 0 / 0.55);
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition: none !important;
+    animation: none !important;
+  }
+}
 button,
 select,
 input {

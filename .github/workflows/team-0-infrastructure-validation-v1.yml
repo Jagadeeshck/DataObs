@@ -1,0 +1,18 @@
+name: Team 0 infrastructure validation v1
+on:
+  pull_request:
+    paths: ["infra/terraform/**", ".github/workflows/team-0-infrastructure-validation-v1.yml"]
+  workflow_dispatch: {}
+permissions: {contents: read}
+jobs:
+  terraform-reference:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with: {terraform_version: "1.9.8"}
+      - run: terraform -chdir=infra/terraform/platform fmt -check -recursive
+      - run: terraform -chdir=infra/terraform/platform init -backend=false
+      - run: terraform -chdir=infra/terraform/platform validate
+      - name: Guardrails (no apply, OpenSearch product-store, plaintext secret assignment, or wildcard IAM)
+        run: python scripts/validate_platform_lifecycle.py --terraform

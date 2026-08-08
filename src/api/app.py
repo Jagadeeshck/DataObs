@@ -50,6 +50,7 @@ from src.api.incident_routes import create_incident_workbench_router
 from src.api.incident_runtime_routes import create_incident_runtime_router
 from src.api.monitor_routes import router as monitor_router
 from src.api.pathway_routes import create_pathway_router
+from src.api.platform_lifecycle_routes import create_platform_lifecycle_router
 from src.api.reliability_routes import create_reliability_router
 from src.api.store import StoreProtocol, get_store
 from src.api.stream_intelligence_routes import create_stream_intelligence_router
@@ -61,6 +62,7 @@ from src.data_observability.openlineage import OpenLineageValidationError
 from src.data_observability.service import DataObservabilityService, OpenLineageConflictError
 from src.platform_operations.health import Criticality, HealthCheck, HealthState, aggregate
 from src.platform_operations.slo import evaluate_error_budget
+from src.platform_lifecycle import PlatformLifecycleService
 from src.security.audit import security_event
 from src.security.authentication import Authenticator
 from src.security.authorization import authorize
@@ -294,6 +296,7 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
     app.state.settings = resolved_settings
     app.state.authenticator = Authenticator(resolved_settings.auth)
     app.state.store_bundle = resolved_bundle
+    app.state.platform_lifecycle_service = PlatformLifecycleService()
     meter = metrics.get_meter("dataobs.platform.api")
     request_count = meter.create_counter("dataobs_api_requests_total", unit="{request}")
     request_duration = meter.create_histogram("dataobs_api_request_duration_seconds", unit="s")
@@ -354,7 +357,7 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
     else:
         from services.data_products.memory_repository import MemoryDataProductRepository
 
-    app.state.data_product_repository = MemoryDataProductRepository()
+        app.state.data_product_repository = MemoryDataProductRepository()
 
     if resolved_settings.store_backend.lower() == "elasticsearch":
         from services.lineage_intelligence.elasticsearch_repository import ElasticsearchLineageRepository
@@ -490,6 +493,7 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
             ) from exc
 
     app.include_router(monitor_router, dependencies=[Depends(require_auth)])
+    app.include_router(create_platform_lifecycle_router(require_auth))
 
     @app.get("/api/v1/auth/config", tags=["auth"])
     async def auth_config() -> Dict[str, Any]:

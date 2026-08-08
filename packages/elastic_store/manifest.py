@@ -1963,80 +1963,37 @@ STREAM_ANOMALY_RETENTION_INTELLIGENCE_MIGRATION = Migration(
     },
 )
 
-DATA_CONTRACT_PROPERTIES = {
-    **BASE_PROPERTIES,
-    **{
-        key: {"type": "keyword"}
-        for key in [
-            "contract_id",
-            "revision_id",
-            "canonical_asset_identity",
-            "owner",
-            "owner_team",
-            "lifecycle_state",
-            "enforcement_mode",
-            "criticality",
-            "fingerprint",
-            "evaluation_id",
-            "requirement_id",
-            "category",
-            "severity",
-            "directness",
-            "reason_code",
-            "actor",
-            "correlation_id",
-            "source",
-            "data_status",
-        ]
-    },
-    "contract_version": {"type": "integer"},
+PLATFORM_LIFECYCLE_PROPERTIES = {
+    **{key: {"type": "keyword"} for key in [
+        "resource_id", "resource_type", "platform_owner", "state", "reason_code", "actor",
+        "created_actor", "updated_actor", "etag", "schema_version", "environment_id", "cluster_id",
+        "installation_id", "tenant_id", "release_sha", "chart_version", "terminal_migration",
+        "desired_state_hash", "observed_state_hash", "drift_state", "idempotency_key",
+    ]},
+    **{key: {"type": "date"} for key in ["created_at", "updated_at", "timestamp"]},
     "revision": {"type": "long"},
-    "confidence": {"type": "float"},
-    "score": {"type": "float"},
-    "effective_from": {"type": "date"},
-    "effective_until": {"type": "date"},
-    "evaluated_at": {"type": "date"},
-    "observation_time": {"type": "date"},
-    "name": {"type": "text", "fields": {"keyword": {"type": "keyword"}}},
-    "description": {"type": "text"},
-    "tags": {"type": "keyword"},
-    "data_product_ids": {"type": "keyword"},
-    "evidence_references": {"type": "keyword"},
-    "policy": {"type": "flattened"},
-    "expected": {"type": "flattened"},
-    "observed": {"type": "flattened"},
-    "approval_evidence": {"type": "flattened"},
+    "metadata": {"type": "flattened"},
 }
 
-DATA_CONTRACTS_MIGRATION = Migration(
-    "0027_data_contracts_schema_governance",
-    "Add strict tenant-scoped Data Contract projections and immutable evidence",
+PLATFORM_LIFECYCLE_MIGRATION = Migration(
+    "0027_platform_environment_tenant_multicluster_lifecycle",
+    "Add strict metadata-only platform lifecycle projections and append-only evidence",
     "v1",
     dependencies=["0026_stream_anomaly_retention_intelligence"],
-    rollback_strategy="stop contract runtime; snapshot and remove current projections; retain immutable governance evidence",
+    rollback_strategy="stop lifecycle writers; retain append-only evidence and snapshots; never reverse tenant deletion or Elasticsearch data migrations",
     operations={
         "mutable_indices": [
-            "dataobs-data-contract-current-v1",
-            "dataobs-data-contract-health-current-v1",
-            "dataobs-data-contract-runtime-state-v1",
+            "dataobs-platform-environments-v1", "dataobs-platform-clusters-v1",
+            "dataobs-platform-installations-v1", "dataobs-platform-deployment-plans-v1",
+            "dataobs-platform-tenant-lifecycle-v1", "dataobs-platform-lifecycle-operations-v1",
         ],
-        "mapping_updates": {
-            name: DATA_CONTRACT_PROPERTIES
-            for name in [
-                "dataobs-data-contract-current-v1",
-                "dataobs-data-contract-health-current-v1",
-                "dataobs-data-contract-runtime-state-v1",
-            ]
-        },
-        "data_stream_contracts": {
-            name: {"retention": retention, "properties": DATA_CONTRACT_PROPERTIES}
-            for name, retention in {
-                "logs-dataobs.data-contract-version-*": "3650d",
-                "logs-dataobs.data-contract-lifecycle-*": "3650d",
-                "logs-dataobs.data-contract-evaluation-*": "365d",
-                "logs-dataobs.data-contract-violation-*": "730d",
-            }.items()
-        },
+        "mapping_updates": {name: PLATFORM_LIFECYCLE_PROPERTIES for name in [
+            "dataobs-platform-environments-v1", "dataobs-platform-clusters-v1",
+            "dataobs-platform-installations-v1", "dataobs-platform-deployment-plans-v1",
+            "dataobs-platform-tenant-lifecycle-v1", "dataobs-platform-lifecycle-operations-v1",
+        ]},
+        "data_stream_contracts": {"logs-dataobs.platform-lifecycle-evidence-*": {
+            "retention": "2555d", "properties": PLATFORM_LIFECYCLE_PROPERTIES}},
     },
 )
 
@@ -2069,7 +2026,7 @@ def migrations() -> List[Migration]:
         JOB_RUN_RELIABILITY_MIGRATION,
         STREAM_PATHWAY_RELIABILITY_PRODUCTION_CLOSURE_MIGRATION,
         STREAM_ANOMALY_RETENTION_INTELLIGENCE_MIGRATION,
-        DATA_CONTRACTS_MIGRATION,
+        PLATFORM_LIFECYCLE_MIGRATION,
     ]
 
 

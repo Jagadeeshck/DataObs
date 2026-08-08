@@ -3,7 +3,17 @@ from .permissions import Permission
 READ = frozenset(p for p in Permission if p.value.endswith(":read"))
 ROLE_PERMISSIONS: dict[str, frozenset[Permission]] = {
     "platform_admin": frozenset(Permission),
-    "tenant_admin": frozenset(Permission) - {Permission.PLATFORM_ADMIN},
+    "tenant_admin": frozenset(Permission)
+    - {
+        Permission.PLATFORM_ADMIN,
+        Permission.ENVIRONMENTS_WRITE,
+        Permission.CLUSTERS_REGISTER,
+        Permission.INSTALLATIONS_MANAGE,
+        Permission.TENANTS_PROVISION,
+        Permission.TENANTS_SUSPEND,
+        Permission.TENANTS_OFFBOARD,
+        Permission.PLATFORM_PROMOTIONS_EXECUTE,
+    },
     "operator": READ
     | frozenset(
         {

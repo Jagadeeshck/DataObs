@@ -1,4 +1,4 @@
-# Tenant Onboarding
+# Environment Upgrade
 
 ## Preconditions
 Authoritative inventory and current evidence are available; unknown mandatory evidence stops execution. External dependencies are reachable.
@@ -7,7 +7,7 @@ Authoritative inventory and current evidence are available; unknown mandatory ev
 Use the narrow lifecycle permission. Production, destructive, promotion, rollback and failover actions require the existing privileged approval contract and a change reference; requester cannot self-approve destruction.
 
 ## Plan and execution
-Request with owner, region, profiles and external initial admins; approve, deterministically place, bootstrap DataObs-owned state, validate isolation/backup/telemetry, activate.
+Create an immutable exact-SHA plan, verify signed manifest, support profile, backup, migration compatibility and SLO evidence; roll out and certify.
 
 Execution is declarative and idempotent with `Idempotency-Key`, `If-Match`, bounded reason code and validated actor. Operators use reviewed adapters; the API accepts no shell, kubectl or Terraform target.
 

@@ -159,3 +159,243 @@ metrics:
   beta_required: true
   slos: []
   alerts: []
+- name: dataobs_platform_environments
+  type: gauge
+  unit: '{item}'
+  description: Low-cardinality platform lifecycle signal; resource identifiers remain
+    in logs, traces and audit evidence.
+  owner: team-0
+  emitting_components:
+  - api
+  allowed_attributes:
+  - state
+  cardinality_expectation: bounded
+  stability: experimental
+  beta_required: false
+  slos: []
+  alerts: []
+- name: dataobs_platform_installations
+  type: gauge
+  unit: '{item}'
+  description: Low-cardinality platform lifecycle signal; resource identifiers remain
+    in logs, traces and audit evidence.
+  owner: team-0
+  emitting_components:
+  - api
+  allowed_attributes:
+  - health
+  cardinality_expectation: bounded
+  stability: experimental
+  beta_required: false
+  slos: []
+  alerts: []
+- name: dataobs_platform_installation_drift
+  type: gauge
+  unit: '{item}'
+  description: Low-cardinality platform lifecycle signal; resource identifiers remain
+    in logs, traces and audit evidence.
+  owner: team-0
+  emitting_components:
+  - api
+  allowed_attributes:
+  - drift_state
+  cardinality_expectation: bounded
+  stability: experimental
+  beta_required: false
+  slos: []
+  alerts: []
+- name: dataobs_platform_release_skew_total
+  type: counter
+  unit: '{item}'
+  description: Low-cardinality platform lifecycle signal; resource identifiers remain
+    in logs, traces and audit evidence.
+  owner: team-0
+  emitting_components:
+  - api
+  allowed_attributes:
+  - classification
+  cardinality_expectation: bounded
+  stability: experimental
+  beta_required: false
+  slos: []
+  alerts: []
+- name: dataobs_platform_migration_skew_total
+  type: counter
+  unit: '{item}'
+  description: Low-cardinality platform lifecycle signal; resource identifiers remain
+    in logs, traces and audit evidence.
+  owner: team-0
+  emitting_components:
+  - api
+  allowed_attributes:
+  - classification
+  cardinality_expectation: bounded
+  stability: experimental
+  beta_required: false
+  slos: []
+  alerts: []
+- name: dataobs_tenant_provisioning_outcomes_total
+  type: counter
+  unit: '{item}'
+  description: Low-cardinality platform lifecycle signal; resource identifiers remain
+    in logs, traces and audit evidence.
+  owner: team-0
+  emitting_components:
+  - api
+  allowed_attributes:
+  - outcome
+  cardinality_expectation: bounded
+  stability: experimental
+  beta_required: false
+  slos: []
+  alerts: []
+- name: dataobs_tenant_provisioning_duration_seconds
+  type: histogram
+  unit: s
+  description: Low-cardinality platform lifecycle signal; resource identifiers remain
+    in logs, traces and audit evidence.
+  owner: team-0
+  emitting_components:
+  - api
+  allowed_attributes:
+  - outcome
+  cardinality_expectation: bounded
+  stability: experimental
+  beta_required: false
+  slos: []
+  alerts: []
+- name: dataobs_tenant_suspensions_total
+  type: counter
+  unit: '{item}'
+  description: Low-cardinality platform lifecycle signal; resource identifiers remain
+    in logs, traces and audit evidence.
+  owner: team-0
+  emitting_components:
+  - api
+  allowed_attributes:
+  - outcome
+  cardinality_expectation: bounded
+  stability: experimental
+  beta_required: false
+  slos: []
+  alerts: []
+- name: dataobs_tenant_offboarding_outcomes_total
+  type: counter
+  unit: '{item}'
+  description: Low-cardinality platform lifecycle signal; resource identifiers remain
+    in logs, traces and audit evidence.
+  owner: team-0
+  emitting_components:
+  - api
+  allowed_attributes:
+  - outcome
+  cardinality_expectation: bounded
+  stability: experimental
+  beta_required: false
+  slos: []
+  alerts: []
+- name: dataobs_platform_promotion_outcomes_total
+  type: counter
+  unit: '{item}'
+  description: Low-cardinality platform lifecycle signal; resource identifiers remain
+    in logs, traces and audit evidence.
+  owner: team-0
+  emitting_components:
+  - api
+  allowed_attributes:
+  - outcome
+  cardinality_expectation: bounded
+  stability: experimental
+  beta_required: false
+  slos: []
+  alerts: []
+- name: dataobs_platform_rollback_outcomes_total
+  type: counter
+  unit: '{item}'
+  description: Low-cardinality platform lifecycle signal; resource identifiers remain
+    in logs, traces and audit evidence.
+  owner: team-0
+  emitting_components:
+  - api
+  allowed_attributes:
+  - outcome
+  cardinality_expectation: bounded
+  stability: experimental
+  beta_required: false
+  slos: []
+  alerts: []
+- name: dataobs_platform_deployment_duration_seconds
+  type: histogram
+  unit: s
+  description: Low-cardinality platform lifecycle signal; resource identifiers remain
+    in logs, traces and audit evidence.
+  owner: team-0
+  emitting_components:
+  - api
+  allowed_attributes:
+  - outcome
+  cardinality_expectation: bounded
+  stability: experimental
+  beta_required: false
+  slos: []
+  alerts: []
+- name: dataobs_platform_failed_rollouts_total
+  type: counter
+  unit: '{item}'
+  description: Low-cardinality platform lifecycle signal; resource identifiers remain
+    in logs, traces and audit evidence.
+  owner: team-0
+  emitting_components:
+  - api
+  allowed_attributes:
+  - strategy
+  cardinality_expectation: bounded
+  stability: experimental
+  beta_required: false
+  slos: []
+  alerts: []
+- name: dataobs_platform_fleet_unhealthy_installations
+  type: gauge
+  unit: '{item}'
+  description: Low-cardinality platform lifecycle signal; resource identifiers remain
+    in logs, traces and audit evidence.
+  owner: team-0
+  emitting_components:
+  - api
+  allowed_attributes:
+  - environment_class
+  cardinality_expectation: bounded
+  stability: experimental
+  beta_required: false
+  slos: []
+  alerts: []
+- name: dataobs_platform_unsupported_installations
+  type: gauge
+  unit: '{item}'
+  description: Low-cardinality platform lifecycle signal; resource identifiers remain
+    in logs, traces and audit evidence.
+  owner: team-0
+  emitting_components:
+  - api
+  allowed_attributes:
+  - reason
+  cardinality_expectation: bounded
+  stability: experimental
+  beta_required: false
+  slos: []
+  alerts: []
+- name: dataobs_platform_failover_outcomes_total
+  type: counter
+  unit: '{item}'
+  description: Low-cardinality platform lifecycle signal; resource identifiers remain
+    in logs, traces and audit evidence.
+  owner: team-0
+  emitting_components:
+  - api
+  allowed_attributes:
+  - outcome
+  cardinality_expectation: bounded
+  stability: experimental
+  beta_required: false
+  slos: []
+  alerts: []

@@ -1869,6 +1869,46 @@ capabilities:
   certification_status: functional_unvalidated
   last_audited_at: '2026-08-08'
   last_audited_commit: pending-final-sha
+- id: platform.environment_tenant_multicluster_lifecycle_v1
+  name: Environment tenant and multi-cluster lifecycle v1
+  summary: Deterministic metadata-only registries, lifecycle state machines, staged tenant offboarding, fleet drift and release skew.
+  pillar: platform
+  domain: platform_operations
+  state: functional_unvalidated
+  release_readiness: blocked
+  implementation:
+    code_paths: [src/platform_lifecycle, src/api/platform_lifecycle_routes.py]
+    api_paths: [/api/v1/platform/environments, /api/v1/platform/clusters, /api/v1/platform/installations, /api/v1/platform/tenants, /api/v1/platform/fleet]
+    ui_routes: []
+    storage_resources: [dataobs-platform-environments-v1, dataobs-platform-clusters-v1, dataobs-platform-installations-v1, dataobs-platform-tenant-lifecycle-v1, logs-dataobs.platform-lifecycle-evidence-*]
+    migrations: [0027_platform_environment_tenant_multicluster_lifecycle]
+  validation:
+    unit: passed
+    integration: defined_not_run
+    real_stack: defined_not_run
+    hosted_ci: defined_not_run
+    browser: not_applicable
+    accessibility: not_applicable
+    security: passed
+    scale: defined_not_run
+    upgrade: defined_not_run
+    release: missing
+  evidence:
+    tests: [tests/platform_operations/test_platform_lifecycle_v1.py]
+    workflow_jobs: [team-0-environment-tenant-lifecycle-v1.yml:exact-sha-static-evidence]
+    audit_docs: [docs/development/team-0-environment-tenant-multicluster-v1-audit.md]
+    runbooks: [docs/operations/environment-provisioning.md, docs/operations/tenant-offboarding.md]
+    artifacts: [team-0-environment-tenant-lifecycle-v1-evidence (defined; hosted run pending)]
+  blockers: [Two-cluster hosted, HA failure, upgrade/rollback, external Elasticsearch/OIDC and recovery evidence are not retained.]
+  non_goals: [Cloud management, packaged Elasticsearch, automatic DNS failover, arbitrary remote commands and UI are excluded.]
+  next_gate: Retain exact-SHA two-cluster lifecycle, failure, upgrade, rollback, isolation and recovery evidence.
+  owner: team:platform
+  owner_team: team:platform
+  release_target: beta-1
+  implementation_status: implemented
+  certification_status: functional_unvalidated
+  last_audited_at: '2026-08-08'
+  last_audited_commit: pending-final-sha
 migration_checksums:
   0001_product_foundation: 71d939094a97b4dd7c61de60542b60dd41cb238fd6bebfd75d53d723b00f3556
   0002_postgres_observability: c2098fa24ddae209fcf2ffeb369f7040d57018d58682a8513db9e943c749aa2d
@@ -1896,3 +1936,4 @@ migration_checksums:
   0024_job_run_reliability_runtime: a3a7bcbd8594a51802a6c0e3f42a98c822b708e8ae7fa68bb664f96c5472666d
   0025_stream_pathway_reliability_production_closure: 5d68f3c0acb2b265181276f3080f15d3acbf8abc39585b85715d9f5f6691fb30
   0026_stream_anomaly_retention_intelligence: dba7efc48003dc5877af8ac2f0e6949dd44878399e9cf3e2a77043f6d1009b44
+  0027_platform_environment_tenant_multicluster_lifecycle: 90b3c20f9ee44e5fa4a502e907fa3adcf3807a423ca42bad5071714d53476a25

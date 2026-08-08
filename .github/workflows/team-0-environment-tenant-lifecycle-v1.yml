@@ -1,0 +1,27 @@
+name: Team 0 environment tenant lifecycle v1
+on:
+  workflow_dispatch:
+    inputs:
+      target_sha: {description: Exact commit SHA, required: true, type: string}
+permissions: {contents: read}
+jobs:
+  exact-sha-static-evidence:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: "${{ inputs.target_sha }}"}
+      - name: Verify exact SHA
+        run: test "$(git rev-parse HEAD)" = "${{ inputs.target_sha }}" && [[ "${{ inputs.target_sha }}" =~ ^[0-9a-f]{40}$ ]]
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.13"}
+      - run: pip install -r requirements.txt
+      - run: python scripts/validate_platform_lifecycle.py --all
+      - run: pytest -q tests/platform_operations/test_platform_lifecycle_v1.py --junitxml=artifacts/platform-lifecycle/junit.xml
+      - run: python scripts/generate_platform_lifecycle_evidence.py --target-sha "${{ inputs.target_sha }}" --output artifacts/platform-lifecycle
+      - uses: actions/upload-artifact@v4
+        with: {name: team-0-environment-tenant-lifecycle-v1-evidence, path: artifacts/platform-lifecycle, retention-days: 30}
+  hosted-evidence-contract:
+    runs-on: ubuntu-latest
+    needs: exact-sha-static-evidence
+    steps:
+      - run: echo "Hosted two-cluster, HA, upgrade, rollback, drift, offboarding and failover evidence remains pending until external Elasticsearch/OIDC images and retained release are supplied."

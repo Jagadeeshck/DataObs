@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dataobs.example/schemas/platform-environment-v1.json",
+  "title": "DataObs platform environment desired state v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["environment_id", "environment_class", "cluster_id", "namespace", "release", "elasticsearch", "oidc", "telemetry", "capacity", "backup", "ha", "tenancy"],
+  "properties": {
+    "environment_id": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,62}$"},
+    "environment_class": {"enum": ["development", "integration", "staging", "production"]},
+    "cluster_id": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,62}$"},
+    "namespace": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,62}$"},
+    "release": {"type": "object", "additionalProperties": false, "required": ["version", "sha", "chart_version", "image_digests"], "properties": {
+      "version": {"type": "string", "maxLength": 64}, "sha": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+      "chart_version": {"type": "string", "maxLength": 32}, "image_digests": {"type": "object", "additionalProperties": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}}
+    }},
+    "elasticsearch": {"$ref": "#/$defs/reference"}, "oidc": {"$ref": "#/$defs/profile"},
+    "telemetry": {"$ref": "#/$defs/profile"}, "capacity": {"$ref": "#/$defs/profile"},
+    "backup": {"$ref": "#/$defs/profile"}, "ha": {"$ref": "#/$defs/profile"}, "tenancy": {"$ref": "#/$defs/profile"}
+  },
+  "$defs": {
+    "reference": {"type": "object", "additionalProperties": false, "required": ["connection_reference"], "properties": {"connection_reference": {"type": "string", "pattern": "^[A-Za-z0-9._:/-]{1,256}$"}}},
+    "profile": {"type": "object", "additionalProperties": false, "required": ["profile"], "properties": {"profile": {"type": "string", "pattern": "^[a-z][a-z0-9-]{1,62}$"}}}
+  }
+}

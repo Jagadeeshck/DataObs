@@ -1,0 +1,37 @@
+schema_version: "1"
+certification_status: unvalidated
+profiles:
+  development:
+    api_min_replicas: 1
+    console_min_replicas: 1
+    pdb_required: false
+    topology_spread_required: false
+    zones_minimum: 1
+    readiness_policy: standard
+    workers: {quality: fixed_singleton, scanner: fixed_singleton, monitor_runtime: fixed_singleton, pathway: fixed_singleton, kafka_observer: fixed_singleton}
+  standard-ha:
+    api_min_replicas: 2
+    console_min_replicas: 2
+    pdb_required: true
+    topology_spread_required: true
+    zones_minimum: 2
+    anti_affinity: preferred
+    hpa_eligible: [api, console]
+    readiness_policy: strict
+    workers: {quality: fixed_singleton, scanner: fixed_singleton, monitor_runtime: fixed_singleton, pathway: fixed_singleton, kafka_observer: fixed_singleton}
+  production-ha:
+    api_min_replicas: 3
+    console_min_replicas: 2
+    pdb_required: true
+    topology_spread_required: true
+    zones_minimum: 3
+    anti_affinity: required
+    failure_domain_key: topology.kubernetes.io/zone
+    hpa_eligible: [api, console]
+    readiness_policy: strict
+    workers: {quality: fixed_singleton, scanner: fixed_singleton, monitor_runtime: fixed_singleton, pathway: fixed_singleton, kafka_observer: fixed_singleton}
+singleton_policy:
+  horizontal_scaling: prohibited_until_lease_certified
+  leader_election: unvalidated
+  lease_takeover: evidence_required
+  recovery_time: unvalidated

@@ -7,18 +7,20 @@ import signal
 
 from integrations.aws import AwsDataPlatformProvider
 from integrations.aws.configuration import parse_configuration
-from integrations.bigquery import BigQueryWarehouseProvider
-from integrations.bigquery.configuration import parse_configuration as parse_bigquery_configuration
 from integrations.azure import AzureDataPlatformProvider
 from integrations.azure.configuration import parse_configuration as parse_azure_configuration
+from integrations.bigquery import BigQueryWarehouseProvider
+from integrations.bigquery.configuration import parse_configuration as parse_bigquery_configuration
+from integrations.databases.postgres import PostgreSqlDatabaseProvider
+from integrations.databases.postgres.configuration import parse_configuration as parse_postgres_configuration
 from integrations.databricks import DatabricksLakehouseProvider
 from integrations.databricks.configuration import parse_configuration as parse_databricks_configuration
+from integrations.presto import PrestoSqlEngineProvider
+from integrations.presto.configuration import parse_configuration as parse_presto_configuration
 from integrations.snowflake import SnowflakeWarehouseProvider
 from integrations.snowflake.configuration import parse_configuration as parse_snowflake_configuration
 from integrations.trino import TrinoSqlEngineProvider
 from integrations.trino.configuration import parse_configuration as parse_trino_configuration
-from integrations.presto import PrestoSqlEngineProvider
-from integrations.presto.configuration import parse_configuration as parse_presto_configuration
 from packages.collectors.sdk import ProviderRegistry
 
 
@@ -31,6 +33,7 @@ def build_registry():
     registry.register(AzureDataPlatformProvider)
     registry.register(TrinoSqlEngineProvider)
     registry.register(PrestoSqlEngineProvider)
+    registry.register(PostgreSqlDatabaseProvider)
     return registry
 
 
@@ -55,6 +58,7 @@ def main(argv=None):
             "azure": parse_azure_configuration,
             "trino": parse_trino_configuration,
             "presto": parse_presto_configuration,
+            "postgres": parse_postgres_configuration,
         }
         config_parsers[payload.get("provider_type")](payload["provider"])
         print(json.dumps({"valid": True}))

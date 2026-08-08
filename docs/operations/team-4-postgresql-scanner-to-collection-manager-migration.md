@@ -1,0 +1,5 @@
+# Scanner Worker to Collection Manager migration
+
+There is no automatic cutover. (1) Identify the Scanner Worker integration. (2) Stop its legacy schedule. (3) Export only safe configuration, never a resolved secret. (4) Translate legacy secret references and explicitly configure verified TLS. (5) Validate the closed new config. (6) Test connection. (7) Run Collection Manager once. (8) Compare resource counts. (9) Compare legacy fingerprints or document the algorithm version boundary. (10) Compare configured freshness. (11) Verify generic checkpoint persistence. (12) Enable the new worker. (13) Confirm the old schedule remains disabled so one integration cannot run twice. (14) Retain rollback by disabling Collection Manager and re-enabling the unchanged legacy configuration.
+
+The legacy state is `supported_legacy`, not removed or production-deprecated. Its `sslmode=prefer`, quality assertion and OpenLineage passthrough are compatibility behavior and are not capabilities of the new provider.

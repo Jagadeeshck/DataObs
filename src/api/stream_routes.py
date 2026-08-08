@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
+from packages.streaming.adapters import ADAPTERS
 from services.product_query.stream_common import envelope
 from services.product_query.stream_comparison import compare_samples
 from services.product_query.stream_pagination import CursorCodec, CursorState, InvalidCursor
@@ -89,6 +90,33 @@ def create_stream_router(get_es: Callable[..., Any], require_auth: Callable[...,
         previous_secrets=[value for value in os.getenv("DATAOBS_CURSOR_PREVIOUS_SECRETS", "").split(",") if value],
     )
     events = EventReplay(int(os.getenv("DATAOBS_STREAM_SSE_REPLAY_SIZE", "500")))
+
+    @router.get("/streams/providers", name="list_stream_providers")
+    async def providers(request: Request) -> dict[str, Any]:
+        """Disclose semantic and collection capability independently per system."""
+        scope(request, "streams:read")
+        items = []
+        for system, adapter_type in ADAPTERS.items():
+            capability = adapter_type().capabilities()
+            data = capability.model_dump(mode="json")
+            state = data.pop("state")
+            limitations = data.pop("limitations")
+            items.append(
+                {
+                    "provider": data.pop("provider"),
+                    "messaging_system": system,
+                    "configured": state not in {"not_configured", "not_implemented"},
+                    "collection_state": state,
+                    "capabilities": data,
+                    "limitations": limitations,
+                    "latest_observation": None,
+                    "source_coverage": 0,
+                }
+            )
+        return {
+            "items": items,
+            **envelope(request.state.request_id, configured=True, found=True, sources=["capability_registry"]),
+        }
 
     def repo(es: Any = Depends(get_es)) -> StreamRepository:
         return StreamRepository(es.es, timeout=float(os.getenv("DATAOBS_STREAM_QUERY_TIMEOUT", "5")))

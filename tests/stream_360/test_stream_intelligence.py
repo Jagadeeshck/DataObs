@@ -26,7 +26,7 @@ def test_forward_only_completion_migration_preserves_0009():
 
 def test_provider_capabilities_are_honest():
     assert KafkaAdapter().capabilities().state == CapabilityState.AVAILABLE
-    assert KinesisAdapter().capabilities().state == CapabilityState.NOT_IMPLEMENTED
+    assert KinesisAdapter().capabilities().state == CapabilityState.PARTIAL
 
 
 def test_stable_ids_are_tenant_and_environment_scoped():

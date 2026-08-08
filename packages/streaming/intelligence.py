@@ -122,6 +122,20 @@ CAPABILITIES = {
             "observation_freshness",
         }
     ),
+    "kinesis_stream": frozenset({"iterator_age", "throughput", "throttling", "observation_freshness"}),
+    "sqs_queue": frozenset(
+        {"backlog", "oldest_message_age", "dlq_growth", "consumption_rate", "observation_freshness"}
+    ),
+    "rabbitmq_queue": frozenset(
+        {"ready_messages", "unacknowledged_messages", "redelivery_rate", "consumer_count", "observation_freshness"}
+    ),
+    "pubsub_subscription": frozenset(
+        {"backlog", "backlog_bytes", "oldest_unacked_age", "delivery_latency", "dlq_growth", "observation_freshness"}
+    ),
+    "event_hub": frozenset({"incoming", "outgoing", "throttling", "server_errors", "observation_freshness"}),
+    "service_bus_queue": frozenset(
+        {"active_messages", "dlq_growth", "server_errors", "throughput", "observation_freshness"}
+    ),
 }
 
 

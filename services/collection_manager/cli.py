@@ -9,6 +9,8 @@ from integrations.aws import AwsDataPlatformProvider
 from integrations.aws.configuration import parse_configuration
 from integrations.bigquery import BigQueryWarehouseProvider
 from integrations.bigquery.configuration import parse_configuration as parse_bigquery_configuration
+from integrations.azure import AzureDataPlatformProvider
+from integrations.azure.configuration import parse_configuration as parse_azure_configuration
 from integrations.databricks import DatabricksLakehouseProvider
 from integrations.databricks.configuration import parse_configuration as parse_databricks_configuration
 from integrations.snowflake import SnowflakeWarehouseProvider
@@ -22,6 +24,7 @@ def build_registry():
     registry.register(SnowflakeWarehouseProvider)
     registry.register(DatabricksLakehouseProvider)
     registry.register(BigQueryWarehouseProvider)
+    registry.register(AzureDataPlatformProvider)
     return registry
 
 
@@ -43,6 +46,7 @@ def main(argv=None):
             "snowflake": parse_snowflake_configuration,
             "databricks": parse_databricks_configuration,
             "bigquery": parse_bigquery_configuration,
+            "azure": parse_azure_configuration,
         }
         config_parsers[payload.get("provider_type")](payload["provider"])
         print(json.dumps({"valid": True}))

@@ -1,0 +1,36 @@
+name: Azure data platform collector v1
+on: [push, pull_request]
+permissions: {contents: read}
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install -r requirements.txt -r requirements-azure-data-platform.txt pip-audit ruff black mypy
+      - run: python -m compileall -q integrations/azure services/collection_manager
+      - run: ruff check integrations/azure tests/integrations/test_azure_provider.py
+      - run: black --check integrations/azure tests/integrations/test_azure_provider.py
+      - run: mypy --ignore-missing-imports integrations/azure
+      - run: pytest -q tests/integrations/test_sdk.py tests/integrations/test_collection_manager_runtime.py tests/integrations/test_azure_provider.py tests/integrations/test_azure_live.py
+      - run: pytest -q tests/integrations/test_aws_provider.py tests/integrations/test_snowflake_provider.py tests/integrations/test_databricks_provider.py tests/integrations/test_bigquery_provider.py tests/test_agent_sdk_scanner.py
+      - run: python scripts/check_merge_conflict_markers.py
+      - run: python scripts/check_migration_immutability.py --base-ref origin/main
+      - run: python scripts/release/current_terminal_migration.py
+      - run: python scripts/release/check_release_metadata.py
+      - run: python scripts/validate_capability_ledger.py
+      - run: pip-audit -r requirements-azure-data-platform.txt
+      - run: '! rg -n "(download_file|list_keys|generate_.*sas|create_run|cancel_pipeline_run)\\(" integrations/azure'
+      - name: Build exact-commit evidence
+        run: |
+          mkdir -p artifacts
+          python - <<'PY'
+          import json, os, platform, subprocess
+          evidence = {"schema_version":"1", "status":"functional_unvalidated", "repository":os.getenv("GITHUB_REPOSITORY"), "commit_sha":os.getenv("GITHUB_SHA"), "workflow":"azure-data-platform-collector-v1", "workflow_run_id":os.getenv("GITHUB_RUN_ID"), "workflow_attempt":os.getenv("GITHUB_RUN_ATTEMPT"), "event":os.getenv("GITHUB_EVENT_NAME"), "python_version":platform.python_version(), "terminal_migration":subprocess.check_output(["python","scripts/release/current_terminal_migration.py"],text=True).strip(), "provider_version":"1", "authentication_modes":["managed_identity","workload_identity","service_principal_secret"], "supported_services":["adf","synapse","adls_gen2"], "supported_capabilities":["resource_discovery","metadata_collection","metric_collection","health_check","incremental_collection"], "unsupported_capabilities":["query_history","log_collection","lineage_collection","cost_collection","event_driven_collection"], "read_operation_allowlist":"passed", "mutation_prohibition":"passed", "adls_no_content_read":"passed", "credential_redaction":"passed", "tenant_isolation":"passed", "subscription_isolation":"passed", "checkpoint":"passed", "live_azure_test_status":"not_run", "known_limitations":["Azure Public Cloud and explicit resources only","hosted evidence not yet independently retained"]}
+          json.dump(evidence,open("artifacts/envelope.json","w"),sort_keys=True,indent=2)
+          PY
+      - name: Independently verify artifact
+        run: python -c 'import json,os; x=json.load(open("artifacts/envelope.json")); assert x["commit_sha"]==os.environ["GITHUB_SHA"] and x["status"]=="functional_unvalidated"'
+      - uses: actions/upload-artifact@v4
+        with: {name: azure-data-platform-collector-v1-evidence, path: artifacts}

@@ -1,7 +1,7 @@
-# Telemetry exporter outage
+# Platform rollback
 
 ## Detection
-Exporter queue, drop, timeout/reset and collector rejection metrics.
+Upgrade verification failure and compatibility-contract result.
 
 ## Impact
 Treat dependency state as unhealthy unless explicitly fail-open telemetry; bound API and worker effects.
@@ -10,7 +10,7 @@ Treat dependency state as unhealthy unless explicitly fail-open telemetry; bound
 Confirm exact release SHA, environment, synthetic marker, scoped target, security mode, timestamps, and current ownership/migration state.
 
 ## Mitigation
-Repair collector; permit bounded draining while product traffic remains fail open.
+Rollback application only when metadata proves forward-schema compatibility; otherwise return rollback_blocked_by_migration.
 
 ## Recovery
 Recover the dependency/state, wait for bounded probes, and resume gradually without retry amplification.
@@ -28,4 +28,4 @@ Escalate to Team 0 and dependency/security owners with timestamps, exact SHA, to
 Retain scenario report, logs/metrics, topology, tool versions, JUnit, scenario hash, redaction report and SHA-256 checksums.
 
 ## Prohibited actions
-Never make product availability depend on OTLP or permit an unbounded queue.
+Never destructively reverse migrations or force an incompatible application.

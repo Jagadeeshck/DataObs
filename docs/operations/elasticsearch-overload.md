@@ -1,7 +1,7 @@
-# Telemetry exporter outage
+# Elasticsearch overload
 
 ## Detection
-Exporter queue, drop, timeout/reset and collector rejection metrics.
+429/rejection counters, retry amplification, queue depth and readiness.
 
 ## Impact
 Treat dependency state as unhealthy unless explicitly fail-open telemetry; bound API and worker effects.
@@ -10,7 +10,7 @@ Treat dependency state as unhealthy unless explicitly fail-open telemetry; bound
 Confirm exact release SHA, environment, synthetic marker, scoped target, security mode, timestamps, and current ownership/migration state.
 
 ## Mitigation
-Repair collector; permit bounded draining while product traffic remains fail open.
+Reduce admission/load; respect Retry-After and bounded jitter; recover after rejection rate stabilises.
 
 ## Recovery
 Recover the dependency/state, wait for bounded probes, and resume gradually without retry amplification.
@@ -28,4 +28,4 @@ Escalate to Team 0 and dependency/security owners with timestamps, exact SHA, to
 Retain scenario report, logs/metrics, topology, tool versions, JUnit, scenario hash, redaction report and SHA-256 checksums.
 
 ## Prohibited actions
-Never make product availability depend on OTLP or permit an unbounded queue.
+Never remove retry caps, blindly retry ambiguous writes, or change cluster internals.

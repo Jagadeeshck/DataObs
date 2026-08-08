@@ -534,9 +534,82 @@ alerts:
   for: 10m
   required_labels:
   - component
-  runbook: platform-failover.md
+  runbook: disaster-recovery.md
   deduplication_key: alert_id/component
   recovery_condition: authoritative evidence remains healthy for 10m
   slo: null
   beta_critical: false
   default_enabled: false
+  enablement_requirement: business-approved rehearsal schedule
+- id: elasticsearch-rejection-burst
+  title: Elasticsearch Rejection Burst
+  owner: team-0
+  severity: warning
+  source: dataobs_elasticsearch_requests_total
+  expression: sustained_threshold
+  for: 10m
+  runbook: elasticsearch-overload.md
+  default_enabled: true
+- id: elasticsearch-retry-storm
+  title: Elasticsearch Retry Storm
+  owner: team-0
+  severity: warning
+  source: dataobs_elasticsearch_retries_total
+  expression: retry_amplification_threshold
+  for: 5m
+  runbook: elasticsearch-overload.md
+  default_enabled: true
+- id: oidc-validation-unavailable
+  title: OIDC Validation Unavailable
+  owner: team-0
+  severity: warning
+  source: dataobs_oidc_validation_failures_total
+  expression: sustained_threshold
+  for: 5m
+  runbook: oidc-outage.md
+  default_enabled: true
+- id: telemetry-exporter-queue-drop
+  title: Telemetry Exporter Queue Or Drop Issue
+  owner: team-0
+  severity: warning
+  source: dataobs_telemetry_export_dropped_total
+  expression: sustained_threshold
+  for: 10m
+  runbook: telemetry-exporter-outage.md
+  default_enabled: true
+- id: platform-upgrade-failure
+  title: Platform Upgrade Failure
+  owner: team-0
+  severity: critical
+  source: platform_release_operation
+  expression: terminal_failure
+  for: 0m
+  runbook: platform-upgrade.md
+  default_enabled: true
+- id: platform-rollback-failure
+  title: Platform Rollback Failure
+  owner: team-0
+  severity: critical
+  source: platform_release_operation
+  expression: terminal_failure
+  for: 0m
+  runbook: platform-rollback.md
+  default_enabled: true
+- id: migration-failure
+  title: Migration Failure
+  owner: team-0
+  severity: critical
+  source: platform_migration_operation
+  expression: terminal_failure
+  for: 0m
+  runbook: migration-failure.md
+  default_enabled: true
+- id: restore-verification-failure
+  title: Restore Verification Failure
+  owner: team-0
+  severity: critical
+  source: platform_restore_operation
+  expression: verification_failed
+  for: 0m
+  runbook: restore-verification-failure.md
+  default_enabled: true

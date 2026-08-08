@@ -1639,7 +1639,7 @@ capabilities:
   certification_status: functional_unvalidated
   implementation:
     code_paths: [services/kafka_observer/repository.py, services/product_query/stream_repository.py, ui/dataobs-console/src/features/streams/Connector360.tsx, ui/dataobs-console/src/features/streams/Schema360.tsx]
-    api_paths: [/api/v1/stream-connectors, /api/v1/schema-subjects]
+    api_paths: ["/api/v1/stream-connectors, /api/v1/schema-subjects"]
     ui_routes: [/streams/connectors/:connectorId, /streams/schemas/:subjectId]
     storage_resources: [dataobs-kafka-connectors-v1, dataobs-kafka-schemas-v1]
     migrations: [0009_topic_queue_stream_360, 0010_topic_queue_stream_360_completion]
@@ -1728,7 +1728,7 @@ capabilities:
   release_readiness: blocked
   implementation:
     code_paths: [src/api/monitor_routes.py, services/monitoring/staleness.py, ui/dataobs-console/src/features/quality]
-    api_paths: [/api/v1/quality/overview, /api/v1/quality/monitors, /api/v1/quality/findings]
+    api_paths: ["/api/v1/quality/overview, /api/v1/quality/monitors, /api/v1/quality/findings"]
     ui_routes: ['/quality/*']
     storage_resources: []
     migrations: []
@@ -1878,7 +1878,7 @@ capabilities:
   release_readiness: blocked
   implementation:
     code_paths: [src/platform_lifecycle, src/api/platform_lifecycle_routes.py]
-    api_paths: [/api/v1/platform/environments, /api/v1/platform/clusters, /api/v1/platform/installations, /api/v1/platform/tenants, /api/v1/platform/fleet]
+    api_paths: ["/api/v1/platform/environments, /api/v1/platform/clusters, /api/v1/platform/installations, /api/v1/platform/tenants, /api/v1/platform/fleet"]
     ui_routes: []
     storage_resources: [dataobs-platform-environments-v1, dataobs-platform-clusters-v1, dataobs-platform-installations-v1, dataobs-platform-tenant-lifecycle-v1, logs-dataobs.platform-lifecycle-evidence-*]
     migrations: [0027_platform_environment_tenant_multicluster_lifecycle]
@@ -1904,6 +1904,206 @@ capabilities:
   next_gate: Retain exact-SHA two-cluster lifecycle, failure, upgrade, rollback, isolation and recovery evidence.
   owner: team:platform
   owner_team: team:platform
+  release_target: beta-1
+  implementation_status: implemented
+  certification_status: functional_unvalidated
+  last_audited_at: '2026-08-08'
+  last_audited_commit: pending-final-sha
+- id: pathways.pathway_time_travel_v1
+  name: Pathway time travel v1
+  summary: Bounded evidence-led pathway investigation; no root-cause claim.
+  pillar: data_pipeline
+  domain: pathways
+  state: functional_unvalidated
+  release_readiness: blocked
+  implementation:
+    code_paths: [packages/pathways/investigation.py, packages/pathways/traversal.py]
+    api_paths: ["/api/v1/pathways/{pathway_id}/snapshot"]
+    ui_routes: ["/pathways/:pathwayId"]
+    storage_resources: [logs-dataobs.pathway-topology-snapshot-*]
+    migrations: [0028_pathway_investigation_history]
+  validation:
+    unit: passed
+    integration: defined_not_run
+    real_stack: defined_not_run
+    hosted_ci: defined_not_run
+    browser: defined_not_run
+    accessibility: defined_not_run
+    security: defined_not_run
+    scale: passed
+    upgrade: defined_not_run
+    release: missing
+  evidence:
+    tests: [tests/pathways/test_investigation.py, tests/pathways/test_history_projector.py]
+    workflow_jobs: [pathway-investigation-blast-radius-v1.yml:validate]
+    audit_docs: [docs/development/pathway-investigation-blast-radius-v1-audit.md]
+    runbooks: [docs/operations/pathway-investigation.md]
+    artifacts: [pathway-investigation-blast-radius-v1-evidence (defined; hosted run pending)]
+  blockers: [Exact-SHA hosted Elasticsearch, browser, accessibility and independent evidence are not retained.]
+  non_goals: [Root-cause analysis, remediation, and fabricated historical backfill.]
+  next_gate: Retain and independently verify exact-SHA hosted evidence.
+  owner: team:streaming
+  owner_team: team:streaming
+  release_target: beta-1
+  implementation_status: implemented
+  certification_status: functional_unvalidated
+  last_audited_at: '2026-08-08'
+  last_audited_commit: pending-final-sha
+- id: pathways.pathway_blast_radius_v1
+  name: Pathway blast radius v1
+  summary: Bounded evidence-led pathway investigation; no root-cause claim.
+  pillar: data_pipeline
+  domain: pathways
+  state: functional_unvalidated
+  release_readiness: blocked
+  implementation:
+    code_paths: [packages/pathways/investigation.py, packages/pathways/traversal.py]
+    api_paths: ["/api/v1/pathways/{pathway_id}/blast-radius"]
+    ui_routes: ["/pathways/:pathwayId"]
+    storage_resources: [logs-dataobs.pathway-topology-snapshot-*]
+    migrations: [0028_pathway_investigation_history]
+  validation:
+    unit: passed
+    integration: defined_not_run
+    real_stack: defined_not_run
+    hosted_ci: defined_not_run
+    browser: defined_not_run
+    accessibility: defined_not_run
+    security: defined_not_run
+    scale: passed
+    upgrade: defined_not_run
+    release: missing
+  evidence:
+    tests: [tests/pathways/test_investigation.py, tests/pathways/test_history_projector.py]
+    workflow_jobs: [pathway-investigation-blast-radius-v1.yml:validate]
+    audit_docs: [docs/development/pathway-investigation-blast-radius-v1-audit.md]
+    runbooks: [docs/operations/pathway-investigation.md]
+    artifacts: [pathway-investigation-blast-radius-v1-evidence (defined; hosted run pending)]
+  blockers: [Exact-SHA hosted Elasticsearch, browser, accessibility and independent evidence are not retained.]
+  non_goals: [Root-cause analysis, remediation, and fabricated historical backfill.]
+  next_gate: Retain and independently verify exact-SHA hosted evidence.
+  owner: team:streaming
+  owner_team: team:streaming
+  release_target: beta-1
+  implementation_status: implemented
+  certification_status: functional_unvalidated
+  last_audited_at: '2026-08-08'
+  last_audited_commit: pending-final-sha
+- id: pathways.pathway_before_after_compare_v1
+  name: Pathway before/after comparison v1
+  summary: Bounded evidence-led pathway investigation; no root-cause claim.
+  pillar: data_pipeline
+  domain: pathways
+  state: functional_unvalidated
+  release_readiness: blocked
+  implementation:
+    code_paths: [packages/pathways/investigation.py, packages/pathways/traversal.py]
+    api_paths: ["/api/v1/pathways/{pathway_id}/compare"]
+    ui_routes: ["/pathways/:pathwayId"]
+    storage_resources: [logs-dataobs.pathway-topology-snapshot-*]
+    migrations: [0028_pathway_investigation_history]
+  validation:
+    unit: passed
+    integration: defined_not_run
+    real_stack: defined_not_run
+    hosted_ci: defined_not_run
+    browser: defined_not_run
+    accessibility: defined_not_run
+    security: defined_not_run
+    scale: passed
+    upgrade: defined_not_run
+    release: missing
+  evidence:
+    tests: [tests/pathways/test_investigation.py, tests/pathways/test_history_projector.py]
+    workflow_jobs: [pathway-investigation-blast-radius-v1.yml:validate]
+    audit_docs: [docs/development/pathway-investigation-blast-radius-v1-audit.md]
+    runbooks: [docs/operations/pathway-investigation.md]
+    artifacts: [pathway-investigation-blast-radius-v1-evidence (defined; hosted run pending)]
+  blockers: [Exact-SHA hosted Elasticsearch, browser, accessibility and independent evidence are not retained.]
+  non_goals: [Root-cause analysis, remediation, and fabricated historical backfill.]
+  next_gate: Retain and independently verify exact-SHA hosted evidence.
+  owner: team:streaming
+  owner_team: team:streaming
+  release_target: beta-1
+  implementation_status: implemented
+  certification_status: functional_unvalidated
+  last_audited_at: '2026-08-08'
+  last_audited_commit: pending-final-sha
+- id: pathways.pathway_bottleneck_analysis_v1
+  name: Pathway bottleneck analysis v1
+  summary: Bounded evidence-led pathway investigation; no root-cause claim.
+  pillar: data_pipeline
+  domain: pathways
+  state: functional_unvalidated
+  release_readiness: blocked
+  implementation:
+    code_paths: [packages/pathways/investigation.py, packages/pathways/traversal.py]
+    api_paths: ["/api/v1/pathways/{pathway_id}/bottlenecks"]
+    ui_routes: ["/pathways/:pathwayId"]
+    storage_resources: [logs-dataobs.pathway-topology-snapshot-*]
+    migrations: [0028_pathway_investigation_history]
+  validation:
+    unit: passed
+    integration: defined_not_run
+    real_stack: defined_not_run
+    hosted_ci: defined_not_run
+    browser: defined_not_run
+    accessibility: defined_not_run
+    security: defined_not_run
+    scale: passed
+    upgrade: defined_not_run
+    release: missing
+  evidence:
+    tests: [tests/pathways/test_investigation.py, tests/pathways/test_history_projector.py]
+    workflow_jobs: [pathway-investigation-blast-radius-v1.yml:validate]
+    audit_docs: [docs/development/pathway-investigation-blast-radius-v1-audit.md]
+    runbooks: [docs/operations/pathway-investigation.md]
+    artifacts: [pathway-investigation-blast-radius-v1-evidence (defined; hosted run pending)]
+  blockers: [Exact-SHA hosted Elasticsearch, browser, accessibility and independent evidence are not retained.]
+  non_goals: [Root-cause analysis, remediation, and fabricated historical backfill.]
+  next_gate: Retain and independently verify exact-SHA hosted evidence.
+  owner: team:streaming
+  owner_team: team:streaming
+  release_target: beta-1
+  implementation_status: implemented
+  certification_status: functional_unvalidated
+  last_audited_at: '2026-08-08'
+  last_audited_commit: pending-final-sha
+- id: pathways.pathway_investigation_evidence_v1
+  name: Pathway investigation evidence v1
+  summary: Bounded evidence-led pathway investigation; no root-cause claim.
+  pillar: data_pipeline
+  domain: pathways
+  state: functional_unvalidated
+  release_readiness: blocked
+  implementation:
+    code_paths: [packages/pathways/investigation.py, packages/pathways/traversal.py]
+    api_paths: ["/api/v1/pathways/{pathway_id}/investigation-evidence"]
+    ui_routes: ["/pathways/:pathwayId"]
+    storage_resources: [logs-dataobs.pathway-topology-snapshot-*]
+    migrations: [0028_pathway_investigation_history]
+  validation:
+    unit: passed
+    integration: defined_not_run
+    real_stack: defined_not_run
+    hosted_ci: defined_not_run
+    browser: defined_not_run
+    accessibility: defined_not_run
+    security: defined_not_run
+    scale: passed
+    upgrade: defined_not_run
+    release: missing
+  evidence:
+    tests: [tests/pathways/test_investigation.py, tests/pathways/test_history_projector.py]
+    workflow_jobs: [pathway-investigation-blast-radius-v1.yml:validate]
+    audit_docs: [docs/development/pathway-investigation-blast-radius-v1-audit.md]
+    runbooks: [docs/operations/pathway-investigation.md]
+    artifacts: [pathway-investigation-blast-radius-v1-evidence (defined; hosted run pending)]
+  blockers: [Exact-SHA hosted Elasticsearch, browser, accessibility and independent evidence are not retained.]
+  non_goals: [Root-cause analysis, remediation, and fabricated historical backfill.]
+  next_gate: Retain and independently verify exact-SHA hosted evidence.
+  owner: team:streaming
+  owner_team: team:streaming
   release_target: beta-1
   implementation_status: implemented
   certification_status: functional_unvalidated
@@ -1937,3 +2137,4 @@ migration_checksums:
   0025_stream_pathway_reliability_production_closure: 5d68f3c0acb2b265181276f3080f15d3acbf8abc39585b85715d9f5f6691fb30
   0026_stream_anomaly_retention_intelligence: dba7efc48003dc5877af8ac2f0e6949dd44878399e9cf3e2a77043f6d1009b44
   0027_platform_environment_tenant_multicluster_lifecycle: 90b3c20f9ee44e5fa4a502e907fa3adcf3807a423ca42bad5071714d53476a25
+  0028_pathway_investigation_history: 014f5406d0e063dfa1e1e51188e857028a28d6518d79a3a4907df783ea13d092

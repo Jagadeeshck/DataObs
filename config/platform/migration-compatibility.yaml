@@ -1,5 +1,5 @@
 schema_version: "1"
-terminal_migration: 0027_platform_environment_tenant_multicluster_lifecycle
+terminal_migration: 0028_pathway_investigation_history
 compatibility: application-backward-compatible
 notes: >-
   The migration adds isolated lifecycle resources. Application rollback may stop lifecycle writers while retaining

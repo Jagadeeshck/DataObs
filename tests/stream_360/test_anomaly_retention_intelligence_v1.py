@@ -50,7 +50,7 @@ def series(values):
 
 
 def test_migration_is_forward_only_after_reliability_closure():
-    migration = migrations()[-1]
+    migration = next(item for item in migrations() if item.migration_id == "0026_stream_anomaly_retention_intelligence")
     assert migration.migration_id == "0026_stream_anomaly_retention_intelligence"
     assert migration.dependencies == ["0025_stream_pathway_reliability_production_closure"]
 

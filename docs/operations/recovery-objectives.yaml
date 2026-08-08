@@ -1,0 +1,7 @@
+schema_version: "1.0"
+targets:
+  rpo: null
+  rto: null
+observations: []
+# Observations are appended only by a retained, exact-SHA certification run.
+# A measured recovery point or recovery time is not a contractual objective.

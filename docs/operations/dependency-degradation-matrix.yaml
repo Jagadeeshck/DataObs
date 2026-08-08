@@ -1,0 +1,93 @@
+schema_version: "1.0"
+unknown_dependency_state: unhealthy
+scenarios:
+  elasticsearch_unavailable:
+    api: bounded_503
+    worker: bounded_backoff_no_checkpoint_advance
+    readiness: fail
+    liveness: pass
+    retry: idempotent_only_exponential_jitter_bounded
+    recovery: probe_then_resume
+    alert: elasticsearch-prolonged-unavailable
+    runbook: elasticsearch-outage.md
+  elasticsearch_slow:
+    api: bounded_timeout
+    worker: bounded_backoff
+    readiness: fail_after_health_budget
+    liveness: pass
+    retry: idempotent_only_max_attempts
+    recovery: latency_probe_then_resume
+    alert: elasticsearch-prolonged-unavailable
+    runbook: elasticsearch-outage.md
+  elasticsearch_429:
+    api: safe_503_or_429
+    worker: exponential_jitter_backoff
+    readiness: fail_when_sustained
+    liveness: pass
+    retry: idempotent_only_retry_after_bounded
+    recovery: rejection_rate_below_threshold
+    alert: elasticsearch-rejection-burst
+    runbook: elasticsearch-overload.md
+  elasticsearch_intermittent_503:
+    api: bounded_503
+    worker: exponential_jitter_backoff
+    readiness: degraded_then_fail
+    liveness: pass
+    retry: idempotent_only_bounded
+    recovery: consecutive_successful_probes
+    alert: elasticsearch-retry-storm
+    runbook: elasticsearch-outage.md
+  oidc_jwks_unavailable:
+    api: authentication_fails_closed
+    worker: existing_authenticated_sessions_only
+    readiness: fail_when_validation_state_unknown
+    liveness: pass
+    retry: bounded_jwks_refresh
+    recovery: validated_jwks_refresh
+    alert: oidc-validation-unavailable
+    runbook: oidc-outage.md
+  invalid_oidc_signing_key:
+    api: reject_401
+    worker: unaffected_internal_work
+    readiness: fail_if_active_keyset_invalid
+    liveness: pass
+    retry: refresh_once_then_reject
+    recovery: valid_trusted_keyset
+    alert: oidc-validation-unavailable
+    runbook: oidc-outage.md
+  otlp_unavailable:
+    api: continue_product_requests
+    worker: continue_product_work
+    readiness: pass_product_fail_open
+    liveness: pass
+    retry: bounded_queue_and_backoff
+    recovery: drain_with_rate_limit
+    alert: telemetry-exporter-queue-drop
+    runbook: telemetry-exporter-outage.md
+  otlp_slow:
+    api: continue_without_blocking
+    worker: continue_without_blocking
+    readiness: pass_product_fail_open
+    liveness: pass
+    retry: bounded_queue_timeout
+    recovery: drain_with_rate_limit
+    alert: telemetry-exporter-queue-drop
+    runbook: telemetry-exporter-outage.md
+  dns_transient_failure:
+    api: bounded_dependency_failure
+    worker: bounded_backoff
+    readiness: fail_for_required_dependency
+    liveness: pass
+    retry: bounded_dns_and_connection_attempts
+    recovery: successful_resolution_and_probe
+    alert: elasticsearch-prolonged-unavailable
+    runbook: elasticsearch-outage.md
+  ingress_disruption:
+    api: temporarily_unreachable
+    worker: continue_internal_work
+    readiness: accurate_at_pod_endpoint
+    liveness: pass
+    retry: client_policy_not_server_side_amplification
+    recovery: endpoints_and_routes_converged
+    alert: api-readiness-unavailable
+    runbook: platform-health.md

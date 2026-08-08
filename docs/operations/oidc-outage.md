@@ -1,7 +1,7 @@
-# Telemetry exporter outage
+# OIDC/JWKS outage
 
 ## Detection
-Exporter queue, drop, timeout/reset and collector rejection metrics.
+Authentication validation errors, JWKS refresh failure and readiness.
 
 ## Impact
 Treat dependency state as unhealthy unless explicitly fail-open telemetry; bound API and worker effects.
@@ -10,7 +10,7 @@ Treat dependency state as unhealthy unless explicitly fail-open telemetry; bound
 Confirm exact release SHA, environment, synthetic marker, scoped target, security mode, timestamps, and current ownership/migration state.
 
 ## Mitigation
-Repair collector; permit bounded draining while product traffic remains fail open.
+Validate issuer networking and trusted keys; refresh boundedly; authentication stays fail closed.
 
 ## Recovery
 Recover the dependency/state, wait for bounded probes, and resume gradually without retry amplification.
@@ -28,4 +28,4 @@ Escalate to Team 0 and dependency/security owners with timestamps, exact SHA, to
 Retain scenario report, logs/metrics, topology, tool versions, JUnit, scenario hash, redaction report and SHA-256 checksums.
 
 ## Prohibited actions
-Never make product availability depend on OTLP or permit an unbounded queue.
+Never bypass OIDC, accept an unknown key, issuer or audience, or log tokens.

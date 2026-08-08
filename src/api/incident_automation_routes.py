@@ -25,6 +25,14 @@ class DecisionBody(BaseModel):
     comment: str = Field(default="", max_length=1000)
 
 
+class ExecutionRequestBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    preview_id: str = Field(min_length=1, max_length=100)
+    incident_revision: str = Field(min_length=1, max_length=120)
+    target_revision: str = Field(min_length=1, max_length=120)
+    approval_id: str | None = Field(default=None, max_length=100)
+
+
 def actor(request: Request) -> str:
     subject = getattr(getattr(request.state, "principal", None), "subject", None)
     if not isinstance(subject, str) or not subject.strip():
@@ -111,7 +119,9 @@ def create_incident_automation_router(auth_dependency: Callable[..., Any]) -> AP
             )
         except Expired as exc:
             raise HTTPException(410, str(exc)) from exc
-        except (ValueError, Conflict) as exc:
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from exc
+        except Conflict as exc:
             raise HTTPException(409, str(exc)) from exc
 
     @router.get("/approvals/{approval_id}")
@@ -145,6 +155,8 @@ def create_incident_automation_router(auth_dependency: Callable[..., Any]) -> AP
             raise HTTPException(410, str(exc)) from exc
         except Conflict as exc:
             raise HTTPException(409, str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from exc
 
     @router.post("/approvals/{approval_id}/approve")
     async def approve(
@@ -164,5 +176,40 @@ def create_incident_automation_router(auth_dependency: Callable[..., Any]) -> AP
         if not item:
             raise HTTPException(404, "Execution not found")
         return item.model_dump(mode="json")
+
+    @router.post("/executions", status_code=201)
+    async def create_execution(
+        body: ExecutionRequestBody,
+        request: Request,
+        environment: str,
+        idempotency_key: str = Header(alias="Idempotency-Key"),
+        repo=Depends(repository),
+    ):
+        preview = repo.get_preview(request.state.tenant_id, environment, body.preview_id)
+        if not preview:
+            raise HTTPException(404, "Preview not found")
+        try:
+            return (
+                AutomationCoordinator(repo)
+                .queue_execution(
+                    preview,
+                    actor=actor(request),
+                    idempotency_key=idempotency_key,
+                    current_incident_revision=body.incident_revision,
+                    current_target_revision=body.target_revision,
+                    approval_id=body.approval_id,
+                    request_id=request.state.request_id,
+                )
+                .model_dump(mode="json")
+            )
+        except Expired as exc:
+            raise HTTPException(410, str(exc)) from exc
+        except Conflict as exc:
+            raise HTTPException(409, str(exc)) from exc
+        except PolicyDenied as exc:
+            status = 503 if "not configured" in str(exc) else 422
+            raise HTTPException(status, str(exc)) from exc
+        except PermissionError as exc:
+            raise HTTPException(403, str(exc)) from exc
 
     return router

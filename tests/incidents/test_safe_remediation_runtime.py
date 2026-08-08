@@ -147,7 +147,7 @@ def test_approval_separation_expiry_occ_and_one_time_consumption():
 
 
 def enabled_preview():
-    item = preview(provider_ready=True)
+    item = preview(provider_ready=True, actor="operator")
     # Catalogue intentionally has no enabled provider. This test models a certified internal adapter while retaining
     # the exact immutable fingerprints produced by the preview contract.
     return item.model_copy(

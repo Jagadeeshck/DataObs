@@ -115,6 +115,7 @@ class IncidentWorkbenchService:
             "owner": item.owner_team,
             "business_service": item.business_service,
             "affected_assets": item.affected_assets[:5],
+            "affected_asset_count": len(item.affected_assets),
             "occurrence_count": item.occurrence_count,
             "opened_at": item.opened_at,
             "last_observed_at": item.last_observed_at,

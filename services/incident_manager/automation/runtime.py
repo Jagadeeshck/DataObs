@@ -11,8 +11,9 @@ from uuid import uuid4
 
 from elasticsearch import Elasticsearch
 
-from .elasticsearch_repository import OPERATION_READ, ElasticsearchAutomationRepository
+from .elasticsearch_repository import APPROVAL_READ, OPERATION_READ, ElasticsearchAutomationRepository
 from .execution import ExecutionWorker, ExecutorRegistry
+from .reconciliation import AutomationReconciler
 
 
 def _repository() -> ElasticsearchAutomationRepository:
@@ -30,12 +31,26 @@ def main(argv: list[str] | None = None) -> int:
     repository = _repository()
     worker = ExecutionWorker(repository, ExecutorRegistry(), f"automation-{uuid4()}")
     if args.command == "health":
-        response = repository.client.count(index=OPERATION_READ, query={"term": {"status": "queued"}})
-        print(json.dumps({"status": "ok", "queued": int(response["count"])}))
+
+        def count(index: str, query: dict[str, object]) -> int:
+            return int(repository.client.count(index=index, query=query)["count"])
+
+        print(
+            json.dumps(
+                {
+                    "status": "ok",
+                    "queued": count(OPERATION_READ, {"term": {"status": "queued"}}),
+                    "reserved_approvals": count(APPROVAL_READ, {"term": {"approval_state": "reserved"}}),
+                    "reconciliation_required": count(OPERATION_READ, {"term": {"status": "reconciliation_required"}}),
+                    "pending_evidence": count(OPERATION_READ, {"term": {"metadata.transition_event_pending": True}}),
+                }
+            )
+        )
         return 0
     if args.command == "reconcile":
-        # V1 never guesses provider state. Operators must configure a certified lookup adapter first.
-        print(json.dumps({"status": "safe_noop", "reason": "no_certified_executor_lookup"}))
+        approvals = AutomationReconciler(repository).run_once(args.batch_size)
+        executions = worker.recover_expired(args.batch_size)
+        print(json.dumps({"status": "ok", "approvals_repaired": approvals, "executions_recovered": executions}))
         return 0
     if args.command == "once":
         print(json.dumps({"processed": worker.run_once(args.batch_size)}))

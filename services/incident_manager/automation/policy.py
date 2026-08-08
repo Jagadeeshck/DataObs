@@ -35,6 +35,8 @@ def evaluate(
         return PolicyDecision(risk, False, "risk_not_permitted_v1", True)
     if incident_state in definition.disallowed_incident_states:
         return PolicyDecision(risk, False, "incident_state_disallowed", risk == Risk.MEDIUM)
+    if definition.required_incident_states and incident_state not in definition.required_incident_states:
+        return PolicyDecision(risk, False, "incident_state_not_allowed", risk == Risk.MEDIUM)
     if not provider_ready or not definition.execution_enabled:
         return PolicyDecision(
             risk, False, "executor_not_configured", definition.approval_required or risk == Risk.MEDIUM

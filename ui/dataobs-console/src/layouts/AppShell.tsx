@@ -1,50 +1,68 @@
-import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   consoleRoutes,
   routeForPath,
   matchRoute,
   visibleRoutes,
-  type NavigationGroup,
+  visibleWorkspaces,
+  workspaceForId,
+  breadcrumbsForPath,
+  safeParentPath,
+  type ConsoleWorkspace,
 } from "../app/routes";
 import { investigationPath } from "../investigation/context";
 import { DataStatusBanner, LoadingSkeleton } from "../components/Evidence";
 import { useProductContext } from "../state/context";
 import { QuickFind } from "../features/quick-find/QuickFind";
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export function ProductContextSelector() {
   const { tenant, environment, availableTenants, setTenant, setEnvironment } =
     useProductContext();
   const current = availableTenants.find((item) => item.id === tenant);
   return (
-    <div className="context-selectors">
-      <label>
-        Tenant
-        <select
-          aria-label="Tenant"
-          value={tenant}
-          onChange={(event) => setTenant(event.target.value)}
-        >
-          {availableTenants.map((item) => (
-            <option key={item.id} value={item.id}>
-              {item.name ?? item.id}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label>
-        Environment
-        <select
-          aria-label="Environment"
-          value={environment}
-          onChange={(event) => setEnvironment(event.target.value)}
-        >
-          {current?.environments.map((item) => (
-            <option key={item}>{item}</option>
-          ))}
-        </select>
-      </label>
-    </div>
+    <details className="context-selector">
+      <summary
+        aria-label={`Current context: ${current?.name ?? tenant} / ${environment}`}
+      >
+        <small>Tenant / Environment</small>
+        <strong>
+          {current?.name ?? tenant} / {environment}
+        </strong>
+      </summary>
+      <div className="context-selector-panel">
+        <label>
+          Tenant
+          <select
+            aria-label="Tenant"
+            value={tenant}
+            onChange={(event) => setTenant(event.target.value)}
+          >
+            {availableTenants.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.name ?? item.id}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Environment
+          <select
+            aria-label="Environment"
+            value={environment}
+            onChange={(event) => setEnvironment(event.target.value)}
+          >
+            {current?.environments.map((item) => (
+              <option key={item}>{item}</option>
+            ))}
+          </select>
+        </label>
+        <small>
+          Changing context clears scoped evidence and returns detail pages to a
+          safe parent.
+        </small>
+      </div>
+    </details>
   );
 }
 export function TimeRangeSelector() {
@@ -113,9 +131,47 @@ export function UserMenu() {
     </details>
   );
 }
-export function AppHeader() {
+export function WorkspaceSwitcher() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { identity } = useProductContext();
+  const current = routeForPath(location.pathname);
+  const workspaces = visibleWorkspaces(identity?.permissions ?? []);
+  return (
+    <label className="workspace-switcher">
+      <span className="sr-only">Workspace</span>
+      <select
+        aria-label="Workspace"
+        value={current?.workspace ?? "home"}
+        onChange={(event) =>
+          navigate(
+            workspaceForId(event.target.value as ConsoleWorkspace).defaultPath,
+          )
+        }
+      >
+        {workspaces.map((workspace) => (
+          <option key={workspace.id} value={workspace.id}>
+            {workspace.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+export function AppHeader({
+  onOpenNavigation,
+}: {
+  onOpenNavigation: () => void;
+}) {
   return (
     <header className="app-header">
+      <button
+        className="mobile-nav-trigger"
+        onClick={onOpenNavigation}
+        aria-label="Open product navigation"
+      >
+        ☰
+      </button>
       <div className="brand">
         <span className="brand-mark">D</span>
         <div>
@@ -123,8 +179,11 @@ export function AppHeader() {
           <small>CONSOLE</small>
         </div>
       </div>
-      <div className="context">
+      <WorkspaceSwitcher />
+      <div className="header-search">
         <QuickFind />
+      </div>
+      <div className="context">
         <NavLink
           className="activity-indicator"
           to="/activity"
@@ -140,68 +199,130 @@ export function AppHeader() {
     </header>
   );
 }
-export function PrimaryNavigation() {
+export function PrimaryNavigation({
+  collapsed,
+  onToggle,
+  onNavigate,
+}: {
+  collapsed: boolean;
+  onToggle: () => void;
+  onNavigate?: () => void;
+}) {
+  const location = useLocation();
   const { identity } = useProductContext();
-  const groups: NavigationGroup[] = [
-    "Overview",
-    "Observe",
-    "Respond",
-    "Configure",
-  ];
-  const routes = visibleRoutes(identity?.permissions ?? []);
+  const current = routeForPath(location.pathname);
+  const permissions = identity?.permissions ?? [];
+  const workspaces = visibleWorkspaces(permissions);
+  const routes = visibleRoutes(permissions);
+  const activeWorkspace = current?.workspace ?? "home";
+  const capabilityRoutes = routes.filter(
+    (route) =>
+      route.workspace === activeWorkspace &&
+      route.navigationLevel === "secondary",
+  );
+  const capability = current?.capabilityId;
+  const contextualRoutes = routes.filter(
+    (route) =>
+      route.workspace === activeWorkspace &&
+      route.navigationLevel === "contextual" &&
+      route.capabilityId === capability,
+  );
   return (
-    <nav aria-label="Primary">
-      {groups.map((group) => (
-        <section key={group} aria-labelledby={`nav-${group}`}>
-          <h2 id={`nav-${group}`}>{group}</h2>
-          {routes
-            .filter((route) => route.group === group && route.navigation)
-            .map((route) =>
-              route.availability === "available" ||
-              route.availability === "preview" ? (
-                <NavLink
-                  key={route.id}
-                  to={route.path}
-                  end={route.path === "/"}
-                >
-                  {route.icon} <span>{route.name}</span>
-                  {route.availability === "preview" && <em>Preview</em>}
-                </NavLink>
-              ) : (
-                <span
-                  className="nav-disabled"
-                  key={route.id}
-                  aria-disabled="true"
-                >
-                  {route.icon} <b>{route.name}</b>
-                  <em>{route.availability.replace("_", " ")}</em>
-                </span>
-              ),
-            )}
+    <nav
+      aria-label="Product navigation"
+      className={collapsed ? "collapsed" : undefined}
+    >
+      <div className="workspace-navigation" aria-label="Workspaces">
+        {workspaces.map((workspace) => (
+          <NavLink
+            key={workspace.id}
+            to={workspace.defaultPath}
+            onClick={onNavigate}
+            aria-label={workspace.label}
+            className={workspace.id === activeWorkspace ? "active" : undefined}
+            title={collapsed ? workspace.label : undefined}
+          >
+            <span aria-hidden="true">{workspace.icon}</span>
+            <span>{workspace.label}</span>
+          </NavLink>
+        ))}
+      </div>
+      {!collapsed && (
+        <section aria-labelledby="capabilities-heading">
+          <h2 id="capabilities-heading">
+            {workspaceForId(activeWorkspace).label} capabilities
+          </h2>
+          {capabilityRoutes.map((route) => (
+            <NavLink
+              key={route.id}
+              to={route.path}
+              end={route.path === "/"}
+              onClick={onNavigate}
+            >
+              {route.icon}
+              <span>{route.name}</span>
+              {route.availability === "preview" && <em>Preview</em>}
+            </NavLink>
+          ))}
         </section>
-      ))}
+      )}
+      {!collapsed && contextualRoutes.length > 0 && (
+        <section
+          className="contextual-navigation"
+          aria-labelledby="contextual-heading"
+        >
+          <h2 id="contextual-heading">In this capability</h2>
+          {contextualRoutes.map((route) => (
+            <NavLink key={route.id} to={route.path} onClick={onNavigate}>
+              {route.name}
+            </NavLink>
+          ))}
+        </section>
+      )}
+      <button
+        className="nav-collapse"
+        onClick={onToggle}
+        aria-label={collapsed ? "Expand navigation" : "Collapse navigation"}
+        aria-expanded={!collapsed}
+      >
+        {collapsed ? "»" : "« Collapse"}
+      </button>
     </nav>
   );
 }
 export function Breadcrumbs() {
   const location = useLocation();
-  const route = routeForPath(location.pathname);
-  const parent = route?.parentId
-    ? consoleRoutes.find((candidate) => candidate.id === route.parentId)
-    : undefined;
+  const crumbs = breadcrumbsForPath(location.pathname);
   return (
     <nav className="breadcrumbs" aria-label="Breadcrumb">
       <NavLink to="/">DataObs</NavLink>
-      {parent && (
-        <>
+      {crumbs.map((crumb, index) => (
+        <span className="breadcrumb-item" key={crumb.id}>
           <span aria-hidden="true">/</span>
-          <NavLink to={parent.path}>{parent.breadcrumb}</NavLink>
-        </>
-      )}
-      {route?.id !== "command-center" && <span aria-hidden="true">/</span>}
-      <span aria-current="page">{route?.breadcrumb ?? "Unknown route"}</span>
+          {index === crumbs.length - 1 ? (
+            <span aria-current="page">{crumb.label}</span>
+          ) : (
+            <NavLink to={crumb.path}>{crumb.label}</NavLink>
+          )}
+        </span>
+      ))}
     </nav>
   );
+}
+export function ContextSwitchSafety() {
+  const { contextSwitchGeneration } = useProductContext();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const previous = useRef(contextSwitchGeneration);
+  useEffect(() => {
+    if (previous.current === contextSwitchGeneration) return;
+    previous.current = contextSwitchGeneration;
+    const current = routeForPath(location.pathname);
+    if (current?.entityParameters?.length) {
+      navigate(safeParentPath(current), { replace: true });
+    }
+  }, [contextSwitchGeneration, location.pathname, navigate]);
+  return null;
 }
 export function InvestigateCurrentEntity() {
   const location = useLocation();
@@ -251,6 +372,10 @@ export function ConnectivityBanner() {
 }
 export function AppShell() {
   const { status, retryAuthentication } = useProductContext();
+  const [navigationOpen, setNavigationOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(
+    () => localStorage.getItem("dataobs:shell:collapsed") === "true",
+  );
   const location = useLocation();
   useEffect(() => {
     document.title = `${routeForPath(location.pathname)?.name ?? "Page not found"} · DataObs`;
@@ -287,11 +412,30 @@ export function AppShell() {
       <a className="skip-link" href="#main-content">
         Skip to content
       </a>
-      <AppHeader />
-      <aside>
-        <PrimaryNavigation />
+      <AppHeader onOpenNavigation={() => setNavigationOpen(true)} />
+      {navigationOpen && (
+        <button
+          className="navigation-backdrop"
+          aria-label="Close product navigation"
+          onClick={() => setNavigationOpen(false)}
+        />
+      )}
+      <aside
+        className={`${collapsed ? "is-collapsed" : ""} ${navigationOpen ? "is-open" : ""}`}
+      >
+        <PrimaryNavigation
+          collapsed={collapsed}
+          onNavigate={() => setNavigationOpen(false)}
+          onToggle={() =>
+            setCollapsed((value) => {
+              localStorage.setItem("dataobs:shell:collapsed", String(!value));
+              return !value;
+            })
+          }
+        />
       </aside>
       <main id="main-content" tabIndex={-1}>
+        <ContextSwitchSafety />
         <Breadcrumbs />
         <InvestigateCurrentEntity />
         <ConnectivityBanner />

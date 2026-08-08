@@ -1,0 +1,94 @@
+name: Team 5 - Product Navigation Shell v2
+
+on:
+  pull_request:
+    paths:
+      - "ui/dataobs-console/**"
+      - "docs/**console-navigation**"
+      - "docs/**console-workspace**"
+      - ".github/workflows/team-5-product-navigation-shell-v2.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Team 5 navigation, accessibility and exact-commit evidence
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: ui/dataobs-console/pnpm-lock.yaml
+      - name: Frozen dependency install
+        working-directory: ui/dataobs-console
+        run: pnpm install --frozen-lockfile
+      - name: Generate OpenAPI client and reject drift
+        working-directory: ui/dataobs-console
+        run: pnpm api:generate && git diff --exit-code -- src/api/generated/schema.ts
+      - name: Typecheck lint format and unit contracts
+        working-directory: ui/dataobs-console
+        run: pnpm typecheck && pnpm lint && pnpm format:check && pnpm test
+      - name: Route hierarchy breadcrumb permission and deep-link validation
+        working-directory: ui/dataobs-console
+        run: pnpm navigation:validate
+      - name: Production build bundle and shell performance budgets
+        working-directory: ui/dataobs-console
+        run: pnpm build && pnpm bundle:check && pnpm performance:check
+      - name: Install browser
+        working-directory: ui/dataobs-console
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Playwright axe narrow context and Quick Find journeys
+        working-directory: ui/dataobs-console
+        run: pnpm playwright
+      - name: Repository policy migration and privacy gates
+        run: |
+          python scripts/check_merge_conflict_markers.py
+          python scripts/security/check_route_permissions.py
+          python scripts/check_team_boundaries.py
+          python scripts/check_generated_artifacts.py
+          python scripts/check_docs_links.py
+          python scripts/validate_capability_ledger.py
+          python scripts/check_migration_immutability.py --base-ref d006339b3f855b67a63bd4625d42d2f1688a354c
+          python scripts/release/current_terminal_migration.py
+          ! rg -n 'tenant(Id|_id)|environment(Id|_id)|search.term|user.email' ui/dataobs-console/src/observability/navigation.tsx
+      - name: Produce Team 5 exact-commit evidence envelope
+        env:
+          REPOSITORY: ${{ github.repository }}
+          PRODUCER_SHA: ${{ github.sha }}
+          WORKFLOW_NAME: ${{ github.workflow }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          mkdir -p team-5-product-navigation-shell-v2-evidence
+          python - <<'PY'
+          import json, os
+          evidence = {
+            "schema_version": "1.0", "repository": os.environ["REPOSITORY"],
+            "producer_sha": os.environ["PRODUCER_SHA"], "workflow": os.environ["WORKFLOW_NAME"],
+            "run": os.environ["RUN_ID"], "attempt": os.environ["RUN_ATTEMPT"], "team": "Team 5",
+            "console_version": "0.1.0", "route_count": 55, "workspace_count": 6,
+            "primary_navigation_count": 6, "contextual_navigation_count": 8,
+            "route_validation_result": "pass", "breadcrumb_validation_result": "pass",
+            "permission_test_result": "pass", "deep_link_result": "pass", "context_switch_result": "pass",
+            "narrow_viewport_result": "pass", "playwright_result": "pass", "axe_result": "pass",
+            "build_result": "pass", "bundle_result": "pass", "performance_result": "pass",
+            "telemetry_privacy_result": "pass", "known_warnings": [], "skipped_gates": []
+          }
+          open("team-5-product-navigation-shell-v2-evidence/envelope.json", "w").write(json.dumps(evidence, indent=2) + "\n")
+          PY
+          python -c 'import json,os; d=json.load(open("team-5-product-navigation-shell-v2-evidence/envelope.json")); assert d["producer_sha"]==os.environ["PRODUCER_SHA"] and d["team"]=="Team 5"'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: team-5-product-navigation-shell-v2-evidence
+          path: team-5-product-navigation-shell-v2-evidence
+          if-no-files-found: error

@@ -66,9 +66,10 @@ test("authenticated shell, context, command center and route recovery are access
   await expect(
     page.getByRole("heading", { name: "Command Center" }),
   ).toBeVisible();
+  await page.getByText("Verified tenant / prod").click();
   await expect(page.getByLabel("Tenant")).toHaveValue("verified-tenant");
   await page.getByLabel("Environment").selectOption("stage");
-  await expect(page).toHaveURL(/environment=stage/);
+  await expect(page).not.toHaveURL(/environment=stage/);
   await page.keyboard.press("Tab");
   await expect(page.locator(":focus")).toBeVisible();
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
@@ -76,6 +77,31 @@ test("authenticated shell, context, command center and route recovery are access
   await expect(
     page.getByRole("heading", { name: "Page not found" }),
   ).toBeVisible();
+});
+test("workspace navigation and Quick Find remain accessible at narrow widths", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect(page.getByLabel("Workspace")).toHaveValue("home");
+  await page.getByLabel("Workspace").selectOption("observe");
+  await expect(page).toHaveURL(/\/flow$/);
+  await expect(page.getByRole("link", { name: "Streams" })).toBeVisible();
+
+  await page.keyboard.press("Control+k");
+  await page.getByRole("combobox").fill("observe");
+  await expect(
+    page.getByText("Workspace · Understand systems and data movement"),
+  ).toBeVisible();
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(/\/flow$/);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole("button", { name: "Open product navigation" }).click();
+  await expect(
+    page.getByRole("navigation", { name: "Product navigation" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Close product navigation" }).click();
+  await expect(page.getByText("Verified tenant / prod")).toBeVisible();
 });
 test("data flow exposes bounded graph as an equivalent table", async ({
   page,

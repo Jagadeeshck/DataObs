@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { buildRoutePath, visibleRoutes } from "../../app/routes";
+import {
+  buildRoutePath,
+  visibleRoutes,
+  visibleWorkspaces,
+} from "../../app/routes";
 import {
   SearchController,
   searchProviders,
@@ -33,7 +37,27 @@ export function QuickFind() {
         path: item.route,
         detail: `Recent ${item.entityType}`,
       }));
-    return visibleRoutes(identity?.permissions ?? [])
+    const workspaceResults = visibleWorkspaces(identity?.permissions ?? [])
+      .filter((workspace) =>
+        [workspace.label, workspace.description, ...workspace.keywords]
+          .join(" ")
+          .toLocaleLowerCase()
+          .includes(needle),
+      )
+      .sort((a, b) =>
+        a.label.toLocaleLowerCase() === needle
+          ? -1
+          : b.label.toLocaleLowerCase() === needle
+            ? 1
+            : 0,
+      )
+      .map((workspace) => ({
+        id: `workspace-${workspace.id}`,
+        name: workspace.label,
+        path: workspace.defaultPath,
+        detail: `Workspace · ${workspace.description}`,
+      }));
+    const routeResults = visibleRoutes(identity?.permissions ?? [])
       .filter(
         (route) =>
           route.quickFind &&
@@ -49,6 +73,7 @@ export function QuickFind() {
         path: route.path,
         detail: `${route.group} · ${route.availability.replace("_", " ")}`,
       }));
+    return [...workspaceResults, ...routeResults];
   }, [environment, identity?.permissions, query, tenant]);
   useEffect(() => {
     if (!open || query.trim().length < 2) {

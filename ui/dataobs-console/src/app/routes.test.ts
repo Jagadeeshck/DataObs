@@ -77,7 +77,7 @@ describe("console route registry", () => {
       breadcrumbsForPath("/quality/monitors/orders%20freshness").map(
         (c) => c.label,
       ),
-    ).toEqual(["Data Quality", "Monitors", "orders freshness"]);
+    ).toEqual(["Observe", "Data Quality", "Monitors", "orders freshness"]);
     expect(titleForPath("/incidents/INC-123")).toBe(
       "DataObs — Incident INC-123",
     );

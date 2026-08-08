@@ -486,6 +486,108 @@ dd {
   overflow: auto;
   max-height: 65vh;
 }
+.activity-indicator {
+  white-space: nowrap;
+  padding: 0.45rem 0.65rem;
+  border: 1px solid #64748b;
+  border-radius: 0.35rem;
+}
+.activity-center > header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: start;
+}
+.activity-tabs,
+.activity-filters,
+.activity-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.activity-tabs [aria-selected="true"] {
+  border-color: var(--color-accent, #36a2ff);
+  font-weight: 700;
+}
+.activity-filters {
+  border-block: 1px solid #354052;
+  padding: 0.75rem 0;
+  margin: 1rem 0;
+}
+.activity-filters label {
+  display: grid;
+  gap: 0.2rem;
+}
+.activity-feed {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+.activity-feed li {
+  border: 1px solid #354052;
+  border-inline-start: 0.3rem solid #36a2ff;
+  padding: 0.8rem;
+}
+.activity-feed li.seen {
+  border-inline-start-color: #64748b;
+  opacity: 0.86;
+}
+.activity-summary {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  text-align: start;
+  background: transparent;
+  border: 0;
+  color: inherit;
+}
+.activity-summary span,
+.activity-summary small {
+  display: block;
+}
+.activity-meta {
+  font-size: 0.85rem;
+  margin: 0.6rem 0;
+}
+.activity-meta span {
+  border: 1px solid #64748b;
+  border-radius: 999px;
+  padding: 0.1rem 0.45rem;
+}
+.activity-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgb(0 0 0 / 0.65);
+  display: flex;
+  justify-content: end;
+}
+.activity-drawer {
+  width: min(32rem, 92vw);
+  height: 100%;
+  overflow: auto;
+  background: #111827;
+  padding: 1.25rem;
+  box-shadow: -1rem 0 2rem rgb(0 0 0 / 0.3);
+}
+.activity-drawer dt {
+  color: #9ca3af;
+  margin-top: 0.8rem;
+}
+.activity-drawer dd {
+  margin: 0.15rem 0;
+}
+@media (max-width: 700px) {
+  .activity-center > header,
+  .activity-summary {
+    flex-direction: column;
+  }
+  .activity-filters label {
+    width: 100%;
+  }
+}
 .table-scroll table {
   width: 100%;
   border-collapse: collapse;

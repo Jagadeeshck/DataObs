@@ -1,7 +1,5 @@
-# DataObs incident automation
+# Safe remediation
 
-This document describes the Elastic Streams and Workflows incident-automation vertical slice. Findings are normalized into versioned contracts, deterministically deduplicated and correlated into incidents, then linked to Kibana Workflows, Elastic Cases, notifications, approval records and safe DataObs actions.
+DataObs v1 provides a deny-by-default control plane, not autonomous remediation. See [control-plane architecture](safe-remediation-control-plane.md), [approval runtime](action-approval-runtime.md), and [verification semantics](action-verification.md).
 
-Technical-preview boundaries: Observability Streams enrichment and event-driven workflow triggers are optional. Critical detection, incident persistence, deduplication, notifications and recovery use stable DataObs and documented Elastic/Kibana APIs. No autonomous or destructive remediation is enabled; safe actions cannot alter PostgreSQL schema, mutate business data, execute arbitrary SQL/shell, change credentials, disable constraints or kill arbitrary sessions.
-
-Least-privilege API keys should be scoped separately for workflow management, workflow execution, execution read, Cases, alert rules and optional read-only Streams access. Approval and action APIs enforce tenant isolation, idempotency, bounded retries and audit records.
+The catalogue recognizes bounded scan rerun, freshness recheck and connection test actions, but the audited baseline exposes no certified public service contract, so they truthfully remain `not_configured`. Notification suppression is preview-only. No destructive or generic executor is available.

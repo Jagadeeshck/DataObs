@@ -158,16 +158,18 @@ RULES = (
         Permission.STREAMS_READ,
         Permission.STREAMS_EXECUTE,
     ),
-    _rule(
-        "GET HEAD",
-        r"/api(?:/v1)?/(?:incidents?|findings?|incident-correlation|incident-floods)(?:/.*)?",
-        Permission.INCIDENTS_READ,
-    ),
+    _rule("GET HEAD", r"/api(?:/v1)?/(?:incidents?|findings?|incident-correlation|incident-floods|incident-automation)(?:/.*)?", Permission.INCIDENTS_READ),
     _rule(
         "POST PUT PATCH DELETE",
         r"/api(?:/v1)?/(?:incidents?|findings?)(?:/.*)?",
         Permission.INCIDENTS_READ,
         Permission.INCIDENTS_WRITE,
+    ),
+    _rule(
+        "POST PUT PATCH DELETE",
+        r"/api(?:/v1)?/incident-automation(?:/.*)?",
+        Permission.INCIDENTS_READ,
+        Permission.WORKFLOWS_APPROVE,
     ),
     _rule(
         "POST PUT PATCH DELETE",

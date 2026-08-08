@@ -1,7 +1,5 @@
-# DataObs incident automation
+# Approval and remediation
 
-This document describes the Elastic Streams and Workflows incident-automation vertical slice. Findings are normalized into versioned contracts, deterministically deduplicated and correlated into incidents, then linked to Kibana Workflows, Elastic Cases, notifications, approval records and safe DataObs actions.
+Use a fresh deterministic preview, inspect its exact target/risk/provider state, then request an independent approval only when required. See [approval response](action-approval-response.md) and [runtime operations](safe-remediation-runtime.md).
 
-Technical-preview boundaries: Observability Streams enrichment and event-driven workflow triggers are optional. Critical detection, incident persistence, deduplication, notifications and recovery use stable DataObs and documented Elastic/Kibana APIs. No autonomous or destructive remediation is enabled; safe actions cannot alter PostgreSQL schema, mutate business data, execute arbitrary SQL/shell, change credentials, disable constraints or kill arbitrary sessions.
-
-Least-privilege API keys should be scoped separately for workflow management, workflow execution, execution read, Cases, alert rules and optional read-only Streams access. Approval and action APIs enforce tenant isolation, idempotency, bounded retries and audit records.
+Never treat preview, approval, queueing or provider acceptance as recovery. Do not bypass `not_configured`, reuse approval, paste credentials, or manually requeue an uncertain operation.

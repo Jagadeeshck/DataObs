@@ -345,7 +345,16 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
     else:
         from services.data_products.memory_repository import MemoryDataProductRepository
 
-        app.state.data_product_repository = MemoryDataProductRepository()
+    app.state.data_product_repository = MemoryDataProductRepository()
+
+    if resolved_settings.store_backend.lower() == "elasticsearch":
+        from services.lineage_intelligence.elasticsearch_repository import ElasticsearchLineageRepository
+
+        app.state.lineage_repository = ElasticsearchLineageRepository(make_es_client(resolved_settings))
+    else:
+        from services.lineage_intelligence.repository import MemoryLineageRepository
+
+        app.state.lineage_repository = MemoryLineageRepository()
 
     @app.middleware("http")
     async def request_context_middleware(request: Request, call_next):
@@ -423,6 +432,9 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
 
     def get_data_product_repository(request: Request):
         return request.app.state.data_product_repository
+
+    def get_lineage_repository(request: Request):
+        return request.app.state.lineage_repository
 
     async def require_auth(
         request: Request,
@@ -1203,7 +1215,7 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
 
     app.include_router(create_job_router(dataobs_service, require_auth))
     app.include_router(create_run_router(dataobs_service, require_auth))
-    app.include_router(create_lineage_router(dataobs_service, require_auth))
+    app.include_router(create_lineage_router(get_lineage_repository, require_auth))
 
     @app.post("/api/data-observability/assets", status_code=201, dependencies=[Depends(require_auth)])
     async def dataobs_create_asset(

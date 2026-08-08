@@ -2,9 +2,11 @@ import { NavLink, Outlet, useLocation } from "react-router-dom";
 import {
   consoleRoutes,
   routeForPath,
+  matchRoute,
   visibleRoutes,
   type NavigationGroup,
 } from "../app/routes";
+import { investigationPath } from "../investigation/context";
 import { DataStatusBanner, LoadingSkeleton } from "../components/Evidence";
 import { useProductContext } from "../state/context";
 import { QuickFind } from "../features/quick-find/QuickFind";
@@ -194,6 +196,40 @@ export function Breadcrumbs() {
     </nav>
   );
 }
+export function InvestigateCurrentEntity() {
+  const location = useLocation();
+  const route = routeForPath(location.pathname);
+  const parameter = route?.entityParameters?.[0];
+  const params = route ? matchRoute(route.path, location.pathname) : null;
+  const entityId = parameter && params?.[parameter.name];
+  if (
+    !route ||
+    !parameter ||
+    !entityId ||
+    route.id === "investigation-workspace"
+  )
+    return null;
+  return (
+    <div className="shell-investigate">
+      <NavLink
+        to={investigationPath(
+          {
+            entityType: parameter.entityType.replaceAll(
+              "-",
+              "_",
+            ) as import("../app/entityLinks").EntityType,
+            entityId,
+            routeId: route.id,
+            routeParameters: { [parameter.name]: entityId },
+          },
+          location.pathname,
+        )}
+      >
+        Investigate
+      </NavLink>
+    </div>
+  );
+}
 export function ConnectivityBanner() {
   const { identity } = useProductContext();
   const gaps = consoleRoutes.filter(
@@ -250,6 +286,7 @@ export function AppShell() {
       </aside>
       <main id="main-content" tabIndex={-1}>
         <Breadcrumbs />
+        <InvestigateCurrentEntity />
         <ConnectivityBanner />
         <Outlet />
       </main>

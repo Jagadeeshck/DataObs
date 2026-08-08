@@ -1,0 +1,3 @@
+# Privileged access architecture
+
+Privileged access supplements—not replaces—the canonical OIDC-authenticated authorization evaluator. Grants bind principal, tenant, environment, allowlisted permission, start, expiry and policy version. Request, distinct approval, recent MFA activation, use, revocation and review are separate audited transitions. Authorization compares expiry on every use and fails closed when durable grant evidence is unavailable. No password, local root, bypass token, wildcard scope, audit switch, arbitrary command, or identity-provider outage bypass exists. The storage-neutral v1 state rules are unit tested; durable repository/runtime integration and hosted certification remain pending.

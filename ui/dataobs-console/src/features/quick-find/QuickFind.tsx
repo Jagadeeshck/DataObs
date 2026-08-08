@@ -1,8 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { visibleRoutes } from "../../app/routes";
+import { buildRoutePath, visibleRoutes } from "../../app/routes";
+import {
+  SearchController,
+  searchProviders,
+  type SearchResult,
+} from "../../search";
 import { useProductContext } from "../../state/context";
-import { readRecent } from "./recent";
+import { clearRecentScope, readRecent } from "./recent";
 
 const isTypingTarget = (target: EventTarget | null) =>
   target instanceof HTMLElement &&
@@ -16,6 +21,9 @@ export function QuickFind() {
   const trigger = useRef<HTMLButtonElement>(null);
   const input = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
+  const controller = useMemo(() => new SearchController(searchProviders), []);
+  const [entities, setEntities] = useState<SearchResult[]>([]);
+  const [searching, setSearching] = useState(false);
   const results = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase();
     if (!needle)
@@ -43,6 +51,58 @@ export function QuickFind() {
       }));
   }, [environment, identity?.permissions, query, tenant]);
   useEffect(() => {
+    if (!open || query.trim().length < 2) {
+      controller.cancel();
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- closing or shortening a query invalidates sensitive results immediately
+      setEntities([]);
+      setSearching(false);
+      return;
+    }
+    setSearching(true);
+    const timer = setTimeout(
+      () =>
+        void controller.search(
+          query,
+          {
+            tenant,
+            environment,
+            permissions: identity?.permissions ?? [],
+            capabilities: identity?.capabilities,
+          },
+          (snapshot) => {
+            setEntities(snapshot.results);
+            setSearching(snapshot.searching);
+          },
+        ),
+      250,
+    );
+    return () => {
+      clearTimeout(timer);
+      controller.cancel();
+    };
+  }, [
+    controller,
+    environment,
+    identity?.capabilities,
+    identity?.permissions,
+    open,
+    query,
+    tenant,
+  ]);
+  const combined = useMemo(
+    () =>
+      [
+        ...results,
+        ...entities.map((item) => ({
+          id: item.key,
+          name: item.label,
+          path: buildRoutePath(item.routeId, item.routeParameters) ?? "/search",
+          detail: `${item.entityType.replaceAll("_", " ")} · ${item.health ?? "Evidence unavailable"}`,
+        })),
+      ].slice(0, 35),
+    [entities, results],
+  );
+  useEffect(() => {
     const handler = (event: KeyboardEvent) => {
       if (
         (event.key === "/" ||
@@ -66,7 +126,7 @@ export function QuickFind() {
     trigger.current?.focus();
   };
   const select = () => {
-    const result = results[active];
+    const result = combined[active];
     if (result) {
       close();
       navigate(result.path);
@@ -102,9 +162,9 @@ export function QuickFind() {
               aria-expanded="true"
               aria-controls="quick-find-results"
               aria-activedescendant={
-                results[active] ? `quick-${results[active].id}` : undefined
+                combined[active] ? `quick-${combined[active].id}` : undefined
               }
-              placeholder="Search Console pages"
+              placeholder="Search pages and operational entities"
               value={query}
               onChange={(event) => {
                 setQuery(event.target.value);
@@ -114,7 +174,9 @@ export function QuickFind() {
                 if (event.key === "Escape") close();
                 if (event.key === "ArrowDown") {
                   event.preventDefault();
-                  setActive((value) => Math.min(value + 1, results.length - 1));
+                  setActive((value) =>
+                    Math.min(value + 1, combined.length - 1),
+                  );
                 }
                 if (event.key === "ArrowUp") {
                   event.preventDefault();
@@ -124,10 +186,12 @@ export function QuickFind() {
               }}
             />
             <p className="sr-only" role="status">
-              {results.length} results
+              {searching
+                ? `Searching; ${combined.length} results available`
+                : `${combined.length} results`}
             </p>
             <ul id="quick-find-results" role="listbox">
-              {results.map((result, index) => (
+              {combined.map((result, index) => (
                 <li
                   id={`quick-${result.id}`}
                   role="option"
@@ -148,11 +212,24 @@ export function QuickFind() {
                 </li>
               ))}
             </ul>
-            {!results.length && (
+            {!combined.length && !searching && (
               <p>
-                No matching Console pages. Entity search is unavailable until
-                bounded APIs are provided.
+                {query.trim().length < 2
+                  ? "Enter at least two characters to search entities."
+                  : "No matching pages or entities."}
               </p>
+            )}
+            {searching && <p>Searching available entity providers…</p>}
+            {!query && combined.length > 0 && (
+              <button
+                onClick={() => {
+                  clearRecentScope(tenant, environment);
+                  setQuery(" ");
+                  queueMicrotask(() => setQuery(""));
+                }}
+              >
+                Clear recent items
+              </button>
             )}
             <button
               className="quick-find-close"

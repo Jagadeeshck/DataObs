@@ -1,0 +1,35 @@
+name: Global entity search v1
+on:
+  pull_request:
+    paths:
+      [
+        "ui/dataobs-console/**",
+        "docs/**",
+        ".github/workflows/global-entity-search-v1.yml",
+      ]
+  workflow_dispatch:
+permissions: { contents: read }
+jobs:
+  console:
+    uses: ./.github/workflows/reusable-console-validation.yml
+    with:
+      run-playwright: true
+      run-accessibility: true
+      artifact-name: global-entity-search-v1-evidence
+      workflow-file: global-entity-search-v1.yml
+  repository-contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python scripts/check_merge_conflict_markers.py
+      - run: python scripts/security/check_route_permissions.py
+      - run: python scripts/check_team_boundaries.py
+      - run: python scripts/check_generated_artifacts.py
+      - run: python scripts/check_docs_links.py
+      - run: python scripts/validate_capability_ledger.py
+      - run: python scripts/check_migration_immutability.py --base-ref origin/main
+      - name: Search contract and privacy source gates
+        run: |
+          test -f ui/dataobs-console/src/search/privacyPolicy.ts
+          ! rg 'fixtureProvider|fixture-provider' ui/dataobs-console/src/search --glob '!*.test.ts'
+          ! rg 'elasticsearch|localStorage|sessionStorage' ui/dataobs-console/src/search --glob '!*.test.ts'

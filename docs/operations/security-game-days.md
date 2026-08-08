@@ -1,0 +1,3 @@
+# Privileged-control security game days
+
+Run only with synthetic principals/credentials against disposable secured Elasticsearch, disposable OIDC and disposable Kind. The deterministic local suite covers separation, strong-auth, scope/expiry/revocation, rotation ordering, rollback, metadata redaction and HMAC overlap. The certification workflow reserves reports for all 28 scenarios in the v1 request. Elasticsearch credential/JWKS/TLS transition, support-bundle, backup/restore and Kubernetes scenarios are pending their disposable hosted prerequisites; they must never be reported passed or run against shared/production systems.

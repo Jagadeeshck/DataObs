@@ -8,9 +8,10 @@ export type RecentItem = {
 };
 const key = "dataobs.console.recent.v1";
 const MAX_ITEMS = 12;
+const MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 export function readRecent(tenant: string, environment: string): RecentItem[] {
   try {
-    const parsed = JSON.parse(localStorage.getItem(key) ?? "[]") as unknown;
+    const parsed = JSON.parse(sessionStorage.getItem(key) ?? "[]") as unknown;
     if (!Array.isArray(parsed)) return [];
     return parsed
       .filter(
@@ -20,7 +21,8 @@ export function readRecent(tenant: string, environment: string): RecentItem[] {
           (item as RecentItem).tenant === tenant &&
           (item as RecentItem).environment === environment &&
           typeof (item as RecentItem).route === "string" &&
-          (item as RecentItem).route.startsWith("/"),
+          (item as RecentItem).route.startsWith("/") &&
+          Date.now() - (item as RecentItem).lastViewed <= MAX_AGE_MS,
       )
       .slice(0, MAX_ITEMS);
   } catch {
@@ -36,7 +38,7 @@ export function recordRecent(item: RecentItem) {
         candidate.route === item.route
       ),
   );
-  localStorage.setItem(
+  sessionStorage.setItem(
     key,
     JSON.stringify(
       [item, ...existing]
@@ -47,18 +49,18 @@ export function recordRecent(item: RecentItem) {
 }
 function readAll(): RecentItem[] {
   try {
-    const value = JSON.parse(localStorage.getItem(key) ?? "[]");
+    const value = JSON.parse(sessionStorage.getItem(key) ?? "[]");
     return Array.isArray(value) ? value : [];
   } catch {
     return [];
   }
 }
 export function clearRecentScope(tenant: string, environment: string) {
-  localStorage.setItem(
+  sessionStorage.setItem(
     key,
     JSON.stringify(
       readAll().filter(
-        (item) => item.tenant === tenant && item.environment === environment,
+        (item) => !(item.tenant === tenant && item.environment === environment),
       ),
     ),
   );

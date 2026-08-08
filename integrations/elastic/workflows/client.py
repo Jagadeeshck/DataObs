@@ -1,69 +1,47 @@
 from __future__ import annotations
 
-import os
 from typing import Any
-from urllib.parse import urljoin
 
-import requests
+from integrations.elastic.kibana import KibanaClient, KibanaConfiguration
 
 from .models import KibanaAuth
 
 
 class KibanaWorkflowClient:
+    """Compatibility facade over the shared bounded Kibana transport."""
+
     def __init__(self, auth: KibanaAuth, timeout: int = 30) -> None:
         self.auth = auth
-        self.timeout = timeout
-
-    @classmethod
-    def from_env(cls) -> "KibanaWorkflowClient":
-        return cls(KibanaAuth(os.getenv("KIBANA_URL", "http://localhost:5601"), os.getenv("KIBANA_API_KEY")))
-
-    def _headers(self) -> dict[str, str]:
-        headers = {"kbn-xsrf": "dataobs", "content-type": "application/json"}
-        if self.auth.api_key:
-            headers["Authorization"] = f"ApiKey {self.auth.api_key}"
-        return headers
-
-    def _url(self, path: str) -> str:
-        prefix = f"/s/{self.auth.space}" if self.auth.space != "default" else ""
-        return urljoin(self.auth.base_url.rstrip("/") + "/", (prefix + path).lstrip("/"))
-
-    def request(self, method: str, path: str, **kwargs: Any) -> dict[str, Any]:
-        auth = None if self.auth.api_key else (self.auth.username, self.auth.password)
-        response = requests.request(
-            method, self._url(path), headers=self._headers(), auth=auth, timeout=self.timeout, **kwargs
+        self._client = KibanaClient(
+            KibanaConfiguration(
+                auth.base_url,
+                auth.api_key,
+                {"configured": auth.space},
+                production=auth.base_url.startswith("https://"),
+                read_timeout=float(timeout),
+            )
         )
-        if response.status_code >= 400:
-            raise RuntimeError(f"Kibana workflow API error {response.status_code}: {response.text[:300]}")
-        return response.json() if response.content else {}
 
-    def list_workflows(self) -> dict[str, Any]:
-        return self.request("GET", "/api/workflows")
+    @property
+    def space(self) -> str:
+        return self.auth.space
+
+    def create_workflow(self, definition: dict[str, Any], request_id: str | None = None) -> dict[str, Any]:
+        return self._client.create_workflow(self.space, definition, request_id)
 
     def get_workflow(self, workflow_id: str) -> dict[str, Any]:
-        return self.request("GET", f"/api/workflows/{workflow_id}")
+        return self._client.get_workflow(self.space, workflow_id)
 
-    def import_workflow(self, yaml_text: str) -> dict[str, Any]:
-        return self.request(
-            "POST",
-            "/api/workflows/import",
-            data=yaml_text,
-            headers={**self._headers(), "content-type": "application/yaml"},
-        )
+    def update_workflow(self, workflow_id: str, definition: dict[str, Any]) -> dict[str, Any]:
+        return self._client.update_workflow(self.space, workflow_id, definition)
 
-    def run_workflow(self, workflow_id: str, inputs: dict[str, Any] | None = None) -> dict[str, Any]:
-        return self.request("POST", f"/api/workflows/{workflow_id}/run", json={"inputs": inputs or {}})
+    def run_workflow(
+        self, workflow_id: str, inputs: dict[str, Any] | None = None, request_id: str = "dataobs"
+    ) -> dict[str, Any]:
+        return self._client.run_workflow(self.space, workflow_id, inputs or {}, request_id)
 
-    def get_execution(self, workflow_id: str, execution_id: str) -> dict[str, Any]:
-        return self.request("GET", f"/api/workflows/{workflow_id}/executions/{execution_id}")
+    def get_execution(self, execution_id: str) -> dict[str, Any]:
+        return self._client.get_workflow_execution(self.space, execution_id)
 
     def list_executions(self, workflow_id: str) -> dict[str, Any]:
-        return self.request("GET", f"/api/workflows/{workflow_id}/executions")
-
-    def cancel_execution(self, workflow_id: str, execution_id: str) -> dict[str, Any]:
-        return self.request("POST", f"/api/workflows/{workflow_id}/executions/{execution_id}/cancel")
-
-    def resume_execution(self, workflow_id: str, execution_id: str, inputs: dict[str, Any]) -> dict[str, Any]:
-        return self.request(
-            "POST", f"/api/workflows/{workflow_id}/executions/{execution_id}/resume", json={"inputs": inputs}
-        )
+        return self._client.list_workflow_executions(self.space, workflow_id)

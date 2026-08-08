@@ -5,8 +5,27 @@ from dataclasses import dataclass
 from .catalogue import canonical_hash
 from .contracts import ActionDefinition, Risk
 
-POLICY_VERSION = "1.0.0"
-POLICY_HASH = canonical_hash({"version": POLICY_VERSION, "high_risk": "deny", "medium": "independent_approval"})
+POLICY_VERSION = "1.1.0"
+POLICY_DEFINITION = {
+    "version": POLICY_VERSION,
+    "production_environments": ["prod", "production"],
+    "blast_radius_escalation_threshold": 25,
+    "critical_severity_escalates": True,
+    "critical_suppression": "deny",
+    "denied_risks": ["high", "prohibited"],
+    "medium_risk_requires_approval": True,
+    "required_and_disallowed_incident_states": "catalogue",
+    "unavailable_provider": "deny",
+    "disabled_executor": "deny",
+}
+
+
+def policy_hash(definition: dict[str, object] | None = None) -> str:
+    """Hash the complete canonical decision policy, not a hand-maintained label."""
+    return canonical_hash(definition or POLICY_DEFINITION)
+
+
+POLICY_HASH = policy_hash()
 
 
 @dataclass(frozen=True)

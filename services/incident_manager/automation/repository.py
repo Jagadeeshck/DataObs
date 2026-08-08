@@ -23,6 +23,7 @@ class AutomationRepository(Protocol):
     def update_execution(self, execution: Execution, expected_lease_token: int | None = None) -> Execution: ...
     def queued(self, limit: int, now: datetime) -> list[Execution]: ...
     def incomplete_executions(self, limit: int, now: datetime) -> list[Execution]: ...
+    def executions_with_pending_evidence(self, limit: int) -> list[Execution]: ...
     def approvals_requiring_reconciliation(self, limit: int, now: datetime) -> list[Approval]: ...
     def append_event(self, stream: str, event_id: str, document: dict[str, object]) -> None: ...
 
@@ -128,6 +129,15 @@ class InMemoryAutomationRepository:
             if item.state in recoverable and item.lease_expires_at is not None and item.lease_expires_at <= now
         ]
         return [item.model_copy(deep=True) for item in sorted(items, key=lambda value: value.updated_at)[:limit]]
+
+    def executions_with_pending_evidence(self, limit: int) -> list[Execution]:
+        items = [item for item in self.executions.values() if item.transition_event_pending]
+        return [
+            item.model_copy(deep=True)
+            for item in sorted(items, key=lambda value: (value.updated_at, value.execution_id))[
+                : min(max(limit, 1), 25)
+            ]
+        ]
 
     def approvals_requiring_reconciliation(self, limit: int, now: datetime) -> list[Approval]:
         items = [

@@ -1,0 +1,23 @@
+id: dataobs-incident-case-triage-v1
+name: DataObs incident Case triage
+version: 1.0.0
+description: Append bounded, reviewed DataObs triage context to an already-linked Case.
+supportedKibanaVersion: 9.4.2
+risk: low
+approvalRequired: false
+caseOwner: observability
+requiredPrivileges:
+  - cases:read
+  - cases:write
+inputs:
+  incident_ref: {type: string, maxLength: 200}
+  case_id: {type: string, maxLength: 200}
+  triage_comment: {type: string, maxLength: 2000}
+outputs:
+  comment_id: {type: string, maxLength: 200}
+verificationStrategy: case_comment_exists
+steps:
+  - id: get_case
+    type: cases.getCase
+  - id: add_triage_comment
+    type: cases.addComment

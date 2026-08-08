@@ -7,9 +7,25 @@ from typing import Any
 
 import yaml  # type: ignore[import-untyped]
 
-ALLOWED_STEP_PREFIXES = ("cases.", "dataobs.", "streams.", "notifications.")
-ALLOWED_STEP_TYPES = {"wait", "waitForInput", "condition", "elasticsearch.esql"}
-FORBIDDEN_TOKENS = ("kibana.request", "shell", "exec", "http.request", "credential", "${secret")
+ALLOWED_STEP_TYPES = {"cases.getCase", "cases.addComment", "cases.addTags"}
+LEGACY_ALLOWED_STEP_PREFIXES = ("cases.", "dataobs.", "streams.", "notifications.")
+LEGACY_ALLOWED_STEP_TYPES = {"wait", "waitForInput", "condition", "elasticsearch.esql"}
+DEPRECATED_CASE_ALIASES = {
+    "kibana.createCaseDefaultSpace",
+    "kibana.getCaseDefaultSpace",
+    "kibana.updateCaseDefaultSpace",
+    "kibana.addCaseCommentDefaultSpace",
+}
+FORBIDDEN_STEP_TYPES = {
+    "kibana.request",
+    "shell",
+    "script",
+    "exec",
+    "http",
+    "http.request",
+    "cases.deleteCases",
+    "cases.pushCases",
+}
 
 
 def checksum(path: Path) -> str:
@@ -21,16 +37,23 @@ def validate_workflow(path: Path) -> dict[str, Any]:
     if not isinstance(data, dict) or not data.get("id") or not data.get("steps"):
         raise ValueError(f"{path} must define id and steps")
     text = path.read_text()
-    if "kibana." in text:
-        raise ValueError(f"{path} uses deprecated kibana.* workflow steps; use cases.*")
+    if any(alias in text for alias in DEPRECATED_CASE_ALIASES):
+        raise ValueError(f"{path} uses a deprecated Case workflow step; use cases.*")
     lowered = text.lower()
-    if any(token in lowered for token in FORBIDDEN_TOKENS) or re.search(r"(?<!e)\bsql\b", lowered):
+    if "${secret" in lowered or re.search(r"(?<!e)\bsql\b", lowered):
         raise ValueError(f"{path} contains a forbidden workflow capability")
     for position, step in enumerate(data["steps"]):
         if not isinstance(step, dict):
             raise ValueError(f"{path} step {position} must be an object")
         step_type = str(step.get("type") or step.get("action") or "")
-        if not step_type or not (step_type in ALLOWED_STEP_TYPES or step_type.startswith(ALLOWED_STEP_PREFIXES)):
+        if step_type == "kibana.request":
+            raise ValueError(f"{path} uses a deprecated generic Kibana request step")
+        if step_type in FORBIDDEN_STEP_TYPES:
+            raise ValueError(f"{path} contains a forbidden workflow capability")
+        managed = "definitions" in path.parts
+        allowed = step_type in ALLOWED_STEP_TYPES
+        legacy_allowed = step_type in LEGACY_ALLOWED_STEP_TYPES or step_type.startswith(LEGACY_ALLOWED_STEP_PREFIXES)
+        if not allowed and (managed or not legacy_allowed):
             raise ValueError(f"{path} step {position} type {step_type!r} is not allowlisted")
     if "type: alert" in text and "runWorkflowActionRequired: true" not in text:
         raise ValueError(f"{path} alert trigger must document Run Workflow action binding")
@@ -39,3 +62,7 @@ def validate_workflow(path: Path) -> dict[str, Any]:
 
 def validate_pack(root: str = "integrations/elastic/workflows/packs/dataobs") -> list[dict[str, Any]]:
     return [validate_workflow(path) for path in sorted(Path(root).glob("*.yaml"))]
+
+
+def validate_managed_definitions(root: str = "integrations/elastic/workflows/definitions") -> list[dict[str, Any]]:
+    return validate_pack(root)

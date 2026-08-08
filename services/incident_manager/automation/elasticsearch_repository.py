@@ -68,7 +68,7 @@ class ElasticsearchAutomationRepository:
     def save_preview(self, preview: Preview) -> Preview:
         response = self.client.search(
             index=OPERATION_READ,
-            size=100,
+            size=1,
             query={
                 "bool": {
                     "filter": [
@@ -79,6 +79,7 @@ class ElasticsearchAutomationRepository:
                     ]
                 }
             },
+            sort=[{"metadata.preview_generation": "desc"}, {"created_at": "desc"}],
         )
         instances = [Preview.model_validate(hit["_source"]["metadata"]) for hit in response["hits"]["hits"]]
         live = [item for item in instances if item.expires_at > preview.previewed_at]
@@ -244,6 +245,20 @@ class ElasticsearchAutomationRepository:
                 }
             },
             sort=[{"updated_at": "asc"}],
+        )
+        return [
+            Execution.model_validate(
+                {key: value for key, value in hit["_source"]["metadata"].items() if key != "idempotency_fingerprint"}
+            )
+            for hit in response["hits"]["hits"]
+        ]
+
+    def executions_with_pending_evidence(self, limit: int) -> list[Execution]:
+        response = self.client.search(
+            index=OPERATION_READ,
+            size=min(max(limit, 1), 25),
+            query={"term": {"metadata.transition_event_pending": True}},
+            sort=[{"updated_at": "asc"}, {"workflow_execution_id": "asc"}],
         )
         return [
             Execution.model_validate(

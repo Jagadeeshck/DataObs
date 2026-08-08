@@ -6,7 +6,8 @@ import re
 from datetime import datetime, timedelta, timezone
 from hashlib import sha256
 
-from packages.domain_model.monitor import ColdStartState, MonitorEvaluation, MonitorObservation
+from packages.domain_model.monitor import ColdStartState, MonitorEvaluation, MonitorFinding, MonitorObservation
+from services.monitoring.adaptive_engine import HistoricalPoint, evaluate_adaptive
 from services.monitoring.baseline_service import build_baseline
 from services.monitoring.evaluation_service import evaluate
 from services.monitoring.providers.base import ProviderBudget
@@ -52,7 +53,56 @@ class MonitorWorker:
                 monitor_id=monitor_id,
                 definition_revision=monitor.revision,
                 observations=history,
+                method=monitor.baseline.method if monitor.baseline else "mad",
+                sensitivity=monitor.baseline.sensitivity if monitor.baseline else "medium",
+                minimum_samples=monitor.baseline.minimum_samples if monitor.baseline else 12,
+                as_of=now,
             )
+            adaptive = None
+            if monitor.baseline and monitor.baseline.enabled:
+                prior_evaluations = {
+                    item.observation.observed_at: item
+                    for item in self.repo.list_evaluations(*scope, monitor_id, limit=monitor.baseline.history_points)
+                }
+                adaptive = evaluate_adaptive(
+                    observation.value,
+                    [
+                        HistoricalPoint(
+                            float(item.value),
+                            item.observed_at,
+                            breached=(
+                                prior_evaluations.get(item.observed_at).breached
+                                if item.observed_at in prior_evaluations
+                                else False
+                            ),
+                            backfill=item.dimensions.get("backfill") == "true",
+                            maintenance=item.dimensions.get("maintenance") == "true",
+                            stale=item.dimensions.get("stale") == "true",
+                            complete=not item.missing_data,
+                        )
+                        for item in history
+                        if item.value is not None
+                    ],
+                    monitor.baseline,
+                    now,
+                    safety_minimum=monitor.threshold.fixed_safety_minimum,
+                    safety_maximum=monitor.threshold.fixed_safety_maximum,
+                    generation=int(baseline.get("generation", 1)),
+                )
+                baseline.update(
+                    {
+                        "baseline_version": adaptive.baseline_id,
+                        "generation": adaptive.generation,
+                        "expected_minimum": adaptive.expected_lower,
+                        "expected_maximum": adaptive.expected_upper,
+                        "confidence": adaptive.confidence,
+                        "cold_start_state": "mature" if adaptive.state.value == "ready" else "collecting",
+                        "seasonal_cohort": adaptive.cohort,
+                        "seasonal_cohort_reason": adaptive.cohort_fallback_reason,
+                        "exclusions": list(adaptive.exclusions),
+                        "anomaly_score": adaptive.anomaly_score,
+                    }
+                )
             self.repo.create_baseline_version(baseline)
             decision = evaluate(monitor, observation, baseline, provider_status=result.provider_status)
             evaluation_id = sha256(f"{scope[0]}\0{scope[1]}\0{monitor_id}\0{now.isoformat()}".encode()).hexdigest()
@@ -73,9 +123,28 @@ class MonitorWorker:
                 confidence=result.confidence,
                 cold_start_state=(baseline or {}).get("cold_start_state", ColdStartState.COLLECTING),
                 missing_inputs=decision["missing_inputs"],
+                exclusion_reasons=list(adaptive.exclusions) if adaptive else [],
+                seasonal_cohort=adaptive.cohort if adaptive else None,
+                seasonal_cohort_reason=adaptive.cohort_fallback_reason if adaptive else None,
+                anomaly_score=adaptive.anomaly_score if adaptive else None,
                 breached=decision["state"] == "breached",
             )
             self.repo.save_evaluation(evaluation, idempotency_key=evaluation.evaluation_id)
+            if evaluation.breached:
+                finding_id = sha256(f"{scope[0]}\0{scope[1]}\0{monitor_id}\0adaptive".encode()).hexdigest()
+                finding = MonitorFinding(
+                    finding_id=finding_id,
+                    monitor_id=monitor_id,
+                    evaluation_id=evaluation.evaluation_id,
+                    tenant_id=scope[0],
+                    environment=scope[1],
+                    state="open",
+                    severity=monitor.alert.severity,
+                    deduplication_key=f"adaptive:{monitor_id}",
+                    definition_revision=monitor.revision,
+                    baseline_version=evaluation.baseline_version,
+                )
+                self.repo.save_finding(finding, idempotency_key=evaluation.evaluation_id)
             self.repo.checkpoint(
                 *scope,
                 monitor_id,

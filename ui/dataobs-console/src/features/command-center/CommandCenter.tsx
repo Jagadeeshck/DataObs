@@ -103,6 +103,9 @@ export function CommandCenter() {
           </p>
         </div>
         <div className="actions">
+          <Link className="button" to="/dashboards">
+            Open operational dashboards
+          </Link>
           <button onClick={() => navigator.clipboard?.writeText(location.href)}>
             ↗ Copy share link
           </button>

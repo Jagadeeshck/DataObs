@@ -1,0 +1,32 @@
+name: BigQuery Warehouse Collector v1
+on: [pull_request, workflow_dispatch]
+permissions: {contents: read}
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: pip install -r requirements.txt -r requirements-bigquery.txt ruff black mypy pip-audit
+      - run: python scripts/check_merge_conflict_markers.py && python -m compileall integrations/bigquery services/collection_manager
+      - run: ruff check integrations/bigquery tests/integrations/test_bigquery_provider.py
+      - run: black --check integrations/bigquery tests/integrations/test_bigquery_provider.py
+      - run: mypy --ignore-missing-imports integrations/bigquery
+      - run: pytest -q tests/integrations/test_sdk.py tests/integrations/test_collection_manager_runtime.py tests/integrations/test_bigquery_provider.py tests/integrations/test_bigquery_live.py tests/integrations/test_aws_provider.py tests/integrations/test_aws_provider_v2.py tests/integrations/test_snowflake_provider.py tests/integrations/test_databricks_provider.py tests/integration/postgres_vertical_slice
+      - run: python scripts/release/current_terminal_migration.py && python scripts/release/check_release_metadata.py
+      - run: python scripts/check_migration_immutability.py --base-ref origin/${{ github.base_ref }}
+      - run: python scripts/validate_capability_ledger.py && python scripts/check_generated_artifacts.py
+      - run: python scripts/check_docs_links.py
+      - run: pip-audit -r requirements-bigquery.txt
+      - run: git diff --check && ! git grep -nE '^(<<<<<<<|=======|>>>>>>>)'
+      - name: Evidence envelope and independent verification
+        run: |
+          mkdir -p evidence-out
+          terminal="$(python scripts/release/current_terminal_migration.py)"
+          printf '{"status":"functional_unvalidated","repository":"%s","commit_sha":"%s","workflow_file":".github/workflows/bigquery-warehouse-collector-v1.yml","run_id":"%s","run_attempt":"%s","event":"%s","python_version":"3.11","google_bigquery_version":"installed","google_bigquery_reservation_version":"installed","google_auth_version":"installed","elasticsearch_version":"not_exercised","terminal_migration":"%s","provider_version":"1","supported_capabilities":["resource_discovery","metadata_collection","metric_collection","query_history","schema_discovery","health_check","incremental_collection"],"unsupported_capabilities":["log_collection","lineage_collection","cost_collection","event_driven_collection"],"authentication_modes":["application_default","workload_identity","service_account_impersonation","service_account_key_legacy_disabled_by_default"],"api_allowlist_result":"tested","identifier_safety_result":"tested","query_text_exclusion_result":"tested","user_identity_exclusion_result":"tested","table_data_prohibition_result":"tested","tenant_isolation_result":"runtime_tested","project_location_isolation_result":"provider_tested","checkpoint_result":"runtime_regression_tested","aws_regression_result":"tested","snowflake_regression_result":"tested","databricks_regression_result":"tested","test_summary":"see workflow logs","fixture_hashes":[],"live_bigquery_test_status":"not_run","known_limitations":["hosted proof absent","permission-filtered coverage","storage delay","Team 0 packaging pending","Team 2 canonical projection pending"]}\n' "$GITHUB_REPOSITORY" "$GITHUB_SHA" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" "$GITHUB_EVENT_NAME" "$terminal" > evidence-out/envelope.json
+          sha256sum evidence-out/envelope.json > evidence-out/SHA256SUMS
+          sha256sum -c evidence-out/SHA256SUMS
+          python -m json.tool evidence-out/envelope.json >/dev/null
+      - uses: actions/upload-artifact@v4
+        with: {name: bigquery-warehouse-collector-v1-evidence, path: evidence-out}

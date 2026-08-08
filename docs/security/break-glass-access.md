@@ -1,0 +1,3 @@
+# Break-glass security policy
+
+A valid OIDC principal requests narrowly allowlisted access for one tenant and environment, a meaningful incident/change reference, and at most four hours. Distinct authorized approvers approve; approval does not activate. The requester activates with MFA and approved ACR no older than ten minutes. Runtime authorization checks identity, scope, permission, state and wall-clock expiry. Revocation is immediate. Every relied-upon request must append bounded usage evidence. Complete identity-provider outage recovery is external; DataObs has no authentication backdoor. Runtime integration and hosted proof are pending.

@@ -1,0 +1,7 @@
+# BigQuery warehouse collector architecture
+
+BigQuery v1 is an explicitly registered, per-run provider. It accepts explicit projects and locations, creates isolated official-library clients, and emits provider-native observations through the Integration SDK. Dataset/table/model/routine APIs are read-only and bounded. Regional job, minute timeline, and storage evidence use fixed parameterized `INFORMATION_SCHEMA` projections; no configured SQL, `SELECT *`, rows, query text, user identity, view SQL, routine body, external URI, KMS name, IAM policy, mutation, or arbitrary REST operation is permitted.
+
+Families fail independently. Project/location/family checkpoint identity includes trusted tenant, environment and integration context plus provider/project/location/capability; overlap is bounded, canonical IDs deduplicate replay, observations persist before OCC checkpoint advancement, and failed scopes do not advance. Script parents remain source records but are excluded from aggregate consumption. Timeline evidence is minute-aggregated. Storage is marked delayed, and `bigquery_table_last_modified_metadata` is metadata modification evidence—not business-data freshness. Bytes and slots are consumption, never monetary cost.
+
+Only configured, IAM-visible resources are represented; organisation-wide and complete coverage are not claimed. Jobs remain source evidence pending Team 2 projection. Partition-level collection is deferred. The provider is functional-unvalidated until exact-commit hosted evidence is independently verified.

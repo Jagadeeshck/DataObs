@@ -39,6 +39,9 @@ def test_role_registry_is_fail_closed_and_collector_is_ingestion_only():
         "workflow_approver",
         "viewer",
         "collector",
+        "security_auditor",
+        "privileged_access_approver",
+        "credential_approver",
     }
     assert permissions_for_roles(frozenset({"unknown"})) == frozenset()
     collector = permissions_for_roles(frozenset({"collector"}))

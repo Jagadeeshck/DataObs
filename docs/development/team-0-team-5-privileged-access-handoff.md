@@ -1,0 +1,5 @@
+# Team 0 to Team 5 privileged-access handoff
+
+The console must not implement authorization logic. It must consume server-evaluated role-binding, effective-access, audit, service-principal, break-glass, and credential contracts once those APIs are implemented. Lists use bounded opaque cursors and preserve the exact filters, tenant, and environment; mutations send `Idempotency-Key`, retain `ETag`, and send `If-Match`. Treat 409 as a refresh-and-review conflict, 428 as a missing precondition, 403 as denied, and 503/missing evidence as unavailable—not empty or healthy.
+
+Never display raw claims, groups, tokens, headers, secret values, full credential references, or internal repository errors. Show approval identities only where authorized, authentication recency/MFA as safe derived states, UTC expiry countdowns bounded at zero, request IDs on errors, and explicit loading/empty/error/unavailable states. Approval never implies activation. Critical operations require distinct approvers; self-approval is prohibited. This PR does not change Team 5 UI or generated clients; API completion and client generation remain pending.

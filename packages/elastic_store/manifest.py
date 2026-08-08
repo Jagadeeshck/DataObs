@@ -1840,6 +1840,20 @@ STREAM_PATHWAY_RELIABILITY_PRODUCTION_CLOSURE_MIGRATION = Migration(
     },
 )
 
+LINEAGE_IMPACT_CHANGE_INTELLIGENCE_MIGRATION = Migration(
+    "0026_lineage_impact_change_intelligence",
+    "Add append-only lineage schema-change and impact-evaluation evidence",
+    "v1",
+    dependencies=["0025_stream_pathway_reliability_production_closure"],
+    rollback_strategy="stop lineage intelligence writers; retain append-only change and impact evidence for audit",
+    operations={
+        "data_streams": [
+            "logs-dataobs.lineage-change-*",
+            "logs-dataobs.lineage-impact-evaluation-*",
+        ],
+    },
+)
+
 
 def migrations() -> List[Migration]:
     return [
@@ -1868,6 +1882,7 @@ def migrations() -> List[Migration]:
         STREAM_PATHWAY_RELIABILITY_MIGRATION,
         JOB_RUN_RELIABILITY_MIGRATION,
         STREAM_PATHWAY_RELIABILITY_PRODUCTION_CLOSURE_MIGRATION,
+        LINEAGE_IMPACT_CHANGE_INTELLIGENCE_MIGRATION,
     ]
 
 

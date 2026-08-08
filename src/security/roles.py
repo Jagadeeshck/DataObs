@@ -29,6 +29,23 @@ ROLE_PERMISSIONS: dict[str, frozenset[Permission]] = {
     "workflow_approver": READ | frozenset({Permission.WORKFLOWS_APPROVE}),
     "viewer": READ,
     "collector": frozenset({Permission.AUTH_READ, Permission.COLLECTION_INGEST}),
+    # High-risk authority is deliberately separated from platform_admin. Operators
+    # receive these roles through independently reviewed durable bindings.
+    "security_auditor": frozenset(
+        {
+            Permission.AUDIT_READ,
+            Permission.EFFECTIVE_ACCESS_READ,
+            Permission.SERVICE_PRINCIPALS_READ,
+            Permission.CREDENTIALS_READ,
+            Permission.PRIVILEGED_OPERATIONS_READ,
+        }
+    ),
+    "privileged_access_approver": frozenset(
+        {Permission.BREAK_GLASS_APPROVE, Permission.BREAK_GLASS_REVOKE, Permission.PRIVILEGED_OPERATIONS_APPROVE}
+    ),
+    "credential_approver": frozenset(
+        {Permission.CREDENTIALS_READ, Permission.CREDENTIALS_APPROVE, Permission.PRIVILEGED_OPERATIONS_APPROVE}
+    ),
 }
 
 for _role in tuple(ROLE_PERMISSIONS):

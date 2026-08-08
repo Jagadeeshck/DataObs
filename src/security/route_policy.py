@@ -17,6 +17,10 @@ PUBLIC_ROUTES = frozenset(
 
 # Legacy templates are deliberately enumerated while the API converges on /api/v1.
 EXPLICIT_ROUTES = {
+    ("POST", "/api/v1/incident-automation/approvals"): Permission.WORKFLOWS_EXECUTE,
+    ("POST", "/api/v1/incident-automation/approvals/{approval_id}/approve"): Permission.WORKFLOWS_APPROVE,
+    ("POST", "/api/v1/incident-automation/approvals/{approval_id}/reject"): Permission.WORKFLOWS_APPROVE,
+    ("POST", "/api/v1/incident-automation/executions"): Permission.WORKFLOWS_EXECUTE,
     ("POST", "/api/v1/approvals/{approval_id}/approve"): Permission.WORKFLOWS_APPROVE,
     ("POST", "/api/v1/approvals/{approval_id}/reject"): Permission.WORKFLOWS_APPROVE,
     ("GET", "/rules"): Permission.QUALITY_READ,
@@ -158,7 +162,11 @@ RULES = (
         Permission.STREAMS_READ,
         Permission.STREAMS_EXECUTE,
     ),
-    _rule("GET HEAD", r"/api(?:/v1)?/(?:incidents?|findings?|incident-correlation|incident-floods|incident-automation)(?:/.*)?", Permission.INCIDENTS_READ),
+    _rule(
+        "GET HEAD",
+        r"/api(?:/v1)?/(?:incidents?|findings?|incident-correlation|incident-floods|incident-automation)(?:/.*)?",
+        Permission.INCIDENTS_READ,
+    ),
     _rule(
         "POST PUT PATCH DELETE",
         r"/api(?:/v1)?/(?:incidents?|findings?)(?:/.*)?",

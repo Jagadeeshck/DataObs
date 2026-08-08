@@ -19,6 +19,7 @@ class Risk(StrEnum):
 class ApprovalState(StrEnum):
     REQUESTED = "requested"
     APPROVED = "approved"
+    RESERVED = "reserved"
     REJECTED = "rejected"
     EXPIRED = "expired"
     CANCELLED = "cancelled"
@@ -29,6 +30,7 @@ class ExecutionState(StrEnum):
     QUEUED = "queued"
     CLAIMED = "claimed"
     RUNNING = "running"
+    RECONCILIATION_REQUIRED = "reconciliation_required"
     VERIFICATION_PENDING = "verification_pending"
     VERIFIED = "verified"
     VERIFICATION_FAILED = "verification_failed"
@@ -79,6 +81,7 @@ class ActionDefinition:
 class Preview(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
     preview_id: str
+    preview_generation: int = Field(default=1, ge=1)
     action_type: str
     action_version: str
     catalogue_name: str
@@ -140,6 +143,16 @@ class Approval(BaseModel):
     revision: int = 0
     decided_by: str | None = None
     decision_comment: str | None = Field(default=None, max_length=1000)
+    decision_request_id: str | None = None
+    decision_event_id: str | None = None
+    decision_event_type: str | None = None
+    decision_event_pending: bool = False
+    reserved_execution_id: str | None = None
+    reserved_by: str | None = None
+    reserved_at: datetime | None = None
+    reservation_expires_at: datetime | None = None
+    reservation_request_id: str | None = None
+    expired_at: datetime | None = None
 
 
 class Execution(BaseModel):
@@ -161,6 +174,11 @@ class Execution(BaseModel):
     request_id: str
     state: ExecutionState
     created_at: datetime
+    queued_at: datetime | None = None
+    claimed_at: datetime | None = None
+    execution_started_at: datetime | None = None
+    provider_accepted_at: datetime | None = None
+    verification_started_at: datetime | None = None
     updated_at: datetime
     timeout_seconds: int
     max_attempts: int
@@ -170,6 +188,8 @@ class Execution(BaseModel):
     lease_expires_at: datetime | None = None
     operation_reference: str | None = None
     error_code: str | None = None
+    transition_event_id: str | None = None
+    transition_event_pending: bool = False
 
 
 @dataclass(frozen=True)

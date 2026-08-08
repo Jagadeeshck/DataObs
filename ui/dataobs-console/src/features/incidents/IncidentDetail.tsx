@@ -208,7 +208,14 @@ export function IncidentDetail() {
             {preview ? (
               <div role="status" aria-live="polite">
                 <h3>Deterministic action preview</h3>
-                <p>Target: {String((preview.target as { id?: string }).id)}</p>
+                <p>
+                  Target: {String((preview.target as { type?: string }).type)} /{" "}
+                  {String((preview.target as { id?: string }).id)} @{" "}
+                  {String((preview.target as { revision?: string }).revision)}
+                </p>
+                <p>Affected assets: {item.affected_asset_count}</p>
+                <p>Preview generation: {String(preview.preview_generation)}</p>
+                <p>Expires: {String(preview.expires_at)}</p>
                 <p>Risk: {String(preview.risk)}</p>
                 <p>Provider: {String(preview.provider_state)}</p>
                 <p>Policy: {String(preview.policy_decision)}</p>

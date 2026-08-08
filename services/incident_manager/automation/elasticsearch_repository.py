@@ -5,6 +5,7 @@ from typing import Any
 
 from elasticsearch import ConflictError, Elasticsearch, NotFoundError
 
+from .catalogue import canonical_hash
 from .contracts import Approval, Execution, Preview
 from .repository import Conflict
 
@@ -65,24 +66,51 @@ class ElasticsearchAutomationRepository:
         self.client = client
 
     def save_preview(self, preview: Preview) -> Preview:
-        # Previews are immutable and stored with operation state; create makes retries idempotent.
+        response = self.client.search(
+            index=OPERATION_READ,
+            size=100,
+            query={
+                "bool": {
+                    "filter": [
+                        {"term": {"tenant_id": preview.tenant_id}},
+                        {"term": {"environment": preview.environment}},
+                        {"term": {"metadata.action_fingerprint": preview.action_fingerprint}},
+                        {"term": {"status": "previewed"}},
+                    ]
+                }
+            },
+        )
+        instances = [Preview.model_validate(hit["_source"]["metadata"]) for hit in response["hits"]["hits"]]
+        live = [item for item in instances if item.expires_at > preview.previewed_at]
+        if live:
+            return max(live, key=lambda item: item.preview_generation)
+        generation = max((item.preview_generation for item in instances), default=0) + 1
+        candidate = preview.model_copy(
+            update={
+                "preview_generation": generation,
+                "preview_id": f"prv_{canonical_hash([preview.action_fingerprint, generation])}",
+            }
+        )
         doc = {
-            "tenant_id": preview.tenant_id,
-            "environment": preview.environment,
-            "incident_id": preview.incident_id,
-            "action_type": preview.action_type,
+            "tenant_id": candidate.tenant_id,
+            "environment": candidate.environment,
+            "incident_id": candidate.incident_id,
+            "action_type": candidate.action_type,
             "status": "previewed",
-            "request_id": preview.request_id,
+            "request_id": candidate.request_id,
             "terminal_state": False,
-            "created_at": preview.previewed_at.isoformat(),
-            "updated_at": preview.previewed_at.isoformat(),
-            "metadata": preview.model_dump(mode="json"),
+            "created_at": candidate.previewed_at.isoformat(),
+            "updated_at": candidate.previewed_at.isoformat(),
+            "metadata": candidate.model_dump(mode="json"),
         }
         try:
-            self.client.create(index=OPERATION_WRITE, id=preview.preview_id, document=doc, refresh="wait_for")
+            self.client.create(index=OPERATION_WRITE, id=candidate.preview_id, document=doc, refresh="wait_for")
         except ConflictError:
-            pass
-        return preview
+            durable = self.get_preview(candidate.tenant_id, candidate.environment, candidate.preview_id)
+            if durable is None:
+                raise Conflict("preview generation allocation conflict")
+            return durable
+        return candidate
 
     def _get_metadata(self, alias: str, document_id: str, tenant: str, environment: str) -> dict[str, Any] | None:
         try:
@@ -202,6 +230,52 @@ class ElasticsearchAutomationRepository:
             )
             for hit in response["hits"]["hits"]
         ]
+
+    def incomplete_executions(self, limit: int, now: datetime) -> list[Execution]:
+        response = self.client.search(
+            index=OPERATION_READ,
+            size=min(max(limit, 1), 25),
+            query={
+                "bool": {
+                    "filter": [
+                        {"terms": {"status": ["claimed", "running", "reconciliation_required"]}},
+                        {"range": {"metadata.lease_expires_at": {"lte": now.isoformat()}}},
+                    ]
+                }
+            },
+            sort=[{"updated_at": "asc"}],
+        )
+        return [
+            Execution.model_validate(
+                {key: value for key, value in hit["_source"]["metadata"].items() if key != "idempotency_fingerprint"}
+            )
+            for hit in response["hits"]["hits"]
+        ]
+
+    def approvals_requiring_reconciliation(self, limit: int, now: datetime) -> list[Approval]:
+        response = self.client.search(
+            index=APPROVAL_READ,
+            size=min(max(limit, 1), 25),
+            query={
+                "bool": {
+                    "should": [
+                        {"term": {"metadata.decision_event_pending": True}},
+                        {"term": {"approval_state": "reserved"}},
+                        {
+                            "bool": {
+                                "filter": [
+                                    {"term": {"approval_state": "approved"}},
+                                    {"range": {"expires_at": {"lte": now.isoformat()}}},
+                                ]
+                            }
+                        },
+                    ],
+                    "minimum_should_match": 1,
+                }
+            },
+            sort=[{"created_at": "asc"}],
+        )
+        return [Approval.model_validate(hit["_source"]["metadata"]) for hit in response["hits"]["hits"]]
 
     def append_event(self, stream: str, event_id: str, document: dict[str, object]) -> None:
         try:

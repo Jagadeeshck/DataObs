@@ -22,6 +22,8 @@ class AutomationRepository(Protocol):
     def get_execution(self, tenant_id: str, environment: str, execution_id: str) -> Execution | None: ...
     def update_execution(self, execution: Execution, expected_lease_token: int | None = None) -> Execution: ...
     def queued(self, limit: int, now: datetime) -> list[Execution]: ...
+    def incomplete_executions(self, limit: int, now: datetime) -> list[Execution]: ...
+    def approvals_requiring_reconciliation(self, limit: int, now: datetime) -> list[Approval]: ...
     def append_event(self, stream: str, event_id: str, document: dict[str, object]) -> None: ...
 
 
@@ -38,8 +40,26 @@ class InMemoryAutomationRepository:
 
     def save_preview(self, preview: Preview) -> Preview:
         with self.lock:
-            self.previews.setdefault(preview.preview_id, preview)
-            return self.previews[preview.preview_id].model_copy(deep=True)
+            instances = [
+                item
+                for item in self.previews.values()
+                if item.action_fingerprint == preview.action_fingerprint
+                and (item.tenant_id, item.environment) == (preview.tenant_id, preview.environment)
+            ]
+            live = [item for item in instances if item.expires_at > preview.previewed_at]
+            if live:
+                return max(live, key=lambda item: item.preview_generation).model_copy(deep=True)
+            generation = max((item.preview_generation for item in instances), default=0) + 1
+            from .catalogue import canonical_hash
+
+            candidate = preview.model_copy(
+                update={
+                    "preview_generation": generation,
+                    "preview_id": f"prv_{canonical_hash([preview.action_fingerprint, generation])}",
+                }
+            )
+            self.previews.setdefault(candidate.preview_id, candidate)
+            return self.previews[candidate.preview_id].model_copy(deep=True)
 
     def get_preview(self, tenant_id: str, environment: str, preview_id: str) -> Preview | None:
         item = self.previews.get(preview_id)
@@ -99,6 +119,25 @@ class InMemoryAutomationRepository:
         return [
             item.model_copy(deep=True) for item in sorted(items, key=lambda x: (x.created_at, x.execution_id))[:limit]
         ]
+
+    def incomplete_executions(self, limit: int, now: datetime) -> list[Execution]:
+        recoverable = {"claimed", "running", "reconciliation_required"}
+        items = [
+            item
+            for item in self.executions.values()
+            if item.state in recoverable and item.lease_expires_at is not None and item.lease_expires_at <= now
+        ]
+        return [item.model_copy(deep=True) for item in sorted(items, key=lambda value: value.updated_at)[:limit]]
+
+    def approvals_requiring_reconciliation(self, limit: int, now: datetime) -> list[Approval]:
+        items = [
+            item
+            for item in self.approvals.values()
+            if item.decision_event_pending
+            or item.state == "reserved"
+            or (item.state == "approved" and item.expires_at <= now)
+        ]
+        return [item.model_copy(deep=True) for item in sorted(items, key=lambda value: value.requested_at)[:limit]]
 
     def append_event(self, stream: str, event_id: str, document: dict[str, object]) -> None:
         with self.lock:

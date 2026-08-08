@@ -8,6 +8,7 @@ export type IncidentItem = {
   owner?: string | null;
   business_service?: string | null;
   affected_assets: string[];
+  affected_asset_count: number;
   occurrence_count: number;
   opened_at?: string | null;
   last_observed_at?: string | null;

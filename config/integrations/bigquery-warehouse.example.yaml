@@ -1,0 +1,18 @@
+integration_id: bigquery-warehouse-dev
+provider_type: bigquery
+enabled: false
+allowed_capabilities: [resource_discovery, metadata_collection, metric_collection, query_history, schema_discovery, health_check, incremental_collection]
+timeout_seconds: 300
+provider:
+  authentication: {type: application_default}
+  projects:
+    - project_id: synthetic-analytics-project
+      locations: [EU, europe-west2]
+      include_datasets: [curated, analytics]
+      exclude_datasets: [temporary_internal]
+  metadata: {include_tables: true, include_views: true, include_materialized_views: true, include_external_tables: true, include_columns: true, include_models: true, include_routines: true, include_labels: false}
+  jobs: {enabled: true, mode: project_operational, lookback_seconds: 3600, overlap_seconds: 900, maximum_rows_per_location: 5000, include_timeline_aggregation: true, timeline_bucket_seconds: 60}
+  storage: {enabled: true, maximum_rows_per_location: 50000}
+  reservations: {enabled: false, administration_project: synthetic-reservation-project, locations: [EU], include_utilisation: false}
+  query_execution: {billing_project: synthetic-collector-project, maximum_bytes_billed: 100000000, timeout_seconds: 60, page_size: 500}
+  limits: {maximum_projects: 20, maximum_locations_per_project: 20, maximum_datasets_per_project: 5000, maximum_tables_per_dataset: 50000, maximum_columns: 500000, maximum_models: 10000, maximum_routines: 10000, maximum_pages: 1000, maximum_observations: 500000, maximum_concurrent_requests: 8}

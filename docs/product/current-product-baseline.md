@@ -110,3 +110,7 @@ FinOps, Business Observability, AI and Agent Observability, unrestricted custom 
 ## 14. Next milestone
 
 The next milestone is a clean integration repair followed by exact-commit Beta 1 certification against Elasticsearch 9.4.2. Development may continue after the repair branch is merged, but release status must remain blocked until the hosted evidence matrix is complete and independently verified.
+
+## SQL engine integrations
+
+Trino v1 is `functional_unvalidated` with fixed, privacy-safe metadata and bounded runtime evidence. It is not production-ready or certified. Presto and generic JDBC remain not implemented.

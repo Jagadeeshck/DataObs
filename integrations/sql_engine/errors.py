@@ -1,0 +1,25 @@
+ERROR_CODES = frozenset(
+    {
+        "invalid_configuration",
+        "dependency_unavailable",
+        "credential_reference_invalid",
+        "credential_unavailable",
+        "authentication_failed",
+        "tls_validation_failed",
+        "coordinator_unavailable",
+        "access_denied",
+        "catalog_unavailable",
+        "schema_unavailable",
+        "statement_timeout",
+        "statement_cancelled",
+        "rate_limited",
+        "result_truncated",
+        "result_malformed",
+        "query_history_gap",
+        "unsupported_server_version",
+        "unsupported_metadata_shape",
+        "checkpoint_conflict",
+        "partial_collection_failure",
+        "internal_collector_failure",
+    }
+)

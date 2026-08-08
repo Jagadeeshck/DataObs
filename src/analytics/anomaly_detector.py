@@ -9,8 +9,8 @@ Resolves: https://github.com/Jagadeeshck/DataObs/issues/30
 
 from __future__ import annotations
 
-import random
 import statistics
+import warnings
 from dataclasses import dataclass
 from typing import Sequence
 
@@ -58,6 +58,11 @@ class BootstrapAnomalyDetector:
         alpha: float = 0.05,
         metric_name: str = "unknown",
     ) -> None:
+        warnings.warn(
+            "BootstrapAnomalyDetector is deprecated; canonical monitor runtime uses deterministic robust thresholds",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         self._window = window
         self._n_bootstrap = n_bootstrap
         self._alpha = alpha
@@ -67,12 +72,10 @@ class BootstrapAnomalyDetector:
     def _compute_ci(self) -> tuple[float, float]:
         if len(self._window) < 3:
             return (float("-inf"), float("inf"))
-        boot_means = sorted(
-            statistics.mean(random.choices(self._window, k=len(self._window))) for _ in range(self._n_bootstrap)
-        )
-        low_idx = int(self._alpha / 2 * self._n_bootstrap)
-        high_idx = int((1 - self._alpha / 2) * self._n_bootstrap)
-        return boot_means[low_idx], boot_means[min(high_idx, len(boot_means) - 1)]
+        ordered = sorted(self._window)
+        low_idx = int(self._alpha / 2 * (len(ordered) - 1))
+        high_idx = int((1 - self._alpha / 2) * (len(ordered) - 1))
+        return ordered[low_idx], ordered[high_idx]
 
     def detect(self, current_value: float) -> AnomalyResult:
         with _tracer.start_as_current_span(

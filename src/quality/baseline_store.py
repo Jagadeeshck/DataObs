@@ -23,29 +23,13 @@ class ElasticsearchBaselineStore:
     """
 
     def __init__(self, es_client: object, tenant_id: str = "default") -> None:
-        self._es = es_client
-        self._index = f"{INDEX_PREFIX}-{tenant_id}"
-        self._ensure_index()
+        raise RuntimeError(
+            "ElasticsearchBaselineStore is deprecated: use the migration-managed canonical monitor repository"
+        )
 
     def _ensure_index(self) -> None:
-        """Create index with appropriate mappings if it does not exist."""
-        if not self._es.indices.exists(index=self._index):  # type: ignore[attr-defined]
-            self._es.indices.create(  # type: ignore[attr-defined]
-                index=self._index,
-                body={
-                    "mappings": {
-                        "properties": {
-                            "table": {"type": "keyword"},
-                            "column": {"type": "keyword"},
-                            "mean": {"type": "double"},
-                            "std": {"type": "double"},
-                            "null_rate": {"type": "double"},
-                            "sample_count": {"type": "long"},
-                            "updated_at": {"type": "date"},
-                        }
-                    }
-                },
-            )
+        """Dynamic index creation was removed; released only for import compatibility."""
+        raise RuntimeError("dynamic baseline index creation is prohibited")
 
     def _doc_id(self, table: str, column: str) -> str:
         return f"{table}__{column}"

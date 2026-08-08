@@ -47,6 +47,22 @@ class ThresholdMode(str, Enum):
     MISSING_EVENT = "missing_event"
 
 
+class BaselineMode(str, Enum):
+    STATIC = "static"
+    ADAPTIVE = "adaptive"
+    HYBRID = "hybrid"
+
+
+class BaselineState(str, Enum):
+    COLLECTING = "collecting"
+    READY = "ready"
+    STALE = "stale"
+    DEGRADED = "degraded"
+    RESETTING = "resetting"
+    DISABLED = "disabled"
+    ERROR = "error"
+
+
 class MonitorState(str, Enum):
     DRAFT = "draft"
     RECOMMENDED = "recommended"
@@ -117,12 +133,51 @@ class MonitorThresholdPolicy(DomainModel):
     fixed_safety_maximum: float | None = None
 
 
+class BaselineTrainingWindow(DomainModel):
+    observations: int = Field(default=60, ge=3, le=10000)
+    minimum_samples: int = Field(default=14, ge=3, le=10000)
+    maximum_age: str = "90d"
+
+
+class BaselineUpdatePolicy(DomainModel):
+    learning_delay: int = Field(default=2, ge=0, le=100)
+    exclude_breaches: bool = True
+    exclude_suppressed: bool = False
+    exclude_backfills: bool = True
+    exclude_maintenance: bool = True
+    exclude_stale: bool = True
+    exclude_incomplete: bool = True
+
+
+class BaselineDriftPolicy(DomainModel):
+    enabled: bool = True
+    regime_change_evaluations: int = Field(default=5, ge=3, le=100)
+
+
 class MonitorBaselinePolicy(DomainModel):
-    method: Literal["rolling_median", "mad", "robust_quantiles", "iqr", "ewma", "same_period"] = "mad"
+    enabled: bool = True
+    mode: BaselineMode = BaselineMode.ADAPTIVE
+    method: Literal["rolling_median", "mad", "quantile", "robust_quantiles", "iqr", "ewma", "same_period"] = "mad"
     history_points: int = Field(default=168, ge=3, le=10000)
     minimum_samples: int = Field(default=12, ge=3)
     sensitivity: Literal["low", "medium", "high"] = "medium"
-    seasonality: List[Literal["hour_of_day", "day_of_week", "weekly", "custom"]] = Field(default_factory=list)
+    training_window: BaselineTrainingWindow | None = None
+    seasonality: List[Literal["hour_of_day", "day_of_week", "weekday_weekend", "weekly", "custom"]] = Field(
+        default_factory=list, max_length=2
+    )
+    update_policy: BaselineUpdatePolicy = Field(default_factory=BaselineUpdatePolicy)
+    drift: BaselineDriftPolicy = Field(default_factory=BaselineDriftPolicy)
+    stale_after: str = "48h"
+    timezone: str = "UTC"
+
+    @model_validator(mode="after")
+    def normalize_window(self):
+        if self.training_window is not None:
+            self.history_points = self.training_window.observations
+            self.minimum_samples = self.training_window.minimum_samples
+        if self.minimum_samples > self.history_points:
+            raise ValueError("minimum_samples cannot exceed the observation window")
+        return self
 
 
 class MonitorAlertPolicy(DomainModel):

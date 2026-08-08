@@ -24,8 +24,21 @@ def evaluate(
         low, high = definition.threshold.minimum, definition.threshold.maximum
         mature = baseline and baseline.get("cold_start_state") == "mature"
         if baseline is not None and mature and definition.threshold.mode.value in {"learned", "hybrid"}:
-            low = baseline.get("expected_minimum") if low is None else low
-            high = baseline.get("expected_maximum") if high is None else high
+            low = baseline.get("expected_minimum")
+            high = baseline.get("expected_maximum")
+            if definition.threshold.mode.value == "hybrid":
+                safety_low = definition.threshold.fixed_safety_minimum
+                safety_high = definition.threshold.fixed_safety_maximum
+                low = (
+                    max(low, safety_low)
+                    if low is not None and safety_low is not None
+                    else (low if low is not None else safety_low)
+                )
+                high = (
+                    min(high, safety_high)
+                    if high is not None and safety_high is not None
+                    else (high if high is not None else safety_high)
+                )
         breached = (low is not None and observation.value < low) or (high is not None and observation.value > high)
         state = "breached" if breached else "passed"
         reasons.append(

@@ -1,0 +1,41 @@
+name: Adaptive data anomaly detection v1
+on:
+  pull_request:
+    paths:
+      - 'services/monitoring/**'
+      - 'services/monitor_runtime/**'
+      - 'packages/domain_model/monitor.py'
+      - 'tests/monitoring/**'
+      - 'docs/**'
+      - '.github/workflows/adaptive-data-anomaly-detection-v1.yml'
+permissions:
+  contents: read
+jobs:
+  deterministic-core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: pip install -r requirements.txt
+      - name: Repository guards
+        run: |
+          python -m pytest -q tests/test_merge_conflict_markers.py
+          python scripts/check_team_boundaries.py
+          python scripts/check_generated_artifacts.py
+          python scripts/check_docs_links.py
+          python scripts/validate_capability_ledger.py
+          python scripts/check_migration_immutability.py --base-ref origin/main
+          python scripts/security/check_route_permissions.py
+      - name: Adaptive deterministic scenarios
+        run: python -m pytest -q tests/monitoring/test_adaptive_anomaly_v1.py tests/monitoring/test_runtime_services.py --junitxml=adaptive-junit.xml
+      - name: Compile and lint
+        run: |
+          python -m compileall -q src packages services tests scripts
+          ruff check services/monitoring packages/domain_model/monitor.py tests/monitoring/test_adaptive_anomaly_v1.py
+          black --check services/monitoring packages/domain_model/monitor.py tests/monitoring/test_adaptive_anomaly_v1.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: adaptive-data-anomaly-detection-v1-evidence
+          path: adaptive-junit.xml
+          if-no-files-found: error

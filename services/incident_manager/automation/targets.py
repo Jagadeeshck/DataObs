@@ -64,6 +64,48 @@ class TargetOwnerReader(Protocol):
     def get_target(self, tenant_id: str, environment: str, target_type: str, target_id: str) -> ActionTarget | None: ...
 
 
+class IncidentRepositoryTargetReader:
+    """Public adapter over the incident repository contract, never its storage internals."""
+
+    def __init__(self, repository: Any) -> None:
+        self.repository = repository
+
+    def relevant_finding_references(
+        self, tenant_id: str, environment: str, incident_id: str, limit: int
+    ) -> Sequence[str]:
+        incident = self.repository.get_incident(tenant_id, incident_id, environment)
+        return tuple(incident.finding_ids[:limit]) if incident else ()
+
+    def get_finding(self, tenant_id: str, environment: str, finding_reference: str) -> dict[str, Any] | None:
+        finding = self.repository.get_finding(tenant_id, finding_reference, environment)
+        if finding is None:
+            return None
+        return finding.model_dump(mode="python")
+
+
+class CapabilityTargetOwnerReader:
+    """Routes target reads to owning repositories through their public methods."""
+
+    def __init__(self, collection_repository: Any, monitor_repository: Any | None) -> None:
+        self.collection_repository = collection_repository
+        self.monitor_repository = monitor_repository
+
+    def get_target(self, tenant_id: str, environment: str, target_type: str, target_id: str) -> ActionTarget | None:
+        if target_type == "monitor":
+            if self.monitor_repository is None:
+                return None
+            item = self.monitor_repository.get_monitor(tenant_id, environment, target_id)
+            return ActionTarget("monitor", target_id, str(item.etag)) if item else None
+        bucket = {"scanner": "scanners", "integration": "integrations"}.get(target_type)
+        if bucket is None:
+            return None
+        item = self.collection_repository.get(bucket, target_id, tenant_id)
+        if item is None or item.get("environment") not in {None, environment}:
+            return None
+        revision = item.get("revision", item.get("_version"))
+        return ActionTarget(target_type, target_id, str(revision)) if revision is not None else None
+
+
 class BoundedActionTargetResolver:
     """Resolve only finding-backed identities and reload revisions from capability owners."""
 
@@ -100,10 +142,12 @@ class BoundedActionTargetResolver:
         )
         truncated = len(references) > self.max_findings
         candidates: dict[str, tuple[ActionTarget, str]] = {}
+        processed = 0
         for reference in references[: self.max_findings]:
             if calls + 2 > self.max_repository_calls or monotonic() - started >= self.max_elapsed_seconds:
                 truncated = True
                 break
+            processed += 1
             calls += 1
             finding = self.findings.get_finding(tenant_id, environment, reference)
             target_id = finding.get(identity_field) if finding else None
@@ -114,7 +158,9 @@ class BoundedActionTargetResolver:
             if current is not None:
                 candidates[current.target_id] = (current, reference[:200])
             if len(candidates) >= self.max_candidates:
-                truncated = truncated or len(references) > 0
+                # Reaching a capacity is not truncation unless references that
+                # could change uniqueness actually remain unprocessed.
+                truncated = truncated or processed < min(len(references), self.max_findings)
                 break
         ordered = tuple(value for value, _ in sorted(candidates.values(), key=lambda item: item[0].target_id))
         if len(ordered) == 1 and not truncated:
@@ -139,7 +185,7 @@ class BoundedActionTargetResolver:
                 len(ordered),
                 truncated,
                 (),
-                ("multiple_authoritative_targets",),
+                ("incomplete_resolution" if truncated and len(ordered) == 1 else "multiple_authoritative_targets",),
                 ordered,
             )
         return self._unavailable(("no_authoritative_target",), ("finding_target_identity",), truncated)

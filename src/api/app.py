@@ -28,6 +28,11 @@ from services.collection_manager.elasticsearch_repository import ElasticsearchCo
 from services.collection_manager.leases import claim_task, renew_task
 from services.collection_manager.memory_repository import InMemoryCollectionRepository
 from services.incident_manager import IncidentManagerService
+from services.incident_manager.automation.targets import (
+    BoundedActionTargetResolver,
+    CapabilityTargetOwnerReader,
+    IncidentRepositoryTargetReader,
+)
 from services.incident_manager.correlation.coordinator import IncidentCorrelationCoordinator
 from services.incident_manager.correlation.elasticsearch_repository import ElasticsearchCorrelationRepository
 from services.incident_manager.correlation.repository import InMemoryCorrelationRepository
@@ -60,9 +65,9 @@ from src.core.enterprise_blueprint import enterprise_backlog
 from src.core.pillars import PILLAR_REGISTRY, canonical_pillar_value
 from src.data_observability.openlineage import OpenLineageValidationError
 from src.data_observability.service import DataObservabilityService, OpenLineageConflictError
+from src.platform_lifecycle import PlatformLifecycleService
 from src.platform_operations.health import Criticality, HealthCheck, HealthState, aggregate
 from src.platform_operations.slo import evaluate_error_budget
-from src.platform_lifecycle import PlatformLifecycleService
 from src.security.audit import security_event
 from src.security.authentication import Authenticator
 from src.security.authorization import authorize
@@ -332,6 +337,12 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
         ElasticsearchMonitorRepository(make_es_client(resolved_settings))
         if resolved_settings.store_backend.lower() == "elasticsearch"
         else None
+    )
+    target_incidents = IncidentRepositoryTargetReader(incident_repo)
+    app.state.action_target_resolver = BoundedActionTargetResolver(
+        target_incidents,
+        target_incidents,
+        CapabilityTargetOwnerReader(repo, app.state.monitor_repository),
     )
     app.state.security_audit_events = []
     if resolved_settings.store_backend.lower() == "elasticsearch":

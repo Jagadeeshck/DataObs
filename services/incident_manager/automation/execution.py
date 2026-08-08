@@ -80,7 +80,13 @@ class ExecutionWorker:
                 continue
             item.state, item.attempt, item.updated_at = ExecutionState.RUNNING, item.attempt + 1, checked
             item.execution_started_at = checked
-            self.repository.update_execution(item, item.lease_token)
+            try:
+                self.repository.update_execution(item, item.lease_token)
+            except Conflict:
+                # Lease expiry and takeover intentionally fence a late provider
+                # return.  Losing a fence is per-item safety, not worker failure.
+                processed += 1
+                continue
             heartbeat_stop, heartbeat_lost = Event(), Event()
             heartbeat = Thread(target=self._heartbeat, args=(item, heartbeat_stop, heartbeat_lost), daemon=True)
             heartbeat.start()
@@ -174,7 +180,18 @@ class ExecutionWorker:
         return processed
 
     def _heartbeat(self, item: Execution, stopping: Event, lost: Event) -> None:
+        if item.execution_started_at is None:
+            lost.set()
+            return
+        execution_deadline = item.execution_started_at + timedelta(seconds=item.timeout_seconds)
         while not stopping.wait(self.heartbeat_seconds):
+            now = datetime.now(timezone.utc)
+            if now >= execution_deadline:
+                # Do not let local thread liveness extend ownership forever.
+                # The provider outcome is unknown; the durable lease expires and
+                # a newly fenced worker performs lookup/reconciliation.
+                lost.set()
+                return
             try:
                 renewed = self.repository.renew_execution_lease(
                     item.tenant_id,
@@ -182,7 +199,7 @@ class ExecutionWorker:
                     item.execution_id,
                     self.worker_id,
                     item.lease_token,
-                    datetime.now(timezone.utc) + timedelta(seconds=self.lease_seconds),
+                    min(now + timedelta(seconds=self.lease_seconds), execution_deadline),
                 )
             except Exception:
                 lost.set()

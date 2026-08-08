@@ -39,6 +39,7 @@ from services.monitoring.elasticsearch_repository import ElasticsearchMonitorRep
 from services.product_query import ElasticsearchConsoleRepository
 from services.product_query.path_search import search_paths
 from src.api.data_product_routes import create_data_product_router
+from src.api.incident_automation_routes import create_incident_automation_router
 from src.api.incident_routes import create_incident_workbench_router
 from src.api.incident_runtime_routes import create_incident_runtime_router
 from src.api.monitor_routes import router as monitor_router
@@ -1866,6 +1867,7 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
     app.include_router(create_pathway_router(get_console_repository, require_auth))
     app.include_router(create_data_product_router(get_data_product_repository, require_auth))
     app.include_router(create_incident_workbench_router(require_auth))
+    app.include_router(create_incident_automation_router(require_auth))
     app.include_router(create_incident_runtime_router(require_auth))
 
     return app

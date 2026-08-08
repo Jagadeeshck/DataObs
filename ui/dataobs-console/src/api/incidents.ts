@@ -92,10 +92,16 @@ export const incidentsApi = {
     environment: string,
     id: string,
     action_type: string,
+    incidentRevision: string,
+    targetId: string,
   ) =>
     write<Record<string, unknown>>(
       `/api/v1/incident-workbench/${encodeURIComponent(id)}/actions/preview?environment=${encodeURIComponent(environment)}`,
       tenant,
-      { action_type, payload: {} },
+      {
+        action_type,
+        incident_revision: incidentRevision,
+        payload: { target_id: targetId, target_revision: incidentRevision },
+      },
     ),
 };

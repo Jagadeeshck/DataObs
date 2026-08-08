@@ -99,7 +99,7 @@ export function IncidentDetail() {
             <a href="#assets">Affected Assets</a> ·{" "}
             <a href="#timeline">Timeline</a> ·{" "}
             <a href="#collaboration">Collaboration</a> ·{" "}
-            <a href="#actions">Actions</a>
+            <a href="#actions">Automation</a>
           </nav>
           <section id="overview" className="panel">
             <h2>Overview</h2>
@@ -177,21 +177,49 @@ export function IncidentDetail() {
             </button>
           </section>
           <section id="actions" className="panel">
-            <h2>Actions</h2>
+            <h2>Automation</h2>
+            <p>
+              Actions are previewed only. Provider acceptance is not proof of
+              recovery, and automation never resolves this incident.
+            </p>
             <button
+              disabled={!item.affected_assets[0]}
+              aria-describedby="automation-disabled-reason"
               onClick={() =>
                 incidentsApi
-                  .preview(tenant, environment, incidentId, "rerun_scan")
+                  .preview(
+                    tenant,
+                    environment,
+                    incidentId,
+                    "rerun_scan",
+                    item.revision,
+                    item.affected_assets[0],
+                  )
                   .then(setPreview)
               }
             >
               Preview rerun scan
             </button>
+            <p id="automation-disabled-reason">
+              {!item.affected_assets[0]
+                ? "A target is required before preview is available."
+                : "Preview has no side effects."}
+            </p>
             {preview ? (
-              <div role="status">
+              <div role="status" aria-live="polite">
+                <h3>Deterministic action preview</h3>
+                <p>Target: {String((preview.target as { id?: string }).id)}</p>
+                <p>Risk: {String(preview.risk)}</p>
                 <p>Provider: {String(preview.provider_state)}</p>
+                <p>Policy: {String(preview.policy_decision)}</p>
+                <p>Approval required: {String(preview.approval_required)}</p>
+                <p>Timeout: {String(preview.timeout_seconds)} seconds</p>
+                <p>Verification: {String(preview.verification_plan)}</p>
+                <p>Rollback: {String(preview.rollback_description)}</p>
                 <p>{String((preview.warnings as string[])[0])}</p>
-                <p>No action has executed.</p>
+                <button disabled title="The executor is not configured.">
+                  Execute unavailable
+                </button>
               </div>
             ) : null}
           </section>

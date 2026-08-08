@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any, Callable
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from packages.domain_model.incident import IncidentState
 from services.incident_manager.repository import VersionConflict
@@ -19,7 +19,9 @@ class Mutation(BaseModel):
 
 
 class ActionPreview(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     action_type: str = Field(max_length=80)
+    incident_revision: str = Field(min_length=1, max_length=120)
     payload: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -147,8 +149,42 @@ def create_incident_workbench_router(auth_dependency: Callable[..., Any]) -> API
         workbench: IncidentWorkbenchService = Depends(service),
     ) -> dict[str, Any]:
         try:
-            return workbench.preview(request.state.tenant_id, environment, incident_id, body.action_type, body.payload)
+            from services.incident_manager.automation.coordinator import AutomationCoordinator
+            from services.incident_manager.automation.elasticsearch_repository import ElasticsearchAutomationRepository
+            from services.incident_manager.automation.preview import PreviewService
+            from services.incident_manager.automation.repository import InMemoryAutomationRepository
+
+            detail = workbench.detail(request.state.tenant_id, environment, incident_id, request.state.request_id)
+            if detail["revision"] != body.incident_revision:
+                raise VersionConflict("incident revision changed")
+            repo = getattr(request.app.state, "incident_automation_repository", None)
+            if repo is None:
+                incident_repo = request.app.state.incident_manager.repo
+                repo = (
+                    ElasticsearchAutomationRepository(incident_repo.client)
+                    if hasattr(incident_repo, "client")
+                    else InMemoryAutomationRepository()
+                )
+                request.app.state.incident_automation_repository = repo
+            result = PreviewService().create(
+                tenant_id=request.state.tenant_id,
+                environment=environment,
+                incident_id=incident_id,
+                incident_revision=body.incident_revision,
+                incident_state=detail["state"],
+                severity=detail["severity"],
+                affected_asset_count=len(detail["affected_assets"]),
+                action_type=body.action_type,
+                payload=body.payload,
+                actor=authenticated_actor(request),
+                request_id=request.state.request_id,
+            )
+            return AutomationCoordinator(repo).save_preview(result).model_dump(mode="json")
         except KeyError as exc:
             raise HTTPException(status_code=404, detail="Incident not found") from exc
+        except VersionConflict as exc:
+            raise HTTPException(status_code=409, detail="Incident changed; create a new preview") from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     return router

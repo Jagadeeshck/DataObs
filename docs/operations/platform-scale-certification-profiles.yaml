@@ -1,0 +1,37 @@
+schema_version: "1"
+claim: certification_definitions_not_support_claims
+states: [unvalidated, functional, certified]
+profiles:
+  development:
+    kubernetes: {minimum_nodes: 1, disposable_test_only: true}
+    minimum_replicas: {api: 1, console: 1}
+    failure_domains: {minimum: 1, cloud_multizone_required: false}
+    pdb_policy: optional
+    topology_spread_policy: optional
+    autoscaling_eligibility: [api]
+    worker_replica_policy: singleton_unless_individually_certified
+    required_load_scenario: api-reads
+    required_ha_scenarios: []
+    required_soak_class: none
+  standard-ha:
+    kubernetes: {minimum_nodes: 2, metrics_api_required: true}
+    minimum_replicas: {api: 2, console: 2}
+    failure_domains: {minimum: 2, cloud_multizone_required: false}
+    pdb_policy: required
+    topology_spread_policy: required
+    autoscaling_eligibility: [api, console]
+    worker_replica_policy: singleton_or_individually_certified
+    required_load_scenario: staged-mixed
+    required_ha_scenarios: [autoscaling, worker-scale, worker-crash-matrix, pod-failure, noisy-neighbour]
+    required_soak_class: short
+  production-ha:
+    kubernetes: {minimum_nodes: 3, metrics_api_required: true, supported_platform_matrix_match: true}
+    minimum_replicas: {api: 3, console: 2}
+    failure_domains: {minimum: 3, cloud_multizone_required: true}
+    pdb_policy: required
+    topology_spread_policy: required_do_not_schedule
+    autoscaling_eligibility: [api, console]
+    worker_replica_policy: singleton_or_individually_certified
+    required_load_scenario: staged-mixed-through-150-percent
+    required_ha_scenarios: [autoscaling, worker-scale, worker-crash-matrix, pod-failure, node-failure, noisy-neighbour]
+    required_soak_class: short

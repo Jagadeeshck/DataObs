@@ -1,0 +1,16 @@
+schema_version: "1"
+enforcement: fail_closed
+limits:
+  result_size_max: 1000
+  from_max: 10000
+  aggregation_bucket_size_max: 1000
+  query_timeout: 30s
+  request_body_bytes_max: 1048576
+prohibited: [unbounded_size, deep_from, unrestricted_wildcard, unrestricted_aggregation, unrestricted_search, arbitrary_script]
+preferred: [search_after, point_in_time, bounded_aggregation, time_filter, source_filtering]
+validation:
+  requires_runtime_inventory: true
+  increase_cluster_limits_as_workaround: prohibited
+  current_state: unvalidated
+storage_growth_required_metrics: [document_count, index_size, shard_size, shard_count, segment_count, merge_activity, retention_deletion]
+tenant_index_policy: shared_bounded_indices_unless_architecture_exception

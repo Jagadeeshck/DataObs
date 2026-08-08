@@ -1,5 +1,7 @@
 schema_version: "1"
 certification_status: unvalidated
+certification_is_evidence_derived: true
+allowed_certification_states: [unvalidated, functional, certified]
 profiles:
   development:
     api_min_replicas: 1

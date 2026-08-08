@@ -1,0 +1,48 @@
+name: Team 4 PostgreSQL Relational Database Foundation v1
+on:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      run_postgres_live:
+        type: boolean
+        default: false
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: {python: ['3.11', '3.12']}
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-python@v5
+        with: {python-version: '${{ matrix.python }}'}
+      - run: pip install -r requirements-postgres.txt pytest ruff black mypy pip-audit
+      - run: python -m compileall integrations/database integrations/databases/postgres services/collection_manager
+      - run: ruff check integrations/database integrations/databases/postgres services/collection_manager tests/unit/database_foundation tests/unit/postgres_provider
+      - run: black --check integrations/database integrations/databases/postgres tests/unit/database_foundation tests/unit/postgres_provider
+      - run: pytest -q tests/unit/database_foundation tests/unit/postgres_provider tests/test_agent_sdk_scanner.py tests/integration/postgres_vertical_slice tests/test_collection_manager.py tests/integrations/test_collection_manager_runtime.py
+      - run: python scripts/release/current_terminal_migration.py
+      - run: python scripts/check_migration_immutability.py --base-ref "origin/${{ github.base_ref || 'main' }}"
+      - run: python scripts/release/check_release_metadata.py
+      - run: python scripts/validate_capability_ledger.py
+      - run: python scripts/check_generated_artifacts.py
+      - run: pip-audit -r requirements-postgres.txt
+      - run: rg -n '^(<<<<<<<|=======|>>>>>>>)' --glob '!*.lock' . && exit 1 || true
+  postgres-live:
+    if: inputs.run_postgres_live
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: {postgres: ['18', '17', '16']}
+    services:
+      postgres:
+        image: postgres:${{ matrix.postgres }}
+        env: {POSTGRES_PASSWORD: synthetic, POSTGRES_DB: dataobs_test}
+        ports: ['5432:5432']
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install -r requirements-postgres.txt pytest
+      - run: RUN_POSTGRES_INTEGRATION_TESTS=1 RUN_INTEGRATION_TESTS=1 pytest -q tests/integration/postgres_vertical_slice
+        env: {POSTGRES_PASSWORD: synthetic, POSTGRES_USER: postgres, POSTGRES_DB: dataobs_test, POSTGRES_SSLMODE: prefer}

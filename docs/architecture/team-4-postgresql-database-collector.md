@@ -1,0 +1,7 @@
+# PostgreSQL Database Collector v1
+
+`PostgreSqlDatabaseProvider` is provider type `postgres`, version `1`, explicitly registered with Collection Manager. It negotiates resource, metadata, schema, metric, health and incremental capabilities. Query history, lineage, event-driven, log and cost collection are unsupported. PostgreSQL-native evidence only is emitted; Team 2 owns quality, canonical lineage and schema-change intelligence.
+
+A collection owns one Psycopg 3 connection. It uses verified TLS, `dataobs-collector`, autocommit metadata statements, server-side read-only defaults and timeouts, closes cursors/connections, and rolls back failures. Autocommit avoids idle-in-transaction metadata sessions. Fixed catalog projections collect relations including tables/partitioned tables/views/materialized views, safe columns and constraints, and structural indexes. New evidence omits owners, comments, defaults, generated expressions, CHECK text and index SQL. Profiling is disabled by default; freshness is explicitly relation-configured. Both record `visibility_scope=collector_principal` because RLS can limit aggregates.
+
+Fingerprint v1 compatibility remains in the legacy adapter. Foundation structural fingerprints omit unstable/private fields; a future persisted algorithm change must receive an explicit version. No business rows, `SELECT *`, arbitrary SQL, OpenLineage input, or SQL query text are accepted.

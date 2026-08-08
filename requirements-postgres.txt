@@ -1,0 +1,2 @@
+# PostgreSQL Integration SDK provider; both pure-Python and binary extras are supported.
+psycopg>=3.3.4,<3.4

@@ -1,0 +1,38 @@
+integration_id: postgres-production
+provider_type: postgres
+enabled: false
+allowed_capabilities: [resource_discovery, metadata_collection, schema_discovery, metric_collection, health_check, incremental_collection]
+provider:
+  host: postgres.example.internal
+  port: 5432
+  database: application
+  authentication:
+    type: password
+    username: dataobs_collector
+    password_ref: env:DATAOBS_POSTGRES_PASSWORD
+  tls:
+    mode: verify-full
+    ca_bundle_ref: file-ref:/etc/dataobs/postgres-ca.pem
+  discovery:
+    include_schemas: []
+    exclude_schemas: [pg_catalog, information_schema]
+    include_tables: []
+    exclude_tables: []
+    include_views: true
+    include_materialized_views: true
+    include_constraints: true
+    include_indexes: true
+    include_partition_metadata: true
+  freshness: {enabled: true, relations: []}
+  profiling: {enabled: false, allowed_tables: [], allowed_columns: [], maximum_statements: 100}
+  limits:
+    connection_timeout_seconds: 5
+    statement_timeout_seconds: 10
+    maximum_schemas: 1000
+    maximum_relations: 100000
+    maximum_columns: 1000000
+    maximum_constraints: 1000000
+    maximum_indexes: 500000
+    maximum_partitions: 100000
+    maximum_concurrent_scans: 4
+    total_timeout_seconds: 300

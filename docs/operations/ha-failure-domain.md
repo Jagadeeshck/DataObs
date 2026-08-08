@@ -1,4 +1,4 @@
-# Tenant Onboarding
+# Ha Failure Domain
 
 ## Preconditions
 Authoritative inventory and current evidence are available; unknown mandatory evidence stops execution. External dependencies are reachable.
@@ -7,7 +7,7 @@ Authoritative inventory and current evidence are available; unknown mandatory ev
 Use the narrow lifecycle permission. Production, destructive, promotion, rollback and failover actions require the existing privileged approval contract and a change reference; requester cannot self-approve destruction.
 
 ## Plan and execution
-Request with owner, region, profiles and external initial admins; approve, deterministically place, bootstrap DataObs-owned state, validate isolation/backup/telemetry, activate.
+Validate replicas, PDB, topology spread and zones against profile. Inject failures only in disposable targets; singleton takeover remains unvalidated without lease evidence.
 
 Execution is declarative and idempotent with `Idempotency-Key`, `If-Match`, bounded reason code and validated actor. Operators use reviewed adapters; the API accepts no shell, kubectl or Terraform target.
 

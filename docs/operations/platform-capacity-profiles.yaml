@@ -1,0 +1,18 @@
+schema_version: "1"
+claim: deployment_presets_not_certified_throughput
+validation_limits: {cpu_max: "8", memory_max: 16Gi, replicas_max: 20}
+profiles:
+  small:
+    expected_workload_class: development
+    api: {cpu_request: 250m, memory_request: 512Mi, cpu_limit: "1", memory_limit: 1Gi, replicas: 1, autoscaling: {min: 1, max: 3}}
+    console: {cpu_request: 100m, memory_request: 256Mi, cpu_limit: 500m, memory_limit: 512Mi, replicas: 1, autoscaling: {min: 1, max: 2}}
+  medium:
+    expected_workload_class: general
+    api: {cpu_request: 500m, memory_request: 1Gi, cpu_limit: "2", memory_limit: 2Gi, replicas: 2, autoscaling: {min: 2, max: 6}}
+    console: {cpu_request: 250m, memory_request: 512Mi, cpu_limit: "1", memory_limit: 1Gi, replicas: 2, autoscaling: {min: 2, max: 4}}
+  large:
+    expected_workload_class: high_concurrency_unvalidated
+    api: {cpu_request: "1", memory_request: 2Gi, cpu_limit: "4", memory_limit: 4Gi, replicas: 3, autoscaling: {min: 3, max: 12}}
+    console: {cpu_request: 500m, memory_request: 1Gi, cpu_limit: "2", memory_limit: 2Gi, replicas: 2, autoscaling: {min: 2, max: 8}}
+overrides: permitted_within_validation_limits
+worker_autoscaling: prohibited_until_lease_idempotency_checkpoint_fencing_and_duplicate_safety_are_certified

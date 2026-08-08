@@ -1963,6 +1963,40 @@ STREAM_ANOMALY_RETENTION_INTELLIGENCE_MIGRATION = Migration(
     },
 )
 
+PLATFORM_LIFECYCLE_PROPERTIES = {
+    **{key: {"type": "keyword"} for key in [
+        "resource_id", "resource_type", "platform_owner", "state", "reason_code", "actor",
+        "created_actor", "updated_actor", "etag", "schema_version", "environment_id", "cluster_id",
+        "installation_id", "tenant_id", "release_sha", "chart_version", "terminal_migration",
+        "desired_state_hash", "observed_state_hash", "drift_state", "idempotency_key",
+    ]},
+    **{key: {"type": "date"} for key in ["created_at", "updated_at", "timestamp"]},
+    "revision": {"type": "long"},
+    "metadata": {"type": "flattened"},
+}
+
+PLATFORM_LIFECYCLE_MIGRATION = Migration(
+    "0027_platform_environment_tenant_multicluster_lifecycle",
+    "Add strict metadata-only platform lifecycle projections and append-only evidence",
+    "v1",
+    dependencies=["0026_stream_anomaly_retention_intelligence"],
+    rollback_strategy="stop lifecycle writers; retain append-only evidence and snapshots; never reverse tenant deletion or Elasticsearch data migrations",
+    operations={
+        "mutable_indices": [
+            "dataobs-platform-environments-v1", "dataobs-platform-clusters-v1",
+            "dataobs-platform-installations-v1", "dataobs-platform-deployment-plans-v1",
+            "dataobs-platform-tenant-lifecycle-v1", "dataobs-platform-lifecycle-operations-v1",
+        ],
+        "mapping_updates": {name: PLATFORM_LIFECYCLE_PROPERTIES for name in [
+            "dataobs-platform-environments-v1", "dataobs-platform-clusters-v1",
+            "dataobs-platform-installations-v1", "dataobs-platform-deployment-plans-v1",
+            "dataobs-platform-tenant-lifecycle-v1", "dataobs-platform-lifecycle-operations-v1",
+        ]},
+        "data_stream_contracts": {"logs-dataobs.platform-lifecycle-evidence-*": {
+            "retention": "2555d", "properties": PLATFORM_LIFECYCLE_PROPERTIES}},
+    },
+)
+
 
 def migrations() -> List[Migration]:
     return [
@@ -1992,6 +2026,7 @@ def migrations() -> List[Migration]:
         JOB_RUN_RELIABILITY_MIGRATION,
         STREAM_PATHWAY_RELIABILITY_PRODUCTION_CLOSURE_MIGRATION,
         STREAM_ANOMALY_RETENTION_INTELLIGENCE_MIGRATION,
+        PLATFORM_LIFECYCLE_MIGRATION,
     ]
 
 

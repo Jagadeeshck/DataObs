@@ -1,282 +1,542 @@
 version: 1
 alerts:
-  - id: api-readiness-unavailable
-    title: Api Readiness Unavailable
-    owner: team-0
-    severity: warning
-    source: platform-health
-    expression: sustained_threshold
-    for: 10m
-    required_labels: [component]
-    runbook: platform-health.md
-    deduplication_key: alert_id/component
-    recovery_condition: signal remains below threshold for 10m
-    slo: api-serving-availability
-    beta_critical: true
-    default_enabled: true
-  - id: api-elevated-error-rate
-    title: Api Elevated Error Rate
-    owner: team-0
-    severity: warning
-    source: dataobs_api_requests_total
-    expression: sustained_threshold
-    for: 10m
-    required_labels: [component]
-    runbook: platform-alerting.md
-    deduplication_key: alert_id/component
-    recovery_condition: signal remains below threshold for 10m
-    slo: api-serving-availability
-    beta_critical: true
-    default_enabled: true
-  - id: api-latency-burn
-    title: Api Latency Burn
-    owner: team-0
-    severity: warning
-    source: dataobs_api_request_duration_seconds
-    expression: sustained_threshold
-    for: 10m
-    required_labels: [component]
-    runbook: platform-alerting.md
-    deduplication_key: alert_id/component
-    recovery_condition: signal remains below threshold for 10m
-    slo: api-serving-availability
-    beta_critical: true
-    default_enabled: true
-  - id: elasticsearch-unavailable
-    title: Elasticsearch Unavailable
-    owner: team-0
-    severity: warning
-    source: platform-health
-    expression: sustained_threshold
-    for: 10m
-    required_labels: [component]
-    runbook: elasticsearch-dependency-outage.md
-    deduplication_key: alert_id/component
-    recovery_condition: signal remains below threshold for 10m
-    slo: null
-    beta_critical: true
-    default_enabled: true
-  - id: migration-mismatch
-    title: Migration Mismatch
-    owner: team-0
-    severity: warning
-    source: platform-health
-    expression: sustained_threshold
-    for: 10m
-    required_labels: [component]
-    runbook: migration-mismatch.md
-    deduplication_key: alert_id/component
-    recovery_condition: signal remains below threshold for 10m
-    slo: null
-    beta_critical: true
-    default_enabled: true
-  - id: route-policy-failure
-    title: Route Policy Failure
-    owner: team-0
-    severity: warning
-    source: platform-health
-    expression: sustained_threshold
-    for: 10m
-    required_labels: [component]
-    runbook: platform-health.md
-    deduplication_key: alert_id/component
-    recovery_condition: signal remains below threshold for 10m
-    slo: null
-    beta_critical: true
-    default_enabled: true
-  - id: security-audit-persistence-failure
-    title: Security Audit Persistence Failure
-    owner: team-0
-    severity: warning
-    source: platform-health
-    expression: sustained_threshold
-    for: 10m
-    required_labels: [component]
-    runbook: platform-health.md
-    deduplication_key: alert_id/component
-    recovery_condition: signal remains below threshold for 10m
-    slo: null
-    beta_critical: true
-    default_enabled: true
-  - id: worker-heartbeat-stale
-    title: Worker Heartbeat Stale
-    owner: team-0
-    severity: warning
-    source: platform-health
-    expression: sustained_threshold
-    for: 10m
-    required_labels: [component]
-    runbook: worker-stall.md
-    deduplication_key: alert_id/component
-    recovery_condition: signal remains below threshold for 10m
-    slo: null
-    beta_critical: true
-    default_enabled: true
-  - id: worker-lease-repeatedly-lost
-    title: Worker Lease Repeatedly Lost
-    owner: team-0
-    severity: warning
-    source: platform-health
-    expression: sustained_threshold
-    for: 10m
-    required_labels: [component]
-    runbook: worker-stall.md
-    deduplication_key: alert_id/component
-    recovery_condition: signal remains below threshold for 10m
-    slo: null
-    beta_critical: true
-    default_enabled: true
-  - id: worker-checkpoint-stale
-    title: Worker Checkpoint Stale
-    owner: team-0
-    severity: warning
-    source: dataobs_worker_checkpoint_age_seconds
-    expression: sustained_threshold
-    for: 10m
-    required_labels: [component]
-    runbook: worker-stall.md
-    deduplication_key: alert_id/component
-    recovery_condition: signal remains below threshold for 10m
-    slo: null
-    beta_critical: true
-    default_enabled: true
-  - id: worker-terminal-failure-rate
-    title: Worker Terminal Failure Rate
-    owner: team-0
-    severity: warning
-    source: dataobs_worker_terminal_outcomes_total
-    expression: sustained_threshold
-    for: 10m
-    required_labels: [component]
-    runbook: worker-stall.md
-    deduplication_key: alert_id/component
-    recovery_condition: signal remains below threshold for 10m
-    slo: null
-    beta_critical: true
-    default_enabled: true
-  - id: telemetry-exporter-backlog
-    title: Telemetry Exporter Backlog
-    owner: team-0
-    severity: warning
-    source: dataobs_telemetry_export_dropped_total
-    expression: sustained_threshold
-    for: 10m
-    required_labels: [component]
-    runbook: telemetry-exporter-outage.md
-    deduplication_key: alert_id/component
-    recovery_condition: signal remains below threshold for 10m
-    slo: null
-    beta_critical: true
-    default_enabled: true
-  - id: backup-stale
-    title: Backup Stale
-    owner: team-0
-    severity: warning
-    source: platform-health
-    expression: sustained_threshold
-    for: 10m
-    required_labels: [component]
-    runbook: backup-stale.md
-    deduplication_key: alert_id/component
-    recovery_condition: signal remains below threshold for 10m
-    slo: null
-    beta_critical: true
-    default_enabled: true
-  - id: snapshot-failed
-    title: Snapshot Failed
-    owner: team-0
-    severity: warning
-    source: platform-health
-    expression: sustained_threshold
-    for: 10m
-    required_labels: [component]
-    runbook: backup-stale.md
-    deduplication_key: alert_id/component
-    recovery_condition: signal remains below threshold for 10m
-    slo: null
-    beta_critical: true
-    default_enabled: true
-  - id: restore-rehearsal-overdue
-    title: Restore Rehearsal Overdue
-    owner: team-0
-    severity: warning
-    source: platform-health
-    expression: sustained_threshold
-    for: 10m
-    required_labels: [component]
-    runbook: backup-stale.md
-    deduplication_key: alert_id/component
-    recovery_condition: signal remains below threshold for 10m
-    slo: null
-    beta_critical: true
-    default_enabled: true
-  - id: release-digest-mismatch
-    title: Release Digest Mismatch
-    owner: team-0
-    severity: warning
-    source: platform-health
-    expression: sustained_threshold
-    for: 10m
-    required_labels: [component]
-    runbook: release-integrity-failure.md
-    deduplication_key: alert_id/component
-    recovery_condition: signal remains below threshold for 10m
-    slo: null
-    beta_critical: true
-    default_enabled: true
-  - id: release-signature-failure
-    title: Release Signature Failure
-    owner: team-0
-    severity: warning
-    source: platform-health
-    expression: sustained_threshold
-    for: 10m
-    required_labels: [component]
-    runbook: release-integrity-failure.md
-    deduplication_key: alert_id/component
-    recovery_condition: signal remains below threshold for 10m
-    slo: null
-    beta_critical: true
-    default_enabled: true
-  - id: unsupported-platform-combination
-    title: Unsupported Platform Combination
-    owner: team-0
-    severity: warning
-    source: platform-health
-    expression: sustained_threshold
-    for: 10m
-    required_labels: [component]
-    runbook: release-integrity-failure.md
-    deduplication_key: alert_id/component
-    recovery_condition: signal remains below threshold for 10m
-    slo: null
-    beta_critical: true
-    default_enabled: true
-  - id: error-budget-fast-burn
-    title: Error Budget Fast Burn
-    owner: team-0
-    severity: warning
-    source: dataobs_api_requests_total
-    expression: sustained_threshold
-    for: 10m
-    required_labels: [component]
-    runbook: platform-slos.md
-    deduplication_key: alert_id/component
-    recovery_condition: signal remains below threshold for 10m
-    slo: api-serving-availability
-    beta_critical: true
-    default_enabled: true
-  - id: error-budget-slow-burn
-    title: Error Budget Slow Burn
-    owner: team-0
-    severity: warning
-    source: dataobs_api_requests_total
-    expression: sustained_threshold
-    for: 10m
-    required_labels: [component]
-    runbook: platform-slos.md
-    deduplication_key: alert_id/component
-    recovery_condition: signal remains below threshold for 10m
-    slo: api-serving-availability
-    beta_critical: true
-    default_enabled: true
+- id: api-readiness-unavailable
+  title: Api Readiness Unavailable
+  owner: team-0
+  severity: warning
+  source: platform-health
+  expression: sustained_threshold
+  for: 10m
+  required_labels:
+  - component
+  runbook: platform-health.md
+  deduplication_key: alert_id/component
+  recovery_condition: signal remains below threshold for 10m
+  slo: api-serving-availability
+  beta_critical: true
+  default_enabled: true
+- id: api-elevated-error-rate
+  title: Api Elevated Error Rate
+  owner: team-0
+  severity: warning
+  source: dataobs_api_requests_total
+  expression: sustained_threshold
+  for: 10m
+  required_labels:
+  - component
+  runbook: platform-alerting.md
+  deduplication_key: alert_id/component
+  recovery_condition: signal remains below threshold for 10m
+  slo: api-serving-availability
+  beta_critical: true
+  default_enabled: true
+- id: api-latency-burn
+  title: Api Latency Burn
+  owner: team-0
+  severity: warning
+  source: dataobs_api_request_duration_seconds
+  expression: sustained_threshold
+  for: 10m
+  required_labels:
+  - component
+  runbook: platform-alerting.md
+  deduplication_key: alert_id/component
+  recovery_condition: signal remains below threshold for 10m
+  slo: api-serving-availability
+  beta_critical: true
+  default_enabled: true
+- id: elasticsearch-unavailable
+  title: Elasticsearch Unavailable
+  owner: team-0
+  severity: warning
+  source: platform-health
+  expression: sustained_threshold
+  for: 10m
+  required_labels:
+  - component
+  runbook: elasticsearch-dependency-outage.md
+  deduplication_key: alert_id/component
+  recovery_condition: signal remains below threshold for 10m
+  slo: null
+  beta_critical: true
+  default_enabled: true
+- id: migration-mismatch
+  title: Migration Mismatch
+  owner: team-0
+  severity: warning
+  source: platform-health
+  expression: sustained_threshold
+  for: 10m
+  required_labels:
+  - component
+  runbook: migration-mismatch.md
+  deduplication_key: alert_id/component
+  recovery_condition: signal remains below threshold for 10m
+  slo: null
+  beta_critical: true
+  default_enabled: true
+- id: route-policy-failure
+  title: Route Policy Failure
+  owner: team-0
+  severity: warning
+  source: platform-health
+  expression: sustained_threshold
+  for: 10m
+  required_labels:
+  - component
+  runbook: platform-health.md
+  deduplication_key: alert_id/component
+  recovery_condition: signal remains below threshold for 10m
+  slo: null
+  beta_critical: true
+  default_enabled: true
+- id: security-audit-persistence-failure
+  title: Security Audit Persistence Failure
+  owner: team-0
+  severity: warning
+  source: platform-health
+  expression: sustained_threshold
+  for: 10m
+  required_labels:
+  - component
+  runbook: platform-health.md
+  deduplication_key: alert_id/component
+  recovery_condition: signal remains below threshold for 10m
+  slo: null
+  beta_critical: true
+  default_enabled: true
+- id: worker-heartbeat-stale
+  title: Worker Heartbeat Stale
+  owner: team-0
+  severity: warning
+  source: platform-health
+  expression: sustained_threshold
+  for: 10m
+  required_labels:
+  - component
+  runbook: worker-stall.md
+  deduplication_key: alert_id/component
+  recovery_condition: signal remains below threshold for 10m
+  slo: null
+  beta_critical: true
+  default_enabled: true
+- id: worker-lease-repeatedly-lost
+  title: Worker Lease Repeatedly Lost
+  owner: team-0
+  severity: warning
+  source: platform-health
+  expression: sustained_threshold
+  for: 10m
+  required_labels:
+  - component
+  runbook: worker-stall.md
+  deduplication_key: alert_id/component
+  recovery_condition: signal remains below threshold for 10m
+  slo: null
+  beta_critical: true
+  default_enabled: true
+- id: worker-checkpoint-stale
+  title: Worker Checkpoint Stale
+  owner: team-0
+  severity: warning
+  source: dataobs_worker_checkpoint_age_seconds
+  expression: sustained_threshold
+  for: 10m
+  required_labels:
+  - component
+  runbook: worker-stall.md
+  deduplication_key: alert_id/component
+  recovery_condition: signal remains below threshold for 10m
+  slo: null
+  beta_critical: true
+  default_enabled: true
+- id: worker-terminal-failure-rate
+  title: Worker Terminal Failure Rate
+  owner: team-0
+  severity: warning
+  source: dataobs_worker_terminal_outcomes_total
+  expression: sustained_threshold
+  for: 10m
+  required_labels:
+  - component
+  runbook: worker-stall.md
+  deduplication_key: alert_id/component
+  recovery_condition: signal remains below threshold for 10m
+  slo: null
+  beta_critical: true
+  default_enabled: true
+- id: telemetry-exporter-backlog
+  title: Telemetry Exporter Backlog
+  owner: team-0
+  severity: warning
+  source: dataobs_telemetry_export_dropped_total
+  expression: sustained_threshold
+  for: 10m
+  required_labels:
+  - component
+  runbook: telemetry-exporter-outage.md
+  deduplication_key: alert_id/component
+  recovery_condition: signal remains below threshold for 10m
+  slo: null
+  beta_critical: true
+  default_enabled: true
+- id: backup-stale
+  title: Backup Stale
+  owner: team-0
+  severity: warning
+  source: platform-health
+  expression: sustained_threshold
+  for: 10m
+  required_labels:
+  - component
+  runbook: backup-stale.md
+  deduplication_key: alert_id/component
+  recovery_condition: signal remains below threshold for 10m
+  slo: null
+  beta_critical: true
+  default_enabled: true
+- id: snapshot-failed
+  title: Snapshot Failed
+  owner: team-0
+  severity: warning
+  source: platform-health
+  expression: sustained_threshold
+  for: 10m
+  required_labels:
+  - component
+  runbook: backup-stale.md
+  deduplication_key: alert_id/component
+  recovery_condition: signal remains below threshold for 10m
+  slo: null
+  beta_critical: true
+  default_enabled: true
+- id: restore-rehearsal-overdue
+  title: Restore Rehearsal Overdue
+  owner: team-0
+  severity: warning
+  source: platform-health
+  expression: sustained_threshold
+  for: 10m
+  required_labels:
+  - component
+  runbook: backup-stale.md
+  deduplication_key: alert_id/component
+  recovery_condition: signal remains below threshold for 10m
+  slo: null
+  beta_critical: true
+  default_enabled: true
+- id: release-digest-mismatch
+  title: Release Digest Mismatch
+  owner: team-0
+  severity: warning
+  source: platform-health
+  expression: sustained_threshold
+  for: 10m
+  required_labels:
+  - component
+  runbook: release-integrity-failure.md
+  deduplication_key: alert_id/component
+  recovery_condition: signal remains below threshold for 10m
+  slo: null
+  beta_critical: true
+  default_enabled: true
+- id: release-signature-failure
+  title: Release Signature Failure
+  owner: team-0
+  severity: warning
+  source: platform-health
+  expression: sustained_threshold
+  for: 10m
+  required_labels:
+  - component
+  runbook: release-integrity-failure.md
+  deduplication_key: alert_id/component
+  recovery_condition: signal remains below threshold for 10m
+  slo: null
+  beta_critical: true
+  default_enabled: true
+- id: unsupported-platform-combination
+  title: Unsupported Platform Combination
+  owner: team-0
+  severity: warning
+  source: platform-health
+  expression: sustained_threshold
+  for: 10m
+  required_labels:
+  - component
+  runbook: release-integrity-failure.md
+  deduplication_key: alert_id/component
+  recovery_condition: signal remains below threshold for 10m
+  slo: null
+  beta_critical: true
+  default_enabled: true
+- id: error-budget-fast-burn
+  title: Error Budget Fast Burn
+  owner: team-0
+  severity: warning
+  source: dataobs_api_requests_total
+  expression: sustained_threshold
+  for: 10m
+  required_labels:
+  - component
+  runbook: platform-slos.md
+  deduplication_key: alert_id/component
+  recovery_condition: signal remains below threshold for 10m
+  slo: api-serving-availability
+  beta_critical: true
+  default_enabled: true
+- id: error-budget-slow-burn
+  title: Error Budget Slow Burn
+  owner: team-0
+  severity: warning
+  source: dataobs_api_requests_total
+  expression: sustained_threshold
+  for: 10m
+  required_labels:
+  - component
+  runbook: platform-slos.md
+  deduplication_key: alert_id/component
+  recovery_condition: signal remains below threshold for 10m
+  slo: api-serving-availability
+  beta_critical: true
+  default_enabled: true
+- id: production-installation-unhealthy
+  title: Production Installation Unhealthy
+  owner: team-0
+  severity: warning
+  source: platform-lifecycle
+  expression: sustained_threshold
+  for: 10m
+  required_labels:
+  - component
+  runbook: platform-failover.md
+  deduplication_key: alert_id/component
+  recovery_condition: authoritative evidence remains healthy for 10m
+  slo: null
+  beta_critical: false
+  default_enabled: false
+- id: deployment-stuck
+  title: Deployment Stuck
+  owner: team-0
+  severity: warning
+  source: platform-lifecycle
+  expression: sustained_threshold
+  for: 10m
+  required_labels:
+  - component
+  runbook: environment-upgrade.md
+  deduplication_key: alert_id/component
+  recovery_condition: authoritative evidence remains healthy for 10m
+  slo: null
+  beta_critical: false
+  default_enabled: false
+- id: rollout-failed
+  title: Rollout Failed
+  owner: team-0
+  severity: warning
+  source: platform-lifecycle
+  expression: sustained_threshold
+  for: 10m
+  required_labels:
+  - component
+  runbook: environment-upgrade.md
+  deduplication_key: alert_id/component
+  recovery_condition: authoritative evidence remains healthy for 10m
+  slo: null
+  beta_critical: false
+  default_enabled: false
+- id: rollback-failed
+  title: Rollback Failed
+  owner: team-0
+  severity: warning
+  source: platform-lifecycle
+  expression: sustained_threshold
+  for: 10m
+  required_labels:
+  - component
+  runbook: environment-rollback.md
+  deduplication_key: alert_id/component
+  recovery_condition: authoritative evidence remains healthy for 10m
+  slo: null
+  beta_critical: false
+  default_enabled: false
+- id: release-digest-drift
+  title: Release Digest Drift
+  owner: team-0
+  severity: warning
+  source: platform-lifecycle
+  expression: sustained_threshold
+  for: 10m
+  required_labels:
+  - component
+  runbook: deployment-drift.md
+  deduplication_key: alert_id/component
+  recovery_condition: authoritative evidence remains healthy for 10m
+  slo: null
+  beta_critical: false
+  default_enabled: false
+- id: migration-drift
+  title: Migration Drift
+  owner: team-0
+  severity: warning
+  source: platform-lifecycle
+  expression: sustained_threshold
+  for: 10m
+  required_labels:
+  - component
+  runbook: deployment-drift.md
+  deduplication_key: alert_id/component
+  recovery_condition: authoritative evidence remains healthy for 10m
+  slo: null
+  beta_critical: false
+  default_enabled: false
+- id: configuration-drift
+  title: Configuration Drift
+  owner: team-0
+  severity: warning
+  source: platform-lifecycle
+  expression: sustained_threshold
+  for: 10m
+  required_labels:
+  - component
+  runbook: deployment-drift.md
+  deduplication_key: alert_id/component
+  recovery_condition: authoritative evidence remains healthy for 10m
+  slo: null
+  beta_critical: false
+  default_enabled: false
+- id: unsupported-kubernetes-version
+  title: Unsupported Kubernetes Version
+  owner: team-0
+  severity: warning
+  source: platform-lifecycle
+  expression: sustained_threshold
+  for: 10m
+  required_labels:
+  - component
+  runbook: cluster-registration.md
+  deduplication_key: alert_id/component
+  recovery_condition: authoritative evidence remains healthy for 10m
+  slo: null
+  beta_critical: false
+  default_enabled: false
+- id: unsupported-elasticsearch-version
+  title: Unsupported Elasticsearch Version
+  owner: team-0
+  severity: warning
+  source: platform-lifecycle
+  expression: sustained_threshold
+  for: 10m
+  required_labels:
+  - component
+  runbook: deployment-drift.md
+  deduplication_key: alert_id/component
+  recovery_condition: authoritative evidence remains healthy for 10m
+  slo: null
+  beta_critical: false
+  default_enabled: false
+- id: tenant-provisioning-stuck
+  title: Tenant Provisioning Stuck
+  owner: team-0
+  severity: warning
+  source: platform-lifecycle
+  expression: sustained_threshold
+  for: 10m
+  required_labels:
+  - component
+  runbook: tenant-onboarding.md
+  deduplication_key: alert_id/component
+  recovery_condition: authoritative evidence remains healthy for 10m
+  slo: null
+  beta_critical: false
+  default_enabled: false
+- id: tenant-offboarding-stuck
+  title: Tenant Offboarding Stuck
+  owner: team-0
+  severity: warning
+  source: platform-lifecycle
+  expression: sustained_threshold
+  for: 10m
+  required_labels:
+  - component
+  runbook: tenant-offboarding.md
+  deduplication_key: alert_id/component
+  recovery_condition: authoritative evidence remains healthy for 10m
+  slo: null
+  beta_critical: false
+  default_enabled: false
+- id: destructive-backup-missing
+  title: Destructive Backup Missing
+  owner: team-0
+  severity: warning
+  source: platform-lifecycle
+  expression: sustained_threshold
+  for: 10m
+  required_labels:
+  - component
+  runbook: tenant-offboarding.md
+  deduplication_key: alert_id/component
+  recovery_condition: authoritative evidence remains healthy for 10m
+  slo: null
+  beta_critical: false
+  default_enabled: false
+- id: production-replicas-below-ha
+  title: Production Replicas Below Ha
+  owner: team-0
+  severity: warning
+  source: platform-lifecycle
+  expression: sustained_threshold
+  for: 10m
+  required_labels:
+  - component
+  runbook: ha-failure-domain.md
+  deduplication_key: alert_id/component
+  recovery_condition: authoritative evidence remains healthy for 10m
+  slo: null
+  beta_critical: false
+  default_enabled: false
+- id: failure-domain-violation
+  title: Failure Domain Violation
+  owner: team-0
+  severity: warning
+  source: platform-lifecycle
+  expression: sustained_threshold
+  for: 10m
+  required_labels:
+  - component
+  runbook: ha-failure-domain.md
+  deduplication_key: alert_id/component
+  recovery_condition: authoritative evidence remains healthy for 10m
+  slo: null
+  beta_critical: false
+  default_enabled: false
+- id: fleet-release-skew
+  title: Fleet Release Skew
+  owner: team-0
+  severity: warning
+  source: platform-lifecycle
+  expression: sustained_threshold
+  for: 10m
+  required_labels:
+  - component
+  runbook: release-skew.md
+  deduplication_key: alert_id/component
+  recovery_condition: authoritative evidence remains healthy for 10m
+  slo: null
+  beta_critical: false
+  default_enabled: false
+- id: dr-rehearsal-overdue
+  title: Dr Rehearsal Overdue
+  owner: team-0
+  severity: warning
+  source: platform-lifecycle
+  expression: sustained_threshold
+  for: 10m
+  required_labels:
+  - component
+  runbook: platform-failover.md
+  deduplication_key: alert_id/component
+  recovery_condition: authoritative evidence remains healthy for 10m
+  slo: null
+  beta_critical: false
+  default_enabled: false

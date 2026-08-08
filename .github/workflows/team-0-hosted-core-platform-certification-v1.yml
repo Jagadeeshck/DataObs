@@ -1,0 +1,136 @@
+name: Team 0 Hosted Core Platform Certification v1
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_sha: {description: "Exact lowercase 40-character candidate SHA", required: true, type: string}
+      certification_profile: {description: "HA certification profile", required: true, type: choice, options: [standard-ha, production-ha]}
+      capacity_profile: {description: "Capacity profile", required: true, type: choice, options: [small, medium]}
+      infrastructure_profile: {description: "Protected disposable infrastructure profile", required: true, type: string}
+      upgrade_source_version: {description: "Actual retained previous release", required: true, type: string}
+      maximum_duration: {description: "Minutes (60-480)", required: true, default: "480", type: string}
+      cleanup_confirmation: {description: "Must equal DELETE_RUN_OWNED_RESOURCES", required: true, type: string}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: team-0-hosted-core-${{ inputs.target_sha }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.identity.outputs.sha }}
+      terminal_migration: ${{ steps.identity.outputs.terminal_migration }}
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: "${{ inputs.target_sha }}", fetch-depth: 0}
+      - id: identity
+        env:
+          TARGET_SHA: "${{ inputs.target_sha }}"
+          INFRASTRUCTURE_PROFILE: "${{ inputs.infrastructure_profile }}"
+          MAXIMUM_DURATION: "${{ inputs.maximum_duration }}"
+          CLEANUP_CONFIRMATION: "${{ inputs.cleanup_confirmation }}"
+          UPGRADE_SOURCE_VERSION: "${{ inputs.upgrade_source_version }}"
+        run: |
+          set -euo pipefail
+          [[ "$TARGET_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$(git rev-parse HEAD)" = "$TARGET_SHA"
+          git fetch origin main --no-tags
+          git merge-base --is-ancestor "$TARGET_SHA" origin/main
+          [[ "$INFRASTRUCTURE_PROFILE" == *certification-test* ]]
+          [[ "$INFRASTRUCTURE_PROFILE" != *production* ]]
+          test "$MAXIMUM_DURATION" -ge 60
+          test "$MAXIMUM_DURATION" -le 480
+          test "$CLEANUP_CONFIRMATION" = DELETE_RUN_OWNED_RESOURCES
+          [[ "$UPGRADE_SOURCE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([+-][0-9A-Za-z.-]+)?$ ]]
+          terminal="$(python scripts/release/current_terminal_migration.py)"
+          test -n "$terminal"
+          echo "sha=$TARGET_SHA" >> "$GITHUB_OUTPUT"
+          echo "terminal_migration=$terminal" >> "$GITHUB_OUTPUT"
+      - name: Fail-closed local contracts
+        run: |
+          python -m pytest tests/performance/test_scale_certification.py tests/resilience tests/security/test_oidc_rbac_tenant.py tests/release/test_team0_release_authority.py
+          python scripts/check_generated_artifacts.py
+          python scripts/validate_capability_ledger.py
+          python scripts/security/check_route_permissions.py
+          python scripts/check_team_boundaries.py
+          ! git grep -nE '^(<<<<<<<|>>>>>>>)'
+      - name: Validate production chart
+        run: |
+          helm lint helm/dataobs
+          helm template dataobs helm/dataobs -f helm/dataobs/values-production.yaml >/tmp/dataobs-rendered.yaml
+          bash scripts/deployment/chart_assertions.sh
+
+  certify:
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 500
+    environment: team-0-hosted-certification-test
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      TARGET_SHA: "${{ needs.validate.outputs.sha }}"
+      TERMINAL_MIGRATION: "${{ needs.validate.outputs.terminal_migration }}"
+      CERTIFICATION_PROFILE: "${{ inputs.certification_profile }}"
+      CAPACITY_PROFILE: "${{ inputs.capacity_profile }}"
+      INFRASTRUCTURE_PROFILE: "${{ inputs.infrastructure_profile }}"
+      UPGRADE_SOURCE_VERSION: "${{ inputs.upgrade_source_version }}"
+      MAXIMUM_DURATION_MINUTES: "${{ inputs.maximum_duration }}"
+      MAXIMUM_NODES: "6"
+      MAXIMUM_REPLICAS: "12"
+      MAXIMUM_TEST_TENANTS: "3"
+      MAXIMUM_CONCURRENCY: "50"
+      MAXIMUM_DOCUMENTS: "100000"
+      RESOURCE_TTL_HOURS: "12"
+      SYNTHETIC_MARKER: synthetic-dataobs-certification
+      EVIDENCE_DIR: team-0-hosted-core-platform-certification-v1-evidence
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: "${{ needs.validate.outputs.sha }}"}
+      - name: Validate protected hosted prerequisites and provision
+        run: scripts/hosted_certification/certification_phase.sh provision
+      - name: Secured Elasticsearch, disposable OIDC and telemetry
+        run: scripts/hosted_certification/certification_phase.sh dependencies
+      - name: Production Helm installation and migrations
+        run: scripts/hosted_certification/certification_phase.sh install
+      - name: Authentication, authorization, tenancy, privilege and credentials
+        run: scripts/hosted_certification/certification_phase.sh security
+      - name: Platform health, operations and bounded capabilities
+        run: scripts/hosted_certification/certification_phase.sh smoke
+      - name: Reuse Scale and HA certification harness
+        run: |
+          for phase in deploy seed baseline load autoscale worker-scale pod-failure node-failure soak; do
+            scripts/performance/certification_phase.sh "$phase"
+          done
+      - name: Reuse dependency resilience and DR certification harness
+        run: |
+          for phase in baseline elasticsearch-faults oidc-faults otlp-faults; do
+            scripts/resilience/certification_phase.sh "$phase"
+          done
+      - name: Upgrade and policy-controlled rollback
+        run: scripts/hosted_certification/certification_phase.sh upgrade-rollback
+      - name: Snapshot, destructive restore and measured recovery
+        run: scripts/hosted_certification/certification_phase.sh recovery
+      - name: Support bundle, safe security scan and consolidation
+        run: scripts/hosted_certification/certification_phase.sh consolidate
+      - name: Independent evidence verification
+        run: scripts/hosted_certification/certification_phase.sh verify
+      - name: Support matrix evaluation and dry-run release decision
+        run: scripts/hosted_certification/certification_phase.sh decision
+      - name: Cleanup and verify only run-owned resources
+        if: always()
+        run: |
+          scripts/hosted_certification/certification_phase.sh cleanup
+          test -f "$EVIDENCE_DIR/cleanup-report.json"
+      - name: Upload exact-SHA evidence, including cleanup report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: team-0-hosted-core-platform-certification-v1-evidence
+          path: team-0-hosted-core-platform-certification-v1-evidence
+          if-no-files-found: error
+          retention-days: 30

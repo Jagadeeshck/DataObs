@@ -491,7 +491,7 @@ migrationJob:
   - -m
   - packages.elastic_store.cli
   - apply
-  terminalMigration: 0021_lineage_analysis_explorer
+  terminalMigration: 0029_team2_data_intelligence_reconciliation
   activeDeadlineSeconds: 900
   backoffLimit: 2
   ttlSecondsAfterFinished: 86400

@@ -2,7 +2,7 @@ import re
 from dataclasses import dataclass
 
 _MUTATION = re.compile(
-    r"\b(?:INSERT|UPDATE|DELETE|MERGE|CREATE|ALTER|DROP|TRUNCATE|CALL|EXECUTE|PREPARE|REFRESH)\b|\bSET\s+(?:ROLE|SESSION\s+AUTHORIZATION)\b",
+    r"\b(?:INSERT|UPDATE|DELETE|MERGE|CREATE|ALTER|DROP|TRUNCATE|CALL|EXECUTE|PREPARE|REFRESH|COMMIT|ROLLBACK)\b|\b(?:SET\s+(?:ROLE|SESSION(?:\s+AUTHORIZATION)?)|START\s+TRANSACTION)\b",
     re.I,
 )
 _PASSTHROUGH = re.compile(r"system\s*\.\s*query\s*\(|system\.runtime\.kill_query", re.I)

@@ -1,0 +1,44 @@
+name: Unified activity center v1
+on:
+  pull_request:
+    paths: ["ui/dataobs-console/**", "docs/**", ".github/workflows/unified-activity-center-v1.yml"]
+  workflow_dispatch:
+permissions: { contents: read }
+jobs:
+  console:
+    uses: ./.github/workflows/reusable-console-validation.yml
+    with:
+      run-playwright: true
+      run-accessibility: true
+      artifact-name: unified-activity-center-v1-evidence
+      workflow-file: unified-activity-center-v1.yml
+  activity-contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python scripts/check_merge_conflict_markers.py
+      - run: python scripts/security/check_route_permissions.py
+      - run: python scripts/check_team_boundaries.py
+      - run: python scripts/check_generated_artifacts.py
+      - run: python scripts/check_docs_links.py
+      - run: python scripts/validate_capability_ledger.py
+      - run: python scripts/check_migration_immutability.py --base-ref origin/main
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.28.1 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm, cache-dependency-path: ui/dataobs-console/pnpm-lock.yaml }
+      - working-directory: ui/dataobs-console
+        run: pnpm install --frozen-lockfile
+      - name: Activity privacy, isolation, no-mutation and performance contracts
+        working-directory: ui/dataobs-console
+        run: |
+          pnpm test -- src/activity/activity.test.ts
+          pnpm performance:check
+          ! rg 'includeInput=true|includeOutput=true|acknowledge|approve|/mutations' src/activity src/features/activity
+      - name: Exact-commit evidence manifest
+        run: |
+          terminal_migration="$(python scripts/release/current_terminal_migration.py)"
+          mkdir -p unified-activity-center-v1-evidence
+          printf 'repository=%s\nproducer_sha=%s\nworkflow=%s\nrun_id=%s\nrun_attempt=%s\nevent=%s\nconsole_version=0.1.0\nnode_version=22\npnpm_version=10.28.1\nterminal_migration=%s\nactivity_provider_count=1\nactivity_type_count=3\nattention_policy_version=1.0\nmax_provider_results=25\nmax_total_items=150\nprovider_timeout_ms=2000\nglobal_deadline_ms=4000\nunit_tests=workflow-gated\nbrowser_tests=workflow-gated\naxe=workflow-gated\nno_mutation=source-and-test-gated\ntenant_isolation=test-gated\nenvironment_isolation=test-gated\nwatchlist_isolation=test-gated\nworkflow_payload_privacy=source-gated\ntelemetry_privacy=test-gated\nlocal_state_privacy=test-gated\nbundle_impact=workflow-gated\nperformance=workflow-gated\nredaction_status=source-gated\nknown_warnings=none\nskipped_gates=none\n' "$GITHUB_REPOSITORY" "$GITHUB_SHA" "$GITHUB_WORKFLOW" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" "$GITHUB_EVENT_NAME" "$terminal_migration" > unified-activity-center-v1-evidence/manifest.txt
+      - uses: actions/upload-artifact@v4
+        with: { name: unified-activity-center-v1-evidence, path: unified-activity-center-v1-evidence }

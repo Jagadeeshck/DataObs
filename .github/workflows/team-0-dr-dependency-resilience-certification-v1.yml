@@ -1,0 +1,81 @@
+name: Team 0 DR Dependency Resilience Certification v1
+on:
+  workflow_dispatch:
+    inputs:
+      target_sha: {description: "Exact 40-character main SHA", required: true, type: string}
+      profile: {description: "Evidence profile", required: true, type: choice, options: [development, functional, hosted, cloud-dr]}
+      environment: {description: "Must be test or disposable", required: true, default: disposable, type: string}
+      synthetic_marker: {description: "Must begin synthetic-", required: true, default: synthetic-team0-dr, type: string}
+      elasticsearch_url: {description: "Exact secured disposable Elasticsearch URL", required: true, type: string}
+      elasticsearch_host: {description: "Exact allowlisted Elasticsearch hostname", required: true, type: string}
+      kube_context: {description: "Exact disposable Kubernetes context", required: true, type: string}
+      maximum_duration: {description: "Finite seconds (max 28800)", required: true, default: "7200", type: string}
+      cleanup_plan: {description: "Protected driver cleanup plan identifier", required: true, type: string}
+      destructive_opt_in: {description: "Exact destructive-test acknowledgement", required: true, type: string}
+permissions: {contents: read, id-token: write}
+concurrency: {group: "team0-dr-${{ inputs.target_sha }}", cancel-in-progress: false}
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    outputs: {sha: "${{ steps.identity.outputs.sha }}"}
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: "${{ inputs.target_sha }}"}
+      - id: identity
+        env: {SHA: "${{ inputs.target_sha }}"}
+        run: |
+          set -euo pipefail
+          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$(git rev-parse HEAD)" = "$SHA"
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+      - name: destructive safety guard
+        run: >-
+          python scripts/resilience/safety_guard.py
+          --opt-in '${{ inputs.destructive_opt_in }}'
+          --environment '${{ inputs.environment }}'
+          --synthetic-marker '${{ inputs.synthetic_marker }}'
+          --sha '${{ inputs.target_sha }}'
+          --elasticsearch-url '${{ inputs.elasticsearch_url }}'
+          --allow-elasticsearch-host '${{ inputs.elasticsearch_host }}'
+          --kube-context '${{ inputs.kube_context }}'
+          --maximum-duration '${{ inputs.maximum_duration }}'
+          --cleanup-plan '${{ inputs.cleanup_plan }}'
+      - run: python -m pytest tests/resilience tests/performance/test_scale_certification.py
+  certify:
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 600
+    environment: team-0-dr-disposable
+    env:
+      EVIDENCE_DIR: team-0-dr-dependency-resilience-certification-v1-evidence
+      TARGET_SHA: "${{ needs.validate.outputs.sha }}"
+      CERTIFICATION_PROFILE: "${{ inputs.profile }}"
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: "${{ needs.validate.outputs.sha }}"}
+      - {name: deploy disposable secured dependencies, run: "scripts/resilience/certification_phase.sh deploy"}
+      - {name: seed, run: "scripts/resilience/certification_phase.sh seed"}
+      - {name: baseline using existing load harness, run: "scripts/resilience/certification_phase.sh baseline"}
+      - {name: Elasticsearch faults, run: "scripts/resilience/certification_phase.sh elasticsearch-faults"}
+      - {name: OIDC faults, run: "scripts/resilience/certification_phase.sh oidc-faults"}
+      - {name: OTLP faults, run: "scripts/resilience/certification_phase.sh otlp-faults"}
+      - {name: upgrade, run: "scripts/resilience/certification_phase.sh upgrade"}
+      - {name: rollback, run: "scripts/resilience/certification_phase.sh rollback"}
+      - {name: backup, run: "scripts/resilience/certification_phase.sh backup"}
+      - {name: destructive restore, run: "scripts/resilience/certification_phase.sh destructive-restore"}
+      - {name: RPO RTO measurement, run: "scripts/resilience/certification_phase.sh recovery-measurement"}
+      - {name: DR rehearsal, run: "scripts/resilience/certification_phase.sh dr-rehearsal"}
+      - {name: multi-installation isolation, run: "scripts/resilience/certification_phase.sh multi-installation-isolation"}
+      - name: checksums
+        run: |
+          cd "$EVIDENCE_DIR"
+          find . -maxdepth 1 -type f \( -name '*.json' -o -name '*.xml' \) ! -name certification-summary.json -printf '%f\n' | sort | xargs sha256sum > checksums.sha256
+      - name: verify
+        run: python scripts/resilience/verify_dr_certification.py "$EVIDENCE_DIR" --sha "$TARGET_SHA" --profile "$CERTIFICATION_PROFILE"
+      - name: cleanup
+        if: always()
+        run: scripts/resilience/certification_phase.sh cleanup
+      - name: upload exact-SHA evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with: {name: team-0-dr-dependency-resilience-certification-v1-evidence, path: team-0-dr-dependency-resilience-certification-v1-evidence, if-no-files-found: error}

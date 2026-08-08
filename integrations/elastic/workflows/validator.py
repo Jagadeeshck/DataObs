@@ -32,6 +32,20 @@ def checksum(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def _walk_steps(value: object, location: str = "steps") -> list[tuple[str, dict[str, Any]]]:
+    found: list[tuple[str, dict[str, Any]]] = []
+    if isinstance(value, list):
+        for index, item in enumerate(value):
+            found.extend(_walk_steps(item, f"{location}[{index}]"))
+    elif isinstance(value, dict):
+        if "type" in value or "action" in value:
+            found.append((location, value))
+        for key, nested in value.items():
+            if key in {"steps", "branches", "then", "else", "workflow", "sub_workflow", "do"}:
+                found.extend(_walk_steps(nested, f"{location}.{key}"))
+    return found
+
+
 def validate_workflow(path: Path) -> dict[str, Any]:
     data = yaml.safe_load(path.read_text())
     if not isinstance(data, dict) or not data.get("id") or not data.get("steps"):
@@ -42,9 +56,10 @@ def validate_workflow(path: Path) -> dict[str, Any]:
     lowered = text.lower()
     if "${secret" in lowered or re.search(r"(?<!e)\bsql\b", lowered):
         raise ValueError(f"{path} contains a forbidden workflow capability")
-    for position, step in enumerate(data["steps"]):
-        if not isinstance(step, dict):
-            raise ValueError(f"{path} step {position} must be an object")
+    steps = _walk_steps(data["steps"])
+    if not steps:
+        raise ValueError(f"{path} must contain typed steps")
+    for position, step in steps:
         step_type = str(step.get("type") or step.get("action") or "")
         if step_type == "kibana.request":
             raise ValueError(f"{path} uses a deprecated generic Kibana request step")

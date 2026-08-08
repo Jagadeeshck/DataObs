@@ -303,6 +303,14 @@ Evidence-led status for opentelemetry ingestion standard.
 - **Release readiness:** `blocked`
 - **Next gate:** Run the final-head Elasticsearch 9.4.2 integration job and retain the redaction-safe e2e-signal-path artifact.
 
+### `integration.presto` — Presto SQL engine collector v1
+
+Independent PrestoDB provider with bounded metadata and runtime evidence over the shared SQL-engine foundation.
+
+- **State:** `functional_unvalidated`
+- **Release readiness:** `blocked`
+- **Next gate:** Run and independently verify the hosted exact-commit workflow with disposable Presto.
+
 ### `platform.architecture` — Elasticsearch-native architecture
 
 Evidence-led status for elasticsearch-native architecture.

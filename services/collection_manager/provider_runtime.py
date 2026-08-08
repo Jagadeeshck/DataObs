@@ -117,10 +117,8 @@ class ProviderRuntime:
             watermark=datetime.now(timezone.utc),
             version=(before.version + 1 if before else 1),
         )
-        # Required evidence is durable before its cursor is advanced.
+        # Required evidence and run state are durable before its cursor is advanced.
         await self.observations.persist(context, tuple(unique.values()))
-        if configuration.checkpoint_enabled:
-            await self.checkpoints.save(after, expected_version=before.version if before else None)
         values = tuple(unique.values())
         result = CollectionRunResult(
             context.collection_run_id,
@@ -138,4 +136,6 @@ class ProviderRuntime:
             values,  # type: ignore[arg-type]
         )
         await self.runs.persist(context, configuration, provider.provider_version, result)
+        if configuration.checkpoint_enabled:
+            await self.checkpoints.save(after, expected_version=before.version if before else None)
         return result

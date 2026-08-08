@@ -17,6 +17,8 @@ from integrations.snowflake import SnowflakeWarehouseProvider
 from integrations.snowflake.configuration import parse_configuration as parse_snowflake_configuration
 from integrations.trino import TrinoSqlEngineProvider
 from integrations.trino.configuration import parse_configuration as parse_trino_configuration
+from integrations.presto import PrestoSqlEngineProvider
+from integrations.presto.configuration import parse_configuration as parse_presto_configuration
 from packages.collectors.sdk import ProviderRegistry
 
 
@@ -28,6 +30,7 @@ def build_registry():
     registry.register(BigQueryWarehouseProvider)
     registry.register(AzureDataPlatformProvider)
     registry.register(TrinoSqlEngineProvider)
+    registry.register(PrestoSqlEngineProvider)
     return registry
 
 
@@ -51,6 +54,7 @@ def main(argv=None):
             "bigquery": parse_bigquery_configuration,
             "azure": parse_azure_configuration,
             "trino": parse_trino_configuration,
+            "presto": parse_presto_configuration,
         }
         config_parsers[payload.get("provider_type")](payload["provider"])
         print(json.dumps({"valid": True}))

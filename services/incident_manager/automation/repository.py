@@ -21,6 +21,9 @@ class AutomationRepository(Protocol):
     def create_execution(self, execution: Execution, idempotency_fingerprint: str) -> Execution: ...
     def get_execution(self, tenant_id: str, environment: str, execution_id: str) -> Execution | None: ...
     def update_execution(self, execution: Execution, expected_lease_token: int | None = None) -> Execution: ...
+    def renew_execution_lease(
+        self, tenant_id: str, environment: str, execution_id: str, owner: str, lease_token: int, expires_at: datetime
+    ) -> Execution: ...
     def queued(self, limit: int, now: datetime) -> list[Execution]: ...
     def incomplete_executions(self, limit: int, now: datetime) -> list[Execution]: ...
     def executions_with_pending_evidence(self, limit: int) -> list[Execution]: ...
@@ -114,6 +117,24 @@ class InMemoryAutomationRepository:
                 raise Conflict("execution fence conflict")
             self.executions[execution.execution_id] = execution.model_copy(deep=True)
             return execution.model_copy(deep=True)
+
+    def renew_execution_lease(
+        self, tenant_id: str, environment: str, execution_id: str, owner: str, lease_token: int, expires_at: datetime
+    ) -> Execution:
+        with self.lock:
+            current = self.executions.get(execution_id)
+            if (
+                not current
+                or (current.tenant_id, current.environment) != (tenant_id, environment)
+                or current.lease_owner != owner
+                or current.lease_token != lease_token
+                or current.state not in {"claimed", "running"}
+            ):
+                raise Conflict("execution heartbeat fence conflict")
+            current.lease_expires_at = expires_at
+            current.updated_at = datetime.now(expires_at.tzinfo)
+            self.executions[execution_id] = current.model_copy(deep=True)
+            return current.model_copy(deep=True)
 
     def queued(self, limit: int, now: datetime) -> list[Execution]:
         items = [item for item in self.executions.values() if item.state == "queued"]

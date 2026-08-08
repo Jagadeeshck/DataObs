@@ -33,3 +33,12 @@ def test_unsafe_workflow_step_is_rejected(tmp_path: Path, step: str) -> None:
 )
 def test_status_normalization(provider: str, domain: str) -> None:
     assert normalize_status(provider) == domain
+
+
+def test_nested_unsafe_workflow_step_is_rejected(tmp_path: Path) -> None:
+    path = tmp_path / "nested.yaml"
+    path.write_text(
+        "id: nested\nsteps:\n  - type: cases.getCase\n    branches:\n      - steps:\n          - type: shell\n"
+    )
+    with pytest.raises(ValueError):
+        validate_workflow(path)

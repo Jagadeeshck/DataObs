@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+from threading import Event, Thread
 
 from .catalogue import canonical_hash
 from .contracts import ActionExecutor, Execution, ExecutionState
@@ -8,6 +9,7 @@ from .repository import AutomationRepository, Conflict
 
 MAX_BATCH = 25
 MAX_LEASE_SECONDS = 60
+DEFAULT_HEARTBEAT_SECONDS = 15
 
 
 class RetryableBeforeSubmission(RuntimeError):
@@ -34,8 +36,19 @@ class ExecutorRegistry:
 
 
 class ExecutionWorker:
-    def __init__(self, repository: AutomationRepository, registry: ExecutorRegistry, worker_id: str) -> None:
+    def __init__(
+        self,
+        repository: AutomationRepository,
+        registry: ExecutorRegistry,
+        worker_id: str,
+        *,
+        lease_seconds: int = MAX_LEASE_SECONDS,
+        heartbeat_seconds: float = DEFAULT_HEARTBEAT_SECONDS,
+    ) -> None:
+        if lease_seconds < 3 or heartbeat_seconds <= 0 or heartbeat_seconds > lease_seconds / 3:
+            raise ValueError("heartbeat_seconds must be positive and no greater than lease_seconds / 3")
         self.repository, self.registry, self.worker_id = repository, registry, worker_id
+        self.lease_seconds, self.heartbeat_seconds = lease_seconds, heartbeat_seconds
 
     def claim(self, execution: Execution, now: datetime | None = None) -> Execution:
         checked = now or datetime.now(timezone.utc)
@@ -45,7 +58,7 @@ class ExecutionWorker:
         execution.state = ExecutionState.CLAIMED
         execution.lease_owner = self.worker_id
         execution.lease_token += 1
-        execution.lease_expires_at = checked + timedelta(seconds=MAX_LEASE_SECONDS)
+        execution.lease_expires_at = checked + timedelta(seconds=self.lease_seconds)
         execution.claimed_at = checked
         execution.updated_at = checked
         return self.repository.update_execution(execution, old_fence)
@@ -68,23 +81,52 @@ class ExecutionWorker:
             item.state, item.attempt, item.updated_at = ExecutionState.RUNNING, item.attempt + 1, checked
             item.execution_started_at = checked
             self.repository.update_execution(item, item.lease_token)
+            heartbeat_stop, heartbeat_lost = Event(), Event()
+            heartbeat = Thread(target=self._heartbeat, args=(item, heartbeat_stop, heartbeat_lost), daemon=True)
+            heartbeat.start()
             try:
                 result = executor.execute(item)
             except RetryableBeforeSubmission:
+                heartbeat_stop.set()
+                heartbeat.join()
+                if heartbeat_lost.is_set():
+                    processed += 1
+                    continue
                 self._record_failure(item, "executor_retryable_before_submission", retry_safe=True)
                 processed += 1
                 continue
             except ProviderOutcomeUnknown:
+                heartbeat_stop.set()
+                heartbeat.join()
+                if heartbeat_lost.is_set():
+                    processed += 1
+                    continue
                 self._record_failure(item, "provider_outcome_unknown", uncertain=True)
                 processed += 1
                 continue
             except NonRetryableExecutorFailure:
+                heartbeat_stop.set()
+                heartbeat.join()
+                if heartbeat_lost.is_set():
+                    processed += 1
+                    continue
                 self._record_failure(item, "executor_non_retryable", retry_safe=False)
                 processed += 1
                 continue
             except Exception:
+                heartbeat_stop.set()
+                heartbeat.join()
+                if heartbeat_lost.is_set():
+                    processed += 1
+                    continue
                 # Never persist or log exception text: adapters may include credentials.
                 self._record_failure(item, "unexpected_executor_failure", uncertain=True)
+                processed += 1
+                continue
+            heartbeat_stop.set()
+            heartbeat.join()
+            if heartbeat_lost.is_set():
+                # A provider may have completed, but this fence no longer owns durable evidence.
                 processed += 1
                 continue
             item.operation_reference = result.operation_reference[:200]
@@ -130,6 +172,22 @@ class ExecutionWorker:
                 self.repository.update_execution(item, item.lease_token)
             processed += 1
         return processed
+
+    def _heartbeat(self, item: Execution, stopping: Event, lost: Event) -> None:
+        while not stopping.wait(self.heartbeat_seconds):
+            try:
+                renewed = self.repository.renew_execution_lease(
+                    item.tenant_id,
+                    item.environment,
+                    item.execution_id,
+                    self.worker_id,
+                    item.lease_token,
+                    datetime.now(timezone.utc) + timedelta(seconds=self.lease_seconds),
+                )
+            except Exception:
+                lost.set()
+                return
+            item.lease_expires_at = renewed.lease_expires_at
 
     def _record_failure(
         self, item: Execution, error_code: str, *, retry_safe: bool = False, uncertain: bool = False
@@ -193,7 +251,7 @@ class ExecutionWorker:
             old_fence = stale.lease_token
             stale.lease_token += 1
             stale.lease_owner = self.worker_id
-            stale.lease_expires_at = checked + timedelta(seconds=MAX_LEASE_SECONDS)
+            stale.lease_expires_at = checked + timedelta(seconds=self.lease_seconds)
             stale.updated_at = checked
             try:
                 stale = self.repository.update_execution(stale, old_fence)

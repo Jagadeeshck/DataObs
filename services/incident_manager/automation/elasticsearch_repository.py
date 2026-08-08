@@ -218,6 +218,21 @@ class ElasticsearchAutomationRepository:
             raise Conflict("execution fence conflict") from exc
         return execution
 
+    def renew_execution_lease(
+        self, tenant_id: str, environment: str, execution_id: str, owner: str, lease_token: int, expires_at: datetime
+    ) -> Execution:
+        current = self.get_execution(tenant_id, environment, execution_id)
+        if (
+            not current
+            or current.lease_owner != owner
+            or current.lease_token != lease_token
+            or current.state.value not in {"claimed", "running"}
+        ):
+            raise Conflict("execution heartbeat fence conflict")
+        current.lease_expires_at = expires_at
+        current.updated_at = datetime.now(expires_at.tzinfo)
+        return self.update_execution(current, lease_token)
+
     def queued(self, limit: int, now: datetime) -> list[Execution]:
         response = self.client.search(
             index=OPERATION_READ,

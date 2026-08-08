@@ -1,0 +1,3 @@
+# Saved View v1 contract
+
+Private browser views use local storage envelope schema 1, at most 20 views, 20 widgets per view and 80-character safe names. Only template ID, safe name, registered widget types, layout, visibility-compatible configuration, bounded filters/display/refresh preferences, version and local modified time may persist. Tenant/environment/user/entity identifiers, labels, queries, evidence, results, credentials and request IDs are forbidden. Corrupt or unsupported envelopes recover empty. Built-ins are immutable; clone, reset, rename, add/remove, keyboard layout edits, save and cancel operate only on private views. Export, import, server persistence and sharing are unsupported.

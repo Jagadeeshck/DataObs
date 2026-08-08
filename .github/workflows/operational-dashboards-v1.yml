@@ -1,0 +1,41 @@
+name: Operational Dashboards v1
+on:
+  pull_request:
+    paths:
+      [
+        "ui/dataobs-console/**",
+        "docs/**",
+        ".github/workflows/operational-dashboards-v1.yml",
+      ]
+permissions: { contents: read }
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.28.1 }
+      - uses: actions/setup-node@v4
+        with:
+          {
+            node-version: 22,
+            cache: pnpm,
+            cache-dependency-path: ui/dataobs-console/pnpm-lock.yaml,
+          }
+      - run: pnpm install --frozen-lockfile
+        working-directory: ui/dataobs-console
+      - run: pnpm api:generate && git diff --exit-code
+        working-directory: ui/dataobs-console
+      - run: pnpm dashboard:check && pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm build && pnpm bundle:check && pnpm performance:check
+        working-directory: ui/dataobs-console
+      - run: python scripts/check_merge_conflict_markers.py && python scripts/security/check_route_permissions.py && python scripts/check_team_boundaries.py && python scripts/check_generated_artifacts.py && python scripts/check_docs_links.py && python scripts/validate_capability_ledger.py
+      - name: Exact-commit evidence
+        if: always()
+        run: printf '{"repository":"%s","producer_sha":"%s","workflow":"%s","run_id":"%s","run_attempt":"%s","event":"%s","redaction_status":"enforced","skipped_gates":["hosted Playwright and axe execute in the reusable Console browser workflow"]}\n' "$GITHUB_REPOSITORY" "$GITHUB_SHA" "$GITHUB_WORKFLOW" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" "$GITHUB_EVENT_NAME" > operational-dashboards-v1-evidence.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          {
+            name: operational-dashboards-v1-evidence,
+            path: operational-dashboards-v1-evidence.json,
+          }

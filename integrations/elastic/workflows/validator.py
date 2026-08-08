@@ -36,13 +36,23 @@ def _walk_steps(value: object, location: str = "steps") -> list[tuple[str, dict[
     found: list[tuple[str, dict[str, Any]]] = []
     if isinstance(value, list):
         for index, item in enumerate(value):
+            if not isinstance(item, (dict, list)):
+                raise ValueError(f"workflow step {location}[{index}] must be an object")
             found.extend(_walk_steps(item, f"{location}[{index}]"))
     elif isinstance(value, dict):
-        if "type" in value or "action" in value:
-            found.append((location, value))
+        if "type" not in value and "action" not in value:
+            raise ValueError(f"workflow step {location} must define type or action")
+        step_type = value.get("type") or value.get("action")
+        if not isinstance(step_type, str) or not step_type.strip():
+            raise ValueError(f"workflow step {location} has an invalid type")
+        found.append((location, value))
         for key, nested in value.items():
             if key in {"steps", "branches", "then", "else", "workflow", "sub_workflow", "do"}:
+                if not isinstance(nested, (dict, list)):
+                    raise ValueError(f"workflow step container {location}.{key} must be an object or list")
                 found.extend(_walk_steps(nested, f"{location}.{key}"))
+    else:
+        raise ValueError(f"workflow step container {location} must be an object or list")
     return found
 
 

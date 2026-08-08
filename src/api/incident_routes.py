@@ -153,7 +153,7 @@ def create_incident_workbench_router(auth_dependency: Callable[..., Any]) -> API
             from services.incident_manager.automation.elasticsearch_repository import ElasticsearchAutomationRepository
             from services.incident_manager.automation.preview import PreviewService
             from services.incident_manager.automation.repository import InMemoryAutomationRepository
-            from services.incident_manager.automation.targets import TargetSelectionRequired, resolve_target
+            from services.incident_manager.automation.targets import BoundedActionTargetResolver
 
             detail = workbench.detail(request.state.tenant_id, environment, incident_id, request.state.request_id)
             if detail["revision"] != body.incident_revision:
@@ -169,17 +169,33 @@ def create_incident_workbench_router(auth_dependency: Callable[..., Any]) -> API
                 request.app.state.incident_automation_repository = repo
             payload = body.payload
             if body.action_type in {"rerun_scan", "freshness_recheck", "connection_test"}:
-                try:
-                    target = resolve_target(body.action_type, detail["latest_evidence"], body.payload or None)
-                except TargetSelectionRequired as exc:
+                resolver = getattr(request.app.state, "action_target_resolver", None)
+                if not isinstance(resolver, BoundedActionTargetResolver):
+                    raise HTTPException(status_code=503, detail="Authoritative target resolver is not configured")
+                resolution = resolver.resolve(
+                    tenant_id=request.state.tenant_id,
+                    environment=environment,
+                    incident_id=incident_id,
+                    action_type=body.action_type,
+                )
+                if resolution.status == "selection_required":
                     raise HTTPException(
                         status_code=422,
                         detail={
                             "code": "target_selection_required",
-                            "candidates": [candidate.public() for candidate in exc.candidates],
+                            "reason_codes": resolution.reason_codes,
+                            "candidates": [
+                                {"type": item.target_type, "id": item.target_id, "revision": item.revision}
+                                for item in resolution.candidates
+                            ],
                         },
-                    ) from exc
-                payload = {"target_id": target.target_id, "target_revision": target.target_revision}
+                    )
+                if resolution.status != "resolved" or resolution.target is None:
+                    raise HTTPException(status_code=422, detail={"code": "authoritative_target_unavailable"})
+                payload = {
+                    "target_id": resolution.target.target_id,
+                    "target_revision": resolution.target.revision,
+                }
             result = PreviewService().create(
                 tenant_id=request.state.tenant_id,
                 environment=environment,

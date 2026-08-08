@@ -28,8 +28,6 @@ class DecisionBody(BaseModel):
 class ExecutionRequestBody(BaseModel):
     model_config = ConfigDict(extra="forbid")
     preview_id: str = Field(min_length=1, max_length=100)
-    incident_revision: str = Field(min_length=1, max_length=120)
-    target_revision: str = Field(min_length=1, max_length=120)
     approval_id: str | None = Field(default=None, max_length=100)
 
 
@@ -189,14 +187,29 @@ def create_incident_automation_router(auth_dependency: Callable[..., Any]) -> AP
         if not preview:
             raise HTTPException(404, "Preview not found")
         try:
+            from services.incident_manager.automation.targets import ActionTarget, BoundedActionTargetResolver
+
+            resolver = getattr(request.app.state, "action_target_resolver", None)
+            if not isinstance(resolver, BoundedActionTargetResolver):
+                raise HTTPException(503, "Authoritative target resolver is not configured")
+            incident = request.app.state.incident_manager.repo.get_incident(
+                request.state.tenant_id, preview.incident_id, environment
+            )
+            if incident is None:
+                raise HTTPException(404, "Incident not found")
+            current = resolver.reload(
+                tenant_id=request.state.tenant_id,
+                environment=environment,
+                target=ActionTarget(preview.target["type"], preview.target["id"], preview.target["revision"]),
+            )
             return (
                 AutomationCoordinator(repo)
                 .queue_execution(
                     preview,
                     actor=actor(request),
                     idempotency_key=idempotency_key,
-                    current_incident_revision=body.incident_revision,
-                    current_target_revision=body.target_revision,
+                    current_incident_revision=f"{incident.seq_no}:{incident.primary_term}",
+                    current_target_revision=current.revision,
                     approval_id=body.approval_id,
                     request_id=request.state.request_id,
                 )
@@ -211,5 +224,7 @@ def create_incident_automation_router(auth_dependency: Callable[..., Any]) -> AP
             raise HTTPException(status, str(exc)) from exc
         except PermissionError as exc:
             raise HTTPException(403, str(exc)) from exc
+        except LookupError as exc:
+            raise HTTPException(409, "Authoritative target changed or is unavailable") from exc
 
     return router

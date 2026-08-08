@@ -18,3 +18,10 @@ Workers fence all writes. Definitely pre-submission failures may retry the same 
 Running provider calls use independently renewed, owner-checked fenced leases. Target selection is bounded and
 finding-backed; current revisions are reloaded from the owning capability rather than accepted from the browser or
 incident evidence. A worker that loses its fence cannot persist provider results, verification, or timeline evidence.
+
+## Authoritative target and deadline boundary
+
+Production previews resolve finding-backed targets through the composed bounded owner resolver. Execution reloads
+the incident and target revisions; browser values never establish current authority. Heartbeat renewal is bounded
+by `execution_started_at + timeout_seconds`, after which lease expiry permits a newly fenced worker to reconcile an
+uncertain provider outcome. A stale worker cannot publish its late result.

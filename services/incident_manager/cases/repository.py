@@ -6,7 +6,7 @@ from typing import Protocol
 
 from elasticsearch import ConflictError, Elasticsearch, NotFoundError
 
-from .contracts import CaseLink
+from .contracts import CaseLink, CaseLinkState
 
 
 class CaseLinkConflict(RuntimeError):
@@ -52,17 +52,22 @@ CASE_LINK_WRITE = "dataobs-case-links-v1-write"
 
 
 def _document(link: CaseLink) -> dict[str, object]:
-    return {
+    document: dict[str, object] = {
         "tenant_id": link.tenant_id,
         "environment": link.environment,
         "incident_id": link.incident_id,
-        "case_link_id": link.link_id,
-        "case_id": link.elastic_case_id,
         "kibana_space": link.kibana_space,
         "status": link.state.value,
-        "updated_at": (link.last_attempted_sync or link.last_successful_sync),
         "metadata": link.model_dump(mode="json"),
     }
+    # The deterministic link identity is the Elasticsearch _id.  The released
+    # strict mapping deliberately has no duplicate case_link_id field.
+    if link.elastic_case_id is not None:
+        document["elastic_case_id"] = link.elastic_case_id
+    updated_at = link.last_attempted_sync or link.last_successful_sync
+    if updated_at is not None:
+        document["updated_at"] = updated_at.isoformat()
+    return document
 
 
 class ElasticsearchCaseRepository:
@@ -91,7 +96,19 @@ class ElasticsearchCaseRepository:
             return link
         except ConflictError:
             current = self._get(link.link_id, link.tenant_id, link.environment, link.kibana_space)
-            if not current or current[0].reconciliation_reference != link.reconciliation_reference:
+            if not current or (
+                current[0].reconciliation_reference,
+                current[0].incident_id,
+                current[0].tenant_id,
+                current[0].environment,
+                current[0].kibana_space,
+            ) != (
+                link.reconciliation_reference,
+                link.incident_id,
+                link.tenant_id,
+                link.environment,
+                link.kibana_space,
+            ):
                 raise CaseLinkConflict("case reservation identity conflict")
             return current[0]
 
@@ -117,7 +134,7 @@ class ElasticsearchCaseRepository:
                     ]
                 }
             },
-            sort=[{"updated_at": "asc"}, {"case_link_id": "asc"}],
+            sort=[{"updated_at": {"order": "asc", "missing": "_first"}}, {"_id": "asc"}],
         )
         return [CaseLink.model_validate(hit["_source"]["metadata"]) for hit in response["hits"]["hits"]]
 
@@ -128,7 +145,7 @@ class ElasticsearchCaseRepository:
     get_for_incident = get_by_incident
 
     def get_by_case_id(self, tenant_id: str, environment: str, space: str, case_id: str) -> CaseLink | None:
-        items = self._search(tenant_id, environment, space, [{"term": {"case_id": case_id}}], size=1)
+        items = self._search(tenant_id, environment, space, [{"term": {"elastic_case_id": case_id}}], size=1)
         return items[0] if items else None
 
     def update_link_occ(self, link: CaseLink, expected_revision: int) -> CaseLink:
@@ -151,22 +168,50 @@ class ElasticsearchCaseRepository:
 
     update = update_link_occ
 
-    def _mark(self, link: CaseLink, state: str, **changes: object) -> CaseLink:
+    _TRANSITIONS = {
+        CaseLinkState.CREATE_RESERVED: {
+            CaseLinkState.CREATE_SUBMITTED,
+            CaseLinkState.LINKED,
+            CaseLinkState.CREATE_RECONCILIATION_REQUIRED,
+        },
+        CaseLinkState.CREATE_SUBMITTED: {CaseLinkState.LINKED, CaseLinkState.CREATE_RECONCILIATION_REQUIRED},
+        CaseLinkState.CREATE_RECONCILIATION_REQUIRED: {CaseLinkState.LINKED},
+        CaseLinkState.LINKED: {CaseLinkState.SYNC_REQUIRED, CaseLinkState.REMOTE_MISSING},
+        CaseLinkState.SYNC_REQUIRED: {CaseLinkState.SYNCED, CaseLinkState.SYNC_FAILED, CaseLinkState.REMOTE_MISSING},
+        CaseLinkState.SYNCED: {CaseLinkState.SYNC_REQUIRED, CaseLinkState.REMOTE_MISSING},
+        CaseLinkState.SYNC_FAILED: {CaseLinkState.SYNC_REQUIRED, CaseLinkState.SYNCED, CaseLinkState.REMOTE_MISSING},
+    }
+
+    def _mark(self, link: CaseLink, state: CaseLinkState, **changes: object) -> CaseLink:
+        if state != link.state and state not in self._TRANSITIONS.get(link.state, set()):
+            raise CaseLinkConflict(f"illegal case link transition: {link.state.value} -> {state.value}")
         expected = link.revision
         updated = link.model_copy(update={"state": state, **changes})
         return self.update_link_occ(updated, expected)
 
     def mark_submitted(self, link: CaseLink) -> CaseLink:
-        return self._mark(link, "create_submitted")
+        return self._mark(link, CaseLinkState.CREATE_SUBMITTED)
 
     def mark_linked(self, link: CaseLink, case_id: str, version: str | None = None) -> CaseLink:
-        return self._mark(link, "linked", elastic_case_id=case_id[:256], elastic_case_version=version)
+        return self._mark(link, CaseLinkState.LINKED, elastic_case_id=case_id[:256], elastic_case_version=version)
 
     def mark_reconciliation_required(self, link: CaseLink) -> CaseLink:
-        return self._mark(link, "create_reconciliation_required")
+        return self._mark(link, CaseLinkState.CREATE_RECONCILIATION_REQUIRED)
+
+    def mark_sync_required(self, link: CaseLink) -> CaseLink:
+        return self._mark(link, CaseLinkState.SYNC_REQUIRED)
+
+    def mark_synced(self, link: CaseLink) -> CaseLink:
+        return self._mark(link, CaseLinkState.SYNCED)
+
+    def mark_sync_failed(self, link: CaseLink) -> CaseLink:
+        return self._mark(link, CaseLinkState.SYNC_FAILED)
+
+    def mark_remote_missing(self, link: CaseLink) -> CaseLink:
+        return self._mark(link, CaseLinkState.REMOTE_MISSING)
 
     def mark_sync_result(self, link: CaseLink, sync_state: str) -> CaseLink:
-        return self._mark(link, link.state.value, sync_state=sync_state[:32])
+        return self._mark(link, link.state, sync_state=sync_state[:32])
 
     def list_reconciliation_due(self, tenant_id: str, environment: str, space: str, limit: int = 25) -> list[CaseLink]:
         return self._search(

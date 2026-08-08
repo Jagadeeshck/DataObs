@@ -2041,6 +2041,119 @@ PATHWAY_INVESTIGATION_HISTORY_MIGRATION = Migration(
 )
 
 
+TEAM2_DATA_INTELLIGENCE_PROPERTIES: Dict[str, Any] = {
+    **BASE_PROPERTIES,
+    **{
+        key: {"type": "keyword"}
+        for key in [
+            "contract_id",
+            "revision_id",
+            "canonical_asset_identity",
+            "owner",
+            "lifecycle_state",
+            "enforcement_mode",
+            "criticality",
+            "fingerprint",
+            "evaluation_id",
+            "requirement_id",
+            "category",
+            "severity",
+            "directness",
+            "reason_code",
+            "actor",
+            "source",
+            "data_status",
+            "change_id",
+            "impact_id",
+            "change_type",
+            "compatibility",
+            "asset_kind",
+            "entity_type",
+            "entity_id",
+            "lease_owner",
+            "checkpoint",
+            "health_state",
+        ]
+    },
+    **{
+        key: {"type": "date"}
+        for key in [
+            "effective_from",
+            "effective_until",
+            "evaluated_at",
+            "observation_time",
+            "detected_at",
+            "lease_expires_at",
+            "heartbeat_at",
+        ]
+    },
+    "contract_version": {"type": "integer"},
+    "revision": {"type": "long"},
+    "fencing_token": {"type": "long"},
+    "depth": {"type": "integer"},
+    "confidence": {"type": "float"},
+    "score": {"type": "float"},
+    "name": {"type": "text", "fields": {"keyword": {"type": "keyword"}}},
+    "description": {"type": "text"},
+    "tags": {"type": "keyword"},
+    "data_product_ids": {"type": "keyword"},
+    "affected_asset_ids": {"type": "keyword"},
+    "affected_job_ids": {"type": "keyword"},
+    "affected_monitor_ids": {"type": "keyword"},
+    "affected_owner_ids": {"type": "keyword"},
+    "incident_references": {"type": "keyword"},
+    "evidence_references": {"type": "keyword"},
+    "policy": {"type": "flattened"},
+    "expected": {"type": "flattened"},
+    "observed": {"type": "flattened"},
+    "approval_evidence": {"type": "flattened"},
+    "paths": {"type": "flattened"},
+}
+
+TEAM2_DATA_INTELLIGENCE_RECONCILIATION_MIGRATION = Migration(
+    "0029_team2_data_intelligence_reconciliation",
+    "Restore Team 2 lineage intelligence and Data Contract storage lost in parallel merges",
+    "v1",
+    dependencies=["0028_pathway_investigation_history"],
+    rollback_strategy=(
+        "stop Team 2 writers; export projections and retain append-only governance, "
+        "change, impact, evaluation, and violation evidence"
+    ),
+    operations={
+        "mutable_indices": [
+            "dataobs-lineage-impact-current-v1",
+            "dataobs-lineage-change-current-v1",
+            "dataobs-lineage-runtime-state-v1",
+            "dataobs-data-contract-current-v1",
+            "dataobs-data-contract-health-current-v1",
+            "dataobs-data-contract-runtime-state-v1",
+        ],
+        "mapping_updates": {
+            name: TEAM2_DATA_INTELLIGENCE_PROPERTIES
+            for name in [
+                "dataobs-lineage-impact-current-v1",
+                "dataobs-lineage-change-current-v1",
+                "dataobs-lineage-runtime-state-v1",
+                "dataobs-data-contract-current-v1",
+                "dataobs-data-contract-health-current-v1",
+                "dataobs-data-contract-runtime-state-v1",
+            ]
+        },
+        "data_stream_contracts": {
+            name: {"retention": retention, "properties": TEAM2_DATA_INTELLIGENCE_PROPERTIES}
+            for name, retention in {
+                "logs-dataobs.lineage-change-*": "365d",
+                "logs-dataobs.lineage-impact-evaluation-*": "365d",
+                "logs-dataobs.data-contract-version-*": "3650d",
+                "logs-dataobs.data-contract-lifecycle-*": "3650d",
+                "logs-dataobs.data-contract-evaluation-*": "365d",
+                "logs-dataobs.data-contract-violation-*": "730d",
+            }.items()
+        },
+    },
+)
+
+
 def migrations() -> List[Migration]:
     return [
         FOUNDATION_MIGRATION,
@@ -2071,6 +2184,7 @@ def migrations() -> List[Migration]:
         STREAM_ANOMALY_RETENTION_INTELLIGENCE_MIGRATION,
         PLATFORM_LIFECYCLE_MIGRATION,
         PATHWAY_INVESTIGATION_HISTORY_MIGRATION,
+        TEAM2_DATA_INTELLIGENCE_RECONCILIATION_MIGRATION,
     ]
 
 

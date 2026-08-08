@@ -405,7 +405,20 @@ def apply(es: Elasticsearch, *, through_migration_id: str | None = None) -> List
                 },
             },
         )
-    applied = status(es).get("applied", {})
+    diagnostic = status(es)
+    if diagnostic.get("conflicts"):
+        conflict = diagnostic["conflicts"][0]
+        raise RuntimeError(
+            "migration_registry_conflict: "
+            f"migration_id={conflict['migration_id']}; "
+            f"expected_name={conflict['expected_current_name']}; "
+            f"observed_name={conflict['observed_stored_name']}; "
+            f"expected_checksum={conflict['expected_current_checksum']}; "
+            f"observed_checksum={conflict['observed_stored_checksum']}; "
+            f"collision_type={conflict['collision_type']}; "
+            f"operator_action={conflict['operator_action_required']}"
+        )
+    applied = diagnostic.get("applied", {})
     out: list[dict[str, Any]] = []
     applied_ids: set[str] = set(applied)
     for m in _selected_migrations(through_migration_id):
@@ -414,7 +427,16 @@ def apply(es: Elasticsearch, *, through_migration_id: str | None = None) -> List
                 raise RuntimeError(f"Migration {m.migration_id} depends on unapplied {dep}")
         existing = applied.get(m.migration_id)
         if existing and existing.get("checksum") != m.checksum:
-            raise RuntimeError(f"Checksum mismatch for {m.migration_id}")
+            observed_name = existing.get("migration_name", existing.get("name", "unrecorded"))
+            raise RuntimeError(
+                "migration_registry_conflict: "
+                f"migration_id={m.migration_id}; expected_name={m.migration_id}; "
+                f"observed_name={observed_name}; expected_checksum={m.checksum}; "
+                f"observed_checksum={existing.get('checksum', 'missing')}; "
+                "collision_type=identity_checksum_mismatch; operator_action=stop, export "
+                "migration-state and resource evidence, then obtain Team 0 approval; no later "
+                "migration was applied"
+            )
         if existing:
             out.append(existing)
             applied_ids.add(m.migration_id)
@@ -466,21 +488,114 @@ def apply(es: Elasticsearch, *, through_migration_id: str | None = None) -> List
 
 
 def status(es: Elasticsearch) -> Dict[str, Any]:
-    required = {m.migration_id: m.checksum for m in migrations()}
-    applied = {}
+    """Return a non-destructive, fail-closed migration diagnostic."""
+    registry = migrations()
+    ids = [migration.migration_id for migration in registry]
+    duplicate_ids = sorted({migration_id for migration_id in ids if ids.count(migration_id) > 1})
+    required = {migration.migration_id: migration for migration in registry}
+    applied: dict[str, dict[str, Any]] = {}
     if es.indices.exists(index=MIGRATION_STATE_INDEX):
-        resp = es.search(index=MIGRATION_STATE_INDEX, query={"match_all": {}}, size=100)
-        applied = {h["_source"]["migration_id"]: h["_source"] for h in resp["hits"]["hits"]}
-    missing = [mid for mid in required if mid not in applied]
-    checksum_mismatch = [
-        mid for mid, checksum in required.items() if mid in applied and applied[mid].get("checksum") != checksum
+        resp = es.search(index=MIGRATION_STATE_INDEX, query={"match_all": {}}, size=1000)
+        applied = {hit["_source"]["migration_id"]: hit["_source"] for hit in resp["hits"]["hits"]}
+
+    missing = [migration_id for migration_id in ids if migration_id not in applied]
+    unknown = sorted(set(applied) - set(required))
+    conflicts = []
+    expected_by_number = {migration_id.split("_", 1)[0]: migration for migration_id, migration in required.items()}
+    for observed_id in unknown:
+        expected = expected_by_number.get(observed_id.split("_", 1)[0])
+        if expected is not None:
+            observed = applied[observed_id]
+            conflicts.append(
+                {
+                    "state": "migration_registry_conflict",
+                    "migration_id": expected.migration_id.split("_", 1)[0],
+                    "expected_current_checksum": expected.checksum,
+                    "observed_stored_checksum": observed.get("checksum"),
+                    "expected_current_name": expected.migration_id,
+                    "observed_stored_name": observed.get("migration_name", observed.get("name", observed_id)),
+                    "collision_type": "historical_numeric_id_reuse",
+                    "operator_action_required": (
+                        "Stop. Export migration-state and resource evidence, verify checksums, "
+                        "retain the audit bundle, and obtain explicit Team 0 approval."
+                    ),
+                }
+            )
+    for migration_id, migration in required.items():
+        observed = applied.get(migration_id)
+        if not observed:
+            continue
+        observed_name = observed.get("migration_name", observed.get("name"))
+        checksum_mismatch = observed.get("checksum") != migration.checksum
+        name_mismatch = observed_name is not None and observed_name != migration_id
+        if checksum_mismatch or name_mismatch:
+            conflicts.append(
+                {
+                    "state": "migration_registry_conflict",
+                    "migration_id": migration_id,
+                    "expected_current_checksum": migration.checksum,
+                    "observed_stored_checksum": observed.get("checksum"),
+                    "expected_current_name": migration_id,
+                    "observed_stored_name": observed_name or "unrecorded",
+                    "collision_type": (
+                        "identity_checksum_mismatch" if checksum_mismatch else "historical_name_mismatch"
+                    ),
+                    "operator_action_required": (
+                        "Stop. Export migration-state and resource evidence, verify checksums, "
+                        "retain the audit bundle, and obtain explicit Team 0 approval."
+                    ),
+                }
+            )
+
+    applied_ids = set(applied)
+    dependency_violations = [
+        {
+            "migration_id": migration.migration_id,
+            "missing_dependencies": sorted(set(migration.dependencies) - applied_ids),
+        }
+        for migration in registry
+        if migration.migration_id in applied and set(migration.dependencies) - applied_ids
     ]
+    terminal = ids[-1] if ids else None
+    resource_readiness: dict[str, bool] = {}
+    if terminal and terminal in applied and not conflicts:
+        terminal_migration = required[terminal]
+        for index in terminal_migration.operations.get("mutable_indices", []):
+            resource_readiness[index] = bool(es.indices.exists(index=index))
+        for pattern in terminal_migration.operations.get("data_stream_contracts", {}):
+            template = f"dataobs-{pattern.replace('-*', '').replace('.', '-')}-template"
+            try:
+                resource_readiness[pattern] = bool(es.indices.exists_index_template(name=template))
+            except (AttributeError, TypeError):
+                resource_readiness[pattern] = True
+
+    ready = not any(
+        [
+            missing,
+            unknown,
+            conflicts,
+            dependency_violations,
+            duplicate_ids,
+            [name for name, present in resource_readiness.items() if not present],
+        ]
+    )
     return {
-        "required": list(required),
+        "registry_sequence": ids,
+        "terminal_migration": terminal,
         "applied": applied,
         "missing": missing,
-        "checksum_mismatch": checksum_mismatch,
-        "ready": not missing and not checksum_mismatch,
+        "checksum_mismatch": [
+            item["migration_id"] for item in conflicts if item["collision_type"] == "identity_checksum_mismatch"
+        ],
+        "unknown_orphaned_applied_ids": unknown,
+        "historical_name_mismatch": [
+            item["migration_id"] for item in conflicts if item["collision_type"] == "historical_name_mismatch"
+        ],
+        "dependency_violations": dependency_violations,
+        "duplicate_id_definitions": duplicate_ids,
+        "conflicts": conflicts,
+        "resource_readiness": resource_readiness,
+        "ready": ready,
     }
 
 

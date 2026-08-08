@@ -14,6 +14,7 @@ def main(argv: list[str] | None = None) -> int:
     apply_parser = sub.add_parser("apply")
     apply_parser.add_argument("--through", dest="through_migration_id")
     sub.add_parser("status")
+    sub.add_parser("doctor")
     rb = sub.add_parser("rollback")
     rb.add_argument("migration_id", nargs="?", default="0001_product_foundation")
     args = parser.parse_args(argv)
@@ -24,9 +25,10 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "apply":
         print(json.dumps({"applied": apply(es, through_migration_id=args.through_migration_id)}, indent=2))
         return 0
-    if args.cmd == "status":
-        print(json.dumps(status(es), indent=2, default=str))
-        return 0
+    if args.cmd in {"status", "doctor"}:
+        report = status(es)
+        print(json.dumps(report, indent=2, default=str))
+        return 0 if args.cmd == "status" or report["ready"] else 2
     print(json.dumps(rollback(es, args.migration_id), indent=2))
     return 0
 

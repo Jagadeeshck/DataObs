@@ -7,7 +7,7 @@ Audited commit: `5164762a6337a44a76ad2c7574a78edc048a70b3` · PR range: #82-#168
 ## State counts
 
 - **foundation**: 12
-- **functional_unvalidated**: 27
+- **functional_unvalidated**: 26
 - **not_started**: 6
 - **optional_integration**: 1
 - **scaffold**: 1
@@ -19,7 +19,7 @@ Audited commit: `5164762a6337a44a76ad2c7574a78edc048a70b3` · PR range: #82-#168
 - **data**: 5
 - **data_pipeline**: 16
 - **finops_cost**: 1
-- **platform**: 21
+- **platform**: 20
 
 ## Capabilities
 

@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import fnmatch
 import hashlib
 import json
 import re
@@ -123,9 +124,13 @@ def validate(data: dict) -> list[str]:
         for api in impl.get("api_paths", []):
             if not api.startswith("planned:") and api not in openapi:
                 e.append(f"{cid}: API absent from openapi.json: {api}")
+        registered_routes = set(re.findall(r'path:\s*"([^"]+)"', routes))
         for route in impl.get("ui_routes", []):
-            rendered_path = route.lstrip("/")
-            registered = f'path="{rendered_path}"' in routes or f'path: "{route}"' in routes
+            # Ledger globs declare a route family; concrete typed registry entries
+            # satisfy the family without inventing an unsafe React wildcard route.
+            registered = route in registered_routes
+            if "*" in route:
+                registered = any(fnmatch.fnmatchcase(candidate, route) for candidate in registered_routes)
             if not route.startswith("planned:") and route != "/" and not registered:
                 e.append(f"{cid}: UI route absent: {route}")
         for mid in impl.get("migrations", []):

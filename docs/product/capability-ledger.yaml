@@ -1639,7 +1639,7 @@ capabilities:
   certification_status: functional_unvalidated
   implementation:
     code_paths: [services/kafka_observer/repository.py, services/product_query/stream_repository.py, ui/dataobs-console/src/features/streams/Connector360.tsx, ui/dataobs-console/src/features/streams/Schema360.tsx]
-    api_paths: ["/api/v1/stream-connectors, /api/v1/schema-subjects"]
+    api_paths: [/api/v1/stream-connectors, /api/v1/schema-subjects]
     ui_routes: [/streams/connectors/:connectorId, /streams/schemas/:subjectId]
     storage_resources: [dataobs-kafka-connectors-v1, dataobs-kafka-schemas-v1]
     migrations: [0009_topic_queue_stream_360, 0010_topic_queue_stream_360_completion]
@@ -1728,7 +1728,7 @@ capabilities:
   release_readiness: blocked
   implementation:
     code_paths: [src/api/monitor_routes.py, services/monitoring/staleness.py, ui/dataobs-console/src/features/quality]
-    api_paths: ["/api/v1/quality/overview, /api/v1/quality/monitors, /api/v1/quality/findings"]
+    api_paths: [/api/v1/quality/overview, /api/v1/quality/monitors, /api/v1/quality/findings]
     ui_routes: ['/quality/*']
     storage_resources: []
     migrations: []
@@ -1878,7 +1878,7 @@ capabilities:
   release_readiness: blocked
   implementation:
     code_paths: [src/platform_lifecycle, src/api/platform_lifecycle_routes.py]
-    api_paths: ["/api/v1/platform/environments, /api/v1/platform/clusters, /api/v1/platform/installations, /api/v1/platform/tenants, /api/v1/platform/fleet"]
+    api_paths: [/api/v1/platform/environments, /api/v1/platform/clusters, /api/v1/platform/installations, /api/v1/platform/tenants, /api/v1/platform/fleet]
     ui_routes: []
     storage_resources: [dataobs-platform-environments-v1, dataobs-platform-clusters-v1, dataobs-platform-installations-v1, dataobs-platform-tenant-lifecycle-v1, logs-dataobs.platform-lifecycle-evidence-*]
     migrations: [0027_platform_environment_tenant_multicluster_lifecycle]
@@ -2178,3 +2178,4 @@ migration_checksums:
   0026_stream_anomaly_retention_intelligence: dba7efc48003dc5877af8ac2f0e6949dd44878399e9cf3e2a77043f6d1009b44
   0027_platform_environment_tenant_multicluster_lifecycle: 90b3c20f9ee44e5fa4a502e907fa3adcf3807a423ca42bad5071714d53476a25
   0028_pathway_investigation_history: 014f5406d0e063dfa1e1e51188e857028a28d6518d79a3a4907df783ea13d092
+  0029_team2_data_intelligence_reconciliation: 723551073408b65645be619083d8f85690d31c656239b9092ba94f3c64dd484a

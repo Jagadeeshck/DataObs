@@ -1,13 +1,7 @@
 # Provider-neutral stream model
 
-```mermaid
-flowchart LR
-  A[Provider adapter] --> N[Normalized Stream contracts]
-  N --> E[(Elasticsearch current + evidence)]
-  E --> Q[Product query]
-  Q --> C[Console / API]
-```
+Messaging identity hashes tenant, environment, system, provider account/project/subscription scope, region/location, namespace, resource kind, and provider resource ID. A display name is never identity. Resources preserve queue, stream, topic, exchange, subscription, shard, partition, group, and dead-letter kinds.
 
-Kafka is the only available adapter. Kinesis, SQS, RabbitMQ, Google Pub/Sub, Pulsar, Azure Event Hubs and Azure Service Bus expose `not_implemented`; capability responses cannot imply collection. Kafka-specific controller, topic, partition, group, connector and schema attributes live in optional facets. Every product state carries status, observation time, coverage, confidence, warnings and evidence.
+`MessagingBacklog` is an umbrella evidence contract, not offset lag. It retains metric, method, unit, confidence, coverage, and missing inputs. Zero is a measurement; absence remains null. `MessagingLag` is restricted to offset, sequence, time, or iterator-age evidence. Typed facets are bounded allowlists, never raw provider responses.
 
-Elastic Streams manages operational log onboarding. DataObs Stream 360 manages message-broker and queue pathways, offsets, lag, retention risk, schemas, connectors and producer/consumer reliability. These are complementary capabilities and must not be conflated.
+Provider-neutral routes carry system and resource identity, allowing graph hashes and pathways to distinguish Kafka-to-Kafka from Kafka-to-SQS changes. Trace-derived latency is preferred; provider estimates are labelled and unavailable evidence is not synthesized.

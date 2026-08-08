@@ -48,3 +48,16 @@ cloud provider implemented. Provider status is governed by the capability ledger
 | generic REST API | Custom HTTP/CEL | Yes if instrumented | Sometimes | API metrics/payload metadata | secret ref | endpoint read | custom/api/dataobs |
 | generic SQL/JDBC source | SQL input | Yes | Yes for stateful scan | custom query plus scan/profile | secret ref | metadata/select opt-in | dataobs sql |
 | generic files/object storage | Elastic file/cloud inputs | Yes | Yes for profiling | file inventory/freshness/schema | IAM/secret ref | list/read opt-in | dataobs file |
+
+## Multi-broker messaging v1 normalized product layer
+
+| System | Collection state | Normalization | Semantic limitation |
+| --- | --- | --- | --- |
+| Kafka | functional | functional | Existing offset/group semantics preserved |
+| Kinesis | partial | functional_unvalidated | Iterator age is not committed offset lag |
+| SQS | partial | functional_unvalidated | Counts are approximate; offsets/groups unsupported |
+| RabbitMQ | not_configured | functional_unvalidated | Requires read-only management/Elastic evidence |
+| Google Pub/Sub | not_configured | functional_unvalidated | Subscription is not a consumer group |
+| Azure Event Hubs | not_configured | functional_unvalidated | Lag requires checkpoint evidence |
+| Azure Service Bus | not_configured | functional_unvalidated | Partitions unsupported |
+| Pulsar | not_implemented | contract_ready | No authoritative production collector |

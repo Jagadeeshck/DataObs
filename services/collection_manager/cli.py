@@ -11,6 +11,8 @@ from integrations.azure import AzureDataPlatformProvider
 from integrations.azure.configuration import parse_configuration as parse_azure_configuration
 from integrations.bigquery import BigQueryWarehouseProvider
 from integrations.bigquery.configuration import parse_configuration as parse_bigquery_configuration
+from integrations.databases.mysql import MySqlDatabaseProvider
+from integrations.databases.mysql.configuration import parse_configuration as parse_mysql_configuration
 from integrations.databases.postgres import PostgreSqlDatabaseProvider
 from integrations.databases.postgres.configuration import parse_configuration as parse_postgres_configuration
 from integrations.databricks import DatabricksLakehouseProvider
@@ -34,6 +36,7 @@ def build_registry():
     registry.register(TrinoSqlEngineProvider)
     registry.register(PrestoSqlEngineProvider)
     registry.register(PostgreSqlDatabaseProvider)
+    registry.register(MySqlDatabaseProvider)
     return registry
 
 
@@ -59,6 +62,7 @@ def main(argv=None):
             "trino": parse_trino_configuration,
             "presto": parse_presto_configuration,
             "postgres": parse_postgres_configuration,
+            "mysql": parse_mysql_configuration,
         }
         config_parsers[payload.get("provider_type")](payload["provider"])
         print(json.dumps({"valid": True}))

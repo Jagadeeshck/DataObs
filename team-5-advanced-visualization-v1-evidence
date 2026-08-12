@@ -1,0 +1,24 @@
+Team: Team 5
+Repository: Jagadeeshck/DataObs
+Audited base SHA: d4f511ebb331b74528426b91ce69bd24f8993eac
+Producer SHA: populated by exact-commit hosted workflow
+Workflow/run/attempt: .github/workflows/team-5-advanced-visualization-v1.yml / pending / pending
+Console version: 0.1.0
+Elastic Charts version: 71.5.1
+EUI version: 117.0.0
+Cytoscape version: 3.33.1
+Visualization primitive count: 11
+Migrated surface count: 0 (shared primitives and compatibility path delivered; capability migrations remain incremental)
+Chart performance result: local contract budget only; hosted render benchmark pending
+Topology performance result: local bounded contract only; hosted render benchmark pending
+Bundle impact: pending production build measurement
+Accessibility result: semantic alternatives implemented; axe/Playwright pending
+Playwright result: pending
+Visual regression result: not added: current repository has no deterministic visualization fixture route/baseline architecture
+Semantic validation: pnpm visualization:check
+Missing-vs-zero test: unit test included
+Forecast distinction test: unit test included
+Impact/confidence distinction test: documented contract; values never synthesized
+Privacy test: production-fixture exclusion and documented low-cardinality contract
+Known warnings: checkout has no configured Git remote; hosted workflow URL unavailable locally
+Skipped gates and reasons: recorded by final report; never represented as passed

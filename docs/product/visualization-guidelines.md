@@ -1,0 +1,3 @@
+# Visualization guidelines
+
+Use TimeSeries for continuous operational evidence, status bars for categorical counts, Heatmap only for quantitative two-dimensional intensity, and Matrix for categorical health. Always show units, counts, labels/icons or shapes in addition to color. Show zero as `0`; show absent evidence as **No observation**; label stale/partial states. Forecast, estimated, and inferred evidence must not look measured. Tooltips/details are bounded to series/entity label, UTC timestamp, formatted value/unit, evidence state, annotation, and source—never raw JSON, provider payloads, secrets, documents, stack traces, or query text.

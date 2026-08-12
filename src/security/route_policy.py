@@ -73,6 +73,8 @@ def _rule(methods: str, pattern: str, read: Permission, write: Permission | None
 
 
 RULES = (
+    _rule("GET HEAD", r"/api/v1/dbt(?:/.*)?", Permission.JOBS_READ),
+    _rule("POST", r"/api/v1/dbt/artifacts", Permission.COLLECTION_INGEST),
     _rule("GET HEAD", r"/api/v1/platform/environments(?:/\{environment_id\})?", Permission.ENVIRONMENTS_READ),
     _rule("POST", r"/api/v1/platform/environments", Permission.ENVIRONMENTS_WRITE),
     _rule("POST", r"/api/v1/platform/environments/\{environment_id\}/transition", Permission.ENVIRONMENTS_WRITE),

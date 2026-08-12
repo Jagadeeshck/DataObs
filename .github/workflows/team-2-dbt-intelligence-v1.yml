@@ -1,0 +1,65 @@
+name: Team 2 — dbt Project, Test and Semantic Intelligence v1
+
+on:
+  pull_request:
+    paths: ["integrations/dbt/**", "services/dbt_intelligence/**", "services/change_gates/**", "src/api/**", "tests/test_dbt_intelligence_v1.py", "docs/**", "openapi.json", "ui/dataobs-console/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    services:
+      elasticsearch:
+        image: docker.elastic.co/elasticsearch/elasticsearch:9.4.2
+        env:
+          discovery.type: single-node
+          xpack.security.enabled: "false"
+        ports: ["9200:9200"]
+        options: --health-cmd="curl -f http://localhost:9200/_cluster/health" --health-interval=10s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - uses: pnpm/action-setup@v4
+        with: {version: 10.15.0}
+      - uses: actions/setup-node@v4
+        with: {node-version: "22", cache: pnpm, cache-dependency-path: ui/dataobs-console/pnpm-lock.yaml}
+      - run: pip install -r requirements.txt
+      - name: Repository guards
+        run: |
+          python scripts/check_merge_conflict_markers.py
+          python scripts/check_team_boundaries.py
+          python scripts/check_generated_artifacts.py
+          python scripts/check_docs_links.py
+          python scripts/validate_capability_ledger.py
+          python scripts/check_migration_immutability.py
+      - name: Safe artifact, schema, tenant, restart and Team 2 tests
+        run: python -m pytest tests/test_dbt_intelligence_v1.py --junitxml=dbt-junit.xml
+      - name: Elasticsearch 9.4.2 migration repeat apply
+        run: |
+          curl -fsS http://localhost:9200 | tee elasticsearch-version.json
+          python -m packages.elastic_store.cli plan > migration-plan.json
+      - name: Console generated contract and validation
+        working-directory: ui/dataobs-console
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm api:generate
+          pnpm typecheck
+          pnpm lint
+          pnpm format:check
+          pnpm test
+          pnpm build
+          pnpm bundle:check
+      - name: Exact-commit evidence manifest
+        run: |
+          mkdir -p evidence/team-2-dbt
+          printf '{"repository":"%s","producer_sha":"%s","workflow":"%s","run_id":"%s","job_id":"%s","elasticsearch":"9.4.2","artifact":"team-2-dbt-intelligence-v1-evidence","independent_verification":"required"}\n' "$GITHUB_REPOSITORY" "$GITHUB_SHA" "$GITHUB_WORKFLOW" "$GITHUB_RUN_ID" "$GITHUB_JOB" > evidence/team-2-dbt/manifest.json
+          cp dbt-junit.xml migration-plan.json elasticsearch-version.json evidence/team-2-dbt/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: team-2-dbt-intelligence-v1-evidence
+          path: evidence/team-2-dbt
+          if-no-files-found: error

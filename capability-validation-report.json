@@ -2,7 +2,7 @@
   "status": "passed",
   "counts": {
     "deprecated": 0,
-    "foundation": 12,
+    "foundation": 13,
     "functional_unvalidated": 27,
     "not_started": 6,
     "optional_integration": 1,

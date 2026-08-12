@@ -302,6 +302,9 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
     app.state.authenticator = Authenticator(resolved_settings.auth)
     app.state.store_bundle = resolved_bundle
     app.state.platform_lifecycle_service = PlatformLifecycleService()
+    from services.dbt_intelligence import DbtIntelligenceService, MemoryDbtIntelligenceRepository
+
+    app.state.dbt_intelligence_service = DbtIntelligenceService(MemoryDbtIntelligenceRepository())
     meter = metrics.get_meter("dataobs.platform.api")
     request_count = meter.create_counter("dataobs_api_requests_total", unit="{request}")
     request_duration = meter.create_histogram("dataobs_api_request_duration_seconds", unit="s")
@@ -1239,6 +1242,12 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
     app.include_router(create_job_router(dataobs_service, require_auth))
     app.include_router(create_run_router(dataobs_service, require_auth))
     app.include_router(create_lineage_router(get_lineage_repository, require_auth))
+    from src.api.dbt_routes import create_dbt_router
+
+    def get_dbt_intelligence(request: Request):
+        return request.app.state.dbt_intelligence_service
+
+    app.include_router(create_dbt_router(get_dbt_intelligence, require_auth))
 
     @app.post("/api/data-observability/assets", status_code=201, dependencies=[Depends(require_auth)])
     async def dataobs_create_asset(

@@ -6,8 +6,8 @@ Audited commit: `5164762a6337a44a76ad2c7574a78edc048a70b3` · PR range: #82-#168
 
 ## State counts
 
-- **foundation**: 12
-- **functional_unvalidated**: 26
+- **foundation**: 13
+- **functional_unvalidated**: 27
 - **not_started**: 6
 - **optional_integration**: 1
 - **scaffold**: 1
@@ -17,9 +17,9 @@ Audited commit: `5164762a6337a44a76ad2c7574a78edc048a70b3` · PR range: #82-#168
 - **ai_agent**: 2
 - **business**: 2
 - **data**: 5
-- **data_pipeline**: 16
+- **data_pipeline**: 17
 - **finops_cost**: 1
-- **platform**: 20
+- **platform**: 21
 
 ## Capabilities
 
@@ -174,6 +174,14 @@ Bounded evidence-led pathway investigation; no root-cause claim.
 - **State:** `functional_unvalidated`
 - **Release readiness:** `blocked`
 - **Next gate:** Retain and independently verify exact-SHA hosted evidence.
+
+### `pipeline.dbt_intelligence` — dbt Project, Test and Semantic Intelligence
+
+Safe versioned dbt artifact parsing and bounded operational, quality, lineage, and semantic projections.
+
+- **State:** `foundation`
+- **Release readiness:** `blocked`
+- **Next gate:** Complete Elasticsearch, Console, browser, accessibility, exact-commit and independent hosted certification.
 
 ### `streaming.anomaly_retention_intelligence_v1` — Stream anomaly, retention and failure intelligence v1
 

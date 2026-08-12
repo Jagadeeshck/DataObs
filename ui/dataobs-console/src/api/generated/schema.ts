@@ -930,6 +930,142 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/dbt/artifacts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ingest */
+        post: operations["ingest_api_v1_dbt_artifacts_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dbt/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Projects */
+        get: operations["projects_api_v1_dbt_overview_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dbt/projects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Projects */
+        get: operations["projects_api_v1_dbt_projects_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dbt/projects/{project_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Project */
+        get: operations["project_api_v1_dbt_projects__project_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dbt/projects/{project_id}/freshness": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Dbt Project Freshness */
+        get: operations["dbt_project_freshness_api_v1_dbt_projects__project_id__freshness_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dbt/projects/{project_id}/resources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Resources */
+        get: operations["resources_api_v1_dbt_projects__project_id__resources_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dbt/projects/{project_id}/semantic": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Dbt Project Semantic */
+        get: operations["dbt_project_semantic_api_v1_dbt_projects__project_id__semantic_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dbt/projects/{project_id}/tests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Dbt Project Tests */
+        get: operations["dbt_project_tests_api_v1_dbt_projects__project_id__tests_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/entities/{node_id}/summary": {
         parameters: {
             query?: never;
@@ -1030,6 +1166,415 @@ export interface paths {
         post?: never;
         /** Delete Role Binding */
         delete: operations["delete_role_binding_api_v1_iam_role_bindings__binding_id__delete"];
+        options?: never;
+        head?: never;
+        /** Patch Role Binding */
+        patch: operations["patch_role_binding_api_v1_iam_role_bindings__binding_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/incident-automation/approvals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Request Approval */
+        post: operations["request_approval_api_v1_incident_automation_approvals_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/incident-automation/approvals/{approval_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Approval */
+        get: operations["get_approval_api_v1_incident_automation_approvals__approval_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/incident-automation/approvals/{approval_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve */
+        post: operations["approve_api_v1_incident_automation_approvals__approval_id__approve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/incident-automation/approvals/{approval_id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reject */
+        post: operations["reject_api_v1_incident_automation_approvals__approval_id__reject_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/incident-automation/catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Catalog */
+        get: operations["catalog_api_v1_incident_automation_catalog_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/incident-automation/catalog/{action_type}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Catalog Item */
+        get: operations["catalog_item_api_v1_incident_automation_catalog__action_type__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/incident-automation/executions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Execution */
+        post: operations["create_execution_api_v1_incident_automation_executions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/incident-automation/executions/{execution_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Execution */
+        get: operations["get_execution_api_v1_incident_automation_executions__execution_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/incident-correlation/groups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Groups */
+        get: operations["groups_api_v1_incident_correlation_groups_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/incident-correlation/groups/{group_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Group */
+        get: operations["group_api_v1_incident_correlation_groups__group_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/incident-correlation/groups/{group_id}/decisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Decisions */
+        get: operations["decisions_api_v1_incident_correlation_groups__group_id__decisions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/incident-correlation/groups/{group_id}/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Members */
+        get: operations["members_api_v1_incident_correlation_groups__group_id__members_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/incident-correlation/incidents/{incident_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Incident Group */
+        get: operations["incident_group_api_v1_incident_correlation_incidents__incident_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/incident-correlation/incidents/{incident_id}/explanation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Explanation */
+        get: operations["explanation_api_v1_incident_correlation_incidents__incident_id__explanation_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/incident-floods": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Storms */
+        get: operations["storms_api_v1_incident_floods_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/incident-floods/{flood_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Storm */
+        get: operations["storm_api_v1_incident_floods__flood_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/incident-floods/{flood_id}/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Storm Members */
+        get: operations["storm_members_api_v1_incident_floods__flood_id__members_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/incident-floods/{flood_id}/notification-decisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Notifications */
+        get: operations["notifications_api_v1_incident_floods__flood_id__notification_decisions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/incident-floods/{flood_id}/timeline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Storm Timeline */
+        get: operations["storm_timeline_api_v1_incident_floods__flood_id__timeline_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/incident-workbench": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Inbox */
+        get: operations["inbox_api_v1_incident_workbench_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/incident-workbench/{incident_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Detail */
+        get: operations["detail_api_v1_incident_workbench__incident_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/incident-workbench/{incident_id}/actions/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Preview */
+        post: operations["preview_api_v1_incident_workbench__incident_id__actions_preview_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/incident-workbench/{incident_id}/mutations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mutate */
+        post: operations["mutate_api_v1_incident_workbench__incident_id__mutations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/incident-workbench/{incident_id}/timeline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Timeline */
+        get: operations["timeline_api_v1_incident_workbench__incident_id__timeline_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1519,8 +2064,42 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Columns */
-        get: operations["columns_api_v1_lineage_assets__asset_id__columns__column__get"];
+        /** Column */
+        get: operations["column_api_v1_lineage_assets__asset_id__columns__column__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lineage/assets/{asset_id}/columns/{column}/impact": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Column */
+        get: operations["column_api_v1_lineage_assets__asset_id__columns__column__impact_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lineage/assets/{asset_id}/graph": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Asset */
+        get: operations["asset_api_v1_lineage_assets__asset_id__graph_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1536,8 +2115,59 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Impact */
-        get: operations["impact_api_v1_lineage_assets__asset_id__impact_get"];
+        /** Asset Impact */
+        get: operations["asset_impact_api_v1_lineage_assets__asset_id__impact_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lineage/changes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Changes */
+        get: operations["changes_api_v1_lineage_changes_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lineage/impact-analyses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Impact */
+        post: operations["create_impact_api_v1_lineage_impact_analyses_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/lineage/impact-analyses/{analysis_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Impact */
+        get: operations["get_impact_api_v1_lineage_impact_analyses__analysis_id__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2095,6 +2725,40 @@ export interface paths {
         patch: operations["patch_slo_api_v1_pathway_slos__slo_id__patch"];
         trace?: never;
     };
+    "/api/v1/pathway-slos/{slo_id}/evaluations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Evaluation History */
+        get: operations["evaluation_history_api_v1_pathway_slos__slo_id__evaluations_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pathway-slos/{slo_id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Current Status */
+        get: operations["current_status_api_v1_pathway_slos__slo_id__status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/pathways": {
         parameters: {
             query?: never;
@@ -2140,6 +2804,23 @@ export interface paths {
         get: operations["pathway_api_v1_pathways__pathway_id__get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pathways/{pathway_id}/blast-radius": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Pathway Blast Radius */
+        post: operations["pathway_blast_radius_api_v1_pathways__pathway_id__blast_radius_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2197,6 +2878,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/pathways/{pathway_id}/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Snapshot History */
+        get: operations["snapshot_history_api_v1_pathways__pathway_id__history_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/pathways/{pathway_id}/impact": {
         parameters: {
             query?: never;
@@ -2206,6 +2904,40 @@ export interface paths {
         };
         /** Impact */
         get: operations["impact_api_v1_pathways__pathway_id__impact_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pathways/{pathway_id}/investigation-evidence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Investigation Evidence */
+        get: operations["investigation_evidence_api_v1_pathways__pathway_id__investigation_evidence_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pathways/{pathway_id}/investigation-timeline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Investigation Timeline */
+        get: operations["investigation_timeline_api_v1_pathways__pathway_id__investigation_timeline_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2248,6 +2980,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/pathways/{pathway_id}/snapshot": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Historical Snapshot */
+        get: operations["historical_snapshot_api_v1_pathways__pathway_id__snapshot_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/pathways/{pathway_id}/topology": {
         parameters: {
             query?: never;
@@ -2274,6 +3023,332 @@ export interface paths {
         };
         /** Api V1 Pillars */
         get: operations["api_v1_pillars_api_v1_pillars_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/capacity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Capacity */
+        get: operations["capacity_api_v1_platform_capacity_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/clusters": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Clusters */
+        get: operations["clusters_api_v1_platform_clusters_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/clusters/register": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Register Cluster */
+        post: operations["register_cluster_api_v1_platform_clusters_register_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/clusters/{cluster_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Cluster */
+        get: operations["cluster_api_v1_platform_clusters__cluster_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/deployment-plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Deployment Plan */
+        post: operations["deployment_plan_api_v1_platform_deployment_plans_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/deployment-plans/{plan_id}/transition": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Transition Plan */
+        post: operations["transition_plan_api_v1_platform_deployment_plans__plan_id__transition_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/drift": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Drift */
+        get: operations["drift_api_v1_platform_drift_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/environments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Environments */
+        get: operations["environments_api_v1_platform_environments_get"];
+        put?: never;
+        /** Create Environment */
+        post: operations["create_environment_api_v1_platform_environments_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/environments/{environment_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Environment */
+        get: operations["environment_api_v1_platform_environments__environment_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/environments/{environment_id}/transition": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Transition Environment */
+        post: operations["transition_environment_api_v1_platform_environments__environment_id__transition_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/fleet": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fleet */
+        get: operations["fleet_api_v1_platform_fleet_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/installations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Installations */
+        get: operations["installations_api_v1_platform_installations_get"];
+        put?: never;
+        /** Register Installation */
+        post: operations["register_installation_api_v1_platform_installations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/installations/{installation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Installation */
+        get: operations["installation_api_v1_platform_installations__installation_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/promotions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Promotion */
+        post: operations["promotion_api_v1_platform_promotions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/tenants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Tenants */
+        get: operations["tenants_api_v1_platform_tenants_get"];
+        put?: never;
+        /** Request Tenant */
+        post: operations["request_tenant_api_v1_platform_tenants_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/tenants/{tenant_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Tenant */
+        get: operations["tenant_api_v1_platform_tenants__tenant_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/tenants/{tenant_id}/offboarding-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Preview */
+        get: operations["preview_api_v1_platform_tenants__tenant_id__offboarding_preview_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/tenants/{tenant_id}/{action}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Tenant Action */
+        post: operations["tenant_action_api_v1_platform_tenants__tenant_id___action__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/{section}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Platform Operations */
+        get: operations["platform_operations_api_v1_platform__section__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2655,6 +3730,57 @@ export interface paths {
         };
         /** Runtime Health */
         get: operations["runtime_health_api_v1_quality_runtime_health_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reliability/capabilities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Capabilities */
+        get: operations["capabilities_api_v1_reliability_capabilities_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reliability/runtime": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Runtime */
+        get: operations["runtime_api_v1_reliability_runtime_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reliability/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Summary */
+        get: operations["summary_api_v1_reliability_summary_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3107,6 +4233,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/schema-subjects/{resource_id}/evidence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Schema-Subjects Evidence */
+        get: operations["get_schema_subjects_evidence_api_v1_schema_subjects__resource_id__evidence_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/schema-subjects/{resource_id}/impact": {
         parameters: {
             query?: never;
@@ -3397,41 +4540,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/stream-connectors/{resource_id}/action-eligibility": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get Stream-Connectors Action-Eligibility */
-        get: operations["get_stream_connectors_action_eligibility_api_v1_stream_connectors__resource_id__action_eligibility_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/stream-connectors/{resource_id}/actions": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Connector Actions */
-        get: operations["connector_actions_api_v1_stream_connectors__resource_id__actions_get"];
-        put?: never;
-        /** Connector Action */
-        post: operations["connector_action_api_v1_stream_connectors__resource_id__actions_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/stream-connectors/{resource_id}/changes": {
         parameters: {
             query?: never;
@@ -3441,6 +4549,23 @@ export interface paths {
         };
         /** Get Stream-Connectors Changes */
         get: operations["get_stream_connectors_changes_api_v1_stream_connectors__resource_id__changes_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/stream-connectors/{resource_id}/evidence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Stream-Connectors Evidence */
+        get: operations["get_stream_connectors_evidence_api_v1_stream_connectors__resource_id__evidence_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3466,15 +4591,15 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/stream-connectors/{resource_id}/rca": {
+    "/api/v1/stream-connectors/{resource_id}/monitors": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Get Stream-Connectors Rca */
-        get: operations["get_stream_connectors_rca_api_v1_stream_connectors__resource_id__rca_get"];
+        /** Get Stream-Connectors Monitors */
+        get: operations["get_stream_connectors_monitors_api_v1_stream_connectors__resource_id__monitors_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3500,6 +4625,111 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/stream-detectors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Detectors */
+        get: operations["list_detectors_api_v1_stream_detectors_get"];
+        put?: never;
+        /** Create Detector */
+        post: operations["create_detector_api_v1_stream_detectors_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/stream-detectors/{detector_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Detector */
+        get: operations["get_detector_api_v1_stream_detectors__detector_id__get"];
+        put?: never;
+        post?: never;
+        /** Delete Detector */
+        delete: operations["delete_detector_api_v1_stream_detectors__detector_id__delete"];
+        options?: never;
+        head?: never;
+        /** Patch Detector */
+        patch: operations["patch_detector_api_v1_stream_detectors__detector_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/stream-detectors/{detector_id}/disable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Disable Detector */
+        post: operations["disable_detector_api_v1_stream_detectors__detector_id__disable_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/stream-detectors/{detector_id}/enable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Enable Detector */
+        post: operations["enable_detector_api_v1_stream_detectors__detector_id__enable_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/stream-detectors/{detector_id}/evaluations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Detector Evaluations */
+        get: operations["detector_evaluations_api_v1_stream_detectors__detector_id__evaluations_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/stream-detectors/{detector_id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Detector Status */
+        get: operations["detector_status_api_v1_stream_detectors__detector_id__status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/stream-events": {
         parameters: {
             query?: never;
@@ -3509,6 +4739,213 @@ export interface paths {
         };
         /** Stream Events */
         get: operations["stream_events_api_v1_stream_events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/stream-intelligence/anomalies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List-Stream-Intelligence-Anomalies */
+        get: operations["list_stream_intelligence_anomalies_api_v1_stream_intelligence_anomalies_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/stream-intelligence/capabilities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Capabilities */
+        get: operations["capabilities_api_v1_stream_intelligence_capabilities_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/stream-intelligence/failure-candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List-Stream-Intelligence-Failure-Candidates */
+        get: operations["list_stream_intelligence_failure_candidates_api_v1_stream_intelligence_failure_candidates_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/stream-intelligence/forecasts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List-Stream-Intelligence-Forecasts */
+        get: operations["list_stream_intelligence_forecasts_api_v1_stream_intelligence_forecasts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/stream-intelligence/runtime": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Runtime */
+        get: operations["runtime_api_v1_stream_intelligence_runtime_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/stream-intelligence/signals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List-Stream-Intelligence-Signals */
+        get: operations["list_stream_intelligence_signals_api_v1_stream_intelligence_signals_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/stream-intelligence/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Summary */
+        get: operations["summary_api_v1_stream_intelligence_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/stream-investigation/blast-radius": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Stream Blast Radius */
+        post: operations["stream_blast_radius_api_v1_stream_investigation_blast_radius_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/stream-slos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Slos */
+        get: operations["list_slos_api_v1_stream_slos_get"];
+        put?: never;
+        /** Create Slo */
+        post: operations["create_slo_api_v1_stream_slos_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/stream-slos/{slo_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Slo */
+        get: operations["get_slo_api_v1_stream_slos__slo_id__get"];
+        put?: never;
+        post?: never;
+        /** Delete Slo */
+        delete: operations["delete_slo_api_v1_stream_slos__slo_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Slo */
+        patch: operations["update_slo_api_v1_stream_slos__slo_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/stream-slos/{slo_id}/evaluations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Evaluation History */
+        get: operations["evaluation_history_api_v1_stream_slos__slo_id__evaluations_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/stream-slos/{slo_id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Current Status */
+        get: operations["current_status_api_v1_stream_slos__slo_id__status_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3577,6 +5014,26 @@ export interface paths {
         };
         /** List Streams */
         get: operations["list_streams_api_v1_streams_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/streams/providers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Stream Providers
+         * @description Disclose semantic and collection capability independently per system.
+         */
+        get: operations["list_stream_providers_api_v1_streams_providers_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4149,6 +5606,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/startupz": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Startupz */
+        get: operations["startupz_startupz_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/strategy/enterprise-backlog": {
         parameters: {
             query?: never;
@@ -4170,6 +5644,133 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** ActionPreview */
+        ActionPreview: {
+            /** Action Type */
+            action_type: string;
+            /** Incident Revision */
+            incident_revision: string;
+            /** Payload */
+            payload?: {
+                [key: string]: unknown;
+            };
+        };
+        /** ActionRequest */
+        ActionRequest: {
+            /** Actor */
+            actor: string;
+            /** Reason */
+            reason: string;
+        };
+        /** ApprovalRequestBody */
+        ApprovalRequestBody: {
+            /** Impact */
+            impact: string;
+            /** Preview Id */
+            preview_id: string;
+            /** Reason */
+            reason: string;
+        };
+        /** ArtifactIngestionRequest */
+        ArtifactIngestionRequest: {
+            /** Artifact */
+            artifact: {
+                [key: string]: unknown;
+            };
+            /**
+             * Artifact Type
+             * @enum {string}
+             */
+            artifact_type: "manifest" | "run_results" | "catalog" | "freshness";
+            /**
+             * Commit Sha
+             * @default unknown
+             */
+            commit_sha: string;
+            /** Project Id */
+            project_id: string;
+            /** Project Name */
+            project_name: string;
+            /**
+             * Repository Ref
+             * @default unknown
+             */
+            repository_ref: string;
+        };
+        /** BaselineDriftPolicy */
+        BaselineDriftPolicy: {
+            /**
+             * Enabled
+             * @default true
+             */
+            enabled: boolean;
+            /**
+             * Regime Change Evaluations
+             * @default 5
+             */
+            regime_change_evaluations: number;
+        };
+        /**
+         * BaselineMode
+         * @enum {string}
+         */
+        BaselineMode: "static" | "adaptive" | "hybrid";
+        /** BaselineTrainingWindow */
+        BaselineTrainingWindow: {
+            /**
+             * Maximum Age
+             * @default 90d
+             */
+            maximum_age: string;
+            /**
+             * Minimum Samples
+             * @default 14
+             */
+            minimum_samples: number;
+            /**
+             * Observations
+             * @default 60
+             */
+            observations: number;
+        };
+        /** BaselineUpdatePolicy */
+        BaselineUpdatePolicy: {
+            /**
+             * Exclude Backfills
+             * @default true
+             */
+            exclude_backfills: boolean;
+            /**
+             * Exclude Breaches
+             * @default true
+             */
+            exclude_breaches: boolean;
+            /**
+             * Exclude Incomplete
+             * @default true
+             */
+            exclude_incomplete: boolean;
+            /**
+             * Exclude Maintenance
+             * @default true
+             */
+            exclude_maintenance: boolean;
+            /**
+             * Exclude Stale
+             * @default true
+             */
+            exclude_stale: boolean;
+            /**
+             * Exclude Suppressed
+             * @default false
+             */
+            exclude_suppressed: boolean;
+            /**
+             * Learning Delay
+             * @default 2
+             */
+            learning_delay: number;
+        };
         /** CompareRequest */
         CompareRequest: {
             /** Baseline End */
@@ -4449,6 +6050,14 @@ export interface components {
             /** Window */
             window: string;
         };
+        /** DecisionBody */
+        DecisionBody: {
+            /**
+             * Comment
+             * @default
+             */
+            comment: string;
+        };
         /** DependencyReplaceRequest */
         DependencyReplaceRequest: {
             /** Actor */
@@ -4464,6 +6073,13 @@ export interface components {
             backlog: {
                 [key: string]: unknown;
             }[];
+        };
+        /** ExecutionRequestBody */
+        ExecutionRequestBody: {
+            /** Approval Id */
+            approval_id?: string | null;
+            /** Preview Id */
+            preview_id: string;
         };
         /** FindingIngestionResponse */
         FindingIngestionResponse: {
@@ -4516,6 +6132,11 @@ export interface components {
              */
             status: "created" | "updated" | "replayed" | "stale";
         };
+        /**
+         * IncidentState
+         * @enum {string}
+         */
+        IncidentState: "open" | "acknowledged" | "investigating" | "mitigating" | "waiting_for_approval" | "monitoring_recovery" | "resolved" | "suppressed" | "closed" | "reopened";
         /** LineageEdgesResponse */
         LineageEdgesResponse: {
             /** Count */
@@ -4580,6 +6201,12 @@ export interface components {
         };
         /** MonitorBaselinePolicy */
         MonitorBaselinePolicy: {
+            drift?: components["schemas"]["BaselineDriftPolicy"];
+            /**
+             * Enabled
+             * @default true
+             */
+            enabled: boolean;
             /**
              * History Points
              * @default 168
@@ -4590,20 +6217,34 @@ export interface components {
              * @default mad
              * @enum {string}
              */
-            method: "rolling_median" | "mad" | "robust_quantiles" | "iqr" | "ewma" | "same_period";
+            method: "rolling_median" | "mad" | "quantile" | "robust_quantiles" | "iqr" | "ewma" | "same_period";
             /**
              * Minimum Samples
              * @default 12
              */
             minimum_samples: number;
+            /** @default adaptive */
+            mode: components["schemas"]["BaselineMode"];
             /** Seasonality */
-            seasonality?: ("hour_of_day" | "day_of_week" | "weekly" | "custom")[];
+            seasonality?: ("hour_of_day" | "day_of_week" | "weekday_weekend" | "weekly" | "custom")[];
             /**
              * Sensitivity
              * @default medium
              * @enum {string}
              */
             sensitivity: "low" | "medium" | "high";
+            /**
+             * Stale After
+             * @default 48h
+             */
+            stale_after: string;
+            /**
+             * Timezone
+             * @default UTC
+             */
+            timezone: string;
+            training_window?: components["schemas"]["BaselineTrainingWindow"] | null;
+            update_policy?: components["schemas"]["BaselineUpdatePolicy"];
         };
         /** MonitorDefinition */
         MonitorDefinition: {
@@ -4803,6 +6444,18 @@ export interface components {
              */
             requires_approval: boolean;
         };
+        /** Mutation */
+        Mutation: {
+            /** Comment */
+            comment?: string | null;
+            /** Owner */
+            owner?: string | null;
+            /** Reason */
+            reason?: string | null;
+            /** Revision */
+            revision: string;
+            state?: components["schemas"]["IncidentState"] | null;
+        };
         /** PaginationMeta */
         PaginationMeta: {
             /** Has More */
@@ -4979,6 +6632,17 @@ export interface components {
                 [key: string]: unknown;
             }[];
         };
+        /** RoleBindingPatch */
+        RoleBindingPatch: {
+            /** Active */
+            active?: boolean | null;
+            /** Description */
+            description?: string | null;
+            /** Environments */
+            environments?: string[] | null;
+            /** Roles */
+            roles?: string[] | null;
+        };
         /** RoleBindingRequest */
         RoleBindingRequest: {
             /**
@@ -5083,7 +6747,9 @@ export interface components {
         /** TransitionRequest */
         TransitionRequest: {
             /** Actor */
-            actor: string;
+            actor?: string | null;
+            /** Reason */
+            reason?: string | null;
         };
         /** ValidationError */
         ValidationError: {
@@ -5097,23 +6763,6 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
-        };
-        /** ActionRequest */
-        src__api__data_product_routes__ActionRequest: {
-            /** Actor */
-            actor: string;
-            /** Reason */
-            reason: string;
-        };
-        /** ActionRequest */
-        src__api__stream_routes__ActionRequest: {
-            /**
-             * Action
-             * @enum {string}
-             */
-            action: "restart_failed_connector" | "restart_failed_task" | "verify_recovery";
-            /** Reason */
-            reason: string;
         };
     };
     responses: never;
@@ -7292,7 +8941,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["src__api__data_product_routes__ActionRequest"];
+                "application/json": components["schemas"]["ActionRequest"];
             };
         };
         responses: {
@@ -7550,7 +9199,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["src__api__data_product_routes__ActionRequest"];
+                "application/json": components["schemas"]["ActionRequest"];
             };
         };
         responses: {
@@ -7599,6 +9248,300 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ingest_api_v1_dbt_artifacts_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ArtifactIngestionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    projects_api_v1_dbt_overview_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    projects_api_v1_dbt_projects_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    project_api_v1_dbt_projects__project_id__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    dbt_project_freshness_api_v1_dbt_projects__project_id__freshness_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                resource_kind?: string;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    resources_api_v1_dbt_projects__project_id__resources_get: {
+        parameters: {
+            query?: {
+                resource_type?: string | null;
+                limit?: number;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    dbt_project_semantic_api_v1_dbt_projects__project_id__semantic_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                resource_kind?: string;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    dbt_project_tests_api_v1_dbt_projects__project_id__tests_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                resource_kind?: string;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */
@@ -7802,7 +9745,10 @@ export interface operations {
     };
     list_role_bindings_api_v1_iam_role_bindings_get: {
         parameters: {
-            query?: never;
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+            };
             header?: {
                 authorization?: string | null;
                 "X-DataObs-Tenant"?: string | null;
@@ -7839,6 +9785,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
+                "Idempotency-Key"?: string | null;
                 authorization?: string | null;
                 "X-DataObs-Tenant"?: string | null;
                 "X-DataObs-Environment"?: string | null;
@@ -7933,6 +9880,978 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    patch_role_binding_api_v1_iam_role_bindings__binding_id__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                "if-match"?: string | null;
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                binding_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RoleBindingPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    request_approval_api_v1_incident_automation_approvals_post: {
+        parameters: {
+            query: {
+                environment: string;
+            };
+            header: {
+                "Idempotency-Key": string;
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApprovalRequestBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_approval_api_v1_incident_automation_approvals__approval_id__get: {
+        parameters: {
+            query: {
+                environment: string;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                approval_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    approve_api_v1_incident_automation_approvals__approval_id__approve_post: {
+        parameters: {
+            query: {
+                environment: string;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                approval_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DecisionBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reject_api_v1_incident_automation_approvals__approval_id__reject_post: {
+        parameters: {
+            query: {
+                environment: string;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                approval_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DecisionBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    catalog_api_v1_incident_automation_catalog_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    catalog_item_api_v1_incident_automation_catalog__action_type__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                action_type: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_execution_api_v1_incident_automation_executions_post: {
+        parameters: {
+            query: {
+                environment: string;
+            };
+            header: {
+                "Idempotency-Key": string;
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExecutionRequestBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_execution_api_v1_incident_automation_executions__execution_id__get: {
+        parameters: {
+            query: {
+                environment: string;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                execution_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    groups_api_v1_incident_correlation_groups_get: {
+        parameters: {
+            query: {
+                environment: string;
+                page_size?: number;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    group_api_v1_incident_correlation_groups__group_id__get: {
+        parameters: {
+            query: {
+                environment: string;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                group_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    decisions_api_v1_incident_correlation_groups__group_id__decisions_get: {
+        parameters: {
+            query: {
+                environment: string;
+                page_size?: number;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                group_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    members_api_v1_incident_correlation_groups__group_id__members_get: {
+        parameters: {
+            query: {
+                environment: string;
+                page_size?: number;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                group_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    incident_group_api_v1_incident_correlation_incidents__incident_id__get: {
+        parameters: {
+            query: {
+                environment: string;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                incident_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    explanation_api_v1_incident_correlation_incidents__incident_id__explanation_get: {
+        parameters: {
+            query: {
+                environment: string;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                incident_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    storms_api_v1_incident_floods_get: {
+        parameters: {
+            query: {
+                environment: string;
+                page_size?: number;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    storm_api_v1_incident_floods__flood_id__get: {
+        parameters: {
+            query: {
+                environment: string;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                flood_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    storm_members_api_v1_incident_floods__flood_id__members_get: {
+        parameters: {
+            query: {
+                environment: string;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                flood_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    notifications_api_v1_incident_floods__flood_id__notification_decisions_get: {
+        parameters: {
+            query: {
+                environment: string;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                flood_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    storm_timeline_api_v1_incident_floods__flood_id__timeline_get: {
+        parameters: {
+            query: {
+                environment: string;
+                page_size?: number;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                flood_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    inbox_api_v1_incident_workbench_get: {
+        parameters: {
+            query: {
+                environment: string;
+                state?: string | null;
+                severity?: string | null;
+                owner?: string | null;
+                business_service?: string | null;
+                asset?: string | null;
+                search?: string;
+                unassigned?: boolean;
+                sort?: string;
+                page_size?: number;
+                cursor?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    detail_api_v1_incident_workbench__incident_id__get: {
+        parameters: {
+            query: {
+                environment: string;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                incident_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    preview_api_v1_incident_workbench__incident_id__actions_preview_post: {
+        parameters: {
+            query: {
+                environment: string;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                incident_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionPreview"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    mutate_api_v1_incident_workbench__incident_id__mutations_post: {
+        parameters: {
+            query: {
+                environment: string;
+            };
+            header?: {
+                "Idempotency-Key"?: string | null;
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                incident_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Mutation"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    timeline_api_v1_incident_workbench__incident_id__timeline_get: {
+        parameters: {
+            query: {
+                environment: string;
+                page_size?: number;
+                cursor?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                incident_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
             };
             /** @description Validation Error */
             422: {
@@ -9009,6 +11928,8 @@ export interface operations {
                 depth?: number;
                 max_nodes?: number;
                 max_edges?: number;
+                include_stale?: boolean;
+                as_of?: string | null;
             };
             header?: {
                 authorization?: string | null;
@@ -9042,13 +11963,11 @@ export interface operations {
             };
         };
     };
-    columns_api_v1_lineage_assets__asset_id__columns__column__get: {
+    column_api_v1_lineage_assets__asset_id__columns__column__get: {
         parameters: {
             query?: {
                 direction?: string;
                 depth?: number;
-                max_nodes?: number;
-                max_edges?: number;
             };
             header?: {
                 authorization?: string | null;
@@ -9083,12 +12002,11 @@ export interface operations {
             };
         };
     };
-    impact_api_v1_lineage_assets__asset_id__impact_get: {
+    column_api_v1_lineage_assets__asset_id__columns__column__impact_get: {
         parameters: {
             query?: {
+                direction?: string;
                 depth?: number;
-                max_nodes?: number;
-                max_edges?: number;
             };
             header?: {
                 authorization?: string | null;
@@ -9097,6 +12015,196 @@ export interface operations {
             };
             path: {
                 asset_id: string;
+                column: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    asset_api_v1_lineage_assets__asset_id__graph_get: {
+        parameters: {
+            query?: {
+                direction?: string;
+                depth?: number;
+                max_nodes?: number;
+                max_edges?: number;
+                include_stale?: boolean;
+                as_of?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                asset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    asset_impact_api_v1_lineage_assets__asset_id__impact_get: {
+        parameters: {
+            query?: {
+                depth?: number;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                asset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    changes_api_v1_lineage_changes_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_impact_api_v1_lineage_impact_analyses_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_impact_api_v1_lineage_impact_analyses__analysis_id__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                analysis_id: string;
             };
             cookie?: never;
         };
@@ -9829,8 +12937,8 @@ export interface operations {
     };
     reset_baseline_api_v1_monitors__monitor_id__baselines_reset_post: {
         parameters: {
-            query: {
-                reason: string;
+            query?: {
+                reason?: string | null;
             };
             header?: {
                 authorization?: string | null;
@@ -10209,6 +13317,7 @@ export interface operations {
                 environment: string;
                 limit?: number;
                 cursor?: string | null;
+                pathway_id?: string | null;
             };
             header?: {
                 authorization?: string | null;
@@ -10406,12 +13515,94 @@ export interface operations {
             };
         };
     };
+    evaluation_history_api_v1_pathway_slos__slo_id__evaluations_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                slo_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    current_status_api_v1_pathway_slos__slo_id__status_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                slo_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     pathways_api_v1_pathways_get: {
         parameters: {
             query: {
                 environment: string;
                 limit?: number;
                 cursor?: string | null;
+                search?: string | null;
+                health?: string | null;
+                classification?: string | null;
+                owner_team?: string | null;
+                business_service?: string | null;
+                truncated?: boolean | null;
             };
             header?: {
                 authorization?: string | null;
@@ -10525,6 +13716,49 @@ export interface operations {
             };
         };
     };
+    pathway_blast_radius_api_v1_pathways__pathway_id__blast_radius_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                pathway_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     pathway_bottlenecks_api_v1_pathways__pathway_id__bottlenecks_get: {
         parameters: {
             query: {
@@ -10567,9 +13801,7 @@ export interface operations {
     };
     compare_api_v1_pathways__pathway_id__compare_post: {
         parameters: {
-            query: {
-                environment: string;
-            };
+            query?: never;
             header?: {
                 authorization?: string | null;
                 "X-DataObs-Tenant"?: string | null;
@@ -10649,10 +13881,131 @@ export interface operations {
             };
         };
     };
+    snapshot_history_api_v1_pathways__pathway_id__history_get: {
+        parameters: {
+            query: {
+                start: string;
+                end: string;
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                pathway_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     impact_api_v1_pathways__pathway_id__impact_get: {
         parameters: {
             query: {
                 environment: string;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                pathway_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    investigation_evidence_api_v1_pathways__pathway_id__investigation_evidence_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                pathway_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    investigation_timeline_api_v1_pathways__pathway_id__investigation_timeline_get: {
+        parameters: {
+            query: {
+                start: string;
+                end: string;
+                limit?: number;
+                cursor?: string | null;
             };
             header?: {
                 authorization?: string | null;
@@ -10766,6 +14119,45 @@ export interface operations {
             };
         };
     };
+    historical_snapshot_api_v1_pathways__pathway_id__snapshot_get: {
+        parameters: {
+            query: {
+                at: string;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                pathway_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     topology_api_v1_pathways__pathway_id__topology_get: {
         parameters: {
             query: {
@@ -10814,6 +14206,815 @@ export interface operations {
                 "X-DataObs-Environment"?: string | null;
             };
             path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    capacity_api_v1_platform_capacity_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    clusters_api_v1_platform_clusters_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    register_cluster_api_v1_platform_clusters_register_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cluster_api_v1_platform_clusters__cluster_id__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                cluster_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    deployment_plan_api_v1_platform_deployment_plans_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    transition_plan_api_v1_platform_deployment_plans__plan_id__transition_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                plan_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    drift_api_v1_platform_drift_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    environments_api_v1_platform_environments_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_environment_api_v1_platform_environments_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    environment_api_v1_platform_environments__environment_id__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                environment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    transition_environment_api_v1_platform_environments__environment_id__transition_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "If-Match"?: string | null;
+                "Idempotency-Key": string;
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                environment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    fleet_api_v1_platform_fleet_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    installations_api_v1_platform_installations_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    register_installation_api_v1_platform_installations_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    installation_api_v1_platform_installations__installation_id__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                installation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    promotion_api_v1_platform_promotions_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    tenants_api_v1_platform_tenants_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    request_tenant_api_v1_platform_tenants_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    tenant_api_v1_platform_tenants__tenant_id__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    preview_api_v1_platform_tenants__tenant_id__offboarding_preview_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    tenant_action_api_v1_platform_tenants__tenant_id___action__post: {
+        parameters: {
+            query?: never;
+            header: {
+                "If-Match"?: string | null;
+                "Idempotency-Key": string;
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                tenant_id: string;
+                action: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    platform_operations_api_v1_platform__section__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                section: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -11224,8 +15425,8 @@ export interface operations {
     };
     reset_baseline_api_v1_quality_monitors__monitor_id__baselines_reset_post: {
         parameters: {
-            query: {
-                reason: string;
+            query?: {
+                reason?: string | null;
             };
             header?: {
                 authorization?: string | null;
@@ -11793,6 +15994,111 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    capabilities_api_v1_reliability_capabilities_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    runtime_api_v1_reliability_runtime_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    summary_api_v1_reliability_summary_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: number;
+                    };
                 };
             };
             /** @description Validation Error */
@@ -12881,6 +17187,47 @@ export interface operations {
             };
         };
     };
+    get_schema_subjects_evidence_api_v1_schema_subjects__resource_id__evidence_get: {
+        parameters: {
+            query: {
+                environment: string;
+                _root?: string;
+                _name?: string;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                resource_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_schema_subjects_impact_api_v1_schema_subjects__resource_id__impact_get: {
         parameters: {
             query: {
@@ -13650,7 +17997,7 @@ export interface operations {
             };
         };
     };
-    get_stream_connectors_action_eligibility_api_v1_stream_connectors__resource_id__action_eligibility_get: {
+    get_stream_connectors_changes_api_v1_stream_connectors__resource_id__changes_get: {
         parameters: {
             query: {
                 environment: string;
@@ -13691,90 +18038,7 @@ export interface operations {
             };
         };
     };
-    connector_actions_api_v1_stream_connectors__resource_id__actions_get: {
-        parameters: {
-            query: {
-                environment: string;
-            };
-            header?: {
-                authorization?: string | null;
-                "X-DataObs-Tenant"?: string | null;
-                "X-DataObs-Environment"?: string | null;
-            };
-            path: {
-                resource_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    connector_action_api_v1_stream_connectors__resource_id__actions_post: {
-        parameters: {
-            query: {
-                environment: string;
-            };
-            header?: {
-                "Idempotency-Key"?: string | null;
-                authorization?: string | null;
-                "X-DataObs-Tenant"?: string | null;
-                "X-DataObs-Environment"?: string | null;
-            };
-            path: {
-                resource_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["src__api__stream_routes__ActionRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            202: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_stream_connectors_changes_api_v1_stream_connectors__resource_id__changes_get: {
+    get_stream_connectors_evidence_api_v1_stream_connectors__resource_id__evidence_get: {
         parameters: {
             query: {
                 environment: string;
@@ -13856,7 +18120,7 @@ export interface operations {
             };
         };
     };
-    get_stream_connectors_rca_api_v1_stream_connectors__resource_id__rca_get: {
+    get_stream_connectors_monitors_api_v1_stream_connectors__resource_id__monitors_get: {
         parameters: {
             query: {
                 environment: string;
@@ -13938,6 +18202,357 @@ export interface operations {
             };
         };
     };
+    list_detectors_api_v1_stream_detectors_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+                resource_type?: string | null;
+                resource_id?: string | null;
+                enabled?: boolean | null;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_detector_api_v1_stream_detectors_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_detector_api_v1_stream_detectors__detector_id__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                detector_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_detector_api_v1_stream_detectors__detector_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                detector_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    patch_detector_api_v1_stream_detectors__detector_id__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                detector_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    disable_detector_api_v1_stream_detectors__detector_id__disable_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                detector_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    enable_detector_api_v1_stream_detectors__detector_id__enable_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                detector_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    detector_evaluations_api_v1_stream_detectors__detector_id__evaluations_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                detector_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    detector_status_api_v1_stream_detectors__detector_id__status_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                detector_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     stream_events_api_v1_stream_events_get: {
         parameters: {
             query: {
@@ -13961,6 +18576,595 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_stream_intelligence_anomalies_api_v1_stream_intelligence_anomalies_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+                resource_type?: string | null;
+                resource_id?: string | null;
+                state?: string | null;
+                _kind?: string;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    capabilities_api_v1_stream_intelligence_capabilities_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_stream_intelligence_failure_candidates_api_v1_stream_intelligence_failure_candidates_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+                resource_type?: string | null;
+                resource_id?: string | null;
+                state?: string | null;
+                _kind?: string;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_stream_intelligence_forecasts_api_v1_stream_intelligence_forecasts_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+                resource_type?: string | null;
+                resource_id?: string | null;
+                state?: string | null;
+                _kind?: string;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    runtime_api_v1_stream_intelligence_runtime_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_stream_intelligence_signals_api_v1_stream_intelligence_signals_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string | null;
+                resource_type?: string | null;
+                resource_id?: string | null;
+                state?: string | null;
+                _kind?: string;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    summary_api_v1_stream_intelligence_summary_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stream_blast_radius_api_v1_stream_investigation_blast_radius_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_slos_api_v1_stream_slos_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                resource_type?: string | null;
+                resource_id?: string | null;
+                metric?: string | null;
+                enabled?: boolean | null;
+                owner?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_slo_api_v1_stream_slos_post: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_slo_api_v1_stream_slos__slo_id__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                slo_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_slo_api_v1_stream_slos__slo_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                slo_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_slo_api_v1_stream_slos__slo_id__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string | null;
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                slo_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    evaluation_history_api_v1_stream_slos__slo_id__evaluations_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                slo_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    current_status_api_v1_stream_slos__slo_id__status_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                slo_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
             /** @description Validation Error */
@@ -14108,6 +19312,41 @@ export interface operations {
                 sort?: "topic" | "last_observed" | "maximum_lag" | "throughput" | "retention_risk" | "health";
                 _root?: string;
             };
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_stream_providers_api_v1_streams_providers_get: {
+        parameters: {
+            query?: never;
             header?: {
                 authorization?: string | null;
                 "X-DataObs-Tenant"?: string | null;
@@ -15507,6 +20746,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    startupz_startupz_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
         };

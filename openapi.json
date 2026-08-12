@@ -80,6 +80,156 @@
         "title": "ApprovalRequestBody",
         "type": "object"
       },
+      "ArtifactIngestionRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "artifact": {
+            "additionalProperties": true,
+            "title": "Artifact",
+            "type": "object"
+          },
+          "artifact_type": {
+            "enum": [
+              "manifest",
+              "run_results",
+              "catalog",
+              "freshness"
+            ],
+            "title": "Artifact Type",
+            "type": "string"
+          },
+          "commit_sha": {
+            "default": "unknown",
+            "maxLength": 128,
+            "title": "Commit Sha",
+            "type": "string"
+          },
+          "project_id": {
+            "maxLength": 512,
+            "minLength": 1,
+            "title": "Project Id",
+            "type": "string"
+          },
+          "project_name": {
+            "maxLength": 512,
+            "minLength": 1,
+            "title": "Project Name",
+            "type": "string"
+          },
+          "repository_ref": {
+            "default": "unknown",
+            "maxLength": 1024,
+            "title": "Repository Ref",
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_id",
+          "project_name",
+          "artifact_type",
+          "artifact"
+        ],
+        "title": "ArtifactIngestionRequest",
+        "type": "object"
+      },
+      "BaselineDriftPolicy": {
+        "additionalProperties": false,
+        "properties": {
+          "enabled": {
+            "default": true,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "regime_change_evaluations": {
+            "default": 5,
+            "maximum": 100.0,
+            "minimum": 3.0,
+            "title": "Regime Change Evaluations",
+            "type": "integer"
+          }
+        },
+        "title": "BaselineDriftPolicy",
+        "type": "object"
+      },
+      "BaselineMode": {
+        "enum": [
+          "static",
+          "adaptive",
+          "hybrid"
+        ],
+        "title": "BaselineMode",
+        "type": "string"
+      },
+      "BaselineTrainingWindow": {
+        "additionalProperties": false,
+        "properties": {
+          "maximum_age": {
+            "default": "90d",
+            "title": "Maximum Age",
+            "type": "string"
+          },
+          "minimum_samples": {
+            "default": 14,
+            "maximum": 10000.0,
+            "minimum": 3.0,
+            "title": "Minimum Samples",
+            "type": "integer"
+          },
+          "observations": {
+            "default": 60,
+            "maximum": 10000.0,
+            "minimum": 3.0,
+            "title": "Observations",
+            "type": "integer"
+          }
+        },
+        "title": "BaselineTrainingWindow",
+        "type": "object"
+      },
+      "BaselineUpdatePolicy": {
+        "additionalProperties": false,
+        "properties": {
+          "exclude_backfills": {
+            "default": true,
+            "title": "Exclude Backfills",
+            "type": "boolean"
+          },
+          "exclude_breaches": {
+            "default": true,
+            "title": "Exclude Breaches",
+            "type": "boolean"
+          },
+          "exclude_incomplete": {
+            "default": true,
+            "title": "Exclude Incomplete",
+            "type": "boolean"
+          },
+          "exclude_maintenance": {
+            "default": true,
+            "title": "Exclude Maintenance",
+            "type": "boolean"
+          },
+          "exclude_stale": {
+            "default": true,
+            "title": "Exclude Stale",
+            "type": "boolean"
+          },
+          "exclude_suppressed": {
+            "default": false,
+            "title": "Exclude Suppressed",
+            "type": "boolean"
+          },
+          "learning_delay": {
+            "default": 2,
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Learning Delay",
+            "type": "integer"
+          }
+        },
+        "title": "BaselineUpdatePolicy",
+        "type": "object"
+      },
       "CompareRequest": {
         "properties": {
           "baseline_end": {
@@ -738,29 +888,15 @@
             ],
             "title": "Approval Id"
           },
-          "incident_revision": {
-            "maxLength": 120,
-            "minLength": 1,
-            "title": "Incident Revision",
-            "type": "string"
-          },
           "preview_id": {
             "maxLength": 100,
             "minLength": 1,
             "title": "Preview Id",
             "type": "string"
-          },
-          "target_revision": {
-            "maxLength": 120,
-            "minLength": 1,
-            "title": "Target Revision",
-            "type": "string"
           }
         },
         "required": [
-          "preview_id",
-          "incident_revision",
-          "target_revision"
+          "preview_id"
         ],
         "title": "ExecutionRequestBody",
         "type": "object"
@@ -1040,6 +1176,14 @@
       "MonitorBaselinePolicy": {
         "additionalProperties": false,
         "properties": {
+          "drift": {
+            "$ref": "#/components/schemas/BaselineDriftPolicy"
+          },
+          "enabled": {
+            "default": true,
+            "title": "Enabled",
+            "type": "boolean"
+          },
           "history_points": {
             "default": 168,
             "maximum": 10000.0,
@@ -1052,6 +1196,7 @@
             "enum": [
               "rolling_median",
               "mad",
+              "quantile",
               "robust_quantiles",
               "iqr",
               "ewma",
@@ -1066,16 +1211,22 @@
             "title": "Minimum Samples",
             "type": "integer"
           },
+          "mode": {
+            "$ref": "#/components/schemas/BaselineMode",
+            "default": "adaptive"
+          },
           "seasonality": {
             "items": {
               "enum": [
                 "hour_of_day",
                 "day_of_week",
+                "weekday_weekend",
                 "weekly",
                 "custom"
               ],
               "type": "string"
             },
+            "maxItems": 2,
             "title": "Seasonality",
             "type": "array"
           },
@@ -1088,6 +1239,29 @@
             ],
             "title": "Sensitivity",
             "type": "string"
+          },
+          "stale_after": {
+            "default": "48h",
+            "title": "Stale After",
+            "type": "string"
+          },
+          "timezone": {
+            "default": "UTC",
+            "title": "Timezone",
+            "type": "string"
+          },
+          "training_window": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BaselineTrainingWindow"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "update_policy": {
+            "$ref": "#/components/schemas/BaselineUpdatePolicy"
           }
         },
         "title": "MonitorBaselinePolicy",
@@ -10119,6 +10293,851 @@
           }
         ],
         "summary": "Openlineage Get Dataset"
+      }
+    },
+    "/api/v1/dbt/artifacts": {
+      "post": {
+        "operationId": "ingest_api_v1_dbt_artifacts_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DataObs-Tenant",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dataobs-Tenant"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DataObs-Environment",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dataobs-Environment"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ArtifactIngestionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Ingest",
+        "tags": [
+          "dbt"
+        ]
+      }
+    },
+    "/api/v1/dbt/overview": {
+      "get": {
+        "operationId": "projects_api_v1_dbt_overview_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 1000,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DataObs-Tenant",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dataobs-Tenant"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DataObs-Environment",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dataobs-Environment"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Projects",
+        "tags": [
+          "dbt"
+        ]
+      }
+    },
+    "/api/v1/dbt/projects": {
+      "get": {
+        "operationId": "projects_api_v1_dbt_projects_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 1000,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DataObs-Tenant",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dataobs-Tenant"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DataObs-Environment",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dataobs-Environment"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Projects",
+        "tags": [
+          "dbt"
+        ]
+      }
+    },
+    "/api/v1/dbt/projects/{project_id}": {
+      "get": {
+        "operationId": "project_api_v1_dbt_projects__project_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DataObs-Tenant",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dataobs-Tenant"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DataObs-Environment",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dataobs-Environment"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Project",
+        "tags": [
+          "dbt"
+        ]
+      }
+    },
+    "/api/v1/dbt/projects/{project_id}/freshness": {
+      "get": {
+        "operationId": "dbt_project_freshness_api_v1_dbt_projects__project_id__freshness_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 1000,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "resource_kind",
+            "required": false,
+            "schema": {
+              "default": "source",
+              "title": "Resource Kind",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DataObs-Tenant",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dataobs-Tenant"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DataObs-Environment",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dataobs-Environment"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Dbt Project Freshness",
+        "tags": [
+          "dbt"
+        ]
+      }
+    },
+    "/api/v1/dbt/projects/{project_id}/resources": {
+      "get": {
+        "operationId": "resources_api_v1_dbt_projects__project_id__resources_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "resource_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Resource Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 1000,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DataObs-Tenant",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dataobs-Tenant"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DataObs-Environment",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dataobs-Environment"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Resources",
+        "tags": [
+          "dbt"
+        ]
+      }
+    },
+    "/api/v1/dbt/projects/{project_id}/semantic": {
+      "get": {
+        "operationId": "dbt_project_semantic_api_v1_dbt_projects__project_id__semantic_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 1000,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "resource_kind",
+            "required": false,
+            "schema": {
+              "default": "semantic_model",
+              "title": "Resource Kind",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DataObs-Tenant",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dataobs-Tenant"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DataObs-Environment",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dataobs-Environment"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Dbt Project Semantic",
+        "tags": [
+          "dbt"
+        ]
+      }
+    },
+    "/api/v1/dbt/projects/{project_id}/tests": {
+      "get": {
+        "operationId": "dbt_project_tests_api_v1_dbt_projects__project_id__tests_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 1000,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "resource_kind",
+            "required": false,
+            "schema": {
+              "default": "test",
+              "title": "Resource Kind",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DataObs-Tenant",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dataobs-Tenant"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DataObs-Environment",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dataobs-Environment"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Dbt Project Tests",
+        "tags": [
+          "dbt"
+        ]
       }
     },
     "/api/v1/entities/{node_id}/summary": {
@@ -22412,15 +23431,6 @@
             "required": true,
             "schema": {
               "title": "Pathway Id",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "environment",
-            "required": true,
-            "schema": {
-              "title": "Environment",
               "type": "string"
             }
           },
@@ -39498,6 +40508,95 @@
           }
         ],
         "summary": "List Streams",
+        "tags": [
+          "stream-360"
+        ]
+      }
+    },
+    "/api/v1/streams/providers": {
+      "get": {
+        "description": "Disclose semantic and collection capability independently per system.",
+        "operationId": "list_stream_providers_api_v1_streams_providers_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DataObs-Tenant",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dataobs-Tenant"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DataObs-Environment",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dataobs-Environment"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response List Stream Providers Api V1 Streams Providers Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Stream Providers",
         "tags": [
           "stream-360"
         ]

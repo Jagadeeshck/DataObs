@@ -2149,6 +2149,55 @@ capabilities:
   certification_status: functional_unvalidated
   last_audited_at: '2026-08-08'
   last_audited_commit: pending-final-sha
+- id: pipeline.dbt_intelligence
+  name: dbt Project, Test and Semantic Intelligence
+  summary: Safe versioned dbt artifact parsing and bounded operational, quality, lineage, and semantic projections.
+  pillar: data_pipeline
+  domain: pipeline
+  state: foundation
+  release_readiness: blocked
+  owner_team: Team 2
+  implementation_status: implemented_not_certified
+  certification_status: evidence_required
+  implementation:
+    code_paths:
+    - integrations/dbt/normalizer.py
+    - services/dbt_intelligence/service.py
+    api_paths:
+    - /api/v1/dbt/projects
+    ui_routes: []
+    storage_resources: []
+    migrations: []
+  validation:
+    unit: passed
+    integration: defined_not_run
+    real_stack: defined_not_run
+    hosted_ci: defined_not_run
+    browser: missing
+    accessibility: missing
+    security: passed
+    scale: defined_not_run
+    upgrade: not_applicable
+    release: defined_not_run
+  evidence:
+    tests:
+    - tests/test_dbt_intelligence_v1.py
+    workflow_jobs: []
+    audit_docs:
+    - docs/development/team-2-dbt-intelligence-v1-audit.md
+    runbooks:
+    - docs/operations/dbt-artifact-ingestion.md
+    artifacts: []
+  blockers:
+  - Elasticsearch persistence, Console surfaces, browser certification and hosted independent evidence are not complete.
+  non_goals:
+  - dbt execution, SQL persistence, warehouse queries, metric execution, and automatic monitor or contract mutation.
+  next_gate: Complete Elasticsearch, Console, browser, accessibility, exact-commit and independent hosted certification.
+  owner: team:data-quality-jobs-lineage
+  last_audited_at: '2026-08-12'
+  last_audited_commit: pending-final-sha
+
+
 migration_checksums:
   0001_product_foundation: 71d939094a97b4dd7c61de60542b60dd41cb238fd6bebfd75d53d723b00f3556
   0002_postgres_observability: c2098fa24ddae209fcf2ffeb369f7040d57018d58682a8513db9e943c749aa2d

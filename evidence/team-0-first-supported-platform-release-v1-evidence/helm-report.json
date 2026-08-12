@@ -1,0 +1,7 @@
+{
+  "result": "pending",
+  "local_contract": "available",
+  "packaged_chart": null,
+  "chart_digest": null,
+  "reason": "candidate images and install environment unavailable"
+}

@@ -1,0 +1,14 @@
+{
+  "schema_version": "1.0",
+  "candidate_sha": "d4f511ebb331b74528426b91ce69bd24f8993eac",
+  "signing_result": "not_permitted",
+  "verification_result": "pending",
+  "reason_code": "CANDIDATE_INELIGIBLE_NO_IMMUTABLE_ARTIFACT",
+  "checks": {
+    "artifact_digest": "pending",
+    "repository": "pending",
+    "workflow_issuer": "pending",
+    "certificate_identity": "pending",
+    "provenance_subject": "pending"
+  }
+}

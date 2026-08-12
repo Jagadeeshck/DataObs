@@ -1,0 +1,11 @@
+{
+  "result": "pending",
+  "source": "candidate artifacts",
+  "chart_digest": null,
+  "image_digests": [],
+  "readiness": "pending",
+  "authentication": "pending",
+  "authorization": "pending",
+  "tenant_isolation": "pending",
+  "reason": "candidate artifacts were not eligible for staging"
+}

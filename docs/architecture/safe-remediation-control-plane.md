@@ -25,3 +25,15 @@ Production previews resolve finding-backed targets through the composed bounded 
 the incident and target revisions; browser values never establish current authority. Heartbeat renewal is bounded
 by `execution_started_at + timeout_seconds`, after which lease expiry permits a newly fenced worker to reconcile an
 uncertain provider outcome. A stale worker cannot publish its late result.
+
+## Final runtime authority boundaries
+
+When resolution is ambiguous, the API returns expiring signed candidate handles rather than browser-authoritative
+identifiers. A submitted handle is scope checked, the complete bounded candidate generation is resolved again,
+membership is proven, and the owner repository reloads the current revision. Incident targets are loaded from the
+Incident repository; scanner, monitor, and integration targets use their capability owners; unknown types fail
+closed.
+
+Provider timeout starts separately for each batch item. The executor thread independently records completion time;
+equality with the deadline is allowed, while a later return is an unknown outcome requiring reconciliation. A late
+return cannot publish normal success evidence, and all writes remain lease/fencing-token conditional.

@@ -23,6 +23,7 @@ class ActionPreview(BaseModel):
     action_type: str = Field(max_length=80)
     incident_revision: str = Field(min_length=1, max_length=120)
     payload: dict[str, Any] = Field(default_factory=dict)
+    selection_id: str | None = Field(default=None, min_length=1, max_length=2048)
 
 
 def authenticated_actor(request: Request) -> str:
@@ -149,11 +150,15 @@ def create_incident_workbench_router(auth_dependency: Callable[..., Any]) -> API
         workbench: IncidentWorkbenchService = Depends(service),
     ) -> dict[str, Any]:
         try:
+            from services.data_products.cursors import InvalidCursor
             from services.incident_manager.automation.coordinator import AutomationCoordinator
             from services.incident_manager.automation.elasticsearch_repository import ElasticsearchAutomationRepository
             from services.incident_manager.automation.preview import PreviewService
             from services.incident_manager.automation.repository import InMemoryAutomationRepository
-            from services.incident_manager.automation.targets import BoundedActionTargetResolver
+            from services.incident_manager.automation.targets import (
+                BoundedActionTargetResolver,
+                TargetSelectionCodec,
+            )
 
             detail = workbench.detail(request.state.tenant_id, environment, incident_id, request.state.request_id)
             if detail["revision"] != body.incident_revision:
@@ -168,7 +173,12 @@ def create_incident_workbench_router(auth_dependency: Callable[..., Any]) -> API
                 )
                 request.app.state.incident_automation_repository = repo
             payload = body.payload
-            if body.action_type in {"rerun_scan", "freshness_recheck", "connection_test"}:
+            if body.action_type in {
+                "rerun_scan",
+                "freshness_recheck",
+                "connection_test",
+                "suppress_notifications",
+            }:
                 resolver = getattr(request.app.state, "action_target_resolver", None)
                 if not isinstance(resolver, BoundedActionTargetResolver):
                     raise HTTPException(status_code=503, detail="Authoritative target resolver is not configured")
@@ -179,23 +189,61 @@ def create_incident_workbench_router(auth_dependency: Callable[..., Any]) -> API
                     action_type=body.action_type,
                 )
                 if resolution.status == "selection_required":
-                    raise HTTPException(
-                        status_code=422,
-                        detail={
-                            "code": "target_selection_required",
-                            "reason_codes": resolution.reason_codes,
-                            "candidates": [
-                                {"type": item.target_type, "id": item.target_id, "revision": item.revision}
-                                for item in resolution.candidates
-                            ],
-                        },
-                    )
-                if resolution.status != "resolved" or resolution.target is None:
+                    selection_codec = TargetSelectionCodec()
+                    if body.selection_id:
+                        try:
+                            selected = selection_codec.select(
+                                body.selection_id,
+                                tenant_id=request.state.tenant_id,
+                                environment=environment,
+                                incident_id=incident_id,
+                                action_type=body.action_type,
+                                candidates=resolution.candidates,
+                            )
+                        except InvalidCursor as exc:
+                            raise HTTPException(status_code=422, detail={"code": "invalid_target_selection"}) from exc
+                        try:
+                            selected = resolver.reload(
+                                tenant_id=request.state.tenant_id,
+                                environment=environment,
+                                target=selected,
+                            )
+                        except LookupError as exc:
+                            raise HTTPException(status_code=409, detail={"code": "target_selection_stale"}) from exc
+                        payload = {"target_id": selected.target_id, "target_revision": selected.revision}
+                    else:
+                        candidates = [
+                            {
+                                "type": item.target_type,
+                                "id": item.target_id,
+                                "selection_id": selection_codec.issue(
+                                    tenant_id=request.state.tenant_id,
+                                    environment=environment,
+                                    incident_id=incident_id,
+                                    action_type=body.action_type,
+                                    candidates=resolution.candidates,
+                                    candidate=item,
+                                ),
+                            }
+                            for item in resolution.candidates
+                        ]
+                        raise HTTPException(
+                            status_code=422,
+                            detail={
+                                "code": "target_selection_required",
+                                "reason_codes": resolution.reason_codes,
+                                "candidates": candidates,
+                            },
+                        )
+                elif resolution.status != "resolved" or resolution.target is None:
                     raise HTTPException(status_code=422, detail={"code": "authoritative_target_unavailable"})
-                payload = {
-                    "target_id": resolution.target.target_id,
-                    "target_revision": resolution.target.revision,
-                }
+                else:
+                    current = resolver.reload(
+                        tenant_id=request.state.tenant_id,
+                        environment=environment,
+                        target=resolution.target,
+                    )
+                    payload = {"target_id": current.target_id, "target_revision": current.revision}
             result = PreviewService().create(
                 tenant_id=request.state.tenant_id,
                 environment=environment,

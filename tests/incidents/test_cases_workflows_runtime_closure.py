@@ -1,20 +1,29 @@
+import json
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from threading import Event
 
 import pytest
 
 from packages.elastic_store.manifest import BASE_PROPERTIES, INCIDENT_AUTOMATION_PROPERTIES
-from services.incident_manager.automation.contracts import Execution, ExecutionState
+from services.data_products.cursors import InvalidCursor
+from services.incident_manager.automation.contracts import Execution, ExecutionResult, ExecutionState
 from services.incident_manager.automation.execution import ExecutionWorker, ExecutorRegistry
 from services.incident_manager.automation.repository import InMemoryAutomationRepository
-from services.incident_manager.automation.targets import ActionTarget, BoundedActionTargetResolver
+from services.incident_manager.automation.targets import (
+    ActionTarget,
+    BoundedActionTargetResolver,
+    TargetAuthorityRegistry,
+    TargetSelectionCodec,
+)
 from services.incident_manager.cases.contracts import CaseLink, CaseLinkState
 from services.incident_manager.cases.repository import (
     ElasticsearchCaseRepository,
     InMemoryCaseLinkRepository,
     _document,
 )
+from src.api.incident_automation_routes import ExecutionRequestBody
 
 
 def link(state: CaseLinkState = CaseLinkState.CREATE_RESERVED) -> CaseLink:
@@ -177,3 +186,184 @@ def test_heartbeat_stops_at_execution_timeout() -> None:
     )
     assert lost.is_set()
     assert repo.executions[item.execution_id].lease_expires_at == item.lease_expires_at
+
+
+def test_server_candidate_selection_can_proceed_and_is_scope_bound() -> None:
+    candidates = (ActionTarget("scanner", "one", "1"), ActionTarget("scanner", "two", "2"))
+    codec = TargetSelectionCodec(b"selection-test-secret-that-is-long-enough")
+    selection = codec.issue(
+        tenant_id="tenant",
+        environment="prod",
+        incident_id="incident",
+        action_type="rerun_scan",
+        candidates=candidates,
+        candidate=candidates[1],
+    )
+    assert (
+        codec.select(
+            selection,
+            tenant_id="tenant",
+            environment="prod",
+            incident_id="incident",
+            action_type="rerun_scan",
+            candidates=candidates,
+        ).target_id
+        == "two"
+    )
+    for changed in (
+        {"tenant_id": "other"},
+        {"environment": "staging"},
+        {"incident_id": "other"},
+        {"action_type": "connection_test"},
+    ):
+        scope = {
+            "tenant_id": "tenant",
+            "environment": "prod",
+            "incident_id": "incident",
+            "action_type": "rerun_scan",
+            "candidates": candidates,
+            **changed,
+        }
+        with pytest.raises(InvalidCursor):
+            codec.select(selection, **scope)
+
+
+def test_arbitrary_and_stale_server_candidates_are_rejected() -> None:
+    candidates = (ActionTarget("scanner", "one", "1"), ActionTarget("scanner", "two", "2"))
+    codec = TargetSelectionCodec(b"selection-test-secret-that-is-long-enough")
+    selection = codec.issue(
+        tenant_id="tenant",
+        environment="prod",
+        incident_id="incident",
+        action_type="rerun_scan",
+        candidates=candidates,
+        candidate=candidates[0],
+    )
+    with pytest.raises(InvalidCursor):
+        codec.select(
+            selection[:-2] + "xx",
+            tenant_id="tenant",
+            environment="prod",
+            incident_id="incident",
+            action_type="rerun_scan",
+            candidates=candidates,
+        )
+    with pytest.raises(InvalidCursor):
+        codec.select(
+            selection,
+            tenant_id="tenant",
+            environment="prod",
+            incident_id="incident",
+            action_type="rerun_scan",
+            candidates=(candidates[1],),
+        )
+
+
+def test_incident_target_uses_incident_repository_and_bypasses_capability_reader() -> None:
+    class Incidents:
+        def get_target(self, tenant_id, environment, target_type, target_id):
+            return ActionTarget("incident", target_id, "8:2")
+
+    class Capabilities:
+        def get_target(self, *args):
+            raise AssertionError("incident must not reach capability authority")
+
+    registry = TargetAuthorityRegistry(Incidents(), Capabilities())
+    assert registry.get_target("t", "e", "incident", "i").revision == "8:2"
+    assert registry.get_target("t", "e", "unknown", "i") is None
+
+
+class AcceptingExecutor:
+    action_type = "rerun_scan"
+    cancellation_supported = False
+
+    def execute(self, item):
+        return ExecutionResult(True, False, "operation")
+
+
+def _queued(execution_id: str, now: datetime) -> Execution:
+    item = execution(now).model_copy(
+        update={
+            "execution_id": execution_id,
+            "state": ExecutionState.QUEUED,
+            "lease_owner": None,
+            "lease_token": 0,
+            "execution_started_at": None,
+            "queued_at": now,
+            "timeout_seconds": 10,
+        }
+    )
+    return item
+
+
+def test_each_batch_item_gets_own_execution_start_and_full_timeout() -> None:
+    start = datetime(2026, 8, 12, tzinfo=timezone.utc)
+    times = iter(
+        [
+            start + timedelta(seconds=1),  # first claim
+            start + timedelta(seconds=2),  # first execution start
+            start + timedelta(seconds=3),  # first completion
+            start + timedelta(seconds=8),  # second claim (queue wait)
+            start + timedelta(seconds=9),  # second execution start
+            start + timedelta(seconds=10),  # second completion
+        ]
+    )
+    repo = InMemoryAutomationRepository()
+    repo.executions = {"one": _queued("one", start), "two": _queued("two", start)}
+    worker = ExecutionWorker(
+        repo,
+        ExecutorRegistry((AcceptingExecutor(),)),
+        "worker",
+        lease_seconds=30,
+        heartbeat_seconds=10,
+        clock=lambda: next(times),
+    )
+    assert worker.run_once(now=start) == 2
+    assert repo.executions["one"].execution_started_at == start + timedelta(seconds=2)
+    assert repo.executions["two"].execution_started_at == start + timedelta(seconds=9)
+    assert repo.executions["two"].state == ExecutionState.VERIFICATION_PENDING
+
+
+def test_late_executor_result_cannot_commit_success_and_requires_reconciliation() -> None:
+    start = datetime(2026, 8, 12, tzinfo=timezone.utc)
+    times = iter([start, start, start + timedelta(seconds=11)])
+    repo = InMemoryAutomationRepository()
+    repo.executions = {"late": _queued("late", start)}
+    worker = ExecutionWorker(
+        repo,
+        ExecutorRegistry((AcceptingExecutor(),)),
+        "worker",
+        lease_seconds=30,
+        heartbeat_seconds=10,
+        clock=lambda: next(times),
+    )
+    assert worker.run_once(now=start) == 1
+    late = repo.executions["late"]
+    assert late.state == ExecutionState.RECONCILIATION_REQUIRED
+    assert late.error_code == "execution_deadline_exceeded"
+    assert late.operation_reference is None
+
+
+def test_case_repository_never_sorts_on_id_and_sort_is_deterministic() -> None:
+    class Client:
+        def search(self, **kwargs):
+            self.request = kwargs
+            return {"hits": {"hits": []}}
+
+    client = Client()
+    ElasticsearchCaseRepository(client).search_links("tenant", "prod", "space")
+    assert client.request["sort"] == [
+        {"updated_at": {"order": "asc", "missing": "_first"}},
+        {"incident_id": "asc"},
+    ]
+    assert all("_id" not in clause for clause in client.request["sort"])
+
+
+def test_execution_openapi_matches_request_model() -> None:
+    document = json.loads(Path("openapi.json").read_text())
+    generated = document["components"]["schemas"]["ExecutionRequestBody"]
+    runtime = ExecutionRequestBody.model_json_schema()
+    assert generated["required"] == runtime["required"] == ["preview_id"]
+    assert set(generated["properties"]) == set(runtime["properties"]) == {"preview_id", "approval_id"}
+    assert "incident_revision" not in generated["properties"]
+    assert "target_revision" not in generated["properties"]

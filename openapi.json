@@ -19,6 +19,19 @@
             "additionalProperties": true,
             "title": "Payload",
             "type": "object"
+          },
+          "selection_id": {
+            "anyOf": [
+              {
+                "maxLength": 2048,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selection Id"
           }
         },
         "required": [
@@ -78,6 +91,104 @@
           "impact"
         ],
         "title": "ApprovalRequestBody",
+        "type": "object"
+      },
+      "BaselineDriftPolicy": {
+        "additionalProperties": false,
+        "properties": {
+          "enabled": {
+            "default": true,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "regime_change_evaluations": {
+            "default": 5,
+            "maximum": 100.0,
+            "minimum": 3.0,
+            "title": "Regime Change Evaluations",
+            "type": "integer"
+          }
+        },
+        "title": "BaselineDriftPolicy",
+        "type": "object"
+      },
+      "BaselineMode": {
+        "enum": [
+          "static",
+          "adaptive",
+          "hybrid"
+        ],
+        "title": "BaselineMode",
+        "type": "string"
+      },
+      "BaselineTrainingWindow": {
+        "additionalProperties": false,
+        "properties": {
+          "maximum_age": {
+            "default": "90d",
+            "title": "Maximum Age",
+            "type": "string"
+          },
+          "minimum_samples": {
+            "default": 14,
+            "maximum": 10000.0,
+            "minimum": 3.0,
+            "title": "Minimum Samples",
+            "type": "integer"
+          },
+          "observations": {
+            "default": 60,
+            "maximum": 10000.0,
+            "minimum": 3.0,
+            "title": "Observations",
+            "type": "integer"
+          }
+        },
+        "title": "BaselineTrainingWindow",
+        "type": "object"
+      },
+      "BaselineUpdatePolicy": {
+        "additionalProperties": false,
+        "properties": {
+          "exclude_backfills": {
+            "default": true,
+            "title": "Exclude Backfills",
+            "type": "boolean"
+          },
+          "exclude_breaches": {
+            "default": true,
+            "title": "Exclude Breaches",
+            "type": "boolean"
+          },
+          "exclude_incomplete": {
+            "default": true,
+            "title": "Exclude Incomplete",
+            "type": "boolean"
+          },
+          "exclude_maintenance": {
+            "default": true,
+            "title": "Exclude Maintenance",
+            "type": "boolean"
+          },
+          "exclude_stale": {
+            "default": true,
+            "title": "Exclude Stale",
+            "type": "boolean"
+          },
+          "exclude_suppressed": {
+            "default": false,
+            "title": "Exclude Suppressed",
+            "type": "boolean"
+          },
+          "learning_delay": {
+            "default": 2,
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Learning Delay",
+            "type": "integer"
+          }
+        },
+        "title": "BaselineUpdatePolicy",
         "type": "object"
       },
       "CompareRequest": {
@@ -738,29 +849,15 @@
             ],
             "title": "Approval Id"
           },
-          "incident_revision": {
-            "maxLength": 120,
-            "minLength": 1,
-            "title": "Incident Revision",
-            "type": "string"
-          },
           "preview_id": {
             "maxLength": 100,
             "minLength": 1,
             "title": "Preview Id",
             "type": "string"
-          },
-          "target_revision": {
-            "maxLength": 120,
-            "minLength": 1,
-            "title": "Target Revision",
-            "type": "string"
           }
         },
         "required": [
-          "preview_id",
-          "incident_revision",
-          "target_revision"
+          "preview_id"
         ],
         "title": "ExecutionRequestBody",
         "type": "object"
@@ -1040,6 +1137,14 @@
       "MonitorBaselinePolicy": {
         "additionalProperties": false,
         "properties": {
+          "drift": {
+            "$ref": "#/components/schemas/BaselineDriftPolicy"
+          },
+          "enabled": {
+            "default": true,
+            "title": "Enabled",
+            "type": "boolean"
+          },
           "history_points": {
             "default": 168,
             "maximum": 10000.0,
@@ -1052,6 +1157,7 @@
             "enum": [
               "rolling_median",
               "mad",
+              "quantile",
               "robust_quantiles",
               "iqr",
               "ewma",
@@ -1066,16 +1172,22 @@
             "title": "Minimum Samples",
             "type": "integer"
           },
+          "mode": {
+            "$ref": "#/components/schemas/BaselineMode",
+            "default": "adaptive"
+          },
           "seasonality": {
             "items": {
               "enum": [
                 "hour_of_day",
                 "day_of_week",
+                "weekday_weekend",
                 "weekly",
                 "custom"
               ],
               "type": "string"
             },
+            "maxItems": 2,
             "title": "Seasonality",
             "type": "array"
           },
@@ -1088,6 +1200,29 @@
             ],
             "title": "Sensitivity",
             "type": "string"
+          },
+          "stale_after": {
+            "default": "48h",
+            "title": "Stale After",
+            "type": "string"
+          },
+          "timezone": {
+            "default": "UTC",
+            "title": "Timezone",
+            "type": "string"
+          },
+          "training_window": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BaselineTrainingWindow"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "update_policy": {
+            "$ref": "#/components/schemas/BaselineUpdatePolicy"
           }
         },
         "title": "MonitorBaselinePolicy",
@@ -22416,15 +22551,6 @@
             }
           },
           {
-            "in": "query",
-            "name": "environment",
-            "required": true,
-            "schema": {
-              "title": "Environment",
-              "type": "string"
-            }
-          },
-          {
             "in": "header",
             "name": "authorization",
             "required": false,
@@ -39498,6 +39624,95 @@
           }
         ],
         "summary": "List Streams",
+        "tags": [
+          "stream-360"
+        ]
+      }
+    },
+    "/api/v1/streams/providers": {
+      "get": {
+        "description": "Disclose semantic and collection capability independently per system.",
+        "operationId": "list_stream_providers_api_v1_streams_providers_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DataObs-Tenant",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dataobs-Tenant"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DataObs-Environment",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dataobs-Environment"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response List Stream Providers Api V1 Streams Providers Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Stream Providers",
         "tags": [
           "stream-360"
         ]

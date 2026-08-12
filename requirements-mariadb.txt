@@ -1,0 +1,2 @@
+# Optional vendor-maintained Connector/Python; requires MariaDB Connector/C >= 3.3.1 when built from source.
+mariadb==1.1.14

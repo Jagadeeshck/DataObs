@@ -61,3 +61,7 @@ cloud provider implemented. Provider status is governed by the capability ledger
 | Azure Event Hubs | not_configured | functional_unvalidated | Lag requires checkpoint evidence |
 | Azure Service Bus | not_configured | functional_unvalidated | Partitions unsupported |
 | Pulsar | not_implemented | contract_ready | No authoritative production collector |
+
+| MySQL v1 (`functional_unvalidated`) | Team 4 relational database foundation / Integration SDK | Yes | No business rows except opt-in aggregates | structural metadata, policy freshness/profile | shared secret refs | fixed `information_schema`, verified TLS | generic provider evidence/checkpoints |
+
+| MariaDB v1 | resource, metadata, schema, metrics, health, incremental | query history, lineage, logs, cost, event-driven | functional_unvalidated |

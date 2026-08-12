@@ -9,3 +9,9 @@ Environment-to-space selection is server configuration. Reads verify the owner a
 The DataObs Case-link identity is the deterministic Elasticsearch `_id`; `elastic_case_id` alone stores the remote
 Kibana Case ID. The strict document does not duplicate either value in unmapped fields. State changes use the typed
 Case transition table and fail closed on illegal backwards transitions.
+
+## Case search contract
+
+Exact known link document IDs use Elasticsearch GET. Scoped searches require tenant, environment, and Kibana space,
+and sort only on mapped `updated_at` plus deterministic mapped `incident_id`; `_id` is never sorted. Pagination uses
+the matching two-value `search_after` tuple rather than unbounded `from + size`.

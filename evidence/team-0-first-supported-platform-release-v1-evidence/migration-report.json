@@ -1,0 +1,12 @@
+{
+  "result": "pass",
+  "terminal_migration": "0030_team1_multi_broker_messaging_runtime",
+  "migration_count": 30,
+  "registry_checksum": "a7439ba360e4249a0d3735322d8810c17c2b7ade57bd26319c53b5bc66e5f147",
+  "checks": [
+    "collision detection",
+    "dependency ordering",
+    "terminal derivation"
+  ],
+  "hosted_apply": "pending"
+}

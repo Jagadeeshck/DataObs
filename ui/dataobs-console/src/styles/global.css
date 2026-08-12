@@ -2364,3 +2364,168 @@ progress {
     min-width: 145px;
   }
 }
+
+/* Team 5 visualization system: unrelated semantics intentionally use distinct palettes. */
+:root {
+  --viz-health-healthy: #16803b;
+  --viz-health-warning: #a85d00;
+  --viz-health-critical: #c62828;
+  --viz-health-unknown: #59636e;
+  --viz-evidence-measured: #175cd3;
+  --viz-evidence-estimated: #7b3fb2;
+  --viz-evidence-inferred: #00796b;
+  --viz-evidence-forecast: #b54708;
+  --viz-available: #146c43;
+  --viz-partial: #8a4b00;
+  --viz-stale: #665c00;
+  --viz-missing: #697586;
+  --viz-unknown: #4b5565;
+  --viz-unavailable: #6b4650;
+  --viz-radius: 6px;
+  --viz-focus: #1a73e8;
+  --viz-card-gap: 1rem;
+  --viz-line-width: 2px;
+  --viz-marker-size: 0.65rem;
+}
+.viz-metric-card {
+  display: grid;
+  gap: 0.25rem;
+  padding: var(--viz-card-gap);
+  border: 1px solid var(--border);
+  border-radius: var(--viz-radius);
+}
+.viz-metric-card strong {
+  font-size: 1.75rem;
+  font-variant-numeric: tabular-nums;
+}
+.viz-sparkline {
+  margin: 0;
+}
+.viz-sparkline svg {
+  width: 100%;
+  height: 2rem;
+}
+.viz-sparkline path {
+  fill: none;
+  stroke: var(--viz-evidence-measured);
+  stroke-width: var(--viz-line-width);
+}
+.viz-distribution__bar {
+  display: flex;
+  height: 1rem;
+  border-radius: var(--viz-radius);
+  overflow: hidden;
+}
+.viz-distribution li {
+  display: inline-block;
+  margin-right: 1rem;
+}
+.viz-semantic-healthy,
+.viz-health-healthy {
+  background: var(--viz-health-healthy);
+}
+.viz-semantic-warning,
+.viz-health-warning {
+  background: var(--viz-health-warning);
+}
+.viz-semantic-critical,
+.viz-health-critical {
+  background: var(--viz-health-critical);
+}
+.viz-semantic-unknown,
+.viz-health-unknown {
+  background: var(--viz-health-unknown);
+}
+.viz-matrix td {
+  text-align: center;
+  color: #fff;
+}
+.viz-table-scroll {
+  overflow: auto;
+}
+.viz-table-scroll table,
+.viz-time-series table,
+.viz-topology table {
+  border-collapse: collapse;
+  width: 100%;
+}
+.viz-table-scroll th,
+.viz-table-scroll td,
+.viz-time-series th,
+.viz-time-series td,
+.viz-topology th,
+.viz-topology td {
+  padding: 0.5rem;
+  border: 1px solid var(--border);
+  text-align: left;
+}
+.viz-heatmap td {
+  background: color-mix(
+    in srgb,
+    var(--viz-evidence-estimated) calc(var(--viz-intensity, 0) * 100%),
+    transparent
+  );
+}
+.viz-chart {
+  height: 20rem;
+}
+.viz-topology__canvas {
+  height: 25rem;
+  border: 1px solid var(--border);
+}
+.viz-timeline ol {
+  list-style: none;
+  border-left: 2px solid var(--border);
+}
+.viz-timeline button {
+  display: grid;
+  gap: 0.2rem;
+  text-align: left;
+  width: 100%;
+  padding: 0.75rem;
+  background: transparent;
+  border: 0;
+}
+.viz-timeline__marker {
+  width: var(--viz-marker-size);
+  height: var(--viz-marker-size);
+  border: 2px solid currentColor;
+  border-radius: 50%;
+}
+.viz-state {
+  padding: 1rem;
+  border: 1px dashed var(--viz-unknown);
+  border-radius: var(--viz-radius);
+}
+.viz-disclaimer {
+  font-style: italic;
+}
+.viz-ranked li {
+  display: flex;
+  justify-content: space-between;
+}
+.viz-matrix td:focus,
+.viz-timeline button:focus-visible,
+.viz-operational-table button:focus-visible {
+  outline: 3px solid var(--viz-focus);
+  outline-offset: 2px;
+}
+.sr-only {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .viz-chart *,
+  .viz-topology * {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}

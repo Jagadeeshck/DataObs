@@ -1,7 +1,8 @@
 schema_version: "1.0"
 supported: []
 unvalidated:
-  - kubernetes_version: "1.30.x"
+  - dataobs_version: "0.2.0-rc.1"
+    kubernetes_version: "1.30.x"
     helm_version: "pending hosted capture"
     elasticsearch_version: "9.4.2"
     python_version: "3.13"
@@ -9,8 +10,16 @@ unvalidated:
     browser_console_test_environment: "pending Playwright hosted capture"
     oidc_profile: "Authorization Code + PKCE S256; pending hosted conformance"
     installation_topology: "Kind; external secured Elasticsearch and disposable test IdP"
-    upgrade_source_version: "immediately previous retained release; not yet selected"
-    certification_workflow: team-0-release-candidate.yml
-    evidence_artifact: team-0-release-orchestration-v1
+    ha_profile: development
+    capacity_profile: small
+    tenant_isolation_profile: "adversarial multi-tenant; pending"
+    upgrade_source: null
+    rollback_policy: rollback_not_applicable_first_release
+    backup_restore_profile: "manifest-scoped snapshot/restore; pending"
+    dr_evidence_level: unsupported
+    certification_workflow: team-0-first-supported-platform-release-v1.yml
+    evidence_artifact: team-0-first-supported-platform-release-v1-evidence
     evidence_sha: null
+    certification_timestamp: null
     certification_status: unvalidated
+    blockers: evidence/team-0-release-blockers.json

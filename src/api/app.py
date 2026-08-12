@@ -342,10 +342,12 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
         else None
     )
     target_incidents = IncidentRepositoryTargetReader(incident_repo)
+    from services.incident_manager.automation.targets import TargetAuthorityRegistry
+
     app.state.action_target_resolver = BoundedActionTargetResolver(
         target_incidents,
         target_incidents,
-        CapabilityTargetOwnerReader(repo, app.state.monitor_repository),
+        TargetAuthorityRegistry(target_incidents, CapabilityTargetOwnerReader(repo, app.state.monitor_repository)),
     )
     app.state.security_audit_events = []
     if resolved_settings.store_backend.lower() == "elasticsearch":

@@ -1,0 +1,256 @@
+{
+  "schema_version": "1.0",
+  "release_decision": "NO_GO",
+  "blockers": [
+    {
+      "gate_id": "T0-BUILD",
+      "category": "build",
+      "severity": "mandatory",
+      "state": "PENDING",
+      "reason_code": "EVIDENCE_NOT_AVAILABLE",
+      "evidence": "retained exact-SHA hosted/candidate artifact",
+      "remediation": "Run protected exact-SHA workflow and retain independently verifiable artifacts.",
+      "owner_team": "Team 0"
+    },
+    {
+      "gate_id": "T0-TESTS",
+      "category": "tests",
+      "severity": "mandatory",
+      "state": "PENDING",
+      "reason_code": "EVIDENCE_NOT_AVAILABLE",
+      "evidence": "retained exact-SHA hosted/candidate artifact",
+      "remediation": "Run protected exact-SHA workflow and retain independently verifiable artifacts.",
+      "owner_team": "Team 0"
+    },
+    {
+      "gate_id": "T0-HELM",
+      "category": "helm",
+      "severity": "mandatory",
+      "state": "PENDING",
+      "reason_code": "EVIDENCE_NOT_AVAILABLE",
+      "evidence": "retained exact-SHA hosted/candidate artifact",
+      "remediation": "Run protected exact-SHA workflow and retain independently verifiable artifacts.",
+      "owner_team": "Team 0"
+    },
+    {
+      "gate_id": "T0-KUBERNETES",
+      "category": "kubernetes",
+      "severity": "mandatory",
+      "state": "PENDING",
+      "reason_code": "EVIDENCE_NOT_AVAILABLE",
+      "evidence": "retained exact-SHA hosted/candidate artifact",
+      "remediation": "Run protected exact-SHA workflow and retain independently verifiable artifacts.",
+      "owner_team": "Team 0"
+    },
+    {
+      "gate_id": "T0-ELASTICSEARCH",
+      "category": "elasticsearch",
+      "severity": "mandatory",
+      "state": "PENDING",
+      "reason_code": "EVIDENCE_NOT_AVAILABLE",
+      "evidence": "retained exact-SHA hosted/candidate artifact",
+      "remediation": "Run protected exact-SHA workflow and retain independently verifiable artifacts.",
+      "owner_team": "Team 0"
+    },
+    {
+      "gate_id": "T0-AUTHENTICATION",
+      "category": "authentication",
+      "severity": "mandatory",
+      "state": "PENDING",
+      "reason_code": "EVIDENCE_NOT_AVAILABLE",
+      "evidence": "retained exact-SHA hosted/candidate artifact",
+      "remediation": "Run protected exact-SHA workflow and retain independently verifiable artifacts.",
+      "owner_team": "Team 0"
+    },
+    {
+      "gate_id": "T0-AUTHORIZATION",
+      "category": "authorization",
+      "severity": "mandatory",
+      "state": "PENDING",
+      "reason_code": "EVIDENCE_NOT_AVAILABLE",
+      "evidence": "retained exact-SHA hosted/candidate artifact",
+      "remediation": "Run protected exact-SHA workflow and retain independently verifiable artifacts.",
+      "owner_team": "Team 0"
+    },
+    {
+      "gate_id": "T0-TENANCY",
+      "category": "tenancy",
+      "severity": "mandatory",
+      "state": "PENDING",
+      "reason_code": "EVIDENCE_NOT_AVAILABLE",
+      "evidence": "retained exact-SHA hosted/candidate artifact",
+      "remediation": "Run protected exact-SHA workflow and retain independently verifiable artifacts.",
+      "owner_team": "Team 0"
+    },
+    {
+      "gate_id": "T0-SCALE",
+      "category": "scale",
+      "severity": "mandatory",
+      "state": "PENDING",
+      "reason_code": "EVIDENCE_NOT_AVAILABLE",
+      "evidence": "retained exact-SHA hosted/candidate artifact",
+      "remediation": "Run protected exact-SHA workflow and retain independently verifiable artifacts.",
+      "owner_team": "Team 0"
+    },
+    {
+      "gate_id": "T0-HA",
+      "category": "ha",
+      "severity": "mandatory",
+      "state": "PENDING",
+      "reason_code": "EVIDENCE_NOT_AVAILABLE",
+      "evidence": "retained exact-SHA hosted/candidate artifact",
+      "remediation": "Run protected exact-SHA workflow and retain independently verifiable artifacts.",
+      "owner_team": "Team 0"
+    },
+    {
+      "gate_id": "T0-DEPENDENCY-RESILIENCE",
+      "category": "dependency-resilience",
+      "severity": "mandatory",
+      "state": "PENDING",
+      "reason_code": "EVIDENCE_NOT_AVAILABLE",
+      "evidence": "retained exact-SHA hosted/candidate artifact",
+      "remediation": "Run protected exact-SHA workflow and retain independently verifiable artifacts.",
+      "owner_team": "Team 0"
+    },
+    {
+      "gate_id": "T0-BACKUP",
+      "category": "backup",
+      "severity": "mandatory",
+      "state": "PENDING",
+      "reason_code": "EVIDENCE_NOT_AVAILABLE",
+      "evidence": "retained exact-SHA hosted/candidate artifact",
+      "remediation": "Run protected exact-SHA workflow and retain independently verifiable artifacts.",
+      "owner_team": "Team 0"
+    },
+    {
+      "gate_id": "T0-RESTORE",
+      "category": "restore",
+      "severity": "mandatory",
+      "state": "PENDING",
+      "reason_code": "EVIDENCE_NOT_AVAILABLE",
+      "evidence": "retained exact-SHA hosted/candidate artifact",
+      "remediation": "Run protected exact-SHA workflow and retain independently verifiable artifacts.",
+      "owner_team": "Team 0"
+    },
+    {
+      "gate_id": "T0-UPGRADE",
+      "category": "upgrade",
+      "severity": "mandatory",
+      "state": "PENDING",
+      "reason_code": "EVIDENCE_NOT_AVAILABLE",
+      "evidence": "retained exact-SHA hosted/candidate artifact",
+      "remediation": "Run protected exact-SHA workflow and retain independently verifiable artifacts.",
+      "owner_team": "Team 0"
+    },
+    {
+      "gate_id": "T0-ROLLBACK",
+      "category": "rollback",
+      "severity": "mandatory",
+      "state": "PENDING",
+      "reason_code": "EVIDENCE_NOT_AVAILABLE",
+      "evidence": "retained exact-SHA hosted/candidate artifact",
+      "remediation": "Run protected exact-SHA workflow and retain independently verifiable artifacts.",
+      "owner_team": "Team 0"
+    },
+    {
+      "gate_id": "T0-DR",
+      "category": "dr",
+      "severity": "mandatory",
+      "state": "PENDING",
+      "reason_code": "EVIDENCE_NOT_AVAILABLE",
+      "evidence": "retained exact-SHA hosted/candidate artifact",
+      "remediation": "Run protected exact-SHA workflow and retain independently verifiable artifacts.",
+      "owner_team": "Team 0"
+    },
+    {
+      "gate_id": "T0-BROWSER",
+      "category": "browser",
+      "severity": "mandatory",
+      "state": "PENDING",
+      "reason_code": "EVIDENCE_NOT_AVAILABLE",
+      "evidence": "retained exact-SHA hosted/candidate artifact",
+      "remediation": "Run protected exact-SHA workflow and retain independently verifiable artifacts.",
+      "owner_team": "Team 5"
+    },
+    {
+      "gate_id": "T0-SECURITY",
+      "category": "security",
+      "severity": "mandatory",
+      "state": "PENDING",
+      "reason_code": "EVIDENCE_NOT_AVAILABLE",
+      "evidence": "retained exact-SHA hosted/candidate artifact",
+      "remediation": "Run protected exact-SHA workflow and retain independently verifiable artifacts.",
+      "owner_team": "Team 0"
+    },
+    {
+      "gate_id": "T0-SBOM",
+      "category": "sbom",
+      "severity": "mandatory",
+      "state": "PENDING",
+      "reason_code": "EVIDENCE_NOT_AVAILABLE",
+      "evidence": "retained exact-SHA hosted/candidate artifact",
+      "remediation": "Run protected exact-SHA workflow and retain independently verifiable artifacts.",
+      "owner_team": "Team 0"
+    },
+    {
+      "gate_id": "T0-VULNERABILITIES",
+      "category": "vulnerabilities",
+      "severity": "mandatory",
+      "state": "PENDING",
+      "reason_code": "EVIDENCE_NOT_AVAILABLE",
+      "evidence": "retained exact-SHA hosted/candidate artifact",
+      "remediation": "Run protected exact-SHA workflow and retain independently verifiable artifacts.",
+      "owner_team": "Team 0"
+    },
+    {
+      "gate_id": "T0-LICENSING",
+      "category": "licensing",
+      "severity": "mandatory",
+      "state": "PENDING",
+      "reason_code": "EVIDENCE_NOT_AVAILABLE",
+      "evidence": "retained exact-SHA hosted/candidate artifact",
+      "remediation": "Run protected exact-SHA workflow and retain independently verifiable artifacts.",
+      "owner_team": "Team 0"
+    },
+    {
+      "gate_id": "T0-PROVENANCE",
+      "category": "provenance",
+      "severity": "mandatory",
+      "state": "PENDING",
+      "reason_code": "EVIDENCE_NOT_AVAILABLE",
+      "evidence": "retained exact-SHA hosted/candidate artifact",
+      "remediation": "Run protected exact-SHA workflow and retain independently verifiable artifacts.",
+      "owner_team": "Team 0"
+    },
+    {
+      "gate_id": "T0-SIGNING",
+      "category": "signing",
+      "severity": "mandatory",
+      "state": "PENDING",
+      "reason_code": "EVIDENCE_NOT_AVAILABLE",
+      "evidence": "retained exact-SHA hosted/candidate artifact",
+      "remediation": "Run protected exact-SHA workflow and retain independently verifiable artifacts.",
+      "owner_team": "Team 0"
+    },
+    {
+      "gate_id": "T0-ARTIFACT-VERIFICATION",
+      "category": "artifact-verification",
+      "severity": "mandatory",
+      "state": "PENDING",
+      "reason_code": "EVIDENCE_NOT_AVAILABLE",
+      "evidence": "retained exact-SHA hosted/candidate artifact",
+      "remediation": "Run protected exact-SHA workflow and retain independently verifiable artifacts.",
+      "owner_team": "Team 0"
+    },
+    {
+      "gate_id": "T0-CANDIDATE-INSTALLATION",
+      "category": "candidate-installation",
+      "severity": "mandatory",
+      "state": "PENDING",
+      "reason_code": "EVIDENCE_NOT_AVAILABLE",
+      "evidence": "retained exact-SHA hosted/candidate artifact",
+      "remediation": "Run protected exact-SHA workflow and retain independently verifiable artifacts.",
+      "owner_team": "Team 0"
+    }
+  ]
+}

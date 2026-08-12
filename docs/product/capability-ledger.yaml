@@ -2149,55 +2149,86 @@ capabilities:
   certification_status: functional_unvalidated
   last_audited_at: '2026-08-08'
   last_audited_commit: pending-final-sha
-- id: pipeline.dbt_intelligence
-  name: dbt Project, Test and Semantic Intelligence
-  summary: Safe versioned dbt artifact parsing and bounded operational, quality, lineage, and semantic projections.
-  pillar: data_pipeline
-  domain: pipeline
-  state: foundation
+- id: data.mysql
+  name: MySQL database collector v1
+  summary: Safe structural MySQL metadata and policy-owned aggregate evidence.
+  pillar: data
+  domain: data
+  state: functional_unvalidated
   release_readiness: blocked
-  owner_team: Team 2
-  implementation_status: implemented_not_certified
-  certification_status: evidence_required
   implementation:
-    code_paths:
-    - integrations/dbt/normalizer.py
-    - services/dbt_intelligence/service.py
-    api_paths:
-    - /api/v1/dbt/projects
+    code_paths: [integrations/databases/mysql, integrations/database, services/collection_manager]
+    api_paths: []
     ui_routes: []
     storage_resources: []
-    migrations: []
+    migrations: [0022_aws_data_platform_collector]
+  validation:
+    unit: defined_not_run
+    integration: defined_not_run
+    real_stack: missing
+    hosted_ci: missing
+    browser: not_applicable
+    accessibility: not_applicable
+    security: defined_not_run
+    scale: not_applicable
+    upgrade: not_applicable
+    release: missing
+  evidence:
+    tests: [tests/unit/mysql_provider/test_provider.py]
+    workflow_jobs: [team-4-mysql-database-collector-v1.yml:validate]
+    audit_docs: [docs/development/team-4-mysql-database-collector-v1-audit.md]
+    runbooks: [docs/operations/team-4-mysql-database-collector.md]
+    artifacts: [team-4-mysql-database-collector-v1-evidence]
+  blockers: [Retained independently verified exact-commit MySQL 8.4 and 9.7 hosted evidence is absent.]
+  non_goals: [Query history, raw rows, lineage, Team 2 intelligence, and production readiness.]
+  next_gate: Run and independently verify the hosted exact-commit workflow against MySQL 8.4 LTS.
+  owner: team:integrations-collection
+  owner_team: team:integrations-collection
+  release_target: beta-1
+  implementation_status: implemented
+  certification_status: functional_unvalidated
+  last_audited_at: '2026-08-12'
+  last_audited_commit: pending-final-sha
+- id: data.mariadb
+  name: MariaDB database collector v1
+  summary: Safe structural MariaDB metadata and policy-owned aggregate evidence.
+  pillar: data
+  domain: data
+  state: functional_unvalidated
+  release_readiness: blocked
+  implementation:
+    code_paths: [integrations/databases/mariadb, integrations/database, services/collection_manager]
+    api_paths: []
+    ui_routes: []
+    storage_resources: []
+    migrations: [0022_aws_data_platform_collector]
   validation:
     unit: passed
     integration: defined_not_run
-    real_stack: defined_not_run
-    hosted_ci: defined_not_run
-    browser: missing
-    accessibility: missing
+    real_stack: missing
+    hosted_ci: missing
+    browser: not_applicable
+    accessibility: not_applicable
     security: passed
-    scale: defined_not_run
+    scale: not_applicable
     upgrade: not_applicable
-    release: defined_not_run
+    release: missing
   evidence:
-    tests:
-    - tests/test_dbt_intelligence_v1.py
-    workflow_jobs: []
-    audit_docs:
-    - docs/development/team-2-dbt-intelligence-v1-audit.md
-    runbooks:
-    - docs/operations/dbt-artifact-ingestion.md
-    artifacts: []
-  blockers:
-  - Elasticsearch persistence, Console surfaces, browser certification and hosted independent evidence are not complete.
-  non_goals:
-  - dbt execution, SQL persistence, warehouse queries, metric execution, and automatic monitor or contract mutation.
-  next_gate: Complete Elasticsearch, Console, browser, accessibility, exact-commit and independent hosted certification.
-  owner: team:data-quality-jobs-lineage
+    tests: [tests/unit/mariadb_provider/test_provider.py]
+    workflow_jobs: [team-4-mariadb-database-collector-v1.yml:validate]
+    audit_docs: [docs/development/team-4-mariadb-database-collector-v1-audit.md]
+    runbooks: [docs/operations/team-4-mariadb-database-collector.md]
+    artifacts: [team-4-mariadb-database-collector-v1-evidence]
+  blockers: [Hosted MariaDB 11.8 and 11.4 exact-commit and Connector/C hostname evidence are absent.]
+  non_goals: [Query history, raw rows, lineage, Team 2 intelligence, rolling releases, and production readiness.]
+  next_gate: Run and independently verify the hosted workflow against MariaDB 11.8 LTS and 11.4 LTS.
+  owner: team:integrations-collection
+  owner_team: team:integrations-collection
+  release_target: beta-1
+  implementation_status: implemented
+  certification_status: functional_unvalidated
   last_audited_at: '2026-08-12'
   last_audited_commit: pending-final-sha
-
-
 migration_checksums:
   0001_product_foundation: 71d939094a97b4dd7c61de60542b60dd41cb238fd6bebfd75d53d723b00f3556
   0002_postgres_observability: c2098fa24ddae209fcf2ffeb369f7040d57018d58682a8513db9e943c749aa2d

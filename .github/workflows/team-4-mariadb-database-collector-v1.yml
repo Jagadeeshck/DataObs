@@ -1,0 +1,44 @@
+name: Team 4 MariaDB Database Collector v1
+on:
+  pull_request:
+  workflow_dispatch:
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: pip install -r requirements.txt -r requirements-mariadb.txt pytest ruff black mypy pip-audit
+      - name: Compile, lint, type and focused provider regressions
+        run: |
+          python -m compileall integrations/database integrations/databases/mariadb services/collection_manager packages/collectors/sdk
+          ruff check integrations/databases/mariadb tests/unit/mariadb_provider
+          black --check integrations/databases/mariadb tests/unit/mariadb_provider
+          mypy --ignore-missing-imports integrations/databases/mariadb
+          pytest -q tests/unit/database_foundation
+          pytest -q tests/unit/postgres_provider/test_provider.py
+          pytest -q tests/unit/mariadb_provider/test_provider.py
+          pytest -q tests/integrations/test_aws_provider.py tests/integrations/test_snowflake_provider.py tests/integrations/test_databricks_provider.py tests/integrations/test_bigquery_provider.py tests/integrations/test_azure_provider.py tests/integrations/test_trino_provider.py tests/integrations/test_presto_provider.py
+      - name: Repository policy gates
+        run: |
+          python scripts/check_migration_immutability.py --base-ref "$(python scripts/resolve_ci_base.py)"
+          python scripts/release/current_terminal_migration.py
+          python scripts/release/check_release_metadata.py
+          python scripts/validate_capability_ledger.py
+          python scripts/check_generated_artifacts.py
+          python scripts/check_docs_links.py
+          pip-audit -r requirements-mariadb.txt
+      - name: Exact-commit evidence
+        run: |
+          mkdir -p team-4-mariadb-database-collector-v1-evidence
+          python - <<'PY'
+          import json, os, platform
+          path='team-4-mariadb-database-collector-v1-evidence/hosted.json'
+          json.dump({'team':'Team 4','exact_sha':os.environ['GITHUB_SHA'],'python_version':platform.python_version(),'status':'functional_unvalidated','live_mariadb':'not_run','independent_verification':'pending'},open(path,'w'),indent=2)
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: team-4-mariadb-database-collector-v1-evidence
+          path: team-4-mariadb-database-collector-v1-evidence

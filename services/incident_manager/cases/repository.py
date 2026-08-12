@@ -119,12 +119,19 @@ class ElasticsearchCaseRepository:
         return result[0] if result else None
 
     def _search(
-        self, tenant_id: str, environment: str, space: str, filters: list[dict[str, object]], *, size: int = 25
+        self,
+        tenant_id: str,
+        environment: str,
+        space: str,
+        filters: list[dict[str, object]],
+        *,
+        size: int = 25,
+        search_after: tuple[object, object] | None = None,
     ) -> list[CaseLink]:
-        response = self.client.search(
-            index=CASE_LINK_READ,
-            size=min(max(size, 1), 100),
-            query={
+        request: dict[str, object] = {
+            "index": CASE_LINK_READ,
+            "size": min(max(size, 1), 100),
+            "query": {
                 "bool": {
                     "filter": [
                         {"term": {"tenant_id": tenant_id}},
@@ -134,8 +141,13 @@ class ElasticsearchCaseRepository:
                     ]
                 }
             },
-            sort=[{"updated_at": {"order": "asc", "missing": "_first"}}, {"_id": "asc"}],
-        )
+            # incident_id is a mapped keyword and is the deterministic link
+            # identity within the mandatory tenant/environment/space scope.
+            "sort": [{"updated_at": {"order": "asc", "missing": "_first"}}, {"incident_id": "asc"}],
+        }
+        if search_after is not None:
+            request["search_after"] = list(search_after)
+        response = self.client.search(**request)
         return [CaseLink.model_validate(hit["_source"]["metadata"]) for hit in response["hits"]["hits"]]
 
     def get_by_incident(self, tenant_id: str, environment: str, incident_id: str, space: str) -> CaseLink | None:

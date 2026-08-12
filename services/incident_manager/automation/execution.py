@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 from threading import Event, Thread
+from typing import Callable
 
 from .catalogue import canonical_hash
 from .contracts import ActionExecutor, Execution, ExecutionState
@@ -44,14 +45,17 @@ class ExecutionWorker:
         *,
         lease_seconds: int = MAX_LEASE_SECONDS,
         heartbeat_seconds: float = DEFAULT_HEARTBEAT_SECONDS,
+        clock: Callable[[], datetime] | None = None,
     ) -> None:
         if lease_seconds < 3 or heartbeat_seconds <= 0 or heartbeat_seconds > lease_seconds / 3:
             raise ValueError("heartbeat_seconds must be positive and no greater than lease_seconds / 3")
         self.repository, self.registry, self.worker_id = repository, registry, worker_id
         self.lease_seconds, self.heartbeat_seconds = lease_seconds, heartbeat_seconds
+        self._clock_supplied = clock is not None
+        self.clock = clock or (lambda: datetime.now(timezone.utc))
 
     def claim(self, execution: Execution, now: datetime | None = None) -> Execution:
-        checked = now or datetime.now(timezone.utc)
+        checked = now or self.clock()
         if execution.state != ExecutionState.QUEUED:
             raise Conflict("execution is not claimable")
         old_fence = execution.lease_token
@@ -64,11 +68,14 @@ class ExecutionWorker:
         return self.repository.update_execution(execution, old_fence)
 
     def run_once(self, limit: int = MAX_BATCH, now: datetime | None = None) -> int:
-        checked = now or datetime.now(timezone.utc)
+        checked = now or self.clock()
         processed = 0
         for queued in self.repository.queued(min(max(limit, 1), MAX_BATCH), checked):
+            item_now = self.clock() if now is None or self._clock_supplied else checked
             try:
-                item = self.claim(queued, checked)
+                # Claim and provider execution timing are per item.  The timestamp
+                # used to query the batch is never reused as provider start time.
+                item = self.claim(queued, item_now)
             except Conflict:
                 continue
             try:
@@ -78,8 +85,13 @@ class ExecutionWorker:
                 self.repository.update_execution(item, item.lease_token)
                 processed += 1
                 continue
-            item.state, item.attempt, item.updated_at = ExecutionState.RUNNING, item.attempt + 1, checked
-            item.execution_started_at = checked
+            execution_started_at = self.clock() if now is None or self._clock_supplied else checked
+            item.state, item.attempt, item.updated_at = (
+                ExecutionState.RUNNING,
+                item.attempt + 1,
+                execution_started_at,
+            )
+            item.execution_started_at = execution_started_at
             try:
                 self.repository.update_execution(item, item.lease_token)
             except Conflict:
@@ -129,14 +141,27 @@ class ExecutionWorker:
                 self._record_failure(item, "unexpected_executor_failure", uncertain=True)
                 processed += 1
                 continue
+            finished_at = self.clock() if now is None or self._clock_supplied else checked
             heartbeat_stop.set()
             heartbeat.join()
             if heartbeat_lost.is_set():
                 # A provider may have completed, but this fence no longer owns durable evidence.
                 processed += 1
                 continue
+            execution_deadline = item.execution_started_at + timedelta(seconds=item.timeout_seconds)
+            if finished_at > execution_deadline:
+                # The provider may have completed, so this is never blindly
+                # retried and no provider response body crosses the boundary.
+                self._record_failure(
+                    item,
+                    "execution_deadline_exceeded",
+                    uncertain=True,
+                    observed_at=finished_at,
+                )
+                processed += 1
+                continue
             item.operation_reference = result.operation_reference[:200]
-            item.updated_at = datetime.now(timezone.utc)
+            item.updated_at = finished_at
             if result.accepted:
                 item.state = ExecutionState.VERIFICATION_PENDING
                 item.provider_accepted_at = item.updated_at
@@ -185,8 +210,8 @@ class ExecutionWorker:
             return
         execution_deadline = item.execution_started_at + timedelta(seconds=item.timeout_seconds)
         while not stopping.wait(self.heartbeat_seconds):
-            now = datetime.now(timezone.utc)
-            if now >= execution_deadline:
+            now = self.clock()
+            if now > execution_deadline:
                 # Do not let local thread liveness extend ownership forever.
                 # The provider outcome is unknown; the durable lease expires and
                 # a newly fenced worker performs lookup/reconciliation.
@@ -207,11 +232,17 @@ class ExecutionWorker:
             item.lease_expires_at = renewed.lease_expires_at
 
     def _record_failure(
-        self, item: Execution, error_code: str, *, retry_safe: bool = False, uncertain: bool = False
+        self,
+        item: Execution,
+        error_code: str,
+        *,
+        retry_safe: bool = False,
+        uncertain: bool = False,
+        observed_at: datetime | None = None,
     ) -> None:
         old_state = item.state
         item.error_code = error_code
-        item.updated_at = datetime.now(timezone.utc)
+        item.updated_at = observed_at or self.clock()
         if retry_safe and item.attempt < item.max_attempts:
             item.state = ExecutionState.QUEUED
             item.lease_owner = None
@@ -248,6 +279,18 @@ class ExecutionWorker:
                         "error_code": error_code,
                         "retryable": retry_safe,
                         "outcome_known": not uncertain,
+                        "provider_outcome": "unknown_or_late" if error_code == "execution_deadline_exceeded" else None,
+                        "execution_started_at": (
+                            item.execution_started_at.isoformat() if item.execution_started_at else None
+                        ),
+                        "deadline": (
+                            (item.execution_started_at + timedelta(seconds=item.timeout_seconds)).isoformat()
+                            if item.execution_started_at
+                            else None
+                        ),
+                        "observed_completion_at": (
+                            item.updated_at.isoformat() if error_code == "execution_deadline_exceeded" else None
+                        ),
                         "catalogue_hash": item.catalogue_hash,
                         "policy_hash": item.policy_hash,
                     },
@@ -262,7 +305,7 @@ class ExecutionWorker:
             pass
 
     def recover_expired(self, limit: int = MAX_BATCH, now: datetime | None = None) -> int:
-        checked = now or datetime.now(timezone.utc)
+        checked = now or self.clock()
         recovered = 0
         for stale in self.repository.incomplete_executions(limit, checked):
             old_fence = stale.lease_token

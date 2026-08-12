@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+import hashlib
+import os
 from dataclasses import dataclass
 from time import monotonic
 from typing import Any, Protocol, Sequence
+
+from services.data_products.cursors import CursorContext, InvalidCursor, SignedCursorCodec
 
 
 @dataclass(frozen=True)
@@ -82,6 +86,32 @@ class IncidentRepositoryTargetReader:
             return None
         return finding.model_dump(mode="python")
 
+    def get_target(self, tenant_id: str, environment: str, target_type: str, target_id: str) -> ActionTarget | None:
+        if target_type != "incident":
+            return None
+        incident = self.repository.get_incident(tenant_id, target_id, environment)
+        if incident is None:
+            return None
+        return ActionTarget("incident", target_id, f"{incident.seq_no}:{incident.primary_term}")
+
+
+class TargetAuthorityRegistry:
+    """Static, fail-closed target-type authority dispatcher."""
+
+    def __init__(self, incident_reader: TargetOwnerReader, capability_reader: TargetOwnerReader) -> None:
+        self._readers = {
+            "incident": incident_reader,
+            "scanner": capability_reader,
+            "monitor": capability_reader,
+            "integration": capability_reader,
+        }
+
+    def get_target(self, tenant_id: str, environment: str, target_type: str, target_id: str) -> ActionTarget | None:
+        reader = self._readers.get(target_type)
+        if reader is None:
+            return None
+        return reader.get_target(tenant_id, environment, target_type, target_id)
+
 
 class CapabilityTargetOwnerReader:
     """Routes target reads to owning repositories through their public methods."""
@@ -113,6 +143,7 @@ class BoundedActionTargetResolver:
         "rerun_scan": ("scanner", "scanner_id"),
         "freshness_recheck": ("monitor", "monitor_id"),
         "connection_test": ("integration", "integration_id"),
+        "suppress_notifications": ("incident", "incident_id"),
     }
 
     def __init__(
@@ -137,6 +168,13 @@ class BoundedActionTargetResolver:
             return self._unavailable(("unsupported_action",), ("action_type",))
         target_type, identity_field = self.FIELDS[action_type]
         started, calls = monotonic(), 1
+        if target_type == "incident":
+            current = self.owners.get_target(tenant_id, environment, target_type, incident_id)
+            if current is None:
+                return self._unavailable(("no_authoritative_target",), ("incident",))
+            return TargetResolution(
+                "resolved", current, None, "authoritative", 1, False, (), ("incident_authority_resolved",), (current,)
+            )
         references = tuple(
             self.incidents.relevant_finding_references(tenant_id, environment, incident_id, self.max_findings + 1)
         )
@@ -199,6 +237,78 @@ class BoundedActionTargetResolver:
     @staticmethod
     def _unavailable(reasons: tuple[str, ...], missing: tuple[str, ...], truncated: bool = False) -> TargetResolution:
         return TargetResolution("unavailable", None, None, "none", 0, truncated, missing, reasons)
+
+
+class TargetSelectionCodec:
+    """Issue opaque, expiring handles bound to one authoritative resolution generation."""
+
+    def __init__(self, secret: bytes | None = None, *, ttl_seconds: int = 300) -> None:
+        self._codec = SignedCursorCodec(
+            secret or os.environ.get("DATAOBS_CURSOR_SECRET", "development-only-cursor-secret-32-bytes").encode(),
+            ttl_seconds=ttl_seconds,
+        )
+
+    @staticmethod
+    def generation(candidates: Sequence[ActionTarget]) -> str:
+        material = "\n".join(
+            f"{item.target_type}\0{item.target_id}\0{item.revision}"
+            for item in sorted(candidates, key=lambda value: (value.target_type, value.target_id, value.revision))
+        )
+        return hashlib.sha256(material.encode()).hexdigest()
+
+    @staticmethod
+    def _context(
+        tenant_id: str,
+        environment: str,
+        incident_id: str,
+        action_type: str,
+        generation: str,
+    ) -> CursorContext:
+        return CursorContext(
+            "incident-action-target-selection",
+            tenant_id,
+            environment,
+            {"incident_id": incident_id, "action_type": action_type, "generation": generation},
+        )
+
+    def issue(
+        self,
+        *,
+        tenant_id: str,
+        environment: str,
+        incident_id: str,
+        action_type: str,
+        candidates: Sequence[ActionTarget],
+        candidate: ActionTarget,
+    ) -> str:
+        generation = self.generation(candidates)
+        return self._codec.encode(
+            self._context(tenant_id, environment, incident_id, action_type, generation),
+            [candidate.target_type, candidate.target_id],
+        )
+
+    def select(
+        self,
+        selection_id: str,
+        *,
+        tenant_id: str,
+        environment: str,
+        incident_id: str,
+        action_type: str,
+        candidates: Sequence[ActionTarget],
+    ) -> ActionTarget:
+        generation = self.generation(candidates)
+        values = self._codec.decode(
+            selection_id, self._context(tenant_id, environment, incident_id, action_type, generation)
+        )
+        if len(values) != 2 or not all(isinstance(value, str) for value in values):
+            raise InvalidCursor("target selection values are invalid")
+        selected = next(
+            (item for item in candidates if (item.target_type, item.target_id) == (values[0], values[1])), None
+        )
+        if selected is None:
+            raise InvalidCursor("selected target is no longer a candidate")
+        return selected
 
 
 class TargetSelectionRequired(ValueError):

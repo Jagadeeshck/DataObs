@@ -1,0 +1,52 @@
+name: Team 5 Advanced Visualization v1
+on:
+  pull_request:
+    paths:
+      [
+        "ui/dataobs-console/**",
+        "docs/**",
+        ".github/workflows/team-5-advanced-visualization-v1.yml",
+      ]
+permissions: { contents: read }
+jobs:
+  console:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: ui/dataobs-console } }
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.28.1 }
+      - uses: actions/setup-node@v4
+        with:
+          {
+            node-version: 22,
+            cache: pnpm,
+            cache-dependency-path: ui/dataobs-console/pnpm-lock.yaml,
+          }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm api:generate && git diff --exit-code -- src/api/generated/schema.ts
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm format:check
+      - run: pnpm test
+      - name: Semantic, accessibility, limits, privacy, fixture exclusion
+        run: pnpm visualization:check
+      - run: pnpm build
+      - run: pnpm bundle:check
+      - run: pnpm performance:check
+      - name: Chart and graph render contract benchmarks
+        run: pnpm test -- src/visualization
+      - name: Playwright, axe, visual regression, reduced motion, keyboard
+        run: pnpm playwright
+      - name: Repository policy gates
+        working-directory: .
+        run: |
+          python scripts/check_merge_conflict_markers.py
+          python scripts/security/check_route_permissions.py
+          python scripts/check_team_boundaries.py
+          python scripts/check_generated_artifacts.py
+          python scripts/check_docs_links.py
+          python scripts/validate_capability_ledger.py
+          python scripts/check_migration_immutability.py --base-ref "${{ github.event.pull_request.base.sha }}"
+          python scripts/release/current_terminal_migration.py

@@ -16,7 +16,8 @@
     "bundle:check": "node scripts/bundle-check.mjs",
     "performance:check": "node scripts/performance-budget.mjs",
     "dashboard:check": "node scripts/dashboard-contract-check.mjs",
-    "playwright": "playwright test"
+    "playwright": "playwright test",
+    "visualization:check": "node scripts/visualization-check.mjs"
   },
   "dependencies": {
     "@elastic/charts": "71.5.1",

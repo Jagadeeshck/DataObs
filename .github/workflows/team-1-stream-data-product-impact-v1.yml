@@ -1,0 +1,48 @@
+name: Team 1 stream Data Product impact v1
+
+on:
+  pull_request:
+    paths:
+      - "packages/pathways/product_impact.py"
+      - "services/product_query/stream_product_impact.py"
+      - "tests/pathways/test_product_impact.py"
+      - "docs/**/team-1-*product-impact*"
+      - ".github/workflows/team-1-stream-data-product-impact-v1.yml"
+  workflow_dispatch:
+
+jobs:
+  backend-evidence:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Static policy checks
+        run: |
+          python scripts/check_merge_conflict_markers.py
+          python scripts/check_team_boundaries.py
+          python scripts/check_generated_artifacts.py
+          python scripts/check_docs_links.py
+          python scripts/validate_capability_ledger.py
+          python scripts/release/check_release_metadata.py
+          python scripts/check_migration_immutability.py --base-ref origin/main
+          python scripts/security/check_route_permissions.py
+      - name: Product impact tests
+        run: python -m pytest tests/pathways/test_product_impact.py -q
+      - name: Build evidence manifest
+        if: always()
+        run: |
+          mkdir -p team-1-stream-data-product-impact-v1-evidence
+          printf 'producer_sha=%s\nworkflow_id=%s\nrun_attempt=%s\nterminal_migration=%s\n' \
+            "$GITHUB_SHA" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" \
+            "$(python scripts/release/current_terminal_migration.py)" \
+            > team-1-stream-data-product-impact-v1-evidence/manifest.txt
+          sha256sum team-1-stream-data-product-impact-v1-evidence/manifest.txt \
+            > team-1-stream-data-product-impact-v1-evidence/checksums.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: team-1-stream-data-product-impact-v1-evidence
+          path: team-1-stream-data-product-impact-v1-evidence

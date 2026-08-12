@@ -1,0 +1,16 @@
+{
+  "team": "Team 4",
+  "task": "Team 4: Build MySQL Database Collector v1",
+  "base_sha": "d4f511ebb331b74528426b91ce69bd24f8993eac",
+  "exact_sha": "hosted-workflow-populates-GITHUB_SHA",
+  "status": "functional_unvalidated",
+  "provider_type": "mysql",
+  "provider_version": "1",
+  "terminal_migration": "0030_team1_multi_broker_messaging_runtime",
+  "driver": "mysql-connector-python>=26.7,<26.8",
+  "server_targets": ["MySQL 8.4 LTS", "MySQL 9.7 GA where available"],
+  "capabilities": ["resource_discovery", "metadata_collection", "schema_discovery", "metric_collection", "health_check", "incremental_collection"],
+  "local_results": {"tls": "unit_passed", "hostname_verification": "unit_passed", "sql_safety": "unit_passed", "no_raw_rows": "unit_passed", "schema_discovery": "unit_passed", "constraints": "static_projection_passed", "indexes": "static_projection_passed", "partitions": "static_projection_passed", "fingerprint": "unit_passed", "freshness": "unit_passed", "profiling": "unit_passed", "checkpoint": "foundation_regression", "partial_failure": "unit_passed", "provider_regressions": "workflow_gated"},
+  "live_test_status": "not_run",
+  "known_limitations": ["No retained hosted exact-commit artifact", "No local live MySQL server", "Query history unsupported", "Not production-ready"]
+}

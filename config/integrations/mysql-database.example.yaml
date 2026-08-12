@@ -1,0 +1,42 @@
+integration_id: mysql-production
+provider_type: mysql
+enabled: false
+allowed_capabilities: [resource_discovery, metadata_collection, schema_discovery, metric_collection, health_check, incremental_collection]
+provider:
+  host: mysql.example.internal
+  port: 3306
+  database: application
+  authentication:
+    type: password
+    username: dataobs_collector
+    password_ref: env:DATAOBS_MYSQL_PASSWORD
+  tls:
+    enabled: true
+    verify_certificate: true
+    verify_identity: true
+    ca_bundle_ref: file-ref:/etc/dataobs/mysql-ca.pem
+  discovery:
+    include_schemas: []
+    exclude_schemas: [mysql, information_schema, performance_schema, sys]
+    include_tables: []
+    exclude_tables: []
+    include_views: true
+    include_constraints: true
+    include_indexes: true
+    include_partitions: true
+    include_dynamic_table_statistics: false
+  freshness: {enabled: false}
+  profiling: {enabled: false}
+  limits:
+    connection_timeout_seconds: 5
+    read_timeout_seconds: 30
+    write_timeout_seconds: 30
+    statement_timeout_seconds: 15
+    maximum_schemas: 1000
+    maximum_relations: 100000
+    maximum_columns: 1000000
+    maximum_constraints: 1000000
+    maximum_indexes: 500000
+    maximum_partitions: 500000
+    maximum_observations: 1000000
+    total_timeout_seconds: 300

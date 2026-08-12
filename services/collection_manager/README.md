@@ -10,3 +10,5 @@ Azure data platform collector v1 is also registered explicitly. Azure SDK depend
 # Provider composition
 
 The explicit provider composition includes AWS, Snowflake, Databricks, BigQuery, Azure, Trino, and Presto. Their distinct official clients remain optional lazy dependencies; validation uses the closed parser map and does not dynamically load Python paths.
+
+MySQL provider type `mysql`, version `1`, is explicitly registered alongside PostgreSQL and the existing cloud/SQL-engine providers. Install `requirements-mysql.txt` only on MySQL workers; missing Connector/Python fails as `dependency_unavailable`. Generic provider observations and persist-before-advance OCC checkpoints are reused.

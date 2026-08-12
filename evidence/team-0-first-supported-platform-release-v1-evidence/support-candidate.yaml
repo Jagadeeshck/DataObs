@@ -1,0 +1,24 @@
+schema_version: "1.0"
+candidate_profile: development
+kubernetes_version: "1.30.x (unvalidated)"
+helm_version: "pending hosted capture"
+elasticsearch_version: "9.4.2 (unvalidated)"
+python_version: "3.13"
+node_version: "22"
+browser_test_environment: "pending Playwright hosted capture"
+oidc_profile: "Authorization Code + PKCE S256; hosted conformance pending"
+installation_topology: "Kind with external secured Elasticsearch and disposable test IdP; unvalidated"
+ha_profile: development
+capacity_profile: small
+tenant_isolation_profile: "multi-tenant adversarial A/B/C; hosted evidence pending"
+upgrade_source: null
+rollback_policy: rollback_not_applicable_first_release
+backup_restore_profile: "manifest-scoped Elasticsearch snapshot/restore; hosted evidence pending"
+dr_evidence_class: unsupported
+security_profile: "TLS, external OIDC, RBAC and tenant enforcement; hosted evidence pending"
+exact_evidence_sha: null
+candidate_source_sha: d4f511ebb331b74528426b91ce69bd24f8993eac
+certification_workflow_run_ids: []
+evidence_freshness: PENDING
+decision: incomplete
+reason: No retained exact-SHA hosted or candidate-artifact evidence exists.

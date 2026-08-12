@@ -1,0 +1,114 @@
+name: Team 0 first supported platform release v1
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_sha: {description: Exact audited 40-character SHA, required: true, type: string}
+      candidate_version: {description: Candidate SemVer, required: true, default: 0.2.0-rc.1, type: string}
+
+concurrency:
+  group: team-0-first-supported-${{ inputs.candidate_version }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  audit-verify-evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      eligible: ${{ steps.gate.outputs.eligible }}
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: '${{ inputs.target_sha }}', fetch-depth: 0}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.13'}
+      - run: pip install pyyaml pytest
+      - name: Audit exact identity and migration chain
+        run: |
+          [[ '${{ inputs.target_sha }}' =~ ^[0-9a-f]{40}$ ]]
+          test "$(git rev-parse HEAD)" = '${{ inputs.target_sha }}'
+          python scripts/release/current_terminal_migration.py --json > /tmp/migration.json
+          python scripts/check_migration_immutability.py --base-ref '${{ inputs.target_sha }}^'
+          python scripts/release/check_release_metadata.py
+      - name: Independently verify retained evidence
+        id: verify
+        continue-on-error: true
+        run: python scripts/release/first_supported_platform.py --index evidence/team-0-first-supported-platform-evidence-index.json --expected-sha '${{ inputs.target_sha }}' --output /tmp/verification.json
+      - name: Evaluate platform without prose override
+        id: gate
+        env: {VERIFY_OUTCOME: '${{ steps.verify.outcome }}'}
+        run: |
+          if test "$VERIFY_OUTCOME" = success && ! python - <<'PY'
+          import yaml
+          gates=yaml.safe_load(open('docs/release/team-0-release-gates-v1.yaml'))['gates']
+          raise SystemExit(any(g['blocker'] or g['result'] != 'PASS' for g in gates))
+          PY
+          then echo eligible=true >>"$GITHUB_OUTPUT"; else echo eligible=false >>"$GITHUB_OUTPUT"; fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: team-0-first-supported-platform-audit-v1
+          path: |
+            /tmp/migration.json
+            /tmp/verification.json
+            evidence/team-0-first-supported-platform-evidence-index.json
+            docs/release/team-0-release-gates-v1.yaml
+
+  build-supply-chain:
+    needs: audit-verify-evaluate
+    if: needs.audit-verify-evaluate.outputs.eligible == 'true'
+    runs-on: ubuntu-latest
+    permissions: {contents: read, packages: write}
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: '${{ inputs.target_sha }}'}
+      - uses: azure/setup-helm@v4
+      - name: Build immutable candidate and invoke existing supply-chain contracts
+        run: |
+          helm lint helm/dataobs
+          helm template dataobs helm/dataobs -f helm/dataobs/values-production.yaml >/tmp/rendered.yaml
+          bash scripts/deployment/chart_assertions.sh
+          helm package helm/dataobs --version '${{ inputs.candidate_version }}' --destination /tmp
+          echo 'Protected registry build, approved scanners, SBOM and provenance commands are supplied by Team 0 release policy.'
+
+  sign-verify-install:
+    needs: [audit-verify-evaluate, build-supply-chain]
+    if: needs.audit-verify-evaluate.outputs.eligible == 'true'
+    runs-on: ubuntu-latest
+    environment: release-candidate
+    permissions: {contents: read, packages: write, id-token: write}
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: '${{ inputs.target_sha }}'}
+      - name: Protected keyless sign, independent verify, and disposable artifact install
+        run: |
+          echo 'This boundary must stage digest-addressed artifacts, keylessly sign and verify issuer/subject.'
+          echo 'It must install the staged chart/images and compare chart, image, SHA and migration identities.'
+          exit 1 # fail closed until protected staging implementation supplies retained artifact inputs
+
+  decide:
+    needs: [audit-verify-evaluate, build-supply-chain, sign-verify-install]
+    if: always()
+    runs-on: ubuntu-latest
+    permissions: {contents: read}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Retain truthful machine decision and complete evidence bundle
+        run: |
+          test -f evidence/team-0-first-supported-platform-release-v1-evidence/final-release-decision.json
+          python -m json.tool evidence/team-0-release-blockers.json >/dev/null
+      - uses: actions/upload-artifact@v4
+        with:
+          name: team-0-first-supported-platform-release-v1-evidence
+          path: evidence/team-0-first-supported-platform-release-v1-evidence
+          retention-days: 30
+
+  cleanup:
+    needs: [audit-verify-evaluate, build-supply-chain, sign-verify-install, decide]
+    if: always()
+    runs-on: ubuntu-latest
+    permissions: {contents: read}
+    steps:
+      - run: echo 'Remove only run-owned disposable candidate namespace and staging references.'

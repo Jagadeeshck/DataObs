@@ -1,0 +1,24 @@
+provider_type: mariadb
+provider:
+  host: mariadb.internal
+  port: 3306
+  database: application
+  authentication:
+    type: password
+    username: dataobs_collector
+    password_ref: env:DATAOBS_MARIADB_PASSWORD
+  tls:
+    enabled: true
+    verify_certificate: true
+    verify_identity: true
+    ca_bundle_ref: file-ref:/etc/dataobs/tls/mariadb-ca.pem
+  discovery:
+    exclude_schemas: [information_schema, mysql, performance_schema, sys]
+    include_views: true
+    include_constraints: true
+    include_indexes: true
+    include_partitions: true
+  freshness: {enabled: false, relations: []}
+  profiling: {enabled: false, relations: [], maximum_statements: 10}
+  limits:
+    maximum_partitions: 500000

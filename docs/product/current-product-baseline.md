@@ -116,3 +116,5 @@ The next milestone is a clean integration repair followed by exact-commit Beta 1
 Trino v1 is `functional_unvalidated` with fixed, privacy-safe metadata and bounded runtime evidence. It is not production-ready or certified. Presto and generic JDBC remain not implemented.
 
 MySQL collector v1 is `functional_unvalidated`: provider generation 1 targets MySQL 8.4 LTS primarily and 9.7 where GA/qualified, uses optional vendor Connector/Python `>=26.7,<26.8`, and requires independently verified exact-commit hosted evidence before readiness promotion.
+
+- MariaDB database collector v1 is `functional_unvalidated` for 11.8/11.4 LTS pending hosted live and TLS-native evidence.

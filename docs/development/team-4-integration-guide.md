@@ -26,3 +26,7 @@ Trino is explicitly registered on the reusable Integration SDK SQL-engine founda
 ## Presto SQL engine v1
 
 PrestoDB is independently registered as `presto` and uses the same SQL-engine foundation without sharing Trino identity, authentication, headers, or dialect projections. Its optional official client, Basic-only authentication, fixed metadata/runtime SQL, and bounded-history semantics are documented in the Presto architecture, operations, and access guides. Presto is `functional_unvalidated` pending hosted exact-commit evidence.
+
+## MariaDB v1
+
+Use the dedicated `mariadb` provider and structured configuration example. Do not route MariaDB through MySQL. Optional driver, TLS identity, fixed SQL, no-raw-row, and product-mismatch contracts are release gates.

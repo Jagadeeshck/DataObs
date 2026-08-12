@@ -1,0 +1,20 @@
+{
+  "team": "Team 4",
+  "task": "Team 4: Build MariaDB Database Collector v1",
+  "base_sha": "a7e27f119e426b2ed2967912fe0bdc6d78d6ba03",
+  "exact_sha": "hosted-workflow-populates-GITHUB_SHA",
+  "status": "functional_unvalidated",
+  "provider_type": "mariadb",
+  "provider_version": "1",
+  "terminal_migration": "0030_team1_multi_broker_messaging_runtime",
+  "driver": "mariadb==1.1.14",
+  "native_connector": "MariaDB Connector/C >=3.3.1 required for source build; hosted version pending",
+  "server_targets": ["MariaDB 11.8 LTS", "MariaDB 11.4 LTS"],
+  "tls": "required; CA and Connector/C identity verification configured",
+  "hostname_verification": "unit contract passed; deployed native proof pending",
+  "product_detection": "MariaDB marker required; MySQL rejected",
+  "capabilities": ["resource_discovery", "metadata_collection", "schema_discovery", "metric_collection", "health_check", "incremental_collection"],
+  "local_results": {"schema_relation_column": "unit_passed", "constraints_indexes_partitions": "static_projection_passed", "mariadb_resources": "unit_passed", "fingerprint": "unit_passed", "freshness_profiling": "unit_passed", "no_raw_rows": "unit_passed", "checkpoint": "foundation_regression", "partial_failures": "unit_passed", "mysql_postgres_team4_regressions": "workflow_gated"},
+  "live_test_status": "not_run",
+  "certification_blockers": ["hosted exact-commit evidence pending", "live MariaDB 11.8/11.4 evidence pending", "deployed Connector/C version and hostname validation pending"]
+}

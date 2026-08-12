@@ -11,6 +11,8 @@ from integrations.azure import AzureDataPlatformProvider
 from integrations.azure.configuration import parse_configuration as parse_azure_configuration
 from integrations.bigquery import BigQueryWarehouseProvider
 from integrations.bigquery.configuration import parse_configuration as parse_bigquery_configuration
+from integrations.databases.mariadb import MariaDbDatabaseProvider
+from integrations.databases.mariadb.configuration import parse_configuration as parse_mariadb_configuration
 from integrations.databases.mysql import MySqlDatabaseProvider
 from integrations.databases.mysql.configuration import parse_configuration as parse_mysql_configuration
 from integrations.databases.postgres import PostgreSqlDatabaseProvider
@@ -37,6 +39,7 @@ def build_registry():
     registry.register(PrestoSqlEngineProvider)
     registry.register(PostgreSqlDatabaseProvider)
     registry.register(MySqlDatabaseProvider)
+    registry.register(MariaDbDatabaseProvider)
     return registry
 
 
@@ -63,6 +66,7 @@ def main(argv=None):
             "presto": parse_presto_configuration,
             "postgres": parse_postgres_configuration,
             "mysql": parse_mysql_configuration,
+            "mariadb": parse_mariadb_configuration,
         }
         config_parsers[payload.get("provider_type")](payload["provider"])
         print(json.dumps({"valid": True}))

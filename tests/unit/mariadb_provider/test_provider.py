@@ -4,24 +4,24 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from integrations.database.schema import structural_fingerprint
-from integrations.databases.mysql.compatibility import validate_product
-from integrations.databases.mysql.configuration import parse_configuration
-from integrations.databases.mysql.connection import MySqlConnectionFactory
-from integrations.databases.mysql.evidence import safe_evidence, schema_fingerprint
-from integrations.databases.mysql.freshness import freshness_statement
-from integrations.databases.mysql.normalisation import canonical_type
-from integrations.databases.mysql.profiling import profiling_statement
-from integrations.databases.mysql.provider import MySqlDatabaseProvider
-from integrations.databases.mysql.sql import REGISTRY
+from integrations.databases.mariadb.compatibility import validate_product
+from integrations.databases.mariadb.configuration import parse_configuration
+from integrations.databases.mariadb.connection import MariaDbConnectionFactory
+from integrations.databases.mariadb.evidence import safe_evidence, schema_fingerprint
+from integrations.databases.mariadb.freshness import freshness_statement
+from integrations.databases.mariadb.normalisation import canonical_type
+from integrations.databases.mariadb.profiling import profiling_statement
+from integrations.databases.mariadb.provider import MariaDbDatabaseProvider
+from integrations.databases.mariadb.sql import REGISTRY
 from packages.collectors.sdk import Capability, IntegrationContext, PartialFailure, ResourceObservation
 from services.collection_manager.cli import build_registry
 
 
 def config(**updates):
     value = {
-        "host": "mysql.internal",
+        "host": "mariadb.internal",
         "database": "app",
-        "authentication": {"type": "password", "username": "collector", "password_ref": "env:MYSQL_PASSWORD"},
+        "authentication": {"type": "password", "username": "collector", "password_ref": "env:MARIADB_PASSWORD"},
         "tls": {
             "enabled": True,
             "verify_certificate": True,
@@ -47,8 +47,8 @@ def test_registration_capabilities_and_version():
         "snowflake",
         "trino",
     )
-    provider = registry.create("mysql")
-    assert (provider.provider_type, provider.provider_version) == ("mysql", "1")
+    provider = registry.create("mariadb")
+    assert (provider.provider_type, provider.provider_version) == ("mariadb", "1")
     assert Capability.QUERY_HISTORY not in provider.capabilities().supported
 
 
@@ -65,7 +65,7 @@ def test_closed_configuration_secrets_and_tls():
                 "ca_bundle_ref": "file-ref:/ca",
             }
         },
-        {"host": "mysql://u:p@host/db"},
+        {"host": "mariadb://u:p@host/db"},
     ):
         value = config()
         value.update(bad)
@@ -88,28 +88,24 @@ def test_connector_options_enforce_tls_identity_and_local_infile(monkeypatch):
     import sys
     import types
 
-    package = types.ModuleType("mysql")
-    package.connector = Connector()
-    monkeypatch.setitem(sys.modules, "mysql", package)
-    monkeypatch.setitem(sys.modules, "mysql.connector", package.connector)
-    monkeypatch.setenv("MYSQL_PASSWORD", "secret")
+    package = types.ModuleType("mariadb")
+    package.connect = Connector().connect
+    monkeypatch.setitem(sys.modules, "mariadb", package)
+    monkeypatch.setenv("MARIADB_PASSWORD", "secret")
     cfg = parse_configuration(config())
-    with MySqlConnectionFactory().connect(cfg):
+    with MariaDbConnectionFactory().connect(cfg):
         pass
-    assert (
-        captured["ssl_disabled"] is False
-        and captured["ssl_verify_cert"] is True
-        and captured["ssl_verify_identity"] is True
-    )
-    assert captured["allow_local_infile"] is False
+    assert captured["ssl_verify_cert"] is True and captured["ssl_ca"] == "/ca.pem"
+    assert captured["local_infile"] is False
+    assert "ssl_verify_identity" not in captured  # Connector/C performs identity verification with certificate verify.
     assert "password" in captured and captured["password"] == "secret"
 
 
-def test_product_detection_and_mariadb_mismatch():
-    assert validate_product("8.4.10", "MySQL Community Server") == "8.4"
-    assert validate_product("9.7.0", "MySQL") == "9.7"
+def test_product_detection_and_mysql_mismatch():
+    assert validate_product("11.8.2-MariaDB", "MariaDB Community Server") == "11.8"
+    assert validate_product("11.4.8-MariaDB", "MariaDB") == "11.4"
     with pytest.raises(RuntimeError, match="server_product_mismatch"):
-        validate_product("11.8.2-MariaDB")
+        validate_product("8.4.10", "MySQL Community Server")
 
 
 def test_safe_fixed_sql_and_no_raw_rows_or_query_text():
@@ -194,10 +190,10 @@ class Cursor:
         self.sql = sql
         if "VERSION()" in sql:
             self.description = [("server_version",), ("version_comment",)]
-            self.rows = [("8.4.10", "MySQL Community Server")]
+            self.rows = [("11.8.2-MariaDB", "MariaDB Community Server")]
         elif "information_schema.schemata" in sql:
             self.description = [("schema",)]
-            self.rows = [("sales",), ("mysql",)]
+            self.rows = [("sales",), ("mariadb",)]
         elif "information_schema.tables" in sql:
             self.description = [("schema",), ("table",), ("table_type",), ("engine",), ("approximate_rows",)]
             self.rows = [("sales", "orders", "BASE TABLE", "InnoDB", 12), ("sales", "v", "VIEW", None, None)]
@@ -248,23 +244,24 @@ class Factory:
 
 def test_collection_structural_evidence_partial_failure_and_isolation():
     factory = Factory(True)
-    provider = MySqlDatabaseProvider(factory)
+    provider = MariaDbDatabaseProvider(factory)
     context = IntegrationContext(
         "tenant-a",
-        "mysql-a",
+        "mariadb-a",
         "run",
         datetime.now(timezone.utc) + timedelta(seconds=30),
         attributes={"environment": "prod"},
     )
     assert asyncio.run(
         provider.validate_configuration(
-            context, config(discovery={"exclude_schemas": ["mysql", "information_schema", "performance_schema", "sys"]})
+            context,
+            config(discovery={"exclude_schemas": ["mariadb", "information_schema", "performance_schema", "sys"]}),
         )
     ).valid
     request = type("Request", (), {"capabilities": frozenset({Capability.METADATA_COLLECTION})})()
     results = asyncio.run(_collect(provider, context, request))
     observations = [x for x in results if isinstance(x, ResourceObservation)]
-    assert observations and all(x.provider == "mysql" and x.region == "prod" for x in observations)
+    assert observations and all(x.provider == "mariadb" and x.region == "prod" for x in observations)
     assert all(x.source_evidence["raw_rows_persisted"] is False for x in observations)
     assert any(isinstance(x, PartialFailure) and x.error_code == "metadata_unavailable" for x in results)
     assert factory.connection.closed
@@ -279,12 +276,12 @@ async def _collect(provider, context, request):
 def DatabaseIdentityForTest(tenant, environment):
     from integrations.database import DatabaseIdentity
 
-    return DatabaseIdentity(tenant, environment, "mysql", "mysql-a", "instance", "app").canonical_id()
+    return DatabaseIdentity(tenant, environment, "mariadb", "mariadb-a", "instance", "app").canonical_id()
 
 
-def test_live_mysql_contract_is_opt_in():
+def test_live_mariadb_contract_is_opt_in():
     import os
 
-    if os.getenv("RUN_MYSQL_INTEGRATION_TESTS") != "1":
-        pytest.skip("RUN_MYSQL_INTEGRATION_TESTS=1 required")
-    assert os.getenv("MYSQL_HOST"), "live test requires synthetic MySQL fixture configuration"
+    if os.getenv("RUN_MARIADB_INTEGRATION_TESTS") != "1":
+        pytest.skip("RUN_MARIADB_INTEGRATION_TESTS=1 required")
+    assert os.getenv("MARIADB_HOST"), "live test requires synthetic MariaDB fixture configuration"

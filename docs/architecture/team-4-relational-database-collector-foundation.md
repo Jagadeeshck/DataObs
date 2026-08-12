@@ -5,3 +5,7 @@
 Collection scopes are database identity, relations, columns, constraints, indexes, partitions, snapshots, and configured per-relation freshness/profiling. Generic Team 4 persistence must complete before OCC checkpoint advancement; a failed scope does not advance and does not discard successful siblings. Evidence is deterministic and excludes secrets, raw SQL expressions, owners/comments and timestamps from fingerprints.
 
 MySQL is the second adapter on this foundation. Its v1 provider reuses these contracts directly, including generic provider persistence and checkpoints, while keeping dialect SQL, TLS connection options, product detection, safe type normalization, and policy-owned aggregates provider-local.
+
+## MariaDB implementation
+
+The first-class `mariadb` v1 provider reuses this foundation while retaining MariaDB product detection, catalogs, normalisation, and connection policy in `integrations/databases/mariadb`.

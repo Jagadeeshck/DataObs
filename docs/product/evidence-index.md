@@ -473,3 +473,5 @@ An entry marked `defined_not_run` is a definition, not executed evidence. No hos
 | `platform.tenancy` | `—` | `missing` | not recorded | none retained | Retained hosted and applicable real-stack/browser/security/scale evidence is absent. |
 
 | `data.mysql` | `tests/unit/mysql_provider/test_provider.py`; hosted `team-4-mysql-database-collector-v1-evidence` | `functional_unvalidated` | local unit/static gates only | hosted artifact pending | MySQL 8.4/9.7 live exact-commit certification has not run. |
+
+- `team-4-mariadb-database-collector-v1-evidence/manifest.json` — MariaDB v1 local evidence manifest; hosted exact-commit verification pending.

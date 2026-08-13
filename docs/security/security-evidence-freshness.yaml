@@ -1,0 +1,14 @@
+schema_version: '1.0'
+policies:
+  source-bound:
+    exact_sha_required: true
+    maximum_age: null
+    applies_to: [static-analysis, route-security, migration-validation, sbom, image-scan, provenance, signature-verification]
+  current-release:
+    exact_sha_required: false
+    requires_current_release_evidence: true
+    applies_to: [kubernetes-observed-state, oidc-conformance, backup-restore, disaster-recovery, tenant-isolation, hosted-security]
+  time-bound-30d:
+    exact_sha_required: false
+    maximum_age: P30D
+    justification: Operational observations can change independently of source and must be renewed monthly.

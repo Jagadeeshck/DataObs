@@ -1,0 +1,520 @@
+schema_version: '1.0'
+control_states:
+- not_implemented
+- implemented
+- local_tested
+- hosted_tested
+- independently_verified
+- blocked
+- not_applicable
+- unknown
+owners:
+- Authentication Team
+- IAM Team
+- Platform Team
+- Operations Team
+- Release Team
+- Security Team
+- Data Platform Team
+controls:
+- id: SEC-AUTHN-001
+  title: JWT validation
+  category: authentication
+  description: JWT signature, issuer, audience, expiry and token type are fail closed.
+  owner_team: Authentication Team
+  applicability:
+  - development
+  - standard
+  - production
+  implementation_state: local_tested
+  required_evidence:
+  - unit-test
+  release_gate: true
+  severity_if_missing: critical
+  verification_method: unit-test
+  evidence_freshness_policy: source-bound
+- id: SEC-AUTHN-002
+  title: OIDC PKCE and JWKS
+  category: authentication
+  description: Browser authorization uses PKCE and JWKS failure denies access.
+  owner_team: Authentication Team
+  applicability:
+  - development
+  - standard
+  - production
+  implementation_state: implemented
+  required_evidence:
+  - oidc-hosted
+  release_gate: false
+  severity_if_missing: high
+  verification_method: oidc-hosted
+  evidence_freshness_policy: current-release
+- id: SEC-AUTHN-003
+  title: Service token replay constraints
+  category: authentication
+  description: Service tokens apply JTI and strong-auth rules.
+  owner_team: Authentication Team
+  applicability:
+  - development
+  - standard
+  - production
+  implementation_state: local_tested
+  required_evidence:
+  - security-test
+  release_gate: false
+  severity_if_missing: high
+  verification_method: security-test
+  evidence_freshness_policy: source-bound
+- id: SEC-AUTHZ-001
+  title: Explicit route permissions
+  category: authorization
+  description: Every non-public API route has an explicit permission; public routes
+    are allowlisted.
+  owner_team: IAM Team
+  applicability:
+  - development
+  - standard
+  - production
+  implementation_state: local_tested
+  required_evidence:
+  - route-security
+  release_gate: true
+  severity_if_missing: critical
+  verification_method: route-security
+  evidence_freshness_policy: source-bound
+- id: SEC-AUTHZ-002
+  title: Canonical roles and bindings
+  category: authorization
+  description: Canonical roles, binding scope, privileged permissions and last-admin
+    protection are enforced.
+  owner_team: IAM Team
+  applicability:
+  - development
+  - standard
+  - production
+  implementation_state: local_tested
+  required_evidence:
+  - unit-test
+  release_gate: false
+  severity_if_missing: high
+  verification_method: unit-test
+  evidence_freshness_policy: source-bound
+- id: SEC-TENANCY-001
+  title: Tenant data isolation
+  category: tenancy
+  description: Reads, writes, searches, updates and deletes are tenant and environment
+    scoped.
+  owner_team: Platform Team
+  applicability:
+  - development
+  - standard
+  - production
+  implementation_state: local_tested
+  required_evidence:
+  - tenant-hosted
+  release_gate: true
+  severity_if_missing: critical
+  verification_method: tenant-hosted
+  evidence_freshness_policy: current-release
+- id: SEC-TENANCY-002
+  title: Tenant administration isolation
+  category: tenancy
+  description: Lifecycle, integrations, privileged and diagnostic operations preserve
+    tenant scope.
+  owner_team: Platform Team
+  applicability:
+  - development
+  - standard
+  - production
+  implementation_state: implemented
+  required_evidence:
+  - tenant-hosted
+  release_gate: true
+  severity_if_missing: critical
+  verification_method: tenant-hosted
+  evidence_freshness_policy: current-release
+- id: SEC-PRIV-001
+  title: Privileged access lifecycle
+  category: privileged-access
+  description: Requests require independent approval, strong auth, expiry, revocation
+    and audited immutable transitions.
+  owner_team: IAM Team
+  applicability:
+  - development
+  - standard
+  - production
+  implementation_state: local_tested
+  required_evidence:
+  - privileged-test
+  release_gate: true
+  severity_if_missing: critical
+  verification_method: privileged-test
+  evidence_freshness_policy: current-release
+- id: SEC-PRIV-002
+  title: Break-glass lifecycle
+  category: privileged-access
+  description: Break-glass access is bounded, revocable and audited.
+  owner_team: IAM Team
+  applicability:
+  - development
+  - standard
+  - production
+  implementation_state: local_tested
+  required_evidence:
+  - privileged-test
+  release_gate: true
+  severity_if_missing: critical
+  verification_method: privileged-test
+  evidence_freshness_policy: current-release
+- id: SEC-SECRETS-001
+  title: Secret-reference-only configuration
+  category: secrets
+  description: Deployments and integrations use references and never retain credential
+    values in evidence.
+  owner_team: Platform Team
+  applicability:
+  - development
+  - standard
+  - production
+  implementation_state: local_tested
+  required_evidence:
+  - secret-scan
+  release_gate: true
+  severity_if_missing: critical
+  verification_method: secret-scan
+  evidence_freshness_policy: source-bound
+- id: SEC-SECRETS-002
+  title: Diagnostic and telemetry redaction
+  category: secrets
+  description: Support bundles, audit, logs and telemetry exclude tokens and sensitive
+    raw data.
+  owner_team: Operations Team
+  applicability:
+  - development
+  - standard
+  - production
+  implementation_state: local_tested
+  required_evidence:
+  - audit-safety
+  release_gate: false
+  severity_if_missing: high
+  verification_method: audit-safety
+  evidence_freshness_policy: source-bound
+- id: SEC-CRYPTO-001
+  title: TLS for external boundaries
+  category: cryptography
+  description: Elasticsearch, OIDC, provider, ingress and applicable OTLP connections
+    require TLS.
+  owner_team: Platform Team
+  applicability:
+  - development
+  - standard
+  - production
+  implementation_state: implemented
+  required_evidence:
+  - hosted-tls
+  release_gate: true
+  severity_if_missing: critical
+  verification_method: hosted-tls
+  evidence_freshness_policy: current-release
+- id: SEC-CRYPTO-002
+  title: Encryption-at-rest responsibility
+  category: cryptography
+  description: Storage encryption is a deployment responsibility; no application-level
+    encryption claim is made.
+  owner_team: Platform Team
+  applicability:
+  - development
+  - standard
+  - production
+  implementation_state: implemented
+  required_evidence:
+  - configuration-review
+  release_gate: false
+  severity_if_missing: high
+  verification_method: configuration-review
+  evidence_freshness_policy: current-release
+- id: SEC-K8S-001
+  title: Restricted workload security
+  category: kubernetes
+  description: PSS Restricted, non-root, seccomp, dropped capabilities and no privilege
+    escalation are validated.
+  owner_team: Platform Team
+  applicability:
+  - development
+  - standard
+  - production
+  implementation_state: local_tested
+  required_evidence:
+  - kubernetes-report
+  release_gate: true
+  severity_if_missing: critical
+  verification_method: kubernetes-report
+  evidence_freshness_policy: source-bound
+- id: SEC-K8S-002
+  title: Immutable Kubernetes images
+  category: kubernetes
+  description: Production workloads use image digests and optional admission enforcement.
+  owner_team: Release Team
+  applicability:
+  - development
+  - standard
+  - production
+  implementation_state: local_tested
+  required_evidence:
+  - kubernetes-report
+  release_gate: true
+  severity_if_missing: critical
+  verification_method: kubernetes-report
+  evidence_freshness_policy: source-bound
+- id: SEC-NETWORK-001
+  title: Kubernetes network policy
+  category: network
+  description: NetworkPolicy and scoped service accounts/RBAC limit workload communication.
+  owner_team: Platform Team
+  applicability:
+  - development
+  - standard
+  - production
+  implementation_state: local_tested
+  required_evidence:
+  - kubernetes-report
+  release_gate: false
+  severity_if_missing: high
+  verification_method: kubernetes-report
+  evidence_freshness_policy: source-bound
+- id: SEC-AUDIT-001
+  title: Security lifecycle audit coverage
+  category: audit
+  description: Sensitive IAM, tenant, credential, remediation, release and recovery
+    actions emit audit events.
+  owner_team: Operations Team
+  applicability:
+  - development
+  - standard
+  - production
+  implementation_state: local_tested
+  required_evidence:
+  - audit-test
+  release_gate: false
+  severity_if_missing: high
+  verification_method: audit-test
+  evidence_freshness_policy: current-release
+- id: SEC-AUDIT-002
+  title: Audit event safety
+  category: audit
+  description: Audit events exclude authorization headers, cookies, JWTs, credentials,
+    keys and business payloads.
+  owner_team: Operations Team
+  applicability:
+  - development
+  - standard
+  - production
+  implementation_state: local_tested
+  required_evidence:
+  - audit-safety
+  release_gate: true
+  severity_if_missing: critical
+  verification_method: audit-safety
+  evidence_freshness_policy: source-bound
+- id: SEC-SUPPLY-001
+  title: Software bill of materials
+  category: supply-chain
+  description: Candidate artifacts have exact-SHA SBOM evidence.
+  owner_team: Release Team
+  applicability:
+  - development
+  - standard
+  - production
+  implementation_state: implemented
+  required_evidence:
+  - sbom
+  release_gate: true
+  severity_if_missing: critical
+  verification_method: sbom
+  evidence_freshness_policy: source-bound
+- id: SEC-SUPPLY-002
+  title: Artifact provenance
+  category: supply-chain
+  description: Candidate provenance binds immutable artifact to exact source SHA.
+  owner_team: Release Team
+  applicability:
+  - development
+  - standard
+  - production
+  implementation_state: implemented
+  required_evidence:
+  - provenance
+  release_gate: true
+  severity_if_missing: critical
+  verification_method: provenance
+  evidence_freshness_policy: source-bound
+- id: SEC-SUPPLY-003
+  title: Signature verification
+  category: supply-chain
+  description: Candidate signature is independently verified before promotion.
+  owner_team: Release Team
+  applicability:
+  - development
+  - standard
+  - production
+  implementation_state: implemented
+  required_evidence:
+  - signature-verification
+  release_gate: true
+  severity_if_missing: critical
+  verification_method: signature-verification
+  evidence_freshness_policy: source-bound
+- id: SEC-VULN-001
+  title: Vulnerability release gate
+  category: vulnerability
+  description: Blocking vulnerabilities fail release unless a specific unexpired approved
+    exception exists.
+  owner_team: Security Team
+  applicability:
+  - development
+  - standard
+  - production
+  implementation_state: implemented
+  required_evidence:
+  - vulnerability-scan
+  release_gate: true
+  severity_if_missing: critical
+  verification_method: vulnerability-scan
+  evidence_freshness_policy: source-bound
+- id: SEC-VULN-002
+  title: Dependency coverage
+  category: vulnerability
+  description: Python, Node, container and optional integration scan results aggregate
+    without hiding gaps.
+  owner_team: Security Team
+  applicability:
+  - development
+  - standard
+  - production
+  implementation_state: implemented
+  required_evidence:
+  - dependency-report
+  release_gate: false
+  severity_if_missing: high
+  verification_method: dependency-report
+  evidence_freshness_policy: source-bound
+- id: SEC-BACKUP-001
+  title: Safe scoped backup and restore
+  category: backup
+  description: Backups are manifest scoped, exclude secrets and restores reject wildcard/destructive
+    use.
+  owner_team: Operations Team
+  applicability:
+  - development
+  - standard
+  - production
+  implementation_state: local_tested
+  required_evidence:
+  - backup-hosted
+  release_gate: true
+  severity_if_missing: critical
+  verification_method: backup-hosted
+  evidence_freshness_policy: current-release
+- id: SEC-DR-001
+  title: Recovery verification
+  category: disaster-recovery
+  description: Recovery evidence distinguishes simulation from hosted tests and external
+    certification.
+  owner_team: Operations Team
+  applicability:
+  - development
+  - standard
+  - production
+  implementation_state: implemented
+  required_evidence:
+  - dr-hosted
+  release_gate: true
+  severity_if_missing: critical
+  verification_method: dr-hosted
+  evidence_freshness_policy: current-release
+- id: SEC-RELEASE-001
+  title: Exact-SHA security gate
+  category: release
+  description: Release authority consumes a fail-closed security gate bound to exact
+    SHA.
+  owner_team: Release Team
+  applicability:
+  - development
+  - standard
+  - production
+  implementation_state: implemented
+  required_evidence:
+  - release-gate
+  release_gate: true
+  severity_if_missing: critical
+  verification_method: release-gate
+  evidence_freshness_policy: source-bound
+- id: SEC-DATA-001
+  title: Product data minimization
+  category: data
+  description: Collectors avoid raw SQL, schema payloads, business rows, tokens, credentials
+    and private keys where prohibited.
+  owner_team: Data Platform Team
+  applicability:
+  - development
+  - standard
+  - production
+  implementation_state: local_tested
+  required_evidence:
+  - contract-test
+  release_gate: false
+  severity_if_missing: high
+  verification_method: contract-test
+  evidence_freshness_policy: source-bound
+- id: SEC-OPERATIONS-001
+  title: Support bundle safety
+  category: operations
+  description: Bundles use allowlists, bounds, redaction and safe fingerprints with
+    no raw dumps or logs by default.
+  owner_team: Operations Team
+  applicability:
+  - development
+  - standard
+  - production
+  implementation_state: local_tested
+  required_evidence:
+  - support-bundle
+  release_gate: false
+  severity_if_missing: high
+  verification_method: support-bundle
+  evidence_freshness_policy: current-release
+- id: SEC-OPERATIONS-002
+  title: Workflow least privilege
+  category: operations
+  description: CI workflows avoid broad writes, untrusted privileged execution and
+    mutable release inputs.
+  owner_team: Release Team
+  applicability:
+  - development
+  - standard
+  - production
+  implementation_state: unknown
+  required_evidence:
+  - workflow-security
+  release_gate: false
+  severity_if_missing: high
+  verification_method: workflow-security
+  evidence_freshness_policy: source-bound
+- id: SEC-OPERATIONS-003
+  title: Evidence provenance
+  category: operations
+  description: Evidence identifies repository, SHA, workflow/run, attempt, timestamp,
+    tool, checksum, producer, verifier and environment.
+  owner_team: Security Team
+  applicability:
+  - development
+  - standard
+  - production
+  implementation_state: implemented
+  required_evidence:
+  - evidence-verification
+  release_gate: true
+  severity_if_missing: critical
+  verification_method: evidence-verification
+  evidence_freshness_policy: source-bound

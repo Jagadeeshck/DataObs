@@ -16,6 +16,14 @@ from services.incident_manager.effectiveness.models import (
 
 def episode(verification=VerificationStatus.UNAVAILABLE, provider=ProviderStatus.SUCCESS, **changes):
     effectiveness = classify(provider, verification)
+    evidence = EvidenceCoverage(
+        execution_evidence=True,
+        provider_evidence=True,
+        verification_evidence=verification != VerificationStatus.UNAVAILABLE,
+        recovery_evidence=False,
+        stability_evidence=False,
+        recurrence_evidence=False,
+    )
     values = dict(
         episode_id=episode_identity("t", "prod", "i", "e", EFFECTIVENESS_DEFINITION_VERSION),
         tenant_id="t",
@@ -29,15 +37,8 @@ def episode(verification=VerificationStatus.UNAVAILABLE, provider=ProviderStatus
         provider_status=provider,
         verification_status=verification,
         effectiveness_class=effectiveness,
-        evidence=EvidenceCoverage(
-            execution_evidence=True,
-            provider_evidence=True,
-            verification_evidence=verification != VerificationStatus.UNAVAILABLE,
-            recovery_evidence=False,
-            stability_evidence=False,
-            recurrence_evidence=False,
-        ),
-        evidence_coverage=0.5,
+        evidence=evidence,
+        evidence_coverage=evidence.coverage,
         source_incident_revision="2:1",
         source_execution_revision="4",
         computed_at=datetime.now(timezone.utc),

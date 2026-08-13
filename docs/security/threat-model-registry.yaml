@@ -1,0 +1,17 @@
+schema_version: '1.0'
+review_maximum_age_days: 365
+threat_models:
+  - {threat_model_id: TM-AUTHN, scope: authentication/OIDC, owner: Authentication Team, document: docs/security/OIDC-hardening.md, last_reviewed: '2026-08-13', relevant_controls: [SEC-AUTHN-001, SEC-AUTHN-002, SEC-AUTHN-003], status: current}
+  - {threat_model_id: TM-AUTHZ, scope: authorization/RBAC, owner: IAM Team, document: docs/architecture/authentication-and-rbac.md, last_reviewed: '2026-08-13', relevant_controls: [SEC-AUTHZ-001, SEC-AUTHZ-002], status: current}
+  - {threat_model_id: TM-TENANCY, scope: tenancy, owner: Platform Team, document: docs/architecture/tenant-isolation-profiles.md, last_reviewed: '2026-08-13', relevant_controls: [SEC-TENANCY-001, SEC-TENANCY-002], status: current}
+  - {threat_model_id: TM-PRIV, scope: privileged access, owner: IAM Team, document: docs/architecture/privileged-access.md, last_reviewed: '2026-08-13', relevant_controls: [SEC-PRIV-001, SEC-PRIV-002], status: current}
+  - {threat_model_id: TM-API, scope: API, owner: Platform Team, document: docs/security/beta-security-model.md, last_reviewed: '2026-08-13', relevant_controls: [SEC-AUTHN-001, SEC-AUTHZ-001, SEC-AUDIT-002], status: current}
+  - {threat_model_id: TM-CONSOLE, scope: Console, owner: IAM Team, document: docs/security/console-threat-model.md, last_reviewed: '2026-08-13', relevant_controls: [SEC-AUTHN-002, SEC-SECRETS-002], status: current}
+  - {threat_model_id: TM-ELASTIC, scope: Elasticsearch persistence, owner: Platform Team, document: docs/architecture/elasticsearch-storage-and-migrations.md, last_reviewed: null, relevant_controls: [SEC-CRYPTO-001, SEC-CRYPTO-002, SEC-DATA-001], status: missing}
+  - {threat_model_id: TM-COLLECTORS, scope: integrations/collectors, owner: Data Platform Team, document: docs/security/threat-model-template.md, last_reviewed: null, relevant_controls: [SEC-SECRETS-001, SEC-DATA-001], status: missing}
+  - {threat_model_id: TM-WORKFLOWS, scope: remediation/workflows, owner: Operations Team, document: docs/security/safe-remediation-runtime-threat-model.md, last_reviewed: '2026-08-13', relevant_controls: [SEC-PRIV-001, SEC-AUDIT-001], status: current}
+  - {threat_model_id: TM-K8S, scope: Kubernetes, owner: Platform Team, document: docs/production/kubernetes-security.md, last_reviewed: '2026-08-13', relevant_controls: [SEC-K8S-001, SEC-K8S-002, SEC-NETWORK-001], status: current}
+  - {threat_model_id: TM-SUPPLY, scope: supply chain, owner: Release Team, document: docs/security/kubernetes-supply-chain-admission.md, last_reviewed: '2026-08-13', relevant_controls: [SEC-SUPPLY-001, SEC-SUPPLY-002, SEC-SUPPLY-003], status: current}
+  - {threat_model_id: TM-BACKUP, scope: backup/restore, owner: Operations Team, document: docs/operations/backup-and-restore.md, last_reviewed: '2026-08-13', relevant_controls: [SEC-BACKUP-001, SEC-DR-001], status: current}
+  - {threat_model_id: TM-CICD, scope: CI/CD, owner: Release Team, document: docs/security/threat-model-template.md, last_reviewed: null, relevant_controls: [SEC-OPERATIONS-002, SEC-SUPPLY-002], status: missing}
+  - {threat_model_id: TM-SUPPORT, scope: support diagnostics, owner: Operations Team, document: docs/operations/support-bundle.md, last_reviewed: '2026-08-13', relevant_controls: [SEC-OPERATIONS-001, SEC-SECRETS-002], status: current}

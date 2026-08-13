@@ -1,0 +1,623 @@
+{
+  "errors": [],
+  "route_count": 77,
+  "routes": [
+    {
+      "method": "POST",
+      "path": "/api/v1/approvals/{approval_id}/approve",
+      "permission": "workflows:approve",
+      "policy": "POST:^/api/v1/approvals/\\{approval_id\\}/approve$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/approvals/{approval_id}/reject",
+      "permission": "workflows:approve",
+      "policy": "POST:^/api/v1/approvals/\\{approval_id\\}/reject$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/assets",
+      "permission": "assets:read",
+      "policy": "GET,HEAD:^/api(?:/v1)?/(?:assets|command-center|topology|pillars?)(?:/.*)?$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/assets/{asset_id}",
+      "permission": "assets:read",
+      "policy": "GET,HEAD:^/api(?:/v1)?/(?:assets|command-center|topology|pillars?)(?:/.*)?$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/assets/{asset_id}/freshness",
+      "permission": "assets:read",
+      "policy": "GET,HEAD:^/api(?:/v1)?/(?:assets|command-center|topology|pillars?)(?:/.*)?$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/assets/{asset_id}/impact",
+      "permission": "assets:read",
+      "policy": "GET,HEAD:^/api(?:/v1)?/(?:assets|command-center|topology|pillars?)(?:/.*)?$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/assets/{asset_id}/lineage",
+      "permission": "assets:read",
+      "policy": "GET,HEAD:^/api(?:/v1)?/(?:assets|command-center|topology|pillars?)(?:/.*)?$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/assets/{asset_id}/profile",
+      "permission": "assets:read",
+      "policy": "GET,HEAD:^/api(?:/v1)?/(?:assets|command-center|topology|pillars?)(?:/.*)?$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/assets/{asset_id}/quality",
+      "permission": "assets:read",
+      "policy": "GET,HEAD:^/api(?:/v1)?/(?:assets|command-center|topology|pillars?)(?:/.*)?$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/assets/{asset_id}/schema",
+      "permission": "assets:read",
+      "policy": "GET,HEAD:^/api(?:/v1)?/(?:assets|command-center|topology|pillars?)(?:/.*)?$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/assets/{asset_id}/schema/changes",
+      "permission": "assets:read",
+      "policy": "GET,HEAD:^/api(?:/v1)?/(?:assets|command-center|topology|pillars?)(?:/.*)?$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/assets/{asset_id}/{section}",
+      "permission": "assets:read",
+      "policy": "GET,HEAD:^/api(?:/v1)?/(?:assets|command-center|topology|pillars?)(?:/.*)?$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/config",
+      "policy": "public",
+      "protected": false,
+      "public": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/me",
+      "permission": "auth:read",
+      "policy": "GET:^/api/v1/auth/me$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/collectors",
+      "permission": "collection:manage",
+      "policy": "DELETE,GET,PATCH,POST,PUT:^/api(?:/v1)?/(?:collectors?|scanners?|scan-tasks?|tenants?)(?:/.*)?$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/collectors",
+      "permission": "collection:manage",
+      "policy": "DELETE,GET,PATCH,POST,PUT:^/api(?:/v1)?/(?:collectors?|scanners?|scan-tasks?|tenants?)(?:/.*)?$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/collectors/{collector_id}/heartbeat",
+      "permission": "collection:manage",
+      "policy": "DELETE,GET,PATCH,POST,PUT:^/api(?:/v1)?/(?:collectors?|scanners?|scan-tasks?|tenants?)(?:/.*)?$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/command-center",
+      "permission": "assets:read",
+      "policy": "GET,HEAD:^/api(?:/v1)?/(?:assets|command-center|topology|pillars?)(?:/.*)?$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/datasets/{namespace}/{name:path}",
+      "permission": "assets:read",
+      "policy": "GET:^/api/v1/datasets/\\{namespace\\}/\\{name:path\\}$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/entities/{node_id}/summary",
+      "permission": "assets:read",
+      "policy": "GET:^/api/v1/entities/\\{node_id\\}/summary$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/events/stream",
+      "permission": "auth:read",
+      "policy": "GET:^/api/v1/events/stream$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/findings",
+      "permission": "incidents:read",
+      "policy": "GET,HEAD:^/api(?:/v1)?/(?:incidents?|findings?|incident-correlation|incident-floods|incident-automation)(?:/.*)?$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/findings",
+      "permission": "incidents:write",
+      "policy": "DELETE,PATCH,POST,PUT:^/api(?:/v1)?/(?:incidents?|findings?)(?:/.*)?$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/findings/{finding_id}",
+      "permission": "incidents:read",
+      "policy": "GET,HEAD:^/api(?:/v1)?/(?:incidents?|findings?|incident-correlation|incident-floods|incident-automation)(?:/.*)?$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/iam/role-bindings",
+      "permission": "iam:read",
+      "policy": "GET:^/api/v1/iam/role-bindings(?:/\\{binding_id\\})?$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/iam/role-bindings",
+      "permission": "iam:write",
+      "policy": "DELETE,PATCH,POST:^/api/v1/iam/role-bindings(?:/\\{binding_id\\})?$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/iam/role-bindings/{binding_id}",
+      "permission": "iam:write",
+      "policy": "DELETE,PATCH,POST:^/api/v1/iam/role-bindings(?:/\\{binding_id\\})?$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/iam/role-bindings/{binding_id}",
+      "permission": "iam:read",
+      "policy": "GET:^/api/v1/iam/role-bindings(?:/\\{binding_id\\})?$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/iam/role-bindings/{binding_id}",
+      "permission": "iam:write",
+      "policy": "DELETE,PATCH,POST:^/api/v1/iam/role-bindings(?:/\\{binding_id\\})?$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/incidents",
+      "permission": "incidents:read",
+      "policy": "GET,HEAD:^/api(?:/v1)?/(?:incidents?|findings?|incident-correlation|incident-floods|incident-automation)(?:/.*)?$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/incidents",
+      "permission": "incidents:read",
+      "policy": "GET,HEAD:^/api(?:/v1)?/(?:incidents?|findings?|incident-correlation|incident-floods|incident-automation)(?:/.*)?$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/incidents/{incident_id}",
+      "permission": "incidents:read",
+      "policy": "GET,HEAD:^/api(?:/v1)?/(?:incidents?|findings?|incident-correlation|incident-floods|incident-automation)(?:/.*)?$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/incidents/{incident_id}/acknowledge",
+      "permission": "incidents:write",
+      "policy": "DELETE,PATCH,POST,PUT:^/api(?:/v1)?/(?:incidents?|findings?)(?:/.*)?$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/incidents/{incident_id}/actions",
+      "permission": "incidents:read",
+      "policy": "GET,HEAD:^/api(?:/v1)?/(?:incidents?|findings?|incident-correlation|incident-floods|incident-automation)(?:/.*)?$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/incidents/{incident_id}/actions/execute",
+      "permission": "incidents:write",
+      "policy": "DELETE,PATCH,POST,PUT:^/api(?:/v1)?/(?:incidents?|findings?)(?:/.*)?$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/incidents/{incident_id}/actions/preview",
+      "permission": "incidents:write",
+      "policy": "DELETE,PATCH,POST,PUT:^/api(?:/v1)?/(?:incidents?|findings?)(?:/.*)?$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/incidents/{incident_id}/assign",
+      "permission": "incidents:write",
+      "policy": "DELETE,PATCH,POST,PUT:^/api(?:/v1)?/(?:incidents?|findings?)(?:/.*)?$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/incidents/{incident_id}/events",
+      "permission": "incidents:read",
+      "policy": "GET,HEAD:^/api(?:/v1)?/(?:incidents?|findings?|incident-correlation|incident-floods|incident-automation)(?:/.*)?$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/incidents/{incident_id}/evidence",
+      "permission": "incidents:read",
+      "policy": "GET,HEAD:^/api(?:/v1)?/(?:incidents?|findings?|incident-correlation|incident-floods|incident-automation)(?:/.*)?$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/incidents/{incident_id}/impact",
+      "permission": "incidents:read",
+      "policy": "GET,HEAD:^/api(?:/v1)?/(?:incidents?|findings?|incident-correlation|incident-floods|incident-automation)(?:/.*)?$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/incidents/{incident_id}/reopen",
+      "permission": "incidents:write",
+      "policy": "DELETE,PATCH,POST,PUT:^/api(?:/v1)?/(?:incidents?|findings?)(?:/.*)?$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/incidents/{incident_id}/resolve",
+      "permission": "incidents:write",
+      "policy": "DELETE,PATCH,POST,PUT:^/api(?:/v1)?/(?:incidents?|findings?)(?:/.*)?$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/incidents/{incident_id}/run-workflow",
+      "permission": "incidents:write",
+      "policy": "DELETE,PATCH,POST,PUT:^/api(?:/v1)?/(?:incidents?|findings?)(?:/.*)?$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/incidents/{incident_id}/suppress",
+      "permission": "incidents:write",
+      "policy": "DELETE,PATCH,POST,PUT:^/api(?:/v1)?/(?:incidents?|findings?)(?:/.*)?$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/integrations",
+      "permission": "integrations:read",
+      "policy": "GET,HEAD:^/api(?:/v1)?/(?:integrations?|sources?)(?:/.*)?$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/integrations",
+      "permission": "integrations:write",
+      "policy": "DELETE,PATCH,POST,PUT:^/api(?:/v1)?/(?:integrations?|sources?)(?:/.*)?$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/jobs/{namespace}/{name:path}",
+      "permission": "jobs:read",
+      "policy": "GET,HEAD:^/api(?:/v1)?/(?:jobs?|runs?)(?:/.*)?$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/kafka/clusters",
+      "permission": "streams:read",
+      "policy": "GET,HEAD:^/api(?:/v1)?/(?:streams?|stream-connectors?|stream-intelligence|stream-detectors?|kafka|topics?|connectors?|schemas?)(?:/.*)?$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/kafka/clusters/{cluster_id}",
+      "permission": "streams:read",
+      "policy": "GET,HEAD:^/api(?:/v1)?/(?:streams?|stream-connectors?|stream-intelligence|stream-detectors?|kafka|topics?|connectors?|schemas?)(?:/.*)?$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/lineage",
+      "permission": "collection:ingest",
+      "policy": "POST:^/api/v1/lineage$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/lineage/{asset_id}/columns/{column}/upstream",
+      "permission": "lineage:read",
+      "policy": "GET,HEAD:^/api(?:/v1)?/(?:lineage|pathways?)(?:/.*)?$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/lineage/{asset_id}/downstream",
+      "permission": "lineage:read",
+      "policy": "GET,HEAD:^/api(?:/v1)?/(?:lineage|pathways?)(?:/.*)?$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/lineage/{asset_id}/impact",
+      "permission": "lineage:read",
+      "policy": "GET,HEAD:^/api(?:/v1)?/(?:lineage|pathways?)(?:/.*)?$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/lineage/{asset_id}/upstream",
+      "permission": "lineage:read",
+      "policy": "GET,HEAD:^/api(?:/v1)?/(?:lineage|pathways?)(?:/.*)?$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/migrations",
+      "permission": "platform:admin",
+      "policy": "GET:^/api/v1/migrations$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/openlineage/events",
+      "permission": "collection:ingest",
+      "policy": "POST:^/(?:api/v1/openlineage/events|api/v1/lineage|api/data-observability/lineage/events)$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/pathway-explorer/search",
+      "permission": "lineage:read",
+      "policy": "POST:^/api/v1/pathway\\-explorer/search$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/pillars",
+      "permission": "assets:read",
+      "policy": "GET,HEAD:^/api(?:/v1)?/(?:assets|command-center|topology|pillars?)(?:/.*)?$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/platform/{section}",
+      "permission": "platform_operations:read",
+      "policy": "GET:^/api/v1/platform/\\{section\\}$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/runs/{run_id}",
+      "permission": "jobs:read",
+      "policy": "GET,HEAD:^/api(?:/v1)?/(?:jobs?|runs?)(?:/.*)?$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/scan-policies",
+      "permission": "collection:manage",
+      "policy": "GET:^/api/v1/scan\\-policies$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/scan-policies",
+      "permission": "collection:manage",
+      "policy": "POST:^/api/v1/scan\\-policies$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/scanners",
+      "permission": "collection:manage",
+      "policy": "DELETE,GET,PATCH,POST,PUT:^/api(?:/v1)?/(?:collectors?|scanners?|scan-tasks?|tenants?)(?:/.*)?$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/scanners",
+      "permission": "collection:manage",
+      "policy": "DELETE,GET,PATCH,POST,PUT:^/api(?:/v1)?/(?:collectors?|scanners?|scan-tasks?|tenants?)(?:/.*)?$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/scanners/{scanner_id}/heartbeat",
+      "permission": "collection:manage",
+      "policy": "DELETE,GET,PATCH,POST,PUT:^/api(?:/v1)?/(?:collectors?|scanners?|scan-tasks?|tenants?)(?:/.*)?$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/scanners/{scanner_id}/tasks",
+      "permission": "collection:manage",
+      "policy": "DELETE,GET,PATCH,POST,PUT:^/api(?:/v1)?/(?:collectors?|scanners?|scan-tasks?|tenants?)(?:/.*)?$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/scanners/{scanner_id}/tasks/{task_id}/ack",
+      "permission": "collection:manage",
+      "policy": "DELETE,GET,PATCH,POST,PUT:^/api(?:/v1)?/(?:collectors?|scanners?|scan-tasks?|tenants?)(?:/.*)?$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/scanners/{scanner_id}/tasks/{task_id}/claim",
+      "permission": "collection:manage",
+      "policy": "DELETE,GET,PATCH,POST,PUT:^/api(?:/v1)?/(?:collectors?|scanners?|scan-tasks?|tenants?)(?:/.*)?$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/scanners/{scanner_id}/tasks/{task_id}/fail",
+      "permission": "collection:manage",
+      "policy": "DELETE,GET,PATCH,POST,PUT:^/api(?:/v1)?/(?:collectors?|scanners?|scan-tasks?|tenants?)(?:/.*)?$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/scanners/{scanner_id}/tasks/{task_id}/renew",
+      "permission": "collection:manage",
+      "policy": "DELETE,GET,PATCH,POST,PUT:^/api(?:/v1)?/(?:collectors?|scanners?|scan-tasks?|tenants?)(?:/.*)?$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/scanners/{scanner_id}/tasks/{task_id}/results",
+      "permission": "collection:manage",
+      "policy": "DELETE,GET,PATCH,POST,PUT:^/api(?:/v1)?/(?:collectors?|scanners?|scan-tasks?|tenants?)(?:/.*)?$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/sources",
+      "permission": "integrations:read",
+      "policy": "GET,HEAD:^/api(?:/v1)?/(?:integrations?|sources?)(?:/.*)?$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/sources",
+      "permission": "integrations:write",
+      "policy": "DELETE,PATCH,POST,PUT:^/api(?:/v1)?/(?:integrations?|sources?)(?:/.*)?$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tenants",
+      "permission": "collection:manage",
+      "policy": "DELETE,GET,PATCH,POST,PUT:^/api(?:/v1)?/(?:collectors?|scanners?|scan-tasks?|tenants?)(?:/.*)?$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/tenants",
+      "permission": "collection:manage",
+      "policy": "DELETE,GET,PATCH,POST,PUT:^/api(?:/v1)?/(?:collectors?|scanners?|scan-tasks?|tenants?)(?:/.*)?$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/topology",
+      "permission": "assets:read",
+      "policy": "GET,HEAD:^/api(?:/v1)?/(?:assets|command-center|topology|pillars?)(?:/.*)?$",
+      "protected": true,
+      "public": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/topology/nodes/{node_id}",
+      "permission": "assets:read",
+      "policy": "GET,HEAD:^/api(?:/v1)?/(?:assets|command-center|topology|pillars?)(?:/.*)?$",
+      "protected": true,
+      "public": false
+    }
+  ],
+  "schema_version": "1.0",
+  "status": "pass"
+}

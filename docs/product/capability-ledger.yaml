@@ -2361,6 +2361,136 @@ capabilities:
   owner_team: Team 3
   last_audited_at: '2026-08-13'
   last_audited_commit: pending-final-sha
+- id: streams.capacity_headroom_v1
+  name: Capacity headroom v1
+  summary: Evidence-first provider-neutral stream capacity semantics.
+  pillar: data_pipeline
+  domain: streams
+  state: functional_unvalidated
+  release_readiness: blocked
+  implementation:
+    code_paths: [packages/streaming/capacity.py, services/kafka_observer/capacity_evaluator.py]
+    api_paths: ['planned:/api/v1/streams/{resourceId}/capacity']
+    ui_routes: []
+    storage_resources: [dataobs-stream-capacity-current-v1]
+    migrations: []
+  validation: {unit: passed, integration: defined_not_run, real_stack: missing, hosted_ci: missing, browser: not_applicable, accessibility: not_applicable, security: defined_not_run, scale: defined_not_run, upgrade: not_applicable, release: missing}
+  evidence:
+    tests: [tests/stream_360/test_stream_capacity_runtime.py]
+    workflow_jobs: [team-1-stream-capacity-saturation-runtime-v1.yml:capacity]
+    audit_docs: [docs/development/team-1-stream-capacity-saturation-runtime-v1-audit.md]
+    runbooks: [docs/operations/team-1-stream-capacity-saturation-runtime.md]
+    artifacts: []
+  blockers: [Hosted exact-SHA ES 9.4.2 and scale evidence are absent.]
+  non_goals: [Automatic scaling, mutations, recommendation planning, and root-cause claims.]
+  next_gate: Verify hosted exact-SHA Elasticsearch and scale evidence.
+  owner: Team 1
+  last_audited_at: '2026-08-13'
+  last_audited_commit: pending-final-sha
+- id: streams.saturation_intelligence_v1
+  name: Saturation intelligence v1
+  summary: Evidence-first provider-neutral stream capacity semantics.
+  pillar: data_pipeline
+  domain: streams
+  state: functional_unvalidated
+  release_readiness: blocked
+  implementation:
+    code_paths: [packages/streaming/capacity.py, services/kafka_observer/capacity_evaluator.py]
+    api_paths: ['planned:/api/v1/streams/{resourceId}/capacity']
+    ui_routes: []
+    storage_resources: [dataobs-stream-capacity-current-v1]
+    migrations: []
+  validation: {unit: passed, integration: defined_not_run, real_stack: missing, hosted_ci: missing, browser: not_applicable, accessibility: not_applicable, security: defined_not_run, scale: defined_not_run, upgrade: not_applicable, release: missing}
+  evidence:
+    tests: [tests/stream_360/test_stream_capacity_runtime.py]
+    workflow_jobs: [team-1-stream-capacity-saturation-runtime-v1.yml:capacity]
+    audit_docs: [docs/development/team-1-stream-capacity-saturation-runtime-v1-audit.md]
+    runbooks: [docs/operations/team-1-stream-capacity-saturation-runtime.md]
+    artifacts: []
+  blockers: [Hosted exact-SHA ES 9.4.2 and scale evidence are absent.]
+  non_goals: [Automatic scaling, mutations, recommendation planning, and root-cause claims.]
+  next_gate: Verify hosted exact-SHA Elasticsearch and scale evidence.
+  owner: Team 1
+  last_audited_at: '2026-08-13'
+  last_audited_commit: pending-final-sha
+- id: streams.consumer_capacity_v1
+  name: Consumer capacity v1
+  summary: Evidence-first provider-neutral stream capacity semantics.
+  pillar: data_pipeline
+  domain: streams
+  state: functional_unvalidated
+  release_readiness: blocked
+  implementation:
+    code_paths: [packages/streaming/capacity.py, services/kafka_observer/capacity_evaluator.py]
+    api_paths: ['planned:/api/v1/streams/{resourceId}/capacity']
+    ui_routes: []
+    storage_resources: [dataobs-stream-capacity-current-v1]
+    migrations: []
+  validation: {unit: passed, integration: defined_not_run, real_stack: missing, hosted_ci: missing, browser: not_applicable, accessibility: not_applicable, security: defined_not_run, scale: defined_not_run, upgrade: not_applicable, release: missing}
+  evidence:
+    tests: [tests/stream_360/test_stream_capacity_runtime.py]
+    workflow_jobs: [team-1-stream-capacity-saturation-runtime-v1.yml:capacity]
+    audit_docs: [docs/development/team-1-stream-capacity-saturation-runtime-v1-audit.md]
+    runbooks: [docs/operations/team-1-stream-capacity-saturation-runtime.md]
+    artifacts: []
+  blockers: [Hosted exact-SHA ES 9.4.2 and scale evidence are absent.]
+  non_goals: [Automatic scaling, mutations, recommendation planning, and root-cause claims.]
+  next_gate: Verify hosted exact-SHA Elasticsearch and scale evidence.
+  owner: Team 1
+  last_audited_at: '2026-08-13'
+  last_audited_commit: pending-final-sha
+- id: streams.partition_shard_pressure_v1
+  name: Partition shard pressure v1
+  summary: Evidence-first provider-neutral stream capacity semantics.
+  pillar: data_pipeline
+  domain: streams
+  state: functional_unvalidated
+  release_readiness: blocked
+  implementation:
+    code_paths: [packages/streaming/capacity.py, services/kafka_observer/capacity_evaluator.py]
+    api_paths: ['planned:/api/v1/streams/{resourceId}/capacity']
+    ui_routes: []
+    storage_resources: [dataobs-stream-capacity-current-v1]
+    migrations: []
+  validation: {unit: passed, integration: defined_not_run, real_stack: missing, hosted_ci: missing, browser: not_applicable, accessibility: not_applicable, security: defined_not_run, scale: defined_not_run, upgrade: not_applicable, release: missing}
+  evidence:
+    tests: [tests/stream_360/test_stream_capacity_runtime.py]
+    workflow_jobs: [team-1-stream-capacity-saturation-runtime-v1.yml:capacity]
+    audit_docs: [docs/development/team-1-stream-capacity-saturation-runtime-v1-audit.md]
+    runbooks: [docs/operations/team-1-stream-capacity-saturation-runtime.md]
+    artifacts: []
+  blockers: [Hosted exact-SHA ES 9.4.2 and scale evidence are absent.]
+  non_goals: [Automatic scaling, mutations, recommendation planning, and root-cause claims.]
+  next_gate: Verify hosted exact-SHA Elasticsearch and scale evidence.
+  owner: Team 1
+  last_audited_at: '2026-08-13'
+  last_audited_commit: pending-final-sha
+- id: streams.retention_planning_v1
+  name: Retention planning v1
+  summary: Evidence-first provider-neutral stream capacity semantics.
+  pillar: data_pipeline
+  domain: streams
+  state: functional_unvalidated
+  release_readiness: blocked
+  implementation:
+    code_paths: [packages/streaming/capacity.py, services/kafka_observer/capacity_evaluator.py]
+    api_paths: ['planned:/api/v1/streams/{resourceId}/capacity']
+    ui_routes: []
+    storage_resources: [dataobs-stream-capacity-current-v1]
+    migrations: []
+  validation: {unit: passed, integration: defined_not_run, real_stack: missing, hosted_ci: missing, browser: not_applicable, accessibility: not_applicable, security: defined_not_run, scale: defined_not_run, upgrade: not_applicable, release: missing}
+  evidence:
+    tests: [tests/stream_360/test_stream_capacity_runtime.py]
+    workflow_jobs: [team-1-stream-capacity-saturation-runtime-v1.yml:capacity]
+    audit_docs: [docs/development/team-1-stream-capacity-saturation-runtime-v1-audit.md]
+    runbooks: [docs/operations/team-1-stream-capacity-saturation-runtime.md]
+    artifacts: []
+  blockers: [Hosted exact-SHA ES 9.4.2 and scale evidence are absent.]
+  non_goals: [Automatic scaling, mutations, recommendation planning, and root-cause claims.]
+  next_gate: Verify hosted exact-SHA Elasticsearch and scale evidence.
+  owner: Team 1
+  last_audited_at: '2026-08-13'
+  last_audited_commit: pending-final-sha
 migration_checksums:
   0001_product_foundation: 71d939094a97b4dd7c61de60542b60dd41cb238fd6bebfd75d53d723b00f3556
   0002_postgres_observability: c2098fa24ddae209fcf2ffeb369f7040d57018d58682a8513db9e943c749aa2d

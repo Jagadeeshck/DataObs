@@ -7,7 +7,7 @@ Audited commit: `5164762a6337a44a76ad2c7574a78edc048a70b3` · PR range: #82-#168
 ## State counts
 
 - **foundation**: 12
-- **functional_unvalidated**: 32
+- **functional_unvalidated**: 37
 - **not_started**: 6
 - **optional_integration**: 1
 - **scaffold**: 1
@@ -17,7 +17,7 @@ Audited commit: `5164762a6337a44a76ad2c7574a78edc048a70b3` · PR range: #82-#168
 - **ai_agent**: 2
 - **business**: 2
 - **data**: 9
-- **data_pipeline**: 16
+- **data_pipeline**: 21
 - **finops_cost**: 1
 - **platform**: 22
 
@@ -223,6 +223,14 @@ Tenant-scoped bounded reliability evaluation without root-cause or remediation c
 - **Release readiness:** `blocked`
 - **Next gate:** Retain and verify the focused workflow artifact for the final commit.
 
+### `streams.capacity_headroom_v1` — Capacity headroom v1
+
+Evidence-first provider-neutral stream capacity semantics.
+
+- **State:** `functional_unvalidated`
+- **Release readiness:** `blocked`
+- **Next gate:** Verify hosted exact-SHA Elasticsearch and scale evidence.
+
 ### `streams.connect_schema` — Kafka Connect and Schema Registry
 
 Evidence-led status for kafka connect and schema registry.
@@ -239,6 +247,14 @@ Durable safe projections and read-only operational investigation.
 - **Release readiness:** `blocked`
 - **Next gate:** Execute and independently verify the hosted workflow.
 
+### `streams.consumer_capacity_v1` — Consumer capacity v1
+
+Evidence-first provider-neutral stream capacity semantics.
+
+- **State:** `functional_unvalidated`
+- **Release readiness:** `blocked`
+- **Next gate:** Verify hosted exact-SHA Elasticsearch and scale evidence.
+
 ### `streams.kafka` — Kafka Observer and inventory
 
 Evidence-led status for kafka observer and inventory.
@@ -254,6 +270,30 @@ Evidence-led status for durable stream sse and safe actions.
 - **State:** `foundation`
 - **Release readiness:** `blocked`
 - **Next gate:** Execute and retain the evidence required for promotion.
+
+### `streams.partition_shard_pressure_v1` — Partition shard pressure v1
+
+Evidence-first provider-neutral stream capacity semantics.
+
+- **State:** `functional_unvalidated`
+- **Release readiness:** `blocked`
+- **Next gate:** Verify hosted exact-SHA Elasticsearch and scale evidence.
+
+### `streams.retention_planning_v1` — Retention planning v1
+
+Evidence-first provider-neutral stream capacity semantics.
+
+- **State:** `functional_unvalidated`
+- **Release readiness:** `blocked`
+- **Next gate:** Verify hosted exact-SHA Elasticsearch and scale evidence.
+
+### `streams.saturation_intelligence_v1` — Saturation intelligence v1
+
+Evidence-first provider-neutral stream capacity semantics.
+
+- **State:** `functional_unvalidated`
+- **Release readiness:** `blocked`
+- **Next gate:** Verify hosted exact-SHA Elasticsearch and scale evidence.
 
 ### `future.finops` — FinOps and Cost Observability
 

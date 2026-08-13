@@ -17,7 +17,9 @@ sys.path.insert(0, str(ROOT))
 from scripts.release.release_metadata import ELASTICSEARCH_VERSION, terminal_migration  # noqa: E402
 
 SHA = re.compile(r"^[0-9a-f]{40}$")
-SECRET = re.compile(r"(?i)(authorization\s*:|bearer\s+[a-z0-9._-]+|https://[^\s/]+/(?:hooks|webhook)/|token|client_secret|private_key)")
+SECRET = re.compile(
+    r"(?i)(authorization\s*:|bearer\s+[a-z0-9._-]+|https://[^\s/]+/(?:hooks|webhook)/|token|client_secret|private_key)"
+)
 
 
 def build_envelope(args: argparse.Namespace) -> dict[str, object]:

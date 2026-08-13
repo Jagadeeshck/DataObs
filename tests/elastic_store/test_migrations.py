@@ -118,7 +118,9 @@ def test_released_migration_history_is_immutable():
 def test_reliability_production_closure_is_forward_only_and_explicit():
     from packages.elastic_store.manifest import migrations
 
-    migration = next(item for item in migrations() if item.migration_id == "0025_stream_pathway_reliability_production_closure")
+    migration = next(
+        item for item in migrations() if item.migration_id == "0025_stream_pathway_reliability_production_closure"
+    )
     assert migration.migration_id == "0025_stream_pathway_reliability_production_closure"
     assert migration.dependencies == ["0024_job_run_reliability_runtime"]
     assert set(migration.operations["mapping_updates"]) == {

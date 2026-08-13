@@ -20,6 +20,13 @@ describe("console route registry", () => {
     expect(routeForPath("/streams/topics/orders")?.id).toBe("topic-360");
     expect(routeForPath("/does-not-exist")).toBeUndefined();
   });
+  it("assigns Data Quality routes to Team 2", () => {
+    for (const id of ["quality", "monitors", "monitor-new", "monitor-360"]) {
+      expect(consoleRoutes.find((route) => route.id === id)?.owner).toBe(
+        "team-2",
+      );
+    }
+  });
   it("does not expose permission-sensitive actions", () => {
     expect(visibleRoutes([]).some((route) => route.id === "integrations")).toBe(
       false,

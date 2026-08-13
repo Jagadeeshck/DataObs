@@ -1,6 +1,6 @@
 # Current product baseline
 
-> Audit date: 2026-08-01. Integrated implementation baseline: `d3151937eeea88bb5c7bc4b4c71ab1d663347a4f`, including merged work through PR #205. This document records implemented capability, not hosted certification or production readiness.
+> Audit date: 2026-08-13. Integrated implementation baseline: `e9dfa5ddcbc5bc7dfd04ea0112d914b69c9d60dc`, including merged work through PR #283. This document records implemented capability, not hosted certification or production readiness.
 
 ## 1. Product identity
 
@@ -28,6 +28,8 @@ The stream and pathway reliability runtime introduced by migration `0023_stream_
 
 All Team 1 capabilities remain `functional_unvalidated` until exact-commit Elasticsearch, Kafka, browser, accessibility and independent evidence verification completes.
 
+Merged Team 1 evolution through this checkpoint also includes multi-broker Kafka, Kinesis/SQS and RabbitMQ presentation contracts; schema compatibility and consumer-impact analysis; the production schema-intelligence runtime; capacity and saturation intelligence; and bounded capacity-planning forecasts and advisory recommendations. Recommendations remain explainable operator guidance, not autonomous infrastructure remediation.
+
 ## 5. Data quality, jobs and lineage
 
 Data Quality Monitoring includes durable monitor definitions, schedules, leases, checkpoints, observations, baselines, evaluations, findings and run-now requests. The runtime uses fail-closed capability validation and tenant-scoped persistence.
@@ -38,11 +40,15 @@ OpenLineage ingestion validates, bounds and redacts incoming events before appen
 
 These capabilities remain `functional_unvalidated` pending final-head Elasticsearch 9.4.2, PostgreSQL, browser, accessibility and independent-verification evidence.
 
+Team 2's integrated scope additionally includes Data Reliability SLOs, error budgets and burn-rate evaluation, the production SLO runtime, dbt intelligence, CI/CD change gates, and the Asset Trust and Reliability Score with its production-runtime foundation. These implementations retain missing-versus-zero semantics and remain unvalidated rather than production-ready.
+
 ## 6. Incidents and safe automation
 
 The Incident Inbox and Incident Workbench are tenant- and environment-scoped. They use repository-side filtering, deterministic PIT and `search_after` pagination, signed filter-bound cursors, strict timeline storage adapters, append-only collaboration events, optimistic concurrency, idempotency keys and authenticated-principal actor attribution.
 
 Incident correlation and alert-dispatch foundations exist, including deduplicated incident creation and redaction-safe Slack, PagerDuty and ServiceNow delivery outcomes. Unrestricted autonomous remediation is not supported. Full incident flood-control and storm-scale acceptance require a separate hosted evidence gate.
+
+Merged Team 3 capability also covers Cases and Workflows integration, bounded safe-remediation requests, post-incident review and analytics, recurrence and similarity intelligence, remediation-effectiveness evidence, incident response objectives/SLOs, and escalation, staleness and breach operations. None of these code paths substitutes for hosted tenant, scale or browser evidence.
 
 ## 7. Integrations and collection
 
@@ -54,15 +60,21 @@ The AWS provider uses migration `0022_aws_data_platform_collector`; it is not th
 
 The explicitly registered Snowflake provider generation 1 adds bounded account, warehouse, catalog, SQL-free query-history, load, metering-consumption, storage and metadata-freshness evidence. It reuses migration 0022 mappings and adds no migration. Its hosted suite has not run, so it remains `functional_unvalidated`; complete coverage, freshness, lineage, cost observability and production readiness are not claimed.
 
+The registered collection surface also includes Databricks, BigQuery, Azure data-platform, Trino, Presto, Kinesis/SQS, RabbitMQ, PostgreSQL, MySQL, MariaDB, SQL Server and Oracle providers. Registration or fixture validation is not a support claim: each remains bounded by its recorded capability state and requires live exact-SHA evidence before promotion. Team 4 owns provider collection/runtime integrations; Team 2 owns Airflow, dbt and Spark, and Team 1 owns Kafka-family runtime contracts.
+
 ## 8. Console and product experience
 
 The Console has a typed route registry that is the source of truth for route metadata, navigation, breadcrumbs, document titles, permissions, configuration state, lazy loading and entity links. Command Center, Unified Data Flow, Quick Find, tenant and environment context, time-range selection, global refresh, route error isolation, integrations catalogue and onboarding are implemented.
 
 Implemented primary and detail routes cover Command Center, Flow, Assets, Pathways, Streams, Data Products, Data Quality, Jobs, Lineage, Incidents, Integrations and Onboarding. Final-head production build, Playwright and axe accessibility evidence remain mandatory release gates.
 
+Team 5's merged presentation scope includes the workspace/navigation shell, advanced visualization system, Investigation Workspace, Global Search, operational dashboards, multi-broker views, and platform fleet, supportability/readiness and upgrade/compatibility Consoles. Team 5 ownership of these shared presentation surfaces does not transfer the underlying Quality, Jobs, Incidents or provider runtimes from their domain owners.
+
 ## 9. Identity and tenant security
 
 OIDC resource-server validation, bounded JWKS handling, explicit service principals, durable Elasticsearch-backed role bindings, tenant- and environment-scoped authorization, method-aware deny-by-default route policy, IAM optimistic concurrency, security-event persistence, recursive redaction, CORS and browser security controls are implemented.
+
+Team 0's current integrated scope includes security compliance and evidence posture, Kubernetes runtime security, supportability and operational readiness, platform fleet lifecycle, and version-upgrade and compatibility lifecycle controls. The workflow-permission posture is locally validated, while hosted tenant-isolation and independently verified exact-SHA signature evidence remain open.
 
 Local and focused tests do not replace hosted OIDC, tenant-isolation, key-rotation and production deployment proof. Evidence bundles must exclude tokens, authorization headers, webhook secrets, private keys and raw sensitive payloads.
 

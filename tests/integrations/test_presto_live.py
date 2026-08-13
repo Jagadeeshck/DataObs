@@ -1,4 +1,6 @@
-import os, pytest
+import os
+
+import pytest
 
 pytestmark = pytest.mark.skipif(
     os.getenv("RUN_PRESTO_INTEGRATION_TESTS") != "1", reason="set RUN_PRESTO_INTEGRATION_TESTS=1"

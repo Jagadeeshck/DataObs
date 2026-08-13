@@ -23,7 +23,11 @@ def parse_manifest(document: dict[str, Any]) -> dict[str, dict[str, Any]]:
             "columns": {column["name"]: column for column in item["columns"]},
             "fingerprint": item["definition_fingerprint"],
             "code_fingerprint": next(
-                ((node.get("checksum") or {}).get("checksum") for key, node in (document.get("nodes") or {}).items() if key == item["unique_id"]),
+                (
+                    (node.get("checksum") or {}).get("checksum")
+                    for key, node in (document.get("nodes") or {}).items()
+                    if key == item["unique_id"]
+                ),
                 None,
             ),
         }
@@ -47,7 +51,12 @@ def detect_changes(base: dict[str, Any], head: dict[str, Any], include_unchanged
             rename_to[old] = candidates[0]
     for unique_id in sorted(set(before) | set(after)):
         if unique_id in before and unique_id in after:
-            kind = "unchanged" if before[unique_id]["fingerprint"] == after[unique_id]["fingerprint"] else "modified"
+            kind = (
+                "unchanged"
+                if before[unique_id]["fingerprint"] == after[unique_id]["fingerprint"]
+                and before[unique_id]["code_fingerprint"] == after[unique_id]["code_fingerprint"]
+                else "modified"
+            )
         elif unique_id in rename_to:
             kind = "renamed_candidate"
         elif unique_id in rename_to.values():

@@ -304,11 +304,7 @@ def compare_metric(before: WindowMetric, after: WindowMetric, *, minimum_samples
     before_value, after_value = before.value, after.value
     absolute = None if before_value is None or after_value is None else after_value - before_value
     reason = "missing_value" if absolute is None else ("zero_baseline" if before.value == 0 else None)
-    relative = (
-        None
-        if absolute is None or before_value is None or before_value == 0
-        else absolute / abs(before_value)
-    )
+    relative = None if absolute is None or before_value is None or before_value == 0 else absolute / abs(before_value)
     confidence = min(before.coverage, after.coverage) if sufficient else 0.0
     return WindowComparison(
         before.name,

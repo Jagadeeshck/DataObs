@@ -21,8 +21,25 @@ class ArtifactLimits:
 
 
 FORBIDDEN_KEYS = frozenset(
-    {"raw_sql", "compiled_sql", "raw_code", "compiled_code", "sql", "pre-hook", "post-hook", "env", "environment",
-     "credentials", "credential", "token", "password", "private_key", "profile", "fixture", "rows"}
+    {
+        "raw_sql",
+        "compiled_sql",
+        "raw_code",
+        "compiled_code",
+        "sql",
+        "pre-hook",
+        "post-hook",
+        "env",
+        "environment",
+        "credentials",
+        "credential",
+        "token",
+        "password",
+        "private_key",
+        "profile",
+        "fixture",
+        "rows",
+    }
 )
 
 
@@ -32,7 +49,9 @@ def validate_safe(document: Any, limits: ArtifactLimits) -> bytes:
     except (TypeError, ValueError) as exc:
         raise DbtArtifactError("invalid_artifact", "Artifact must be finite JSON") from exc
     if len(encoded) > limits.max_bytes:
-        raise DbtArtifactError("artifact_too_large", "Artifact exceeds the configured byte limit", limit=limits.max_bytes)
+        raise DbtArtifactError(
+            "artifact_too_large", "Artifact exceeds the configured byte limit", limit=limits.max_bytes
+        )
 
     def visit(value: Any, depth: int = 0) -> None:
         if depth > limits.max_depth:
@@ -41,7 +60,9 @@ def validate_safe(document: Any, limits: ArtifactLimits) -> bytes:
             for key, child in value.items():
                 normalized = str(key).lower().replace("-", "_")
                 if normalized in {x.replace("-", "_") for x in FORBIDDEN_KEYS} and child not in (None, "", [], {}):
-                    raise DbtArtifactError("unsafe_field_detected", "Artifact contains a restricted field", field=normalized)
+                    raise DbtArtifactError(
+                        "unsafe_field_detected", "Artifact contains a restricted field", field=normalized
+                    )
                 visit(child, depth + 1)
         elif isinstance(value, list):
             for child in value:

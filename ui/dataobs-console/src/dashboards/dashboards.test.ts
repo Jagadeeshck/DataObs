@@ -27,6 +27,14 @@ describe("operational dashboard contracts", () => {
     ).toBe(true);
     expect(() => requireWidget("javascript")).toThrow(/Unsupported/);
   });
+  it("keeps job and incident widget ownership aligned", () => {
+    const owners = Object.fromEntries(
+      widgetRegistrations.map(({ type, owner }) => [type, owner]),
+    );
+    expect(owners["job-reliability"]).toBe("team-2");
+    expect(owners["active-incidents"]).toBe("team-3");
+    expect(owners["event-storms"]).toBe("team-3");
+  });
   it("validates all six immutable templates", () => {
     expect(dashboardTemplates).toHaveLength(6);
     expect(

@@ -103,7 +103,7 @@ const registrations = [
     "Job reliability",
     "jobs",
     "jobs:read",
-    "team-3",
+    "team-2",
     "jobs",
   ),
   entry(
@@ -143,7 +143,7 @@ const registrations = [
     "Active incidents",
     "incidents",
     "incidents:read",
-    "team-4",
+    "team-3",
     "incidents",
   ),
   entry(
@@ -151,7 +151,7 @@ const registrations = [
     "Event Storms",
     "incidents",
     "incidents:read",
-    "team-4",
+    "team-3",
     "event-storms",
   ),
   entry(

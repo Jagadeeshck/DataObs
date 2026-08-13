@@ -24,9 +24,18 @@ def repository():
 
 
 def _event(identifier="event-1", tenant="tenant", environment="prod"):
-    return {"tenant_id": tenant, "environment": environment, "incident_id": "incident-1",
-            "event_id": identifier, "event_type": "comment_added", "timestamp": "2026-01-01T00:00:00Z",
-            "actor": "alice", "summary": "safe", "revision": 1, "request_id": "request-1"}
+    return {
+        "tenant_id": tenant,
+        "environment": environment,
+        "incident_id": "incident-1",
+        "event_id": identifier,
+        "event_type": "comment_added",
+        "timestamp": "2026-01-01T00:00:00Z",
+        "actor": "alice",
+        "summary": "safe",
+        "revision": 1,
+        "request_id": "request-1",
+    }
 
 
 def test_strict_timeline_mapping_idempotency_scope_decode_and_pagination(repository):

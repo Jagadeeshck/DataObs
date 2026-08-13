@@ -4,6 +4,7 @@ import { createRegistry } from "./registry";
 import { classifyMatch, deduplicate, rankResults } from "./ranking";
 import { safeSearchTelemetry } from "./privacyPolicy";
 import type { SearchProvider, SearchResult } from "./types";
+import providerSource from "./providers/core.ts?raw";
 const item = (
   id: string,
   match: SearchResult["match"] = "provider_ranked",
@@ -34,6 +35,14 @@ const provider = (overrides: Partial<SearchProvider> = {}): SearchProvider => ({
   ...overrides,
 });
 describe("search contract", () => {
+  it("assigns the Quality monitor provider to Team 2", () => {
+    const monitor = providerSource.slice(
+      providerSource.indexOf("export const monitorProvider"),
+      providerSource.indexOf("export const incidentProvider"),
+    );
+    expect(monitor).toContain('ownerTeam: "team-2"');
+    expect(monitor).not.toContain('ownerTeam: "team-4"');
+  });
   it("rejects duplicate provider IDs and unsafe limits", () => {
     expect(() => createRegistry([provider(), provider()])).toThrow();
     expect(() => createRegistry([provider({ maximumResults: 100 })])).toThrow();

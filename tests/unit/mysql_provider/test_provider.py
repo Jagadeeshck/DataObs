@@ -45,6 +45,7 @@ def test_registration_capabilities_and_version():
         "oracle",
         "postgres",
         "presto",
+        "rabbitmq",
         "snowflake",
         "sqlserver",
         "trino",

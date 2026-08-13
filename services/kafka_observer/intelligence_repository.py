@@ -141,9 +141,20 @@ class ElasticsearchIntelligenceRepository:
         clauses: list[dict[str, Any]] = [{"term": {"tenant_id": tenant}}, {"term": {"environment": environment}}]
         for key, value in (filters or {}).items():
             if (
-                key in {
-                    "detector_id", "resource_type", "resource_id", "metric", "state", "overall_state", "enabled",
-                    "classification", "provider", "messaging_system", "bottleneck_dimension", "throttled",
+                key
+                in {
+                    "detector_id",
+                    "resource_type",
+                    "resource_id",
+                    "metric",
+                    "state",
+                    "overall_state",
+                    "enabled",
+                    "classification",
+                    "provider",
+                    "messaging_system",
+                    "bottleneck_dimension",
+                    "throttled",
                     "retention_risk",
                 }
                 and value is not None
@@ -466,7 +477,14 @@ class ElasticsearchIntelligenceRepository:
         """Fence then use the shared real-seq-no/primary-term OCC projection."""
         tenant, environment = document["tenant_id"], document["environment"]
         self.validate_fencing_token(tenant, environment, token)
-        self._project(CAPACITY, canonical_id("capacity", tenant, environment, document["resource_id"]), _json(document), tenant, environment, token)
+        self._project(
+            CAPACITY,
+            canonical_id("capacity", tenant, environment, document["resource_id"]),
+            _json(document),
+            tenant,
+            environment,
+            token,
+        )
 
     def get_capacity(self, tenant: str, environment: str, resource_id: str) -> dict[str, Any]:
         try:

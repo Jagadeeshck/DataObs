@@ -16,6 +16,28 @@ def test_workflow_yaml():
         assert yaml.safe_load(path.read_text())
 
 
+def test_stable_integration_gate_contract():
+    gate_path = ROOT / ".github/workflows/team-delivery-foundation.yml"
+    gate = yaml.safe_load(gate_path.read_text())
+    triggers = gate.get("on", gate.get(True, {}))
+    assert "pull_request" in triggers
+    assert gate["jobs"]["backend"]["uses"].endswith("reusable-backend-validation.yml")
+    assert gate["jobs"]["console"]["uses"].endswith("reusable-console-validation.yml")
+
+    backend = (ROOT / ".github/workflows/reusable-backend-validation.yml").read_text()
+    for check in (
+        "check_team_boundaries.py",
+        "check_generated_artifacts.py",
+        "check_docs_links.py",
+        "validate_capability_ledger.py",
+        "validate_migration_graph.py",
+        "check_release_metadata.py",
+        "check_route_permissions.py",
+        "validate_workflow_security.py",
+    ):
+        assert check in backend
+
+
 def test_console_compatibility_and_modules():
     assert 'export * from "./index"' in (ROOT / "ui/dataobs-console/src/api/client.ts").read_text()
     for name in ("streams", "pathways", "jobs", "lineage", "quality", "incidents", "dataProducts", "assets"):

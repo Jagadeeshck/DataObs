@@ -170,7 +170,7 @@ function Coverage({ tenant, env }: { tenant: string; env: string }) {
       <p>
         <StatusBadge value={d.state} />
       </p>
-      {d.denominator === null ? (
+      {d.denominator === null || d.denominator === undefined ? (
         <p>Coverage denominator is unknown; no percentage is calculated.</p>
       ) : (
         <>
@@ -197,11 +197,11 @@ function Coverage({ tenant, env }: { tenant: string; env: string }) {
             : display(d.coverage_percentage, "%")}
         </dd>
         <dt>High-risk gaps</dt>
-        <dd>{d.high_risk_gaps.join(", ") || "None reported"}</dd>
+        <dd>{d.high_risk_gaps?.join(", ") || "None reported"}</dd>
         <dt>Exclusions</dt>
-        <dd>{d.exclusions.join(", ") || "None reported"}</dd>
+        <dd>{d.exclusions?.join(", ") || "None reported"}</dd>
         <dt>Stale or broken monitors</dt>
-        <dd>{d.stale_or_broken_monitors.join(", ") || "None reported"}</dd>
+        <dd>{d.stale_or_broken_monitors?.join(", ") || "None reported"}</dd>
         <dt>Recommendations</dt>
         <dd>{display(d.recommendation_count)}</dd>
       </dl>

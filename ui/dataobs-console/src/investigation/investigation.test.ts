@@ -4,8 +4,17 @@ import { normaliseTimeline } from "./timeline";
 import { safeInvestigationTelemetry } from "./privacy";
 import { togglePin } from "./session";
 import type { InvestigationEvidence } from "./types";
+import providerSource from "./providers.ts?raw";
 
 describe("investigation contract", () => {
+  it("assigns Quality evidence collection to Team 2", () => {
+    const quality = providerSource.slice(
+      providerSource.indexOf("export const qualityProvider"),
+      providerSource.indexOf("export const entityProvider"),
+    );
+    expect(quality.match(/ownerTeam: "team-2"/g)).toHaveLength(3);
+    expect(quality).not.toContain('ownerTeam: "team-4"');
+  });
   it("accepts bounded anchors and rejects malformed values", () => {
     expect(
       parseAnchor(new URLSearchParams("entityType=asset&entityId=a-1"))
@@ -54,7 +63,7 @@ describe("investigation contract", () => {
       key: "zero",
       type: "metric",
       capabilityId: "quality",
-      ownerTeam: "team-4",
+      ownerTeam: "team-2",
       state: "available",
       title: "zero",
       summary: "Observed value 0",

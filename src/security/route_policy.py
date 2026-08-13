@@ -82,7 +82,11 @@ RULES = (
     _rule("POST", r"/api/v1/platform/clusters/register", Permission.CLUSTERS_REGISTER),
     _rule("GET HEAD", r"/api/v1/platform/installations(?:/\{installation_id\})?", Permission.INSTALLATIONS_READ),
     _rule("POST", r"/api/v1/platform/installations", Permission.INSTALLATIONS_MANAGE),
-    _rule("GET HEAD", r"/api/v1/platform/tenants(?:/\{tenant_id\}(?:/offboarding-preview)?)?", Permission.TENANTS_PROVISION),
+    _rule(
+        "GET HEAD",
+        r"/api/v1/platform/tenants(?:/\{tenant_id\}(?:/offboarding-preview)?)?",
+        Permission.TENANTS_PROVISION,
+    ),
     _rule("POST", r"/api/v1/platform/tenants", Permission.TENANTS_PROVISION),
     _rule("POST", r"/api/v1/platform/tenants/\{tenant_id\}/\{action\}", Permission.TENANTS_PROVISION),
     _rule("GET HEAD", r"/api/v1/platform/(?:fleet|drift|capacity)", Permission.PLATFORM_OPERATIONS_READ),

@@ -4,10 +4,10 @@ from typing import Any, Callable
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 
-from src.platform_lifecycle import LifecycleError, PlatformLifecycleService
-from src.platform_lifecycle.planning import create_plan, validate_promotion
-from src.platform_lifecycle.compatibility import PlatformProfile, assess_upgrade, load_policy
 from scripts.release.current_terminal_migration import migration_report
+from src.platform_lifecycle import LifecycleError, PlatformLifecycleService
+from src.platform_lifecycle.compatibility import PlatformProfile, assess_upgrade, load_policy
+from src.platform_lifecycle.planning import create_plan, validate_promotion
 
 
 def create_platform_lifecycle_router(require_auth: Callable[..., Any]) -> APIRouter:
@@ -189,15 +189,41 @@ def create_platform_lifecycle_router(require_auth: Callable[..., Any]) -> APIRou
     @router.get("/compatibility")
     def compatibility():
         matrix = load_policy()
-        return {"dataobs_version": matrix["dataobs_version"], "release_state": matrix["release_state"], "dimensions": matrix["dimensions"]}
+        return {
+            "dataobs_version": matrix["dataobs_version"],
+            "release_state": matrix["release_state"],
+            "dimensions": matrix["dimensions"],
+        }
 
     @router.get("/upgrade-readiness")
     def upgrade_readiness(target: str):
-        matrix=load_policy(); terminal=migration_report()["terminal_migration"]
-        current=PlatformProfile(matrix["dataobs_version"],"3.17.0","1.30.0","9.4.2","3.13.0","22.0.0","dataobs-oidc-v1","1.0.0","1.0.0","1",terminal)
-        desired=PlatformProfile(target,"3.17.0","1.30.0","9.4.2","3.13.0","22.0.0","dataobs-oidc-v1","1.0.0","1.0.0","1",terminal)
-        result=assess_upgrade(current,desired,{})
-        return {"current":current.dataobs,"target":target,"readiness":result.state,"reason_codes":result.reason_codes,"rollback_classification":result.rollback,"plan":result.plan}
+        matrix = load_policy()
+        terminal = migration_report()["terminal_migration"]
+        current = PlatformProfile(
+            matrix["dataobs_version"],
+            "3.17.0",
+            "1.30.0",
+            "9.4.2",
+            "3.13.0",
+            "22.0.0",
+            "dataobs-oidc-v1",
+            "1.0.0",
+            "1.0.0",
+            "1",
+            terminal,
+        )
+        desired = PlatformProfile(
+            target, "3.17.0", "1.30.0", "9.4.2", "3.13.0", "22.0.0", "dataobs-oidc-v1", "1.0.0", "1.0.0", "1", terminal
+        )
+        result = assess_upgrade(current, desired, {})
+        return {
+            "current": current.dataobs,
+            "target": target,
+            "readiness": result.state,
+            "reason_codes": result.reason_codes,
+            "rollback_classification": result.rollback,
+            "plan": result.plan,
+        }
 
     @router.post("/deployment-plans", status_code=201)
     def deployment_plan(payload: dict[str, Any], lifecycle=Depends(service)):

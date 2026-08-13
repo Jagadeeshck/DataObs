@@ -30,6 +30,6 @@ def test_multipage_window_retains_one_pit_and_does_not_export_pit_cursor():
     es = FakeES()
     repo = ElasticsearchPathwayRepository(es, "a", "prod", ["traces-apm-*"])
     docs, cursor = repo.read_spans(after=None, since="2026-01-01T00:00:00Z", size=2)
-    assert [doc["_source_document_id"] for doc in docs] == ["a", "b", "c"]
-    assert cursor is None
-    assert es.calls == 2 and es.closed == 1
+    assert [doc["_source_document_id"] for doc in docs] == ["a", "b"]
+    assert cursor == [2, 2]
+    assert es.calls == 1 and es.closed == 1

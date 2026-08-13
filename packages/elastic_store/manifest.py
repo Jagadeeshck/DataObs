@@ -1964,12 +1964,32 @@ STREAM_ANOMALY_RETENTION_INTELLIGENCE_MIGRATION = Migration(
 )
 
 PLATFORM_LIFECYCLE_PROPERTIES = {
-    **{key: {"type": "keyword"} for key in [
-        "resource_id", "resource_type", "platform_owner", "state", "reason_code", "actor",
-        "created_actor", "updated_actor", "etag", "schema_version", "environment_id", "cluster_id",
-        "installation_id", "tenant_id", "release_sha", "chart_version", "terminal_migration",
-        "desired_state_hash", "observed_state_hash", "drift_state", "idempotency_key",
-    ]},
+    **{
+        key: {"type": "keyword"}
+        for key in [
+            "resource_id",
+            "resource_type",
+            "platform_owner",
+            "state",
+            "reason_code",
+            "actor",
+            "created_actor",
+            "updated_actor",
+            "etag",
+            "schema_version",
+            "environment_id",
+            "cluster_id",
+            "installation_id",
+            "tenant_id",
+            "release_sha",
+            "chart_version",
+            "terminal_migration",
+            "desired_state_hash",
+            "observed_state_hash",
+            "drift_state",
+            "idempotency_key",
+        ]
+    },
     **{key: {"type": "date"} for key in ["created_at", "updated_at", "timestamp"]},
     "revision": {"type": "long"},
     "metadata": {"type": "flattened"},
@@ -1983,42 +2003,84 @@ PLATFORM_LIFECYCLE_MIGRATION = Migration(
     rollback_strategy="stop lifecycle writers; retain append-only evidence and snapshots; never reverse tenant deletion or Elasticsearch data migrations",
     operations={
         "mutable_indices": [
-            "dataobs-platform-environments-v1", "dataobs-platform-clusters-v1",
-            "dataobs-platform-installations-v1", "dataobs-platform-deployment-plans-v1",
-            "dataobs-platform-tenant-lifecycle-v1", "dataobs-platform-lifecycle-operations-v1",
+            "dataobs-platform-environments-v1",
+            "dataobs-platform-clusters-v1",
+            "dataobs-platform-installations-v1",
+            "dataobs-platform-deployment-plans-v1",
+            "dataobs-platform-tenant-lifecycle-v1",
+            "dataobs-platform-lifecycle-operations-v1",
         ],
-        "mapping_updates": {name: PLATFORM_LIFECYCLE_PROPERTIES for name in [
-            "dataobs-platform-environments-v1", "dataobs-platform-clusters-v1",
-            "dataobs-platform-installations-v1", "dataobs-platform-deployment-plans-v1",
-            "dataobs-platform-tenant-lifecycle-v1", "dataobs-platform-lifecycle-operations-v1",
-        ]},
-        "data_stream_contracts": {"logs-dataobs.platform-lifecycle-evidence-*": {
-            "retention": "2555d", "properties": PLATFORM_LIFECYCLE_PROPERTIES}},
+        "mapping_updates": {
+            name: PLATFORM_LIFECYCLE_PROPERTIES
+            for name in [
+                "dataobs-platform-environments-v1",
+                "dataobs-platform-clusters-v1",
+                "dataobs-platform-installations-v1",
+                "dataobs-platform-deployment-plans-v1",
+                "dataobs-platform-tenant-lifecycle-v1",
+                "dataobs-platform-lifecycle-operations-v1",
+            ]
+        },
+        "data_stream_contracts": {
+            "logs-dataobs.platform-lifecycle-evidence-*": {
+                "retention": "2555d",
+                "properties": PLATFORM_LIFECYCLE_PROPERTIES,
+            }
+        },
     },
 )
 
 PATHWAY_INVESTIGATION_PROPERTIES = {
-    **{key: {"type": "keyword"} for key in [
-        "snapshot_id", "tenant_id", "environment", "pathway_id", "graph_hash",
-        "classification", "schema_version", "node_ids", "edge_ids",
-        "change_reason_codes", "source_coverage", "missing_inputs", "evidence_refs",
-    ]},
+    **{
+        key: {"type": "keyword"}
+        for key in [
+            "snapshot_id",
+            "tenant_id",
+            "environment",
+            "pathway_id",
+            "graph_hash",
+            "classification",
+            "schema_version",
+            "node_ids",
+            "edge_ids",
+            "change_reason_codes",
+            "source_coverage",
+            "missing_inputs",
+            "evidence_refs",
+        ]
+    },
     **{key: {"type": "date"} for key in ["effective_at", "observed_at"]},
     **{key: {"type": "integer"} for key in ["node_count", "edge_count"]},
     "confidence": {"type": "double"},
-    "nodes": {"type": "nested", "dynamic": "strict", "properties": {
-        "node_id": {"type": "keyword"}, "node_type": {"type": "keyword"},
-        "display_name": {"type": "keyword"}, "confidence": {"type": "double"},
-        "source_coverage": {"type": "keyword"}, "evidence_refs": {"type": "keyword"},
-        "data_status": {"type": "keyword"},
-    }},
-    "edges": {"type": "nested", "dynamic": "strict", "properties": {
-        "edge_id": {"type": "keyword"}, "source_node_id": {"type": "keyword"},
-        "destination_node_id": {"type": "keyword"}, "relationship": {"type": "keyword"},
-        "topic": {"type": "keyword"}, "consumer_group": {"type": "keyword"},
-        "confidence": {"type": "double"}, "source_coverage": {"type": "keyword"},
-        "evidence_refs": {"type": "keyword"}, "data_status": {"type": "keyword"},
-    }},
+    "nodes": {
+        "type": "nested",
+        "dynamic": "strict",
+        "properties": {
+            "node_id": {"type": "keyword"},
+            "node_type": {"type": "keyword"},
+            "display_name": {"type": "keyword"},
+            "confidence": {"type": "double"},
+            "source_coverage": {"type": "keyword"},
+            "evidence_refs": {"type": "keyword"},
+            "data_status": {"type": "keyword"},
+        },
+    },
+    "edges": {
+        "type": "nested",
+        "dynamic": "strict",
+        "properties": {
+            "edge_id": {"type": "keyword"},
+            "source_node_id": {"type": "keyword"},
+            "destination_node_id": {"type": "keyword"},
+            "relationship": {"type": "keyword"},
+            "topic": {"type": "keyword"},
+            "consumer_group": {"type": "keyword"},
+            "confidence": {"type": "double"},
+            "source_coverage": {"type": "keyword"},
+            "evidence_refs": {"type": "keyword"},
+            "data_status": {"type": "keyword"},
+        },
+    },
 }
 
 PATHWAY_INVESTIGATION_HISTORY_MIGRATION = Migration(
@@ -2029,14 +2091,30 @@ PATHWAY_INVESTIGATION_HISTORY_MIGRATION = Migration(
     rollback_strategy="stop history projector; retain append-only snapshots; remove write aliases only after export",
     operations={
         "mutable_indices": ["dataobs-pathway-history-state-v1"],
-        "mapping_updates": {"dataobs-pathway-history-state-v1": {
-            **{key: {"type": "keyword"} for key in ["tenant_id", "environment", "pathway_id", "graph_hash", "checkpoint", "lease_owner", "schema_version"]},
-            **{key: {"type": "date"} for key in ["last_snapshot_at", "latest_source_at", "lease_expires_at"]},
-            "fencing_token": {"type": "long"},
-        }},
-        "data_stream_contracts": {"logs-dataobs.pathway-topology-snapshot-*": {
-            "retention": "365d", "properties": PATHWAY_INVESTIGATION_PROPERTIES,
-        }},
+        "mapping_updates": {
+            "dataobs-pathway-history-state-v1": {
+                **{
+                    key: {"type": "keyword"}
+                    for key in [
+                        "tenant_id",
+                        "environment",
+                        "pathway_id",
+                        "graph_hash",
+                        "checkpoint",
+                        "lease_owner",
+                        "schema_version",
+                    ]
+                },
+                **{key: {"type": "date"} for key in ["last_snapshot_at", "latest_source_at", "lease_expires_at"]},
+                "fencing_token": {"type": "long"},
+            }
+        },
+        "data_stream_contracts": {
+            "logs-dataobs.pathway-topology-snapshot-*": {
+                "retention": "365d",
+                "properties": PATHWAY_INVESTIGATION_PROPERTIES,
+            }
+        },
     },
 )
 
@@ -2274,47 +2352,215 @@ POST_INCIDENT_REVIEW_ANALYTICS_MIGRATION = Migration(
     dependencies=["0030_team1_multi_broker_messaging_runtime"],
     rollback_strategy="stop Team 3 writers; retain immutable review and follow-up audit evidence",
     operations={
-        "mutable_indices": ["dataobs-incident-reviews-current-v1", "dataobs-incident-followups-current-v1", "dataobs-incident-analytics-current-v1"],
+        "mutable_indices": [
+            "dataobs-incident-reviews-current-v1",
+            "dataobs-incident-followups-current-v1",
+            "dataobs-incident-analytics-current-v1",
+        ],
         "mapping_updates": {
-            "dataobs-incident-reviews-current-v1": {"dynamic": "strict", "properties": {
-                "tenant_id": {"type": "keyword"}, "environment": {"type": "keyword"}, "review_id": {"type": "keyword"}, "incident_id": {"type": "keyword"},
-                "review_generation": {"type": "integer"}, "review_status": {"type": "keyword"}, "requirement_state": {"type": "keyword"}, "owner": {"type": "keyword"},
-                "due_at": {"type": "date"}, "completed_at": {"type": "date"}, "incident_revision": {"type": "keyword"}, "evidence_cutoff": {"type": "date"},
-                "policy_id": {"type": "keyword"}, "policy_version": {"type": "keyword"}, "policy_hash": {"type": "keyword"}, "sections": {"type": "object", "enabled": False}}},
-            "dataobs-incident-followups-current-v1": {"dynamic": "strict", "properties": {
-                "tenant_id": {"type": "keyword"}, "environment": {"type": "keyword"}, "followup_id": {"type": "keyword"}, "incident_id": {"type": "keyword"}, "review_id": {"type": "keyword"},
-                "followup_status": {"type": "keyword"}, "followup_category": {"type": "keyword"}, "priority": {"type": "keyword"}, "owner": {"type": "keyword"}, "due_at": {"type": "date"}, "completed_at": {"type": "date"}}},
-            "dataobs-incident-analytics-current-v1": {"dynamic": "strict", "properties": {
-                "tenant_id": {"type": "keyword"}, "environment": {"type": "keyword"}, "incident_id": {"type": "keyword"}, "opened_at": {"type": "date"}, "severity": {"type": "keyword"}, "priority": {"type": "keyword"},
-                "time_to_acknowledge_ms": {"type": "long"}, "time_to_resolve_ms": {"type": "long"}, "time_to_close_ms": {"type": "long"}, "signal_to_incident_ms": {"type": "long"},
-                "waiting_for_approval_duration_ms": {"type": "long"}, "monitoring_recovery_duration_ms": {"type": "long"}, "reopen_count": {"type": "integer"}, "was_reopened": {"type": "boolean"},
-                "source_incident_revision": {"type": "keyword"}, "source_timeline_checkpoint": {"type": "keyword"}, "metric_definition_version": {"type": "keyword"}, "projection_version": {"type": "integer"}, "computed_at": {"type": "date"}}},
+            "dataobs-incident-reviews-current-v1": {
+                "dynamic": "strict",
+                "properties": {
+                    "tenant_id": {"type": "keyword"},
+                    "environment": {"type": "keyword"},
+                    "review_id": {"type": "keyword"},
+                    "incident_id": {"type": "keyword"},
+                    "review_generation": {"type": "integer"},
+                    "review_status": {"type": "keyword"},
+                    "requirement_state": {"type": "keyword"},
+                    "owner": {"type": "keyword"},
+                    "due_at": {"type": "date"},
+                    "completed_at": {"type": "date"},
+                    "incident_revision": {"type": "keyword"},
+                    "evidence_cutoff": {"type": "date"},
+                    "policy_id": {"type": "keyword"},
+                    "policy_version": {"type": "keyword"},
+                    "policy_hash": {"type": "keyword"},
+                    "sections": {"type": "object", "enabled": False},
+                },
+            },
+            "dataobs-incident-followups-current-v1": {
+                "dynamic": "strict",
+                "properties": {
+                    "tenant_id": {"type": "keyword"},
+                    "environment": {"type": "keyword"},
+                    "followup_id": {"type": "keyword"},
+                    "incident_id": {"type": "keyword"},
+                    "review_id": {"type": "keyword"},
+                    "followup_status": {"type": "keyword"},
+                    "followup_category": {"type": "keyword"},
+                    "priority": {"type": "keyword"},
+                    "owner": {"type": "keyword"},
+                    "due_at": {"type": "date"},
+                    "completed_at": {"type": "date"},
+                },
+            },
+            "dataobs-incident-analytics-current-v1": {
+                "dynamic": "strict",
+                "properties": {
+                    "tenant_id": {"type": "keyword"},
+                    "environment": {"type": "keyword"},
+                    "incident_id": {"type": "keyword"},
+                    "opened_at": {"type": "date"},
+                    "severity": {"type": "keyword"},
+                    "priority": {"type": "keyword"},
+                    "time_to_acknowledge_ms": {"type": "long"},
+                    "time_to_resolve_ms": {"type": "long"},
+                    "time_to_close_ms": {"type": "long"},
+                    "signal_to_incident_ms": {"type": "long"},
+                    "waiting_for_approval_duration_ms": {"type": "long"},
+                    "monitoring_recovery_duration_ms": {"type": "long"},
+                    "reopen_count": {"type": "integer"},
+                    "was_reopened": {"type": "boolean"},
+                    "source_incident_revision": {"type": "keyword"},
+                    "source_timeline_checkpoint": {"type": "keyword"},
+                    "metric_definition_version": {"type": "keyword"},
+                    "projection_version": {"type": "integer"},
+                    "computed_at": {"type": "date"},
+                },
+            },
         },
         "data_stream_contracts": {
-            "logs-dataobs.incident-review-event-*": {"retention": "2555d", "properties": {"tenant_id": {"type": "keyword"}, "environment": {"type": "keyword"}, "incident_id": {"type": "keyword"}, "review_id": {"type": "keyword"}, "event_type": {"type": "keyword"}, "@timestamp": {"type": "date"}}},
-            "logs-dataobs.incident-followup-event-*": {"retention": "2555d", "properties": {"tenant_id": {"type": "keyword"}, "environment": {"type": "keyword"}, "incident_id": {"type": "keyword"}, "followup_id": {"type": "keyword"}, "event_type": {"type": "keyword"}, "@timestamp": {"type": "date"}}},
+            "logs-dataobs.incident-review-event-*": {
+                "retention": "2555d",
+                "properties": {
+                    "tenant_id": {"type": "keyword"},
+                    "environment": {"type": "keyword"},
+                    "incident_id": {"type": "keyword"},
+                    "review_id": {"type": "keyword"},
+                    "event_type": {"type": "keyword"},
+                    "@timestamp": {"type": "date"},
+                },
+            },
+            "logs-dataobs.incident-followup-event-*": {
+                "retention": "2555d",
+                "properties": {
+                    "tenant_id": {"type": "keyword"},
+                    "environment": {"type": "keyword"},
+                    "incident_id": {"type": "keyword"},
+                    "followup_id": {"type": "keyword"},
+                    "event_type": {"type": "keyword"},
+                    "@timestamp": {"type": "date"},
+                },
+            },
         },
     },
 )
 
 DATA_SLO_PROPERTIES: Dict[str, Any] = {
-    **{key: {"type": "keyword"} for key in ["slo_id", "tenant_id", "environment", "scope_type", "scope_id", "name", "description", "sli_type", "window", "window_type", "evaluation_granularity", "missing_evidence_policy", "criticality", "owner_team", "state", "etag", "created_by", "updated_by", "schema_version", "evaluation_id", "burn_classification", "evidence_status", "evaluation_method_version", "lease_owner", "worker_id"]},
-    **{key: {"type": "date"} for key in ["created_at", "updated_at", "window_start", "window_end", "evaluated_at", "last_evaluated", "next_evaluation_at", "lease_expires_at", "last_checkpoint", "last_success", "last_failure", "estimated_exhaustion_at"]},
-    **{key: {"type": "integer"} for key in ["revision", "definition_revision", "expected_intervals", "eligible_intervals", "good_intervals", "bad_intervals", "unknown_intervals", "excluded_intervals", "attempt_count"]},
+    **{
+        key: {"type": "keyword"}
+        for key in [
+            "slo_id",
+            "tenant_id",
+            "environment",
+            "scope_type",
+            "scope_id",
+            "name",
+            "description",
+            "sli_type",
+            "window",
+            "window_type",
+            "evaluation_granularity",
+            "missing_evidence_policy",
+            "criticality",
+            "owner_team",
+            "state",
+            "etag",
+            "created_by",
+            "updated_by",
+            "schema_version",
+            "evaluation_id",
+            "burn_classification",
+            "evidence_status",
+            "evaluation_method_version",
+            "lease_owner",
+            "worker_id",
+        ]
+    },
+    **{
+        key: {"type": "date"}
+        for key in [
+            "created_at",
+            "updated_at",
+            "window_start",
+            "window_end",
+            "evaluated_at",
+            "last_evaluated",
+            "next_evaluation_at",
+            "lease_expires_at",
+            "last_checkpoint",
+            "last_success",
+            "last_failure",
+            "estimated_exhaustion_at",
+        ]
+    },
+    **{
+        key: {"type": "integer"}
+        for key in [
+            "revision",
+            "definition_revision",
+            "expected_intervals",
+            "eligible_intervals",
+            "good_intervals",
+            "bad_intervals",
+            "unknown_intervals",
+            "excluded_intervals",
+            "attempt_count",
+        ]
+    },
     **{key: {"type": "long"} for key in ["fencing_token"]},
-    **{key: {"type": "double"} for key in ["objective", "sli_actual", "current_sli", "coverage_ratio", "coverage", "confidence", "budget_total", "budget_consumed", "budget_remaining", "short_window_burn", "long_window_burn", "short_burn_rate", "long_burn_rate", "forecast_confidence"]},
-    "source_monitor_ids": {"type": "keyword"}, "source_job_ids": {"type": "keyword"}, "source_contract_ids": {"type": "keyword"},
-    "evidence_refs": {"type": "keyword", "index": False}, "reason_codes": {"type": "keyword"},
-    "definition": {"type": "object", "enabled": False}, "downstream_impact_summary": {"type": "object", "enabled": False},
+    **{
+        key: {"type": "double"}
+        for key in [
+            "objective",
+            "sli_actual",
+            "current_sli",
+            "coverage_ratio",
+            "coverage",
+            "confidence",
+            "budget_total",
+            "budget_consumed",
+            "budget_remaining",
+            "short_window_burn",
+            "long_window_burn",
+            "short_burn_rate",
+            "long_burn_rate",
+            "forecast_confidence",
+        ]
+    },
+    "source_monitor_ids": {"type": "keyword"},
+    "source_job_ids": {"type": "keyword"},
+    "source_contract_ids": {"type": "keyword"},
+    "evidence_refs": {"type": "keyword", "index": False},
+    "reason_codes": {"type": "keyword"},
+    "definition": {"type": "object", "enabled": False},
+    "downstream_impact_summary": {"type": "object", "enabled": False},
 }
 
 TEAM2_DATA_SLO_PRODUCTION_RUNTIME_MIGRATION = Migration(
-    "0032_team2_data_slo_production_runtime", "Persist canonical SLO definitions, immutable evaluations, projections, and fenced runtime", "v1",
-    dependencies=["0031_team3_post_incident_review_analytics"], rollback_strategy="stop SLO workers; retain immutable evaluations and definition audit history",
+    "0032_team2_data_slo_production_runtime",
+    "Persist canonical SLO definitions, immutable evaluations, projections, and fenced runtime",
+    "v1",
+    dependencies=["0031_team3_post_incident_review_analytics"],
+    rollback_strategy="stop SLO workers; retain immutable evaluations and definition audit history",
     operations={
-        "mutable_indices": ["dataobs-slo-definition-current-v1", "dataobs-slo-current-v1", "dataobs-slo-runtime-state-v1"],
-        "mapping_updates": {name: {"dynamic": "strict", "properties": DATA_SLO_PROPERTIES} for name in ["dataobs-slo-definition-current-v1", "dataobs-slo-current-v1", "dataobs-slo-runtime-state-v1"]},
-        "data_stream_contracts": {name: {"retention": retention, "properties": DATA_SLO_PROPERTIES} for name, retention in {"logs-dataobs.slo-definition-event-*":"3650d", "logs-dataobs.slo-evaluation-*":"730d"}.items()},
+        "mutable_indices": [
+            "dataobs-slo-definition-current-v1",
+            "dataobs-slo-current-v1",
+            "dataobs-slo-runtime-state-v1",
+        ],
+        "mapping_updates": {
+            name: {"dynamic": "strict", "properties": DATA_SLO_PROPERTIES}
+            for name in ["dataobs-slo-definition-current-v1", "dataobs-slo-current-v1", "dataobs-slo-runtime-state-v1"]
+        },
+        "data_stream_contracts": {
+            name: {"retention": retention, "properties": DATA_SLO_PROPERTIES}
+            for name, retention in {
+                "logs-dataobs.slo-definition-event-*": "3650d",
+                "logs-dataobs.slo-evaluation-*": "730d",
+            }.items()
+        },
     },
 )
 
@@ -2441,7 +2687,6 @@ TEAM1_STREAM_SCHEMA_INTELLIGENCE_RUNTIME_MIGRATION = Migration(
         },
     },
 )
-
 
 
 def migrations() -> List[Migration]:

@@ -1,5 +1,5 @@
 import { Link, useSearchParams } from "react-router-dom";
-import { qualityFindings } from "../../api/quality";
+import { qualityApi } from "../../api/quality";
 import { useProductContext } from "../../state/context";
 import {
   display,
@@ -14,7 +14,8 @@ export function QualityFindings() {
   query.delete("tab");
   const key = query.toString();
   const { data, error, loading, refresh } = useQualityRequest(
-    (s) => qualityFindings(tenant, environment, query, s),
+    (s) =>
+      qualityApi.findings(tenant, environment, query, s).then((x) => x.data),
     [tenant, environment, key],
   );
   const update = (k: string, v: string) => {

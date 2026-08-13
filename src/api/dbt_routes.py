@@ -26,8 +26,21 @@ def create_dbt_router(service_dependency: Callable[..., Any], auth_dependency: C
     @router.post("/artifacts", status_code=202)
     def ingest(payload: ArtifactIngestionRequest, request: Request, service: Any = Depends(service_dependency)):
         try:
-            result = service.ingest(request.state.tenant_id, request.state.environment, payload.project_id, payload.project_name, payload.artifact_type, payload.artifact, repository_ref=payload.repository_ref, commit_sha=payload.commit_sha)
-            return {"event_id": result["event_id"], "status": result["status"], "artifact_fingerprint": result["artifact"].envelope.artifact_fingerprint}
+            result = service.ingest(
+                request.state.tenant_id,
+                request.state.environment,
+                payload.project_id,
+                payload.project_name,
+                payload.artifact_type,
+                payload.artifact,
+                repository_ref=payload.repository_ref,
+                commit_sha=payload.commit_sha,
+            )
+            return {
+                "event_id": result["event_id"],
+                "status": result["status"],
+                "artifact_fingerprint": result["artifact"].envelope.artifact_fingerprint,
+            }
         except DbtArtifactError as exc:
             raise HTTPException(422, {"code": exc.code, "message": exc.safe_message, "details": exc.details}) from exc
 
@@ -39,15 +52,38 @@ def create_dbt_router(service_dependency: Callable[..., Any], auth_dependency: C
     @router.get("/projects/{project_id}")
     def project(project_id: str, request: Request, service: Any = Depends(service_dependency)):
         value = service.repository.get_project(request.state.tenant_id, request.state.environment, project_id)
-        if not value: raise HTTPException(404, "dbt project not found")
+        if not value:
+            raise HTTPException(404, "dbt project not found")
         return value
 
     @router.get("/projects/{project_id}/resources")
-    def resources(project_id: str, request: Request, service: Any = Depends(service_dependency), resource_type: str | None = None, limit: int = Query(100, ge=1, le=1000)):
-        return {"items": service.repository.list_resources(request.state.tenant_id, request.state.environment, project_id, resource_type, limit)}
+    def resources(
+        project_id: str,
+        request: Request,
+        service: Any = Depends(service_dependency),
+        resource_type: str | None = None,
+        limit: int = Query(100, ge=1, le=1000),
+    ):
+        return {
+            "items": service.repository.list_resources(
+                request.state.tenant_id, request.state.environment, project_id, resource_type, limit
+            )
+        }
 
     for path, kind in (("tests", "test"), ("semantic", "semantic_model"), ("freshness", "source")):
-        async def listing(project_id: str, request: Request, service: Any = Depends(service_dependency), limit: int = Query(100, ge=1, le=1000), resource_kind: str = kind):
-            return {"items": service.repository.list_resources(request.state.tenant_id, request.state.environment, project_id, resource_kind, limit)}
+
+        async def listing(
+            project_id: str,
+            request: Request,
+            service: Any = Depends(service_dependency),
+            limit: int = Query(100, ge=1, le=1000),
+            resource_kind: str = kind,
+        ):
+            return {
+                "items": service.repository.list_resources(
+                    request.state.tenant_id, request.state.environment, project_id, resource_kind, limit
+                )
+            }
+
         router.add_api_route(f"/projects/{{project_id}}/{path}", listing, methods=["GET"], name=f"dbt_project_{path}")
     return router

@@ -54,5 +54,4 @@ def _summary(raw: str) -> dict[str, Any]:
     return {
         "format": "structured",
         "field_count": len(fields),
-        "name": value.get("name") if isinstance(value, dict) else None,
     }

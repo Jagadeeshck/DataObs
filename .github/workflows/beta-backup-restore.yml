@@ -19,7 +19,10 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: {python-version: '3.12'}
-      - run: pip install -r requirements.txt pytest
+      - name: Install canonical backend CI dependencies
+        run: python -m pip install -r requirements.txt -r requirements-ci.txt
+      - name: Wait for Elasticsearch readiness
+        run: python scripts/ci/wait_for_elasticsearch.py --url http://localhost:9200 --timeout 120
       - name: Real Elasticsearch snapshot and destructive restore proof
         env: {RUN_BETA_BACKUP_RESTORE: '1', ELASTICSEARCH_URL: 'http://localhost:9200', BETA_RESTORE_REPORT: evidence/results/backup-restore.json}
         run: mkdir -p evidence/results && python -m pytest tests/integration/test_beta_backup_restore.py -q --junitxml=evidence/results/backup-restore.xml

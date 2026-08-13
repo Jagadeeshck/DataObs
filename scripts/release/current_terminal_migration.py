@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from packages.elastic_store.manifest import migrations
+from scripts.release.validate_migration_graph import validate
 
 
 def migration_report() -> dict[str, Any]:
@@ -47,7 +47,7 @@ def migration_report() -> dict[str, Any]:
     ).hexdigest()
     return {
         "migration_count": len(ids),
-        "terminal_migration": ids[-1],
+        "terminal_migration": graph["terminal_migration"],
         "ordered_migration_ids": ids,
         "registry_checksum": checksum,
     }

@@ -21,6 +21,7 @@ from .services import (
     athena,
     emr_serverless,
     glue,
+    kinesis,
     lambda_service,
     mwaa,
     rds,
@@ -28,6 +29,7 @@ from .services import (
     redshift_serverless,
     s3,
     sagemaker,
+    sqs,
 )
 
 AWS_CLIENT_NAMES = {
@@ -41,6 +43,8 @@ AWS_CLIENT_NAMES = {
     "mwaa": "mwaa",
     "redshift": "redshift",
     "redshift-serverless": "redshift-serverless",
+    "kinesis": "kinesis",
+    "sqs": "sqs",
 }
 
 COLLECTORS = {
@@ -54,12 +58,14 @@ COLLECTORS = {
     "mwaa": mwaa.collect,
     "redshift": redshift.collect,
     "redshift-serverless": redshift_serverless.collect,
+    "kinesis": kinesis.collect,
+    "sqs": sqs.collect,
 }
 
 
 class AwsDataPlatformProvider:
     provider_type = "aws"
-    provider_version = "2"
+    provider_version = "3"
 
     def __init__(self, client_factory=None):
         self._factory = client_factory
@@ -81,7 +87,7 @@ class AwsDataPlatformProvider:
             frozenset({CollectionMode.SCHEDULED, CollectionMode.ON_DEMAND}),
             ("boto3",),
             (
-                "Ten explicitly configured services only",
+                "Twelve explicitly configured services only",
                 "No object contents, SQL, secrets, logs, lineage, profiling, cost, or mutation",
             ),
         )
@@ -130,7 +136,10 @@ class AwsDataPlatformProvider:
             for service in cfg.services:
                 try:
                     client = factory.client(account, region, AWS_CLIENT_NAMES[service])
-                    for item in COLLECTORS[service](client, context, cfg, account, region):
+                    kwargs = {}
+                    if service in {"kinesis", "sqs"} and (cfg.raw.get("cloudwatch") or {}).get("enabled", True):
+                        kwargs["cloudwatch_client"] = factory.client(account, region, "cloudwatch")
+                    for item in COLLECTORS[service](client, context, cfg, account, region, **kwargs):
                         if item is not None:
                             yield item
                 except Exception as exc:

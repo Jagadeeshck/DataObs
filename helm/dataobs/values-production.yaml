@@ -500,6 +500,7 @@ migrationJob:
   - apply
   # Kept in sync with packages.elastic_store.registry by render_helm_values.py/CI.
   terminalMigration: 0033_team1_stream_schema_intelligence_runtime
+  terminalMigration: 0032_team2_data_slo_production_runtime
   activeDeadlineSeconds: 900
   backoffLimit: 2
   ttlSecondsAfterFinished: 86400

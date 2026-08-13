@@ -21,6 +21,55 @@ ownership_metadata_schema:
   - implementation_status
   - certification_status
 capabilities:
+- id: quality.asset_trust
+  name: Asset Trust and Reliability Score
+  summary: Explainable asset-level aggregation of canonical reliability and observability evidence.
+  pillar: data
+  domain: quality
+  state: functional_unvalidated
+  release_readiness: blocked
+  implementation:
+    code_paths:
+    - packages/domain_model/asset_trust.py
+    - services/asset_trust
+    api_paths: []
+    ui_routes: []
+    storage_resources:
+    - dataobs-asset-trust-current-v1
+    - dataobs-asset-trust-policy-v1
+    - logs-dataobs.asset-trust-evaluation-default
+    migrations: []
+  validation:
+    unit: passed
+    integration: defined_not_run
+    real_stack: defined_not_run
+    hosted_ci: missing
+    browser: missing
+    accessibility: missing
+    security: defined_not_run
+    scale: defined_not_run
+    upgrade: defined_not_run
+    release: missing
+  evidence:
+    tests:
+    - tests/asset_trust
+    workflow_jobs:
+    - asset-trust-domain
+    audit_docs:
+    - docs/development/team-2-asset-trust-score-v1-audit.md
+    runbooks:
+    - docs/operations/asset-trust-investigation.md
+    - docs/operations/asset-trust-policy-management.md
+    artifacts:
+    - team-2-asset-trust-score-v1-evidence
+  blockers:
+  - Elasticsearch 9.4.2, API, Console, browser, accessibility, scale, and independent exact-head certification remain outstanding.
+  non_goals:
+  - Business Risk Score or replacement of Data Product Reliability.
+  next_gate: Add the forward migration and complete API, Console, ES 9.4.2, browser, axe, scale, and independent exact-head certification.
+  owner: Team 2
+  last_audited_at: '2026-08-13'
+  last_audited_commit: pending
 - id: platform.architecture
   name: Elasticsearch-native architecture
   summary: Evidence-led status for elasticsearch-native architecture.
@@ -1582,7 +1631,7 @@ capabilities:
   last_audited_commit: 5164762a6337a44a76ad2c7574a78edc048a70b3
 - id: integration.cloud
   name: AWS, Azure, GCP, and Snowflake providers
-  summary: AWS collector v2 and Snowflake warehouse collector v1 are bounded and functional_unvalidated; Azure and GCP remain deferred.
+  summary: AWS collector v3 (including Kinesis/SQS) and Snowflake warehouse collector v1 are bounded and functional_unvalidated; Azure and GCP remain deferred.
   pillar: platform
   domain: integrations
   state: functional_unvalidated
@@ -1609,11 +1658,11 @@ capabilities:
     upgrade: defined_not_run
     release: defined_not_run
   evidence:
-    tests: [tests/integrations/test_aws_provider.py, tests/integrations/test_aws_provider_v2.py, tests/integrations/test_snowflake_provider.py]
-    workflow_jobs: [aws-data-platform-collector-v2.yml:validate, aws-data-platform-collector-v2.yml:verify-evidence, snowflake-warehouse-collector-v1.yml:validate, snowflake-warehouse-collector-v1.yml:verify-evidence]
-    audit_docs: [docs/development/aws-data-platform-collector-v2-audit.md, docs/development/snowflake-warehouse-collector-v1-audit.md]
+    tests: [tests/integrations/test_aws_provider.py, tests/integrations/test_aws_provider_v2.py, tests/integrations/test_aws_messaging.py, tests/integrations/test_snowflake_provider.py]
+    workflow_jobs: [aws-data-platform-collector-v2.yml:validate, aws-data-platform-collector-v2.yml:verify-evidence, team-4-aws-kinesis-sqs-messaging-v1.yml:validate, team-4-aws-kinesis-sqs-messaging-v1.yml:verify-evidence, snowflake-warehouse-collector-v1.yml:validate, snowflake-warehouse-collector-v1.yml:verify-evidence]
+    audit_docs: [docs/development/aws-data-platform-collector-v2-audit.md, docs/development/team-4-aws-kinesis-sqs-messaging-v1-audit.md, docs/development/snowflake-warehouse-collector-v1-audit.md]
     runbooks: [docs/operations/aws-data-platform-collector.md, docs/operations/snowflake-warehouse-collector.md]
-    artifacts: [aws-data-platform-collector-v2-evidence (defined; final-head hosted run pending)]
+    artifacts: [aws-data-platform-collector-v2-evidence (defined; final-head hosted run pending), team-4-aws-kinesis-sqs-messaging-v1-evidence (defined; hosted exact-SHA run pending)]
   blockers:
   - Exact-commit hosted and independently verified AWS and Snowflake evidence is absent; Azure and GCP remain deferred.
   non_goals:

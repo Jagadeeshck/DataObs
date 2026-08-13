@@ -1,0 +1,32 @@
+{
+  "team": "Team 4",
+  "status": "functional_unvalidated",
+  "exact_sha": "populated from GITHUB_SHA by hosted workflow",
+  "branch": "codex/team-4-aws-kinesis-sqs-messaging-v1",
+  "pr_title": "Team 4: add AWS Kinesis and SQS messaging collectors v1",
+  "aws_provider_version": "3",
+  "terminal_migration": "0032_team2_data_slo_production_runtime",
+  "kinesis_inventory_result": "passed_fixture",
+  "kinesis_shard_result": "passed_fixture",
+  "kinesis_metric_result": "passed_fixture",
+  "kinesis_no_payload_read_result": "passed_static_and_fixture",
+  "sqs_inventory_result": "passed_fixture",
+  "sqs_attribute_result": "passed_fixture",
+  "sqs_dlq_result": "passed_fixture",
+  "sqs_metric_result": "passed_fixture",
+  "sqs_approximate_semantics_result": "passed_fixture",
+  "sqs_no_receive_message_result": "passed_static_and_fixture",
+  "cloudwatch_allowlist_result": "passed",
+  "missing_versus_zero_result": "passed",
+  "team_1_envelope_compatibility_result": "passed",
+  "checkpoint_result": "existing_collection_manager_persist_before_advance",
+  "partial_failure_result": "passed_fixture",
+  "aws_regression_result": "passed_local",
+  "team_4_regression_result": "passed_local",
+  "live_test_result": "not_run_opt_in",
+  "known_limitations": [
+    "No hosted exact-SHA verification",
+    "Team 1 runtime projects resource family only",
+    "No production-readiness claim"
+  ]
+}

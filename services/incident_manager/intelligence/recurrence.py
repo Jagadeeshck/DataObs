@@ -94,6 +94,17 @@ def propose_recurrence(
     source_opened_at: datetime | None,
     candidate_opened_at: datetime | None,
 ) -> IncidentRecurrence | None:
+    if similarity.source_incident_id != source.incident_id or similarity.candidate_incident_id != candidate.incident_id:
+        raise ValueError("similarity pair does not match supplied incidents")
+    if source.tenant_id != candidate.tenant_id:
+        raise ValueError("cross-tenant recurrence is prohibited")
+    if source.environment != candidate.environment:
+        raise ValueError("cross-environment recurrence is prohibited")
+    if (
+        similarity.source_revision != source.source_revision
+        or similarity.candidate_revision != candidate.source_revision
+    ):
+        raise ValueError("stale similarity revisions")
     if source.incident_id == candidate.incident_id or source.merged_from or candidate.merged_from:
         return None
     if source.split_from or candidate.split_from or not source_opened_at or not candidate_opened_at:
@@ -109,10 +120,19 @@ def propose_recurrence(
         or independent < MIN_RECURRENCE_FAMILIES
     ):
         return None
-    exact_signature = failure_signature_fingerprint(source.failure_signature) == failure_signature_fingerprint(
-        candidate.failure_signature
-    )
-    recurrence_type = RecurrenceType.SAME_FAILURE_SIGNATURE if exact_signature else RecurrenceType.SAME_ASSET_FAILURE
+    matched = {item.feature for item in similarity.matched_features if item.similarity == 1}
+    if similarity.same_structural_signature:
+        recurrence_type = RecurrenceType.SAME_FAILURE_SIGNATURE
+    else:
+        supported = (
+            ("affected_assets", RecurrenceType.SAME_ASSET_FAILURE),
+            ("rule_ids", RecurrenceType.SAME_RULE_FAILURE),
+            ("data_product_ids", RecurrenceType.SAME_DATA_PRODUCT_FAILURE),
+            ("business_services", RecurrenceType.SAME_BUSINESS_SERVICE_FAILURE),
+        )
+        recurrence_type = next((kind for feature, kind in supported if feature in matched), None)
+    if recurrence_type is None:
+        return None
     return IncidentRecurrence(
         relationship_id=relationship_identity(
             source.tenant_id, source.environment, source.incident_id, candidate.incident_id, similarity.scoring_version

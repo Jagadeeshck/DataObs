@@ -82,10 +82,10 @@ def test_cloudwatch_measured_zero_and_missing():
     assert values[1].value is None and values[1].state == EvidenceState.MISSING
 
 
-def test_provider_v2_and_explicit_client_names():
+def test_provider_v3_and_explicit_client_names():
     from integrations.aws.provider import AWS_CLIENT_NAMES
 
-    assert AwsDataPlatformProvider.provider_version == "2"
+    assert AwsDataPlatformProvider.provider_version == "3"
     assert AWS_CLIENT_NAMES == {
         "rds": "rds",
         "glue": "glue",
@@ -97,6 +97,8 @@ def test_provider_v2_and_explicit_client_names():
         "mwaa": "mwaa",
         "redshift": "redshift",
         "redshift-serverless": "redshift-serverless",
+        "kinesis": "kinesis",
+        "sqs": "sqs",
     }
 
 

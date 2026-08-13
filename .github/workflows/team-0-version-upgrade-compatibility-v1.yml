@@ -1,0 +1,35 @@
+name: Team 0 version upgrade compatibility v1
+on:
+  pull_request:
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  compatibility-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.13'}
+      - run: pip install -r requirements.txt pytest pyyaml jsonschema
+      - name: Latest-main audit and exact SHA
+        run: test -n "$(git rev-parse HEAD)" && test -s docs/development/team-0-version-upgrade-compatibility-v1-audit.md
+      - name: Migration graph, terminal and allocation collision guard
+        run: |
+          python scripts/release/validate_migration_graph.py --output migration-graph-report.json
+          python scripts/release/current_terminal_migration.py
+          python scripts/check_migration_immutability.py --base-ref "${{ github.event.pull_request.base.sha || 'HEAD^' }}"
+      - name: Helm migration synchronization
+        run: python scripts/release/check_helm_migration_consistency.py
+      - name: Compatibility, version and deprecation policies
+        run: python scripts/release/validate_compatibility_policy.py
+      - name: Helm values schema
+        run: python -c "import json; from jsonschema import Draft7Validator; Draft7Validator.check_schema(json.load(open('helm/dataobs/values.schema.json')))"
+      - name: Configuration and OpenAPI compatibility tests
+        run: pytest -q tests/test_version_upgrade_compatibility.py
+      - name: Active readiness synchronization
+        run: python scripts/release/render_current_production_readiness.py --check
+      - name: Release gate and exact-SHA evidence
+        run: python scripts/release/build_upgrade_compatibility_evidence.py --output team-0-version-upgrade-compatibility-v1-evidence
+      - uses: actions/upload-artifact@v4
+        with: {name: team-0-version-upgrade-compatibility-v1-evidence, path: team-0-version-upgrade-compatibility-v1-evidence}

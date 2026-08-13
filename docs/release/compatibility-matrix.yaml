@@ -1,0 +1,27 @@
+schema_version: '1.0'
+dataobs_version: 0.2.0
+release_state: unvalidated
+evidence: docs/release/supported-platform-matrix.yaml
+dimensions:
+  elasticsearch:
+    - {exact: 9.4.2, state: compatible_but_unvalidated, patch_policy: exact_only, evidence: pending_hosted_capture}
+    - {minimum: 8.0.0, maximum: 8.99.99, state: incompatible, reason: unsupported_major}
+  kubernetes:
+    - {minimum: 1.30.0, maximum: 1.30.99, state: compatible_but_unvalidated, evidence: pending_hosted_capture}
+    - {minimum: 1.0.0, maximum: 1.29.99, state: incompatible, reason: too_old}
+  helm:
+    - {minimum: 3.17.0, maximum: 3.17.99, state: compatible_but_unvalidated, chart_api: v2}
+  python:
+    - {minimum: 3.13.0, maximum: 3.13.99, state: compatible_but_unvalidated, role: application_runtime_and_release_build}
+  node:
+    - {minimum: 22.0.0, maximum: 22.99.99, state: compatible_but_unvalidated, role: console_build_runtime}
+  oidc:
+    - {profile: dataobs-oidc-v1, state: compatible_but_unvalidated, flow: authorization_code, pkce: S256, issuer_validation: required, audience_validation: required, signing_key_validation: required}
+  helm_values_schema:
+    - {version: '1.0', state: compatible_but_unvalidated}
+  environment_schema:
+    - {version: '1.0', state: compatible_but_unvalidated}
+  previous_dataobs:
+    - {version: null, state: unknown, reason: no_supported_predecessor}
+future_versions_default: unknown
+capability_maturity_is_separate: true

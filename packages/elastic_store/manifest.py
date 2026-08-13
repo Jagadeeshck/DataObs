@@ -2297,6 +2297,27 @@ POST_INCIDENT_REVIEW_ANALYTICS_MIGRATION = Migration(
     },
 )
 
+DATA_SLO_PROPERTIES: Dict[str, Any] = {
+    **{key: {"type": "keyword"} for key in ["slo_id", "tenant_id", "environment", "scope_type", "scope_id", "name", "description", "sli_type", "window", "window_type", "evaluation_granularity", "missing_evidence_policy", "criticality", "owner_team", "state", "etag", "created_by", "updated_by", "schema_version", "evaluation_id", "burn_classification", "evidence_status", "evaluation_method_version", "lease_owner", "worker_id"]},
+    **{key: {"type": "date"} for key in ["created_at", "updated_at", "window_start", "window_end", "evaluated_at", "last_evaluated", "next_evaluation_at", "lease_expires_at", "last_checkpoint", "last_success", "last_failure", "estimated_exhaustion_at"]},
+    **{key: {"type": "integer"} for key in ["revision", "definition_revision", "expected_intervals", "eligible_intervals", "good_intervals", "bad_intervals", "unknown_intervals", "excluded_intervals", "attempt_count"]},
+    **{key: {"type": "long"} for key in ["fencing_token"]},
+    **{key: {"type": "double"} for key in ["objective", "sli_actual", "current_sli", "coverage_ratio", "coverage", "confidence", "budget_total", "budget_consumed", "budget_remaining", "short_window_burn", "long_window_burn", "short_burn_rate", "long_burn_rate", "forecast_confidence"]},
+    "source_monitor_ids": {"type": "keyword"}, "source_job_ids": {"type": "keyword"}, "source_contract_ids": {"type": "keyword"},
+    "evidence_refs": {"type": "keyword", "index": False}, "reason_codes": {"type": "keyword"},
+    "definition": {"type": "object", "enabled": False}, "downstream_impact_summary": {"type": "object", "enabled": False},
+}
+
+TEAM2_DATA_SLO_PRODUCTION_RUNTIME_MIGRATION = Migration(
+    "0032_team2_data_slo_production_runtime", "Persist canonical SLO definitions, immutable evaluations, projections, and fenced runtime", "v1",
+    dependencies=["0031_team3_post_incident_review_analytics"], rollback_strategy="stop SLO workers; retain immutable evaluations and definition audit history",
+    operations={
+        "mutable_indices": ["dataobs-slo-definition-current-v1", "dataobs-slo-current-v1", "dataobs-slo-runtime-state-v1"],
+        "mapping_updates": {name: {"dynamic": "strict", "properties": DATA_SLO_PROPERTIES} for name in ["dataobs-slo-definition-current-v1", "dataobs-slo-current-v1", "dataobs-slo-runtime-state-v1"]},
+        "data_stream_contracts": {name: {"retention": retention, "properties": DATA_SLO_PROPERTIES} for name, retention in {"logs-dataobs.slo-definition-event-*":"3650d", "logs-dataobs.slo-evaluation-*":"730d"}.items()},
+    },
+)
+
 
 
 def migrations() -> List[Migration]:
@@ -2332,6 +2353,7 @@ def migrations() -> List[Migration]:
         TEAM2_DATA_INTELLIGENCE_RECONCILIATION_MIGRATION,
         TEAM1_MULTI_BROKER_MESSAGING_RUNTIME_MIGRATION,
         POST_INCIDENT_REVIEW_ANALYTICS_MIGRATION,
+        TEAM2_DATA_SLO_PRODUCTION_RUNTIME_MIGRATION,
     ]
 
 

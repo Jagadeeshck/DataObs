@@ -2319,6 +2319,122 @@ TEAM2_DATA_SLO_PRODUCTION_RUNTIME_MIGRATION = Migration(
 )
 
 
+SCHEMA_INTELLIGENCE_PROPERTIES = {
+    "dynamic": "strict",
+    "properties": {
+        **{
+            key: {"type": "keyword"}
+            for key in [
+                "event_id",
+                "tenant_id",
+                "environment",
+                "integration_id",
+                "registry_id",
+                "subject_id",
+                "subject_fingerprint",
+                "schema_id",
+                "schema_type",
+                "schema_fingerprint",
+                "compatibility_mode",
+                "structural_fingerprint",
+                "data_status",
+                "measurement_method",
+                "schema_version_contract",
+                "evaluation_method",
+                "policy",
+                "result",
+                "technical_severity",
+                "resource_id",
+                "messaging_system",
+                "binding_method",
+                "consumer_id",
+                "consumer_group_or_subscription",
+                "exposure_state",
+                "compatibility_state",
+                "worker_id",
+                "checkpoint",
+                "collection_state",
+                "projection_state",
+                "lease_status",
+                "latest_error_code",
+                "latest_compatibility",
+                "application_id",
+                "role",
+            ]
+        },
+        **{
+            key: {"type": "date"}
+            for key in ["observed_at", "ingested_at", "evaluated_at", "heartbeat_at", "lease_expiry"]
+        },
+        **{
+            key: {"type": "long"}
+            for key in [
+                "schema_version",
+                "latest_version",
+                "reference_count",
+                "field_count",
+                "schema_error_count",
+                "fencing_token",
+                "subjects_seen",
+                "versions_seen",
+                "changes_detected",
+                "compatible_count",
+                "incompatible_count",
+                "unknown_count",
+                "potentially_exposed_consumers",
+                "incompatible_consumers",
+                "degraded_consumers",
+                "pending_reconciliations",
+            ]
+        },
+        "known_supported_versions": {"type": "long"},
+        **{key: {"type": "double"} for key in ["confidence", "source_coverage", "binding_confidence"]},
+        **{key: {"type": "boolean"} for key in ["authoritative", "configured"]},
+        **{
+            key: {"type": "keyword"}
+            for key in ["limitations", "evidence_refs", "change_categories", "field_hashes", "reason_codes"]
+        },
+        "change_counts": {"type": "flattened"},
+    },
+}
+
+TEAM1_STREAM_SCHEMA_INTELLIGENCE_RUNTIME_MIGRATION = Migration(
+    "0032_team1_stream_schema_intelligence_runtime",
+    "Add privacy-safe schema evidence, OCC projections, bindings, impacts, and fenced runtime state",
+    "v1",
+    dependencies=["0031_team3_post_incident_review_analytics"],
+    rollback_strategy="stop schema intelligence writers; retain append-only derived evidence",
+    operations={
+        "mutable_indices": [
+            "dataobs-stream-schema-subject-current-v1",
+            "dataobs-stream-schema-version-current-v1",
+            "dataobs-stream-schema-binding-current-v1",
+            "dataobs-stream-schema-impact-current-v1",
+            "dataobs-stream-schema-runtime-state-v1",
+        ],
+        "mapping_updates": {
+            name: SCHEMA_INTELLIGENCE_PROPERTIES
+            for name in [
+                "dataobs-stream-schema-subject-current-v1",
+                "dataobs-stream-schema-version-current-v1",
+                "dataobs-stream-schema-binding-current-v1",
+                "dataobs-stream-schema-impact-current-v1",
+                "dataobs-stream-schema-runtime-state-v1",
+            ]
+        },
+        "data_stream_contracts": {
+            name: {"retention": "365d", "properties": SCHEMA_INTELLIGENCE_PROPERTIES["properties"]}
+            for name in [
+                "logs-dataobs.stream-schema-version-*",
+                "logs-dataobs.stream-schema-change-*",
+                "logs-dataobs.stream-schema-compatibility-*",
+                "logs-dataobs.stream-schema-consumer-impact-*",
+            ]
+        },
+    },
+)
+
+
 
 def migrations() -> List[Migration]:
     return [

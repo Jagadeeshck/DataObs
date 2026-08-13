@@ -1,0 +1,11 @@
+schema_version: '1.0'
+response_targets: null
+severities:
+  SEV1:
+    impacts: [total_platform_outage, widespread_authentication_failure, cross_tenant_isolation_or_security_incident, confirmed_data_corruption, unsafe_privileged_operation, unrecoverable_critical_control_plane_failure]
+  SEV2:
+    impacts: [major_capability_unavailable, serious_performance_degradation, backup_failure_reducing_recoverability, repeated_multi_tenant_worker_failure]
+  SEV3:
+    impacts: [limited_capability_degradation, single_integration_or_provider_issue, recoverable_worker_issue, non_critical_operational_defect]
+  SEV4:
+    impacts: [informational, cosmetic, low_impact_support_question, documentation_issue]

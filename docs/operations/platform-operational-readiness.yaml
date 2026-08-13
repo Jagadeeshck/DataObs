@@ -1,0 +1,16 @@
+schema_version: '1.0'
+overall_state: blocked
+categories:
+  observability: {state: partial, evidence: docs/operations/platform-self-observability.md}
+  alerting: {state: partial, evidence: docs/operations/platform-alerts.yaml}
+  diagnostics: {state: partial, evidence: src/platform_operations/supportability.py}
+  support_bundle: {state: partial, evidence: scripts/operations/collect_support_bundle.py}
+  runbooks: {state: ready, evidence: docs/operations/runbook-registry.yaml}
+  ownership: {state: ready, evidence: docs/operations/platform-escalation-matrix.yaml}
+  escalation: {state: ready, evidence: docs/operations/platform-escalation-matrix.yaml}
+  backup: {state: unvalidated, evidence: docs/operations/backup-and-restore.md}
+  restore: {state: blocked, evidence: evidence/team-0-first-supported-platform-release-v1-evidence/final-release-decision.json}
+  release: {state: blocked, evidence: evidence/team-0-first-supported-platform-release-v1-evidence/final-release-decision.json}
+  maintenance: {state: partial, evidence: src/platform_operations/supportability.py}
+  known_issues: {state: ready, evidence: docs/operations/known-issues.yaml}
+  security_operations: {state: partial, evidence: docs/operations/kubernetes-security-validation.md}

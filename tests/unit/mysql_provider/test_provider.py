@@ -42,6 +42,7 @@ def test_registration_capabilities_and_version():
         "databricks",
         "mariadb",
         "mysql",
+        "oracle",
         "postgres",
         "presto",
         "snowflake",

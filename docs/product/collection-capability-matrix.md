@@ -65,3 +65,11 @@ cloud provider implemented. Provider status is governed by the capability ledger
 | MySQL v1 (`functional_unvalidated`) | Team 4 relational database foundation / Integration SDK | Yes | No business rows except opt-in aggregates | structural metadata, policy freshness/profile | shared secret refs | fixed `information_schema`, verified TLS | generic provider evidence/checkpoints |
 
 | MariaDB v1 | resource, metadata, schema, metrics, health, incremental | query history, lineage, logs, cost, event-driven | functional_unvalidated |
+
+## Oracle database collector v1
+
+| Provider | Discovery | Metadata/schema | Metrics/health | Incremental | Query history / lineage / logs / costs / events |
+|---|---|---|---|---|---|
+| `oracle` v1 | Supported | Supported | Supported | Supported | Unsupported |
+
+Status is `functional_unvalidated`; Oracle 26ai and 19c live certification is not claimed.

@@ -68,6 +68,7 @@ from src.data_observability.service import DataObservabilityService, OpenLineage
 from src.platform_lifecycle import PlatformLifecycleService
 from src.platform_operations.health import Criticality, HealthCheck, HealthState, aggregate
 from src.platform_operations.slo import evaluate_error_budget
+from src.platform_operations.supportability import configuration_view, diagnostic_view, known_issues_view, maintenance_view, readiness_view, support_view
 from src.security.audit import security_event
 from src.security.authentication import Authenticator
 from src.security.authorization import authorize
@@ -801,10 +802,36 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
             "release",
             "slos",
             "error-budgets",
+            "support",
+            "diagnostics",
+            "configuration",
+            "maintenance",
+            "known-issues",
+            "operational-readiness",
         }:
             raise HTTPException(status_code=404, detail="Platform operations view not found")
         unknown = {"state": "unknown", "reason_code": "authoritative_evidence_unavailable"}
-        if section == "health":
+        if section == "support":
+            payload = support_view()
+        elif section == "diagnostics":
+            payload = diagnostic_view()
+        elif section == "configuration":
+            payload = configuration_view(
+                {
+                    "store_backend": resolved_settings.store_backend,
+                    "auth_provider": resolved_settings.auth.provider,
+                    "oidc_enabled": resolved_settings.auth.provider == "oidc",
+                    "tls_verification_enabled": resolved_settings.elasticsearch.verify_tls,
+                    "environment_mode": resolved_settings.runtime.env,
+                }
+            )
+        elif section == "maintenance":
+            payload = maintenance_view()
+        elif section == "known-issues":
+            payload = known_issues_view(dict(request.query_params))
+        elif section == "operational-readiness":
+            payload = readiness_view()
+        elif section == "health":
             status = telemetry_status()
             payload = {
                 "state": "unknown",

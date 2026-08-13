@@ -1,0 +1,22 @@
+name: Team 1 stream capacity planning experience v1
+on:
+  pull_request:
+  workflow_dispatch:
+jobs:
+  capacity-planning:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install -r requirements.txt
+      - run: python scripts/check_merge_conflict_markers.py
+      - run: python scripts/validate_capability_ledger.py
+      - run: python scripts/security/check_route_permissions.py
+      - run: pytest -q tests/stream_360/test_stream_capacity_runtime.py tests/stream_360/test_capacity_planning.py
+      - uses: pnpm/action-setup@v4
+        with: {version: 10.28.1}
+      - run: pnpm install --frozen-lockfile
+        working-directory: ui/dataobs-console
+      - run: pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm build && pnpm bundle:check && pnpm performance:check
+        working-directory: ui/dataobs-console

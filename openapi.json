@@ -243,6 +243,60 @@
         "title": "BaselineUpdatePolicy",
         "type": "object"
       },
+      "CapacityScenarioRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "consumer_processing_multiplier": {
+            "default": 1.0,
+            "maximum": 10.0,
+            "minimum": 0.1,
+            "title": "Consumer Processing Multiplier",
+            "type": "number"
+          },
+          "headroom_target_ratio": {
+            "default": 0.2,
+            "maximum": 0.9,
+            "minimum": 0.0,
+            "title": "Headroom Target Ratio",
+            "type": "number"
+          },
+          "recovery_target_seconds": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "maximum": 2592000.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recovery Target Seconds"
+          },
+          "retention_seconds_override": {
+            "anyOf": [
+              {
+                "maximum": 31536000.0,
+                "minimum": 60.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retention Seconds Override"
+          },
+          "traffic_multiplier": {
+            "default": 1.0,
+            "maximum": 10.0,
+            "minimum": 0.1,
+            "title": "Traffic Multiplier",
+            "type": "number"
+          }
+        },
+        "title": "CapacityScenarioRequest",
+        "type": "object"
+      },
       "CompareRequest": {
         "properties": {
           "baseline_end": {
@@ -38447,6 +38501,234 @@
         ]
       }
     },
+    "/api/v1/stream-intelligence/capacity": {
+      "get": {
+        "operationId": "capacity_inventory_api_v1_stream_intelligence_capacity_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "provider",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Provider"
+            }
+          },
+          {
+            "in": "query",
+            "name": "messaging_system",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Messaging System"
+            }
+          },
+          {
+            "in": "query",
+            "name": "state",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "State"
+            }
+          },
+          {
+            "in": "query",
+            "name": "bottleneck_dimension",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Bottleneck Dimension"
+            }
+          },
+          {
+            "in": "query",
+            "name": "throttled",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Throttled"
+            }
+          },
+          {
+            "in": "query",
+            "name": "retention_risk",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Retention Risk"
+            }
+          },
+          {
+            "in": "query",
+            "name": "forecast_state",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Forecast State"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DataObs-Tenant",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dataobs-Tenant"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DataObs-Environment",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dataobs-Environment"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Capacity Inventory Api V1 Stream Intelligence Capacity Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Capacity Inventory",
+        "tags": [
+          "stream-intelligence"
+        ]
+      }
+    },
     "/api/v1/stream-intelligence/failure-candidates": {
       "get": {
         "operationId": "list_stream_intelligence_failure_candidates_api_v1_stream_intelligence_failure_candidates_get",
@@ -41034,6 +41316,211 @@
         ]
       }
     },
+    "/api/v1/streams/{resource_id}/capacity": {
+      "get": {
+        "description": "Return raw capacity intelligence in trusted request scope.",
+        "operationId": "stream_capacity_api_v1_streams__resource_id__capacity_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "resource_id",
+            "required": true,
+            "schema": {
+              "title": "Resource Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DataObs-Tenant",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dataobs-Tenant"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DataObs-Environment",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dataobs-Environment"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Stream Capacity Api V1 Streams  Resource Id  Capacity Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Stream Capacity",
+        "tags": [
+          "stream-intelligence"
+        ]
+      }
+    },
+    "/api/v1/streams/{resource_id}/capacity/simulate": {
+      "post": {
+        "operationId": "stream_capacity_simulation_api_v1_streams__resource_id__capacity_simulate_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "resource_id",
+            "required": true,
+            "schema": {
+              "title": "Resource Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DataObs-Tenant",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dataobs-Tenant"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-DataObs-Environment",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Dataobs-Environment"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CapacityScenarioRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Stream Capacity Simulation Api V1 Streams  Resource Id  Capacity Simulate Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Stream Capacity Simulation",
+        "tags": [
+          "stream-intelligence"
+        ]
+      }
+    },
     "/api/v1/streams/{resource_id}/changes": {
       "get": {
         "operationId": "get_streams_changes_api_v1_streams__resource_id__changes_get",
@@ -42864,7 +43351,7 @@
     },
     "/api/v1/streams/{resource_id}/recommendations": {
       "get": {
-        "operationId": "get_streams_recommendations_api_v1_streams__resource_id__recommendations_get",
+        "operationId": "stream_recommendations_api_v1_streams__resource_id__recommendations_get",
         "parameters": [
           {
             "in": "path",
@@ -42872,35 +43359,6 @@
             "required": true,
             "schema": {
               "title": "Resource Id",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "environment",
-            "required": true,
-            "schema": {
-              "title": "Environment",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "_root",
-            "required": false,
-            "schema": {
-              "default": "streams",
-              "title": " Root",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "_name",
-            "required": false,
-            "schema": {
-              "default": "recommendations",
-              "title": " Name",
               "type": "string"
             }
           },
@@ -42959,7 +43417,7 @@
               "application/json": {
                 "schema": {
                   "additionalProperties": true,
-                  "title": "Response Get Streams Recommendations Api V1 Streams  Resource Id  Recommendations Get",
+                  "title": "Response Stream Recommendations Api V1 Streams  Resource Id  Recommendations Get",
                   "type": "object"
                 }
               }
@@ -42982,9 +43440,9 @@
             "HTTPBearer": []
           }
         ],
-        "summary": "Get Streams Recommendations",
+        "summary": "Stream Recommendations",
         "tags": [
-          "stream-360"
+          "stream-intelligence"
         ]
       }
     },

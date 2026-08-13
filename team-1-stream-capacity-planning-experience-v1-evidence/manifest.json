@@ -1,0 +1,1 @@
+{"schema_version":"1.0","audited_sha":"72474e17a7803f8bab5ba63d70a311f359e909ed","capability_state":"functional_unvalidated","backend_tests":{"passed":9},"openapi":"passed","console_typecheck":"passed","hosted_evidence":"missing","playwright":"not_run","axe":"not_run"}

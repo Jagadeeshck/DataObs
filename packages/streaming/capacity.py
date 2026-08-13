@@ -143,14 +143,36 @@ def evaluate_consumer_capacity(
     if any(value is not None and (not math.isfinite(value) or value < 0) for value in values):
         raise ValueError("consumer capacity inputs must be finite and non-negative")
     if arrival_rate is None or processing_rate is None:
-        return ConsumerCapacity(arrival_rate, processing_rate, None, None, None, None, None, "unknown", "insufficient_data")
+        return ConsumerCapacity(
+            arrival_rate, processing_rate, None, None, None, None, None, "unknown", "insufficient_data"
+        )
     balance = processing_rate - arrival_rate
     growth = arrival_rate - processing_rate
     convergence = "converging" if balance > 0 else "diverging" if balance < 0 else "stable"
     if backlog and balance <= 0:
-        return ConsumerCapacity(arrival_rate, processing_rate, balance, max(0.0, -balance), balance, growth, None, convergence, "not_draining")
+        return ConsumerCapacity(
+            arrival_rate,
+            processing_rate,
+            balance,
+            max(0.0, -balance),
+            balance,
+            growth,
+            None,
+            convergence,
+            "not_draining",
+        )
     drain = backlog / balance if backlog is not None and backlog > 0 and balance > 0 else 0.0 if backlog == 0 else None
-    return ConsumerCapacity(arrival_rate, processing_rate, balance, max(0.0, -balance), balance, growth, drain, convergence, "draining" if drain else "balanced")
+    return ConsumerCapacity(
+        arrival_rate,
+        processing_rate,
+        balance,
+        max(0.0, -balance),
+        balance,
+        growth,
+        drain,
+        convergence,
+        "draining" if drain else "balanced",
+    )
 
 
 @dataclass(frozen=True)
@@ -170,7 +192,13 @@ def evaluate_parallelism(system: str, consumers: int | None, partitions: int | N
     if consumers < 0 or partitions < 0:
         raise ValueError("parallelism counts cannot be negative")
     reached = partitions > 0 and consumers >= partitions
-    return ParallelismCapacity(consumers, partitions, min(consumers, partitions), reached, "parallelism_ceiling_reached" if reached else "available")
+    return ParallelismCapacity(
+        consumers,
+        partitions,
+        min(consumers, partitions),
+        reached,
+        "parallelism_ceiling_reached" if reached else "available",
+    )
 
 
 @dataclass(frozen=True)
@@ -256,3 +284,169 @@ class CapacityForecast:
     confidence: float
     method: str
     evidence_refs: tuple[str, ...] = field(default_factory=tuple)
+
+
+@dataclass(frozen=True)
+class PlanningForecast:
+    """Bounded planning projection; values are estimates, never observations."""
+
+    forecast_type: str
+    method: str
+    horizon_seconds: float
+    sample_count: int
+    coverage: float
+    confidence: float
+    lower: float | None
+    expected: float | None
+    upper: float | None
+    missing_inputs: tuple[str, ...] = ()
+    limitations: tuple[str, ...] = (
+        "linear_projection",
+        "future_workload_may_differ",
+    )
+
+
+@dataclass(frozen=True)
+class RecoveryCapacity:
+    required_processing_rate: float
+    additional_processing_rate_required: float
+    method: str = "derived_required_capacity"
+
+
+def recovery_capacity(
+    arrival_rate: float, backlog: float, processing_rate: float, recovery_target_seconds: float
+) -> RecoveryCapacity:
+    """Derive rate needed to meet an authoritative recovery target."""
+    values = (arrival_rate, backlog, processing_rate, recovery_target_seconds)
+    if any(not math.isfinite(value) or value < 0 for value in values) or recovery_target_seconds == 0:
+        raise ValueError("recovery capacity inputs must be finite, non-negative, and target must be positive")
+    required = arrival_rate + backlog / recovery_target_seconds
+    return RecoveryCapacity(required, max(0.0, required - processing_rate))
+
+
+@dataclass(frozen=True)
+class ScalingRecommendation:
+    recommendation_type: str
+    reason_codes: tuple[str, ...]
+    evidence_refs: tuple[str, ...]
+    confidence: float
+    prerequisites: tuple[str, ...]
+    expected_effect: str
+    limitations: tuple[str, ...]
+    advisory_only: bool = True
+    automatic_execution: bool = False
+    requires_human_review: bool = True
+
+
+def capacity_recommendations(snapshot: dict[str, object]) -> tuple[ScalingRecommendation, ...]:
+    """Produce capability-aware advice from a Part 1 snapshot without mutation."""
+    system = str(snapshot.get("messaging_system", "")).lower()
+    evidence = tuple(str(ref) for ref in snapshot.get("evidence_refs", ()) or ())
+    confidence = float(snapshot.get("confidence", 0.0) or 0.0)
+    recommendations: list[ScalingRecommendation] = []
+
+    def add(kind: str, reasons: tuple[str, ...], effect: str, prerequisites: tuple[str, ...] = ()) -> None:
+        recommendations.append(
+            ScalingRecommendation(
+                kind,
+                reasons,
+                evidence,
+                confidence,
+                prerequisites + ("human approval required",),
+                effect,
+                ("advisory estimate only", "validate against provider and workload constraints"),
+            )
+        )
+
+    consumer = snapshot.get("consumer_capacity") or {}
+    if isinstance(consumer, dict) and float(consumer.get("capacity_deficit", 0) or 0) > 0:
+        add(
+            "increase_consumer_capacity",
+            ("consumer_processing_deficit",),
+            "Increase processing rate enough to reduce the evidenced deficit.",
+        )
+    pressure = snapshot.get("partition_shard_pressure") or {}
+    hot = isinstance(pressure, dict) and bool(pressure.get("hot_ids"))
+    if hot and system == "kafka":
+        add("investigate_hot_partition", ("partition_skew_observed",), "Identify key or assignment skew.")
+        add(
+            "rebalance_partition_keys",
+            ("partition_skew_observed",),
+            "Improve load distribution if key semantics permit.",
+            (
+                "ordering impact reviewed",
+                "key distribution reviewed",
+                "consumer compatibility reviewed",
+                "downstream assumptions reviewed",
+            ),
+        )
+    elif hot and system == "kinesis":
+        add(
+            "investigate_hot_shard",
+            ("shard_skew_observed",),
+            "Identify partition-key concentration before evaluating resharding.",
+        )
+    if snapshot.get("retention_risk") is True:
+        add(
+            "review_retention",
+            ("retention_risk",),
+            "Evaluate retention and recovery options without changing configuration.",
+        )
+    if snapshot.get("throttled") is True:
+        add(
+            "investigate_throttling",
+            ("authoritative_throttling_signal",),
+            "Confirm provider quota or service throttling.",
+        )
+    return tuple(recommendations)
+
+
+def simulate_capacity(
+    snapshot: dict[str, object],
+    *,
+    traffic_multiplier: float = 1.0,
+    consumer_processing_multiplier: float = 1.0,
+    retention_seconds_override: float | None = None,
+    recovery_target_seconds: float | None = None,
+    headroom_target_ratio: float = 0.2,
+) -> dict[str, object]:
+    """Stateless scenario using Part 1 measurements; it cannot alter the snapshot."""
+    for value in (traffic_multiplier, consumer_processing_multiplier):
+        if not math.isfinite(value) or not 0.1 <= value <= 10:
+            raise ValueError("multipliers must be between 0.1 and 10")
+    if not 0 <= headroom_target_ratio <= 0.9:
+        raise ValueError("headroom target ratio must be between 0 and 0.9")
+    consumer = snapshot.get("consumer_capacity") or {}
+    consumer = consumer if isinstance(consumer, dict) else {}
+    arrival = consumer.get("arrival_rate")
+    processing = consumer.get("processing_rate")
+    backlog = snapshot.get("backlog", 0)
+    scenario_arrival = float(arrival) * traffic_multiplier if arrival is not None else None
+    scenario_processing = float(processing) * consumer_processing_multiplier if processing is not None else None
+    recovery = None
+    if recovery_target_seconds is not None and scenario_arrival is not None and scenario_processing is not None:
+        recovery = recovery_capacity(
+            scenario_arrival, float(backlog or 0), scenario_processing, recovery_target_seconds
+        )
+    return {
+        "hypothetical": True,
+        "observation_status": "not_observed",
+        "persisted": False,
+        "inputs": {
+            "traffic_multiplier": traffic_multiplier,
+            "consumer_processing_multiplier": consumer_processing_multiplier,
+            "retention_seconds_override": retention_seconds_override,
+            "recovery_target_seconds": recovery_target_seconds,
+            "headroom_target_ratio": headroom_target_ratio,
+        },
+        "arrival_rate": scenario_arrival,
+        "processing_rate": scenario_processing,
+        "capacity_balance": (
+            (scenario_processing - scenario_arrival)
+            if scenario_arrival is not None and scenario_processing is not None
+            else None
+        ),
+        "required_processing_rate": recovery.required_processing_rate if recovery else None,
+        "additional_processing_rate_required": recovery.additional_processing_rate_required if recovery else None,
+        "limitations": ["linear bounded scenario", "not observed telemetry", "no infrastructure changes are executed"],
+    }

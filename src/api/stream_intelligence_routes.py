@@ -10,11 +10,22 @@ from datetime import datetime, timezone
 from typing import Any, Callable
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response
+from pydantic import BaseModel, ConfigDict, Field
 
+from packages.streaming.capacity import capacity_recommendations, simulate_capacity
 from packages.streaming.intelligence import CAPABILITIES, METHODS, DetectorDefinition
 from services.kafka_observer.intelligence_repository import ElasticsearchIntelligenceRepository
 from services.kafka_observer.reliability_runtime import StaleWriter
 from services.product_query.stream_pagination import CursorCodec, CursorState, InvalidCursor
+
+
+class CapacityScenarioRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    traffic_multiplier: float = Field(1.0, ge=0.1, le=10)
+    consumer_processing_multiplier: float = Field(1.0, ge=0.1, le=10)
+    retention_seconds_override: float | None = Field(None, ge=60, le=31_536_000)
+    recovery_target_seconds: float | None = Field(None, gt=0, le=2_592_000)
+    headroom_target_ratio: float = Field(0.2, ge=0, le=0.9)
 
 
 def create_stream_intelligence_router(get_es: Callable[..., Any], require_auth: Callable[..., Any]) -> APIRouter:
@@ -119,7 +130,42 @@ def create_stream_intelligence_router(get_es: Callable[..., Any], require_auth: 
         try:
             return repo.get_capacity(tenant, environment, resource_id)
         except KeyError:
-            raise HTTPException(404, detail={"code": "capacity_not_found", "message": "Capacity evaluation not found"}) from None
+            raise HTTPException(
+                404, detail={"code": "capacity_not_found", "message": "Capacity evaluation not found"}
+            ) from None
+
+    @router.get("/streams/{resource_id}/recommendations")
+    def stream_recommendations(
+        resource_id: str, request: Request, repo: ElasticsearchIntelligenceRepository = Depends(repository)
+    ) -> dict[str, Any]:
+        tenant, environment = scope(request)
+        try:
+            snapshot = repo.get_capacity(tenant, environment, resource_id)
+        except KeyError:
+            raise HTTPException(
+                404, detail={"code": "capacity_not_found", "message": "Capacity evaluation not found"}
+            ) from None
+        return {
+            "items": [item.__dict__ for item in capacity_recommendations(snapshot)],
+            "advisory_only": True,
+            "automatic_execution": False,
+        }
+
+    @router.post("/streams/{resource_id}/capacity/simulate")
+    def stream_capacity_simulation(
+        resource_id: str,
+        payload: CapacityScenarioRequest,
+        request: Request,
+        repo: ElasticsearchIntelligenceRepository = Depends(repository),
+    ) -> dict[str, object]:
+        tenant, environment = scope(request)
+        try:
+            snapshot = repo.get_capacity(tenant, environment, resource_id)
+        except KeyError:
+            raise HTTPException(
+                404, detail={"code": "capacity_not_found", "message": "Capacity evaluation not found"}
+            ) from None
+        return simulate_capacity(snapshot, **payload.model_dump())
 
     @router.get("/stream-intelligence/capacity")
     def capacity_inventory(
@@ -132,9 +178,25 @@ def create_stream_intelligence_router(get_es: Callable[..., Any], require_auth: 
         bottleneck_dimension: str | None = None,
         throttled: bool | None = None,
         retention_risk: bool | None = None,
+        forecast_state: str | None = None,
         repo: ElasticsearchIntelligenceRepository = Depends(repository),
     ) -> dict[str, Any]:
-        return page("capacity", request, repo, limit, cursor, {"provider": provider, "messaging_system": messaging_system, "overall_state": state, "bottleneck_dimension": bottleneck_dimension, "throttled": throttled, "retention_risk": retention_risk})
+        return page(
+            "capacity",
+            request,
+            repo,
+            limit,
+            cursor,
+            {
+                "provider": provider,
+                "messaging_system": messaging_system,
+                "overall_state": state,
+                "bottleneck_dimension": bottleneck_dimension,
+                "throttled": throttled,
+                "retention_risk": retention_risk,
+                "forecast_state": forecast_state,
+            },
+        )
 
     for route_kind in ("anomalies", "forecasts", "failure-candidates", "signals"):
 

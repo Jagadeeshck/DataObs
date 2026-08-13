@@ -155,6 +155,13 @@ api:
     periodSeconds: 10
     timeoutSeconds: 3
     failureThreshold: 6
+  startupProbe:
+    httpGet:
+      path: /readyz
+      port: http
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 30
   livenessProbe:
     httpGet:
       path: /livez
@@ -491,7 +498,8 @@ migrationJob:
   - -m
   - packages.elastic_store.cli
   - apply
-  terminalMigration: 0029_team2_data_intelligence_reconciliation
+  # Kept in sync with packages.elastic_store.registry by render_helm_values.py/CI.
+  terminalMigration: 0030_team1_multi_broker_messaging_runtime
   activeDeadlineSeconds: 900
   backoffLimit: 2
   ttlSecondsAfterFinished: 86400

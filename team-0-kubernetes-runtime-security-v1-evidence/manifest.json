@@ -1,0 +1,12 @@
+{
+  "schema_version": "1.0",
+  "target_sha": "141ec42b82f236b7a2858c85351e174a511c9f3f",
+  "terminal_migration": "0030_team1_multi_broker_messaging_runtime",
+  "hosted_cluster": "PENDING",
+  "kind_functional": "PENDING",
+  "release_decision": "PENDING",
+  "tool_versions": {
+    "python": "3.14.4"
+  },
+  "files": {}
+}

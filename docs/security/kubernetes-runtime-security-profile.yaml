@@ -1,0 +1,21 @@
+schemaVersion: "1.0"
+profiles:
+  development: {mode: audit}
+  standard: {mode: enforce}
+  production: {mode: enforce}
+policies:
+  - {id: K8S-PSS-001, severity: critical, profiles: [standard, production], explanation: Containers must not run as root, remediation: Set pod runAsNonRoot true, rule: 'pod.securityContext.runAsNonRoot == true'}
+  - {id: K8S-PSS-002, severity: critical, profiles: [standard, production], explanation: Apply an approved seccomp profile, remediation: Set RuntimeDefault or Localhost, rule: 'pod.securityContext.seccompProfile.type in [RuntimeDefault, Localhost]'}
+  - {id: K8S-PSS-003, severity: critical, profiles: [production], explanation: Privileged containers bypass isolation, remediation: Set privileged false, rule: 'all(containers, securityContext.privileged != true)'}
+  - {id: K8S-PSS-004, severity: critical, profiles: [production], explanation: Privilege escalation is forbidden, remediation: Set allowPrivilegeEscalation false, rule: 'all(containers, securityContext.allowPrivilegeEscalation == false)'}
+  - {id: K8S-PSS-005, severity: critical, profiles: [production], explanation: Root filesystems are immutable, remediation: Set readOnlyRootFilesystem true, rule: 'all(containers, securityContext.readOnlyRootFilesystem == true)'}
+  - {id: K8S-PSS-007, severity: critical, profiles: [production], explanation: Linux capabilities expand attack surface, remediation: Drop ALL and add none, rule: 'all(containers, capabilities.drop contains ALL and capabilities.add empty)'}
+  - {id: K8S-HOST-001, severity: critical, profiles: [production], explanation: Host namespaces break pod isolation, remediation: Disable hostNetwork hostPID hostIPC and hostPort, rule: 'hostNetwork == false and hostPID == false and hostIPC == false and hostPorts empty and procMount != Unmasked'}
+  - {id: K8S-HOST-002, severity: critical, profiles: [production], explanation: hostPath exposes node files, remediation: Replace hostPath with managed storage, rule: 'volumes.hostPath empty'}
+  - {id: K8S-SA-001, severity: critical, profiles: [production], explanation: API tokens are unnecessary for DataObs workloads, remediation: Disable automount; approve scoped RBAC before exception, rule: 'automountServiceAccountToken == false'}
+  - {id: K8S-RES-001, severity: high, profiles: [standard, production], explanation: Resources protect cluster availability, remediation: Set positive CPU and memory requests and limits, rule: 'all(containers, requests.cpu and requests.memory and limits.cpu and limits.memory)'}
+  - {id: K8S-IMG-001, severity: critical, profiles: [production], explanation: Immutable images bind admission to reviewed content, remediation: Use a real sha256 digest from an allowed registry, rule: 'image matches allowedRegistry/.+@sha256:[a-f0-9]{64} and digest not placeholder and tag != latest'}
+  - {id: K8S-NET-001, severity: critical, profiles: [production], explanation: Workloads require explicit network isolation, remediation: Enable the chart NetworkPolicies and enforce with a capable CNI, rule: 'release has NetworkPolicy'}
+  - {id: K8S-DEP-001, severity: critical, profiles: [production], explanation: External Elasticsearch must be TLS protected and unbundled, remediation: Configure HTTPS certificate verification and external service, rule: 'elasticsearch.url startsWith https and verifyCertificates and embedded.elasticsearch == false'}
+  - {id: K8S-DEP-002, severity: critical, profiles: [production], explanation: Identity must use an external TLS provider, remediation: Configure HTTPS OIDC issuer; do not bundle identity provider, rule: 'oidc.issuer startsWith https and embedded.identityProvider == false'}
+  - {id: K8S-SEC-001, severity: critical, profiles: [standard, production], explanation: Secrets must not be literals or ConfigMap data, remediation: Use Secret key references, rule: 'no sensitive environment literals commands ConfigMap keys or values'}

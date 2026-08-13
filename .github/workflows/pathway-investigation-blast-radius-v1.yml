@@ -13,9 +13,12 @@ jobs:
         options: --health-cmd="curl -f http://localhost:9200/_cluster/health" --health-interval=10s --health-timeout=5s --health-retries=20
     steps:
       - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
       - uses: actions/setup-python@v5
         with: {python-version: "3.12"}
       - run: pip install -r requirements.txt
+      - name: Wait for Elasticsearch readiness
+        run: python scripts/ci/wait_for_elasticsearch.py --url http://localhost:9200 --timeout 120
       - run: python scripts/check_merge_conflict_markers.py
       - run: python scripts/check_team_boundaries.py && python scripts/check_generated_artifacts.py && python scripts/check_docs_links.py
       - run: python scripts/validate_capability_ledger.py && python scripts/release/check_release_metadata.py

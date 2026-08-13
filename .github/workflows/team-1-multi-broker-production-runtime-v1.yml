@@ -14,9 +14,12 @@ jobs:
         ports: ["9200:9200"]
     steps:
       - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
       - uses: actions/setup-python@v5
         with: {python-version: "3.12"}
       - run: pip install -r requirements.txt
+      - name: Wait for Elasticsearch readiness
+        run: python scripts/ci/wait_for_elasticsearch.py --url http://localhost:9200 --timeout 120
       - name: Static and policy checks
         run: |
           python scripts/check_merge_conflict_markers.py
@@ -43,6 +46,7 @@ jobs:
         working-directory: ui/dataobs-console
     steps:
       - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
       - uses: pnpm/action-setup@v4
       - run: pnpm install --frozen-lockfile
       - run: pnpm api:generate && pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm build && pnpm bundle:check

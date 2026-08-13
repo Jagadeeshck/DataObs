@@ -63,7 +63,7 @@ jobs:
     permissions: {contents: read, packages: write}
     steps:
       - uses: actions/checkout@v4
-        with: {ref: '${{ inputs.target_sha }}'}
+        with: {ref: '${{ inputs.target_sha }}', fetch-depth: 0}
       - uses: azure/setup-helm@v4
       - name: Build immutable candidate and invoke existing supply-chain contracts
         run: |
@@ -81,7 +81,7 @@ jobs:
     permissions: {contents: read, packages: write, id-token: write}
     steps:
       - uses: actions/checkout@v4
-        with: {ref: '${{ inputs.target_sha }}'}
+        with: {ref: '${{ inputs.target_sha }}', fetch-depth: 0}
       - name: Protected keyless sign, independent verify, and disposable artifact install
         run: |
           echo 'This boundary must stage digest-addressed artifacts, keylessly sign and verify issuer/subject.'
@@ -95,6 +95,7 @@ jobs:
     permissions: {contents: read}
     steps:
       - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
       - name: Retain truthful machine decision and complete evidence bundle
         run: |
           test -f evidence/team-0-first-supported-platform-release-v1-evidence/final-release-decision.json

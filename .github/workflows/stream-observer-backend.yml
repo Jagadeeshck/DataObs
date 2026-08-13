@@ -33,9 +33,12 @@ jobs:
           KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
     steps:
       - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
       - uses: actions/setup-python@v5
         with: {python-version: '3.12', cache: pip}
       - run: pip install -r requirements.txt pytest ruff black
+      - name: Wait for Elasticsearch readiness
+        run: python scripts/ci/wait_for_elasticsearch.py --url http://localhost:9200 --timeout 120
       - name: Migration immutability
         run: python scripts/check_migration_immutability.py --base-ref "${{ github.event.pull_request.base.sha || github.event.before || 'HEAD^' }}"
       - name: Prepare exact-version services and Kafka lag
@@ -74,6 +77,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
       - uses: actions/download-artifact@v4
         with: {name: stream-observer-backend-v1-evidence, path: downloaded-evidence}
       - run: python scripts/certification/verify_product_evidence.py verify --directory downloaded-evidence/stream-observer-backend-v1-evidence --repository "${{ github.repository }}" --workflow "stream-observer-backend.yml" --run-id "${{ github.run_id }}" --expected-sha "$(git rev-parse HEAD)" --required-suite elasticsearch --required-suite kafka --required-suite observer --required-suite security --required-suite tenant

@@ -13,6 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
       - uses: actions/setup-python@v5
         with: {python-version: '3.12'}
       - run: pip install -r requirements.txt
@@ -37,9 +38,12 @@ jobs:
         ports: ['9200:9200']
     steps:
       - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
       - uses: actions/setup-python@v5
         with: {python-version: '3.12'}
       - run: pip install -r requirements.txt
+      - name: Wait for Elasticsearch readiness
+        run: python scripts/ci/wait_for_elasticsearch.py --url http://localhost:9200 --timeout 120
       - run: python scripts/migrate_to_es.py
         env: {ELASTICSEARCH_URL: 'http://localhost:9200'}
       - run: python -m pytest tests/stream_360/test_schema_intelligence_v1.py -q

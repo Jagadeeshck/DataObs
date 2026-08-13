@@ -15,11 +15,21 @@ import urllib.request
 READY = {"yellow", "green"}
 
 
+def request_json(endpoint: str, headers: dict[str, str], context: ssl.SSLContext | None, timeout: float):
+    """Return one JSON response while respecting the caller's remaining deadline."""
+    with urllib.request.urlopen(
+        urllib.request.Request(endpoint, headers=headers), timeout=max(0.01, min(10, timeout)), context=context
+    ) as response:
+        return json.load(response)
+
+
 def wait(
     url: str, timeout: float, interval: float, username: str | None, password: str | None, verify_tls: bool
 ) -> bool:
     deadline = time.monotonic() + timeout
-    endpoint = f"{url.rstrip('/')}/_cluster/health?wait_for_status=yellow&timeout=5s"
+    base_url = url.rstrip("/")
+    health_endpoint = f"{base_url}/_cluster/health?wait_for_status=yellow&timeout=5s"
+    indices_endpoint = f"{base_url}/_cat/indices?format=json"
     headers = {"Accept": "application/json"}
     if username is not None:
         token = base64.b64encode(f"{username}:{password or ''}".encode()).decode()
@@ -30,12 +40,15 @@ def wait(
     while time.monotonic() < deadline:
         attempt += 1
         try:
-            with urllib.request.urlopen(
-                urllib.request.Request(endpoint, headers=headers), timeout=10, context=context
-            ) as response:
-                payload = json.load(response)
+            remaining = deadline - time.monotonic()
+            payload = request_json(health_endpoint, headers, context, remaining)
             status = payload.get("status")
             if status in READY and not payload.get("timed_out", False):
+                # Exercise an indices API used during application startup. A healthy
+                # service-container probe can precede transient transport resets.
+                indices = request_json(indices_endpoint, headers, context, deadline - time.monotonic())
+                if not isinstance(indices, list):
+                    raise ValueError("Elasticsearch indices API did not return a JSON list")
                 print(f"Elasticsearch ready: status={status}, attempts={attempt}")
                 return True
             last_error = f"cluster status={status!r}, timed_out={payload.get('timed_out')!r}"

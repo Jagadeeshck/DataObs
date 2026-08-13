@@ -47,7 +47,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with: {ref: '${{ inputs.target_sha }}'}
+        with: {ref: '${{ inputs.target_sha }}', fetch-depth: 0}
       - uses: actions/setup-python@v5
         with: {python-version: '3.13'}
       - run: pip install pyyaml
@@ -106,6 +106,8 @@ jobs:
       - uses: azure/setup-helm@v4
       - name: Install validation dependencies
         run: pip install -r requirements.txt pytest pytest-cov pyyaml jsonschema && pnpm --dir ui/dataobs-console install --frozen-lockfile
+      - name: Wait for Elasticsearch readiness
+        run: python scripts/ci/wait_for_elasticsearch.py --url http://localhost:9200 --timeout 120
       - name: Repository, contract, migration and permission gates
         run: |
           mkdir -p "$EVIDENCE_DIR"
@@ -215,7 +217,7 @@ jobs:
           - {component: kafka-observer, dockerfile: Dockerfile.kafka-observer, context: .}
     steps:
       - uses: actions/checkout@v4
-        with: {ref: '${{ inputs.target_sha }}'}
+        with: {ref: '${{ inputs.target_sha }}', fetch-depth: 0}
       - uses: docker/setup-buildx-action@v3
       - uses: docker/build-push-action@v6
         with:
@@ -262,7 +264,7 @@ jobs:
     permissions: {contents: read}
     steps:
       - uses: actions/checkout@v4
-        with: {ref: '${{ inputs.target_sha }}'}
+        with: {ref: '${{ inputs.target_sha }}', fetch-depth: 0}
       - uses: actions/download-artifact@v4
         with: {name: team-0-beta-security-release-gates, path: evidence}
       - uses: actions/download-artifact@v4
@@ -326,7 +328,7 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v4
-        with: {ref: '${{ inputs.target_sha }}'}
+        with: {ref: '${{ inputs.target_sha }}', fetch-depth: 0}
       - uses: actions/download-artifact@v4
         with: {pattern: 'team-0-image-*', path: image-evidence}
       - uses: docker/login-action@v3

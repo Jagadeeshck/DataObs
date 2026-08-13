@@ -1,0 +1,73 @@
+name: Team 1 Schema Runtime Migration Reconciliation v1
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  reconcile-schema-runtime:
+    runs-on: ubuntu-latest
+    services:
+      elasticsearch:
+        image: docker.elastic.co/elasticsearch/elasticsearch:9.4.2
+        env:
+          discovery.type: single-node
+          xpack.security.enabled: "false"
+        ports: ["9200:9200"]
+        options: >-
+          --health-cmd "curl -fsS http://localhost:9200/_cluster/health"
+          --health-interval 10s --health-timeout 5s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: pip install -e '.[dev]'
+      - name: Static governance checks
+        run: |
+          python scripts/check_merge_conflict_markers.py
+          python scripts/check_team_boundaries.py
+          python scripts/check_generated_artifacts.py
+          python scripts/check_docs_links.py
+          python scripts/validate_capability_ledger.py
+          python scripts/check_migration_immutability.py --base-ref origin/main
+          python scripts/release/current_terminal_migration.py
+          python scripts/release/check_release_metadata.py
+          python scripts/security/check_route_permissions.py
+      - name: Clean install and runtime vertical slice
+        run: |
+          python -m packages.elastic_store.cli doctor || test $? -eq 2
+          python -m packages.elastic_store.cli apply --through 0032_team2_data_slo_production_runtime
+          python - <<'PY'
+          from packages.elastic_store.client import make_client
+          es = make_client()
+          for name in ("dataobs-slo-definition-current-v1", "dataobs-slo-current-v1", "dataobs-slo-runtime-state-v1"):
+              assert es.indices.exists(index=name)
+          assert not es.indices.exists(index="dataobs-stream-schema-runtime-state-v1")
+          PY
+          python -m packages.elastic_store.cli apply
+          python - <<'PY'
+          from packages.elastic_store.client import make_client
+          es = make_client()
+          for name in ("dataobs-stream-schema-subject-current-v1", "dataobs-stream-schema-version-current-v1", "dataobs-stream-schema-binding-current-v1", "dataobs-stream-schema-impact-current-v1", "dataobs-stream-schema-runtime-state-v1"):
+              assert es.indices.exists(index=name)
+          state = es.get(index="dataobs-system-migrations-v1", id="0033_team1_stream_schema_intelligence_runtime")["_source"]
+          assert state["checksum"] == "c53af6951bd1fa728981343272ea68c5cace73d68c5ed16d51ddf9fed785aec1"
+          PY
+          python -m packages.elastic_store.cli doctor
+          pytest -q tests/elastic_store/test_migrations.py tests/elastic_store/test_schema_runtime_migration_reconciliation.py tests/stream_360/test_schema_intelligence_v1.py tests/stream_360/test_schema_intelligence_runtime_v1.py
+      - name: Repeat apply
+        run: python -m packages.elastic_store.cli apply
+      - name: Evidence
+        if: always()
+        run: |
+          mkdir -p team-1-schema-runtime-migration-reconciliation-v1-evidence
+          python scripts/release/current_terminal_migration.py --json | tee team-1-schema-runtime-migration-reconciliation-v1-evidence/migration-report.json
+          python -m packages.elastic_store.cli doctor > team-1-schema-runtime-migration-reconciliation-v1-evidence/doctor.json || true
+          printf 'audited_main_sha=%s\npr_264=merged\npr_267=merged\nelasticsearch=9.4.2\n' "${{ github.event.pull_request.base.sha || github.event.before }}" > team-1-schema-runtime-migration-reconciliation-v1-evidence/audit.txt
+          sha256sum team-1-schema-runtime-migration-reconciliation-v1-evidence/* > team-1-schema-runtime-migration-reconciliation-v1-evidence/checksums.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: team-1-schema-runtime-migration-reconciliation-v1-evidence
+          path: team-1-schema-runtime-migration-reconciliation-v1-evidence

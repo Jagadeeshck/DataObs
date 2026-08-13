@@ -1,8 +1,15 @@
 import type { CommandCenter, Topology } from "./types";
 import { read, write } from "./transport";
+import type { MessagingProvidersResponse } from "../messaging/types";
 export * from "./quality";
 export { ApiError } from "./common";
 export const api = {
+  messagingProviders: (tenant: string, env: string, signal?: AbortSignal) =>
+    read<MessagingProvidersResponse>(
+      `/api/v1/streams/providers?environment=${encodeURIComponent(env)}`,
+      tenant,
+      signal,
+    ),
   jobs: (tenant: string, env: string, search = "", signal?: AbortSignal) =>
     read<{ items: Record<string, unknown>[]; next_cursor: string | null }>(
       `/api/v1/jobs?environment=${encodeURIComponent(env)}&search=${encodeURIComponent(search)}`,

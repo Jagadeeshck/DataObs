@@ -2274,6 +2274,43 @@ capabilities:
   owner_team: Team 2
   last_audited_at: '2026-08-13'
   last_audited_commit: pending-final-sha
+- id: incidents.recurrence_similarity_intelligence
+  name: Recurrence and Similar Incident Intelligence v1
+  summary: Deterministic evidence-first incident fingerprints, bounded historical candidate retrieval, explainable similarity, and candidate recurrence semantics.
+  pillar: platform
+  domain: incidents
+  state: functional_unvalidated
+  release_readiness: blocked
+  implementation:
+    code_paths: [services/incident_manager/intelligence]
+    api_paths: []
+    ui_routes: []
+    storage_resources: [dataobs-incidents-read]
+    migrations: []
+  validation:
+    unit: passed
+    integration: defined_not_run
+    real_stack: missing
+    hosted_ci: missing
+    browser: missing
+    accessibility: missing
+    security: passed
+    scale: defined_not_run
+    upgrade: not_applicable
+    release: missing
+  evidence:
+    tests: [tests/incidents/test_incident_intelligence_v1.py]
+    workflow_jobs: []
+    audit_docs: [docs/development/team-3-recurrence-similar-incident-intelligence-v1-audit.md]
+    runbooks: [docs/operations/incident-intelligence.md]
+    artifacts: []
+  blockers: [Durable Elasticsearch relationship and family resources, API and Console wiring, real-stack, browser, accessibility, and hosted exact-head evidence remain.]
+  non_goals: [Causal inference, automatic confirmation, automatic remediation, embeddings, and prediction.]
+  next_gate: Complete the production vertical slice and certify against Elasticsearch 9.4.2 and the Console.
+  owner: Team 3
+  owner_team: Team 3
+  last_audited_at: '2026-08-13'
+  last_audited_commit: pending-final-sha
 migration_checksums:
   0001_product_foundation: 71d939094a97b4dd7c61de60542b60dd41cb238fd6bebfd75d53d723b00f3556
   0002_postgres_observability: c2098fa24ddae209fcf2ffeb369f7040d57018d58682a8513db9e943c749aa2d

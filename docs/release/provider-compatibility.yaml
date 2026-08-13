@@ -1,0 +1,5 @@
+schema_version: '1.0'
+authority: provider_implementation_metadata
+providers: []
+default_status: unvalidated
+note: Team 4 owns behavior; Team 0 only presents referenced evidence.

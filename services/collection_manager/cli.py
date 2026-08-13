@@ -15,6 +15,8 @@ from integrations.databases.mariadb import MariaDbDatabaseProvider
 from integrations.databases.mariadb.configuration import parse_configuration as parse_mariadb_configuration
 from integrations.databases.mysql import MySqlDatabaseProvider
 from integrations.databases.mysql.configuration import parse_configuration as parse_mysql_configuration
+from integrations.databases.oracle import OracleDatabaseProvider
+from integrations.databases.oracle.configuration import parse_configuration as parse_oracle_configuration
 from integrations.databases.postgres import PostgreSqlDatabaseProvider
 from integrations.databases.postgres.configuration import parse_configuration as parse_postgres_configuration
 from integrations.databases.sqlserver import SqlServerDatabaseProvider
@@ -43,6 +45,7 @@ def build_registry():
     registry.register(MySqlDatabaseProvider)
     registry.register(MariaDbDatabaseProvider)
     registry.register(SqlServerDatabaseProvider)
+    registry.register(OracleDatabaseProvider)
     return registry
 
 
@@ -71,6 +74,7 @@ def main(argv=None):
             "mysql": parse_mysql_configuration,
             "mariadb": parse_mariadb_configuration,
             "sqlserver": parse_sqlserver_configuration,
+            "oracle": parse_oracle_configuration,
         }
         config_parsers[payload.get("provider_type")](payload["provider"])
         print(json.dumps({"valid": True}))

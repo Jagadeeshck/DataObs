@@ -34,3 +34,7 @@ Use the dedicated `mariadb` provider and structured configuration example. Do no
 ## Microsoft SQL Server v1
 
 Use the dedicated `sqlserver` relational provider with the optional Microsoft driver. Strict/validated TLS, non-interactive authentication, disabled pooling, fixed catalog SQL, aggregate-only policies, and no raw rows are mandatory. Do not route SQL Server through Trino, Presto, generic JDBC, or Synapse, and do not claim Query Store support.
+
+### Oracle
+
+Use provider type `oracle` and `requirements-oracle.txt`. Thin-mode TCPS connects to exactly one configured service/PDB. Only secret references and normal password authorization are accepted. Metadata is visibility-scoped; freshness/profiling require explicit relation policies.

@@ -1,0 +1,54 @@
+name: Team 5 - Version Upgrade Compatibility Console v1
+on:
+  pull_request:
+  workflow_dispatch:
+jobs:
+  console:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: ui/dataobs-console } }
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.28.1 }
+      - uses: actions/setup-node@v4
+        with:
+          {
+            node-version: "22",
+            cache: pnpm,
+            cache-dependency-path: ui/dataobs-console/pnpm-lock.yaml,
+          }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm api:generate && git diff --exit-code -- src/api/generated/schema.ts
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm format:check
+      - name: Upgrade contract, truthfulness, privacy and no-execution tests
+        run: pnpm test
+      - run: pnpm visualization:check
+      - run: pnpm build
+      - run: pnpm bundle:check
+      - run: pnpm performance:check
+      - name: Playwright and Axe
+        run: pnpm playwright
+  repository:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.13" }
+      - run: pip install -r requirements.txt
+      - run: python scripts/check_merge_conflict_markers.py
+      - run: python scripts/security/check_route_permissions.py
+      - run: python scripts/check_team_boundaries.py
+      - run: python scripts/check_generated_artifacts.py
+      - run: python scripts/check_docs_links.py
+      - run: python scripts/validate_capability_ledger.py
+      - run: python scripts/check_migration_immutability.py --base-ref "${{ github.event.pull_request.base.sha || 'origin/main' }}"
+      - run: python scripts/release/validate_migration_graph.py
+      - run: python scripts/release/current_terminal_migration.py
+      - run: python scripts/release/check_helm_migration_consistency.py
+      - run: python scripts/release/validate_compatibility_policy.py
+      - name: Team 0 upgrade tests and evidence
+        run: pytest -q tests/test_version_upgrade_compatibility.py && python scripts/release/build_upgrade_compatibility_evidence.py

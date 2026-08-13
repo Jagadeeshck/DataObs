@@ -197,6 +197,23 @@ export const consoleRoutes: readonly ConsoleRoute[] = [
     ),
   }),
   route({
+    id: "platform-upgrades",
+    path: "/administration/platform/upgrades",
+    name: "Upgrades & Compatibility",
+    aliases: ["upgrade assessment", "compatibility matrix", "rollback"],
+    group: "Configure",
+    capabilityId: "platform-operations",
+    owner: "team-5",
+    workspace: "admin",
+    parentId: "platform-operations",
+    navigation: true,
+    requiredPermission: "platform_operations:read",
+    loader: load(
+      "../features/administration/PlatformUpgrades",
+      "PlatformUpgrades",
+    ),
+  }),
+  route({
     id: "platform-resource-360",
     path: "/administration/platform/:resourceKind/:resourceId",
     name: "Platform Resource",

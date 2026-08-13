@@ -42,3 +42,6 @@ Use provider type `oracle` and `requirements-oracle.txt`. Thin-mode TCPS connect
 ## AWS messaging v3
 
 Kinesis and SQS remain services of the `aws` provider. Collectors must use only the closed read-only API and attribute/metric registries documented in the Team 4 architecture/security guides. Provider-native resource evidence carries the Team 1 handoff envelope, while Team 1 owns all canonical messaging projections. Never add message/record reads or reinterpret iterator age/approximate queue counts.
+# RabbitMQ messaging v1
+
+Register `RabbitMqMessagingProvider` through Collection Manager and use the closed example at `config/integrations/rabbitmq-messaging.example.yaml`. The provider uses the Integration SDK, generic persistence/checkpoints, and Team 1 messaging envelope. It is read-only, polling-only, and `functional_unvalidated`.

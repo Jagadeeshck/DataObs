@@ -351,9 +351,9 @@ Deterministic evidence-first incident fingerprints, bounded historical candidate
 - **Release readiness:** `blocked`
 - **Next gate:** Complete the production vertical slice and certify against Elasticsearch 9.4.2 and the Console.
 
-### `integration.cloud` — AWS, Azure, GCP, and Snowflake providers
+### `integration.cloud` — Cloud, warehouse, and RabbitMQ providers
 
-AWS collector v3 (including Kinesis/SQS) and Snowflake warehouse collector v1 are bounded and functional_unvalidated; Azure and GCP remain deferred.
+AWS v3, Snowflake v1, and RabbitMQ Management HTTP API v1 are bounded and functional_unvalidated; hosted RabbitMQ 4.3.x evidence is pending.
 
 - **State:** `functional_unvalidated`
 - **Release readiness:** `blocked`

@@ -12,3 +12,6 @@
 All observations must carry tenant, environment, system/provider, account scope, location, kind and provider ID, observed/ingested times, status/confidence/coverage, collection source/method, and schema version.
 
 Kinesis and SQS provider-native collectors are implemented in AWS provider v3 with bounded pagination and closed CloudWatch allowlists. Status remains functional_unvalidated pending hosted exact-SHA evidence.
+# RabbitMQ v1 handoff
+
+Team 4 now emits bounded, privacy-filtered RabbitMQ Management HTTP API evidence through the existing observation envelope. Vhosts map to namespaces; queues and exchanges retain provider structure; bindings retain only endpoint identities and a routing-key digest; DLQ classification requires observed topology. Team 1 continues to own canonical normalization and projections. See `docs/architecture/team-4-rabbitmq-messaging-collector.md`.

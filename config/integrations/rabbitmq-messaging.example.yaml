@@ -1,0 +1,38 @@
+integration_id: rabbitmq-production
+provider_type: rabbitmq
+enabled: false
+allowed_capabilities: [resource_discovery, metadata_collection, metric_collection, health_check, incremental_collection]
+provider:
+  endpoint: https://rabbitmq.example.internal:15671
+  authentication:
+    type: basic
+    username: dataobs_monitor
+    password_ref: env:DATAOBS_RABBITMQ_PASSWORD
+  tls:
+    verify_certificate: true
+    verify_hostname: true
+    ca_bundle_ref: file-ref:/etc/dataobs/rabbitmq-ca.pem
+  discovery:
+    include_vhosts: []
+    exclude_vhosts: []
+    include_queues: []
+    exclude_queues: []
+    include_exchanges: true
+    include_bindings: true
+    include_dead_letter_relationships: true
+    include_cluster_health: true
+    include_node_summary: true
+  statistics:
+    include_queue_counters: true
+    include_exchange_counters: true
+    include_delivery_counters: true
+  limits:
+    page_size: 100
+    maximum_pages: 100
+    maximum_vhosts: 1000
+    maximum_queues: 100000
+    maximum_exchanges: 100000
+    maximum_bindings: 500000
+    maximum_observations: 1000000
+    request_timeout_seconds: 10
+    total_timeout_seconds: 300

@@ -1,0 +1,25 @@
+name: Team 4 RabbitMQ messaging collector v1
+on:
+  pull_request:
+  push:
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install -r requirements-dev.txt
+      - run: python -m compileall integrations/rabbitmq services/collection_manager
+      - run: ruff check integrations/rabbitmq tests/unit/rabbitmq_provider
+      - run: black --check integrations/rabbitmq tests/unit/rabbitmq_provider
+      - run: mypy integrations/rabbitmq
+      - run: pytest -q tests/unit/rabbitmq_provider tests/integrations/test_collection_manager_runtime.py tests/stream_360
+      - run: python scripts/release/validate_migration_graph.py
+      - run: python scripts/check_migration_immutability.py
+      - run: python scripts/release/check_release_metadata.py
+      - run: python scripts/validate_capability_ledger.py
+      - run: python scripts/check_generated_artifacts.py
+      - run: python scripts/check_docs_links.py
+      - run: python scripts/release/current_terminal_migration.py
+      - run: pip-audit

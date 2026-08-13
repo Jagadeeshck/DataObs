@@ -31,7 +31,7 @@ cloud provider implemented. Provider status is governed by the capability ledger
 | Kafka | Yes kafka | Yes messaging spans | Sometimes | broker/topic/consumer lag/lineage | SASL/secret ref | describe/read metrics | kafka, dataobs stream |
 | Kinesis | Yes aws | Yes | Sometimes | stream metrics/events | IAM | read metrics/describe | aws.kinesis, dataobs stream |
 | SQS | Yes aws | Yes | No | queue metrics/message spans | IAM | sqs read attrs | aws.sqs, otlp |
-| RabbitMQ | Yes rabbitmq | Yes | No | broker/queue metrics | secret ref | monitoring user | rabbitmq |
+| RabbitMQ | Yes rabbitmq | Yes | Yes, v1 functional-unvalidated | bounded Management HTTP API vhost/queue/exchange/binding inventory, health and current counters | Basic password secret ref | monitoring tag with empty configure/write/read | generic provider evidence |
 | Pub/Sub | Yes gcp | Yes | Sometimes | topic/sub metrics/lineage | workload identity | viewer | gcp.pubsub, dataobs stream |
 | Airflow | No/generic API | Yes | Yes | DAG runs/tasks/lineage | API secret ref | read DAG/runs | dataobs jobs |
 | dbt | No/generic | Yes | Yes | manifests/run results/tests | token/files | read artifacts/API | dataobs dbt |
@@ -56,7 +56,7 @@ cloud provider implemented. Provider status is governed by the capability ledger
 | Kafka | functional | functional | Existing offset/group semantics preserved |
 | Kinesis | partial | functional_unvalidated | Iterator age is not committed offset lag |
 | SQS | partial | functional_unvalidated | Counts are approximate; offsets/groups unsupported |
-| RabbitMQ | not_configured | functional_unvalidated | Requires read-only management/Elastic evidence |
+| RabbitMQ | functional_unvalidated | functional_unvalidated | Management HTTP API current evidence; optional statistics and hosted 4.3.x validation remain partial |
 | Google Pub/Sub | not_configured | functional_unvalidated | Subscription is not a consumer group |
 | Azure Event Hubs | not_configured | functional_unvalidated | Lag requires checkpoint evidence |
 | Azure Service Bus | not_configured | functional_unvalidated | Partitions unsupported |

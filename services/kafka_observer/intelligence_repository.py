@@ -27,6 +27,8 @@ EVALUATIONS = "metrics-dataobs.stream-anomaly-evaluation-default"
 FORECAST_EVIDENCE = "metrics-dataobs.stream-retention-forecast-default"
 CANDIDATE_EVIDENCE = "logs-dataobs.stream-failure-candidate-default"
 SIGNALS = "logs-dataobs.stream-intelligence-signal-default"
+CAPACITY = "dataobs-stream-capacity-current-v1"
+CAPACITY_EVIDENCE = "logs-dataobs.stream-capacity-evaluation-default"
 
 
 def canonical_id(kind: str, tenant: str, environment: str, *parts: object) -> str:
@@ -139,7 +141,11 @@ class ElasticsearchIntelligenceRepository:
         clauses: list[dict[str, Any]] = [{"term": {"tenant_id": tenant}}, {"term": {"environment": environment}}]
         for key, value in (filters or {}).items():
             if (
-                key in {"detector_id", "resource_type", "resource_id", "metric", "state", "enabled", "classification"}
+                key in {
+                    "detector_id", "resource_type", "resource_id", "metric", "state", "overall_state", "enabled",
+                    "classification", "provider", "messaging_system", "bottleneck_dimension", "throttled",
+                    "retention_risk",
+                }
                 and value is not None
             ):
                 clauses.append({"term": {key: value}})
@@ -452,6 +458,26 @@ class ElasticsearchIntelligenceRepository:
             return None
         return source if source.get("tenant_id") == tenant and source.get("environment") == environment else None
 
+    def append_capacity_evaluation(self, document: dict[str, Any], token: int) -> None:
+        self.validate_fencing_token(document["tenant_id"], document["environment"], token)
+        self.es.index(index=CAPACITY_EVIDENCE, id=document["evaluation_id"], document=_json(document), op_type="create")
+
+    def project_capacity(self, document: dict[str, Any], token: int) -> None:
+        """Fence then use the shared real-seq-no/primary-term OCC projection."""
+        tenant, environment = document["tenant_id"], document["environment"]
+        self.validate_fencing_token(tenant, environment, token)
+        self._project(CAPACITY, canonical_id("capacity", tenant, environment, document["resource_id"]), _json(document), tenant, environment, token)
+
+    def get_capacity(self, tenant: str, environment: str, resource_id: str) -> dict[str, Any]:
+        try:
+            hit = self.es.get(index=CAPACITY, id=canonical_id("capacity", tenant, environment, resource_id))
+        except NotFoundError:
+            raise KeyError(resource_id) from None
+        source = hit["_source"]
+        if source.get("tenant_id") != tenant or source.get("environment") != environment:
+            raise KeyError(resource_id)
+        return source
+
     def inventory(
         self,
         kind: str,
@@ -468,6 +494,7 @@ class ElasticsearchIntelligenceRepository:
             "failure-candidates": CANDIDATES,
             "signals": SIGNALS,
             "evaluations": EVALUATIONS,
+            "capacity": CAPACITY,
         }
         if kind not in indexes:
             raise ValueError("unsupported inventory")

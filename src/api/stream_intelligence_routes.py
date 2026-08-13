@@ -108,6 +108,34 @@ def create_stream_intelligence_router(get_es: Callable[..., Any], require_auth: 
         health = repo.runtime_health(tenant, environment)
         return health or {"configured": False, "health_state": "not_configured", "data_status": "unknown"}
 
+    @router.get("/streams/{resource_id}/capacity")
+    def stream_capacity(
+        resource_id: str,
+        request: Request,
+        repo: ElasticsearchIntelligenceRepository = Depends(repository),
+    ) -> dict[str, Any]:
+        """Return raw capacity intelligence in trusted request scope."""
+        tenant, environment = scope(request)
+        try:
+            return repo.get_capacity(tenant, environment, resource_id)
+        except KeyError:
+            raise HTTPException(404, detail={"code": "capacity_not_found", "message": "Capacity evaluation not found"}) from None
+
+    @router.get("/stream-intelligence/capacity")
+    def capacity_inventory(
+        request: Request,
+        limit: int = Query(50, ge=1, le=200),
+        cursor: str | None = None,
+        provider: str | None = None,
+        messaging_system: str | None = None,
+        state: str | None = None,
+        bottleneck_dimension: str | None = None,
+        throttled: bool | None = None,
+        retention_risk: bool | None = None,
+        repo: ElasticsearchIntelligenceRepository = Depends(repository),
+    ) -> dict[str, Any]:
+        return page("capacity", request, repo, limit, cursor, {"provider": provider, "messaging_system": messaging_system, "overall_state": state, "bottleneck_dimension": bottleneck_dimension, "throttled": throttled, "retention_risk": retention_risk})
+
     for route_kind in ("anomalies", "forecasts", "failure-candidates", "signals"):
 
         def inventory(

@@ -18,18 +18,23 @@ SOURCE_RANK = {"production_slo": 30, "canonical_domain": 20, "canonical_evaluati
 
 
 def deduplicate_evidence(evidence: list[AssetTrustEvidence]) -> list[AssetTrustEvidence]:
-    """Prefer the highest canonical layer and remove shared provenance per dimension."""
+    """Prefer the highest canonical layer and remove shared provenance globally.
+
+    Global provenance is intentional: an SLO derived from a freshness monitor or a
+    producer-job evaluation must not amplify the same failure in two dimensions.
+    """
     selected: list[AssetTrustEvidence] = []
-    for dimension in DIMENSIONS:
-        candidates = [e for e in evidence if e.dimension == dimension]
-        candidates.sort(key=lambda e: (-SOURCE_RANK.get(e.evidence_source, 0), e.evidence_ref))
-        claimed: set[str] = set()
-        for item in candidates:
-            provenance = set(item.derived_from) | {item.evidence_ref}
-            if provenance & claimed:
-                continue
-            selected.append(item)
-            claimed |= provenance
+    claimed: set[str] = set()
+    candidates = sorted(
+        evidence,
+        key=lambda e: (-SOURCE_RANK.get(e.evidence_source, 0), DIMENSIONS.index(e.dimension), e.evidence_ref),
+    )
+    for item in candidates:
+        provenance = set(item.derived_from) | {item.evidence_ref}
+        if provenance & claimed:
+            continue
+        selected.append(item)
+        claimed |= provenance
     return selected
 
 

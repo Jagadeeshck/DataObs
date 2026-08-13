@@ -1,0 +1,41 @@
+name: Team 5 Platform Fleet Console v1
+on:
+  pull_request:
+    paths:
+      [
+        "ui/dataobs-console/**",
+        "docs/**",
+        ".github/workflows/team-5-platform-fleet-console-v1.yml",
+      ]
+jobs:
+  console:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.28.1 }
+      - uses: actions/setup-node@v4
+        with:
+          {
+            node-version: 22,
+            cache: pnpm,
+            cache-dependency-path: ui/dataobs-console/pnpm-lock.yaml,
+          }
+      - run: pnpm install --frozen-lockfile
+        working-directory: ui/dataobs-console
+      - run: pnpm api:generate && git diff --exit-code -- src/api/generated/schema.ts
+        working-directory: ui/dataobs-console
+      - run: pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm visualization:check
+        working-directory: ui/dataobs-console
+      - run: pnpm build && pnpm bundle:check && pnpm performance:check && pnpm playwright
+        working-directory: ui/dataobs-console
+      - name: Repository guards
+        run: |
+          python scripts/check_merge_conflict_markers.py
+          python scripts/security/check_route_permissions.py
+          python scripts/check_team_boundaries.py
+          python scripts/check_generated_artifacts.py
+          python scripts/check_docs_links.py
+          python scripts/validate_capability_ledger.py
+          python scripts/check_migration_immutability.py --base-ref ${{ github.event.pull_request.base.sha }}
+          python scripts/release/current_terminal_migration.py

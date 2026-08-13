@@ -1,0 +1,60 @@
+{
+  "team": "Team 5",
+  "repository": "Jagadeeshck/DataObs",
+  "audited_base_sha": "96d6e4fc0e20d11ee7dcaca5f681660d5dd2be52",
+  "producer_sha": "${GITHUB_SHA}",
+  "workflow": "Team 5 Platform Fleet Console v1",
+  "run_attempt": "${GITHUB_RUN_ID}/${GITHUB_RUN_ATTEMPT}",
+  "console_version": "0.1.0",
+  "lifecycle_api_count_audited": 21,
+  "read_endpoints_used": [
+    "environments",
+    "clusters",
+    "installations",
+    "tenants",
+    "tenant offboarding-preview",
+    "fleet",
+    "drift",
+    "capacity"
+  ],
+  "mutation_endpoints_exposed": [],
+  "mutation_endpoints_intentionally_excluded": [
+    "environment create/transition",
+    "cluster register",
+    "installation register",
+    "tenant create/actions",
+    "deployment plans/transitions",
+    "promotions"
+  ],
+  "terminal_migration": "0031_team3_post_incident_review_analytics",
+  "warnings": [
+    "No configured Git remote; remote PR audit unavailable",
+    "Current inventory APIs are not paginated",
+    "Release-readiness and lifecycle activity read APIs unavailable"
+  ],
+  "skipped_gates": [
+    "Playwright browser installation status pending",
+    "Independent CI verification pending"
+  ],
+  "environments_test": "pass: presentation semantics and inventory component covered by type/unit suite",
+  "installations_test": "pass",
+  "clusters_test": "pass",
+  "tenants_test": "pass",
+  "fleet_test": "pass",
+  "drift_test": "pass",
+  "capacity_test": "pass",
+  "offboarding_preview_test": "pass: GET-only client contract",
+  "no_implicit_mutation_test": "pass: empty action registry and GET-only client",
+  "occ_result": "not applicable: no mutations exposed",
+  "idempotency_result": "not applicable: no mutations exposed",
+  "permissions_result": "pass: exact platform_operations:read route gate and repository route-policy guard",
+  "cross_tenant_isolation_result": "pass: route gate; fleet client omits tenant context",
+  "partial_failure_result": "pass: Promise.allSettled provider isolation",
+  "accessibility_result": "programmatic semantics pass; browser unavailable",
+  "playwright_result": "skipped: Chromium executable unavailable",
+  "build_result": "blocked by reproduced pre-existing Quality and Investigation TypeScript errors",
+  "bundle_result": "skipped because build output unavailable",
+  "performance_result": "skipped because build output unavailable",
+  "privacy_result": "pass: allow-list tests",
+  "independent_verification_status": "pending CI"
+}

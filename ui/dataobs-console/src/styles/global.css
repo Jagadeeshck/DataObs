@@ -2529,3 +2529,42 @@ progress {
     scroll-behavior: auto !important;
   }
 }
+.platform-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: 1rem;
+  margin: 1rem 0;
+}
+.platform-section {
+  margin-block: 2rem;
+}
+.platform-state {
+  display: inline-flex;
+  gap: 0.4rem;
+  align-items: center;
+  font-weight: 650;
+  white-space: nowrap;
+}
+.platform-state--positive {
+  color: var(--euiColorVis0, #177b57);
+}
+.platform-state--progress {
+  color: var(--euiColorVis1, #1750a3);
+}
+.platform-state--caution {
+  color: var(--euiColorVis5, #8a5a00);
+}
+.platform-state--critical {
+  color: var(--euiColorDanger, #bd271e);
+}
+.platform-operations code {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 640px) {
+  .platform-operations .table-scroll {
+    overflow-x: auto;
+  }
+  .platform-operations .admin-grid {
+    grid-template-columns: 1fr;
+  }
+}

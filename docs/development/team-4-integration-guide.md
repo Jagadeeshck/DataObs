@@ -38,3 +38,7 @@ Use the dedicated `sqlserver` relational provider with the optional Microsoft dr
 ### Oracle
 
 Use provider type `oracle` and `requirements-oracle.txt`. Thin-mode TCPS connects to exactly one configured service/PDB. Only secret references and normal password authorization are accepted. Metadata is visibility-scoped; freshness/profiling require explicit relation policies.
+
+## AWS messaging v3
+
+Kinesis and SQS remain services of the `aws` provider. Collectors must use only the closed read-only API and attribute/metric registries documented in the Team 4 architecture/security guides. Provider-native resource evidence carries the Team 1 handoff envelope, while Team 1 owns all canonical messaging projections. Never add message/record reads or reinterpret iterator age/approximate queue counts.

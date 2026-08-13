@@ -1,0 +1,67 @@
+name: Team 5 Platform Supportability Console v1
+on:
+  pull_request:
+  workflow_dispatch:
+jobs:
+  console:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.28.1 }
+      - uses: actions/setup-node@v4
+        with:
+          {
+            node-version: 22,
+            cache: pnpm,
+            cache-dependency-path: ui/dataobs-console/pnpm-lock.yaml,
+          }
+      - run: pnpm install --frozen-lockfile
+        working-directory: ui/dataobs-console
+      - run: pnpm api:generate && git diff --exit-code -- src/api/generated/schema.ts
+        working-directory: ui/dataobs-console
+      - run: pnpm typecheck && pnpm lint && pnpm format:check
+        working-directory: ui/dataobs-console
+      - run: pnpm test && pnpm visualization:check
+        working-directory: ui/dataobs-console
+      - run: pnpm build && pnpm bundle:check && pnpm performance:check
+        working-directory: ui/dataobs-console
+      - run: pnpm exec playwright install --with-deps chromium && pnpm playwright
+        working-directory: ui/dataobs-console
+      - name: Team 0 contract regression
+        run: |
+          python scripts/operations/validate_supportability_contracts.py
+          python scripts/operations/validate_runbook_coverage.py
+          python scripts/release/render_current_production_readiness.py
+          pytest -q tests/platform_operations/test_supportability_v1.py
+      - name: Repository policy checks
+        run: |
+          python scripts/check_merge_conflict_markers.py
+          python scripts/security/check_route_permissions.py
+          python scripts/check_team_boundaries.py
+          python scripts/check_generated_artifacts.py
+          python scripts/check_docs_links.py
+          python scripts/validate_capability_ledger.py
+          python scripts/check_migration_immutability.py --base-ref "${{ github.event.pull_request.base.sha || github.event.before }}"
+          python scripts/release/current_terminal_migration.py
+      - name: Produce exact-commit evidence
+        run: |
+          mkdir -p team-5-platform-supportability-console-v1-evidence
+          cat > team-5-platform-supportability-console-v1-evidence/evidence.txt <<EOF
+          Team=Team 5
+          repository=${GITHUB_REPOSITORY}
+          audited_base=${{ github.event.pull_request.base.sha || github.event.before }}
+          producer_sha=${GITHUB_SHA}
+          workflow=${GITHUB_WORKFLOW}
+          run_attempt=${GITHUB_RUN_ID}/${GITHUB_RUN_ATTEMPT}
+          sections_audited=support,diagnostics,configuration,maintenance,known-issues,operational-readiness
+          sections_exposed=support,diagnostics,configuration,maintenance,known-issues,operational-readiness
+          tests=readiness,NO_GO,stale,missing-evidence,diagnostics,configuration,known-issues,runbooks,maintenance,partial-failure,permission,no-mutation,privacy
+          terminal_migration=$(python scripts/release/current_terminal_migration.py)
+          certification_claim=none
+          EOF
+      - uses: actions/upload-artifact@v4
+        with:
+          name: team-5-platform-supportability-console-v1-evidence
+          path: team-5-platform-supportability-console-v1-evidence

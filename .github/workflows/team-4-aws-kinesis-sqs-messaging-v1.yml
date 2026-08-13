@@ -1,0 +1,67 @@
+name: Team 4 AWS Kinesis and SQS messaging collectors v1
+on:
+  workflow_dispatch: {}
+  pull_request:
+    paths: ['integrations/aws/**', 'packages/streaming/**', 'services/collection_manager/**', 'services/stream_observer/**', 'tests/integrations/**', 'docs/**', 'config/integrations/**']
+permissions: {contents: read}
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    services:
+      elasticsearch:
+        image: docker.elastic.co/elasticsearch/elasticsearch:9.4.2
+        env: {discovery.type: single-node, xpack.security.enabled: 'false'}
+        ports: ['9200:9200']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: pip install -r requirements.txt pytest ruff black mypy pip-audit types-PyYAML
+      - name: Compile, lint, format, and type check
+        run: |
+          python -m compileall integrations/aws packages/streaming services/collection_manager services/stream_observer
+          ruff check integrations/aws tests/integrations/test_aws_provider.py tests/integrations/test_aws_provider_v2.py tests/integrations/test_aws_messaging.py
+          black --check integrations/aws tests/integrations/test_aws_provider.py tests/integrations/test_aws_provider_v2.py tests/integrations/test_aws_messaging.py
+          mypy integrations/aws packages/streaming services/collection_manager services/stream_observer
+      - name: AWS provider, messaging, security, CloudWatch, and Team 1 contracts
+        run: pytest -q tests/integrations/test_aws_provider.py tests/integrations/test_aws_provider_v2.py tests/integrations/test_aws_messaging.py
+      - name: Team 4 provider regressions
+        run: pytest -q tests/integrations
+      - name: No payload read, mutation, policies, KMS identities, or secrets
+        run: |
+          ! rg -n '\.(get_records|get_shard_iterator|subscribe_to_shard|put_record|put_records|receive_message|send_message|delete_message|purge_queue|set_queue_attributes)\(' integrations/aws
+          ! rg -n 'AttributeNames=.*All|KmsMasterKeyId|RedriveAllowPolicy|"Policy"' integrations/aws/services
+          pytest -q tests/security/test_beta_security_hardening.py -k redaction
+      - name: Migration discipline
+        run: |
+          python scripts/release/current_terminal_migration.py
+          python -m packages.elastic_store.cli doctor
+          python scripts/check_migration_immutability.py --base-ref "${{ github.event.pull_request.base.sha || github.event.before || 'HEAD^' }}"
+          python scripts/release/check_release_metadata.py
+      - name: Ledgers, generated artifacts, docs, and dependencies
+        run: |
+          python scripts/validate_capability_ledger.py
+          python scripts/render_capability_docs.py
+          git diff --exit-code -- docs/product/capability-ledger.md docs/product/feature-matrix.md docs/product/evidence-index.md
+          python scripts/check_generated_artifacts.py
+          python scripts/check_docs_links.py
+          pip-audit -r requirements.txt
+      - name: Build exact-SHA evidence
+        env: {EVIDENCE_SHA: '${{ github.sha }}'}
+        run: |
+          mkdir -p hosted-evidence
+          python - <<'PY'
+          import json, os
+          source=json.load(open('team-4-aws-kinesis-sqs-messaging-v1-evidence/evidence.json'))
+          source['exact_sha']=os.environ['EVIDENCE_SHA']; source['aws_regression_result']='passed'; source['team_4_regression_result']='passed'
+          json.dump(source,open('hosted-evidence/evidence.json','w'),indent=2)
+          PY
+      - uses: actions/upload-artifact@v4
+        with: {name: team-4-aws-kinesis-sqs-messaging-v1-evidence, path: hosted-evidence}
+  verify-evidence:
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with: {name: team-4-aws-kinesis-sqs-messaging-v1-evidence, path: evidence}
+      - run: python -c "import json; d=json.load(open('evidence/evidence.json')); assert len(d['exact_sha']) == 40 and d['status'] == 'functional_unvalidated'"

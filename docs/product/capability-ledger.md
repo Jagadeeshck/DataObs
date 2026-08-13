@@ -6,8 +6,8 @@ Audited commit: `5164762a6337a44a76ad2c7574a78edc048a70b3` · PR range: #82-#168
 
 ## State counts
 
-- **foundation**: 13
-- **functional_unvalidated**: 27
+- **foundation**: 12
+- **functional_unvalidated**: 31
 - **not_started**: 6
 - **optional_integration**: 1
 - **scaffold**: 1
@@ -16,10 +16,10 @@ Audited commit: `5164762a6337a44a76ad2c7574a78edc048a70b3` · PR range: #82-#168
 
 - **ai_agent**: 2
 - **business**: 2
-- **data**: 5
-- **data_pipeline**: 17
+- **data**: 8
+- **data_pipeline**: 16
 - **finops_cost**: 1
-- **platform**: 21
+- **platform**: 22
 
 ## Capabilities
 
@@ -63,6 +63,22 @@ Evidence-led status for asset catalog and asset 360.
 - **Release readiness:** `blocked`
 - **Next gate:** Execute and retain the evidence required for promotion.
 
+### `data.mariadb` — MariaDB database collector v1
+
+Safe structural MariaDB metadata and policy-owned aggregate evidence.
+
+- **State:** `functional_unvalidated`
+- **Release readiness:** `blocked`
+- **Next gate:** Run and independently verify the hosted workflow against MariaDB 11.8 LTS and 11.4 LTS.
+
+### `data.mysql` — MySQL database collector v1
+
+Safe structural MySQL metadata and policy-owned aggregate evidence.
+
+- **State:** `functional_unvalidated`
+- **Release readiness:** `blocked`
+- **Next gate:** Run and independently verify the hosted exact-commit workflow against MySQL 8.4 LTS.
+
 ### `data.postgres` — PostgreSQL discovery, schema, freshness, and profiling
 
 Evidence-led status for postgresql discovery, schema, freshness, and profiling.
@@ -86,6 +102,14 @@ Evidence-aware quality investigation with bounded authoring and safe mutations.
 - **State:** `functional_unvalidated`
 - **Release readiness:** `blocked`
 - **Next gate:** Retain and independently verify exact-commit hosted evidence.
+
+### `monitoring.data_slo` — Data Quality SLOs, Error Budgets and Burn Rate
+
+Canonical Team 2 asset and job SLI, error-budget, burn-rate, and Data Product child-roll-up semantics.
+
+- **State:** `functional_unvalidated`
+- **Release readiness:** `blocked`
+- **Next gate:** Complete the production vertical slice and independently verify its retained exact-head artifact.
 
 ### `monitoring.runtime` — Monitor runtime, baselines, and recommendations
 
@@ -174,14 +198,6 @@ Bounded evidence-led pathway investigation; no root-cause claim.
 - **State:** `functional_unvalidated`
 - **Release readiness:** `blocked`
 - **Next gate:** Retain and independently verify exact-SHA hosted evidence.
-
-### `pipeline.dbt_intelligence` — dbt Project, Test and Semantic Intelligence
-
-Safe versioned dbt artifact parsing and bounded operational, quality, lineage, and semantic projections.
-
-- **State:** `foundation`
-- **Release readiness:** `blocked`
-- **Next gate:** Complete Elasticsearch, Console, browser, accessibility, exact-commit and independent hosted certification.
 
 ### `streaming.anomaly_retention_intelligence_v1` — Stream anomaly, retention and failure intelligence v1
 
@@ -279,9 +295,17 @@ Evidence-led status for cases, workflows, approvals, actions, and verification.
 - **Release readiness:** `blocked`
 - **Next gate:** Execute and retain the evidence required for promotion.
 
+### `incidents.recurrence_similarity_intelligence` — Recurrence and Similar Incident Intelligence v1
+
+Deterministic evidence-first incident fingerprints, bounded historical candidate retrieval, explainable similarity, and candidate recurrence semantics.
+
+- **State:** `functional_unvalidated`
+- **Release readiness:** `blocked`
+- **Next gate:** Complete the production vertical slice and certify against Elasticsearch 9.4.2 and the Console.
+
 ### `integration.cloud` — AWS, Azure, GCP, and Snowflake providers
 
-AWS collector v2 and Snowflake warehouse collector v1 are bounded and functional_unvalidated; Azure and GCP remain deferred.
+AWS collector v3 (including Kinesis/SQS) and Snowflake warehouse collector v1 are bounded and functional_unvalidated; Azure and GCP remain deferred.
 
 - **State:** `functional_unvalidated`
 - **Release readiness:** `blocked`

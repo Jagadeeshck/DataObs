@@ -14,6 +14,29 @@ RDS_METRICS = {
     "WriteIOPS": ("count/second", "Average"),
 }
 
+KINESIS_METRICS = {
+    "IncomingBytes": ("bytes", "Sum"),
+    "IncomingRecords": ("count", "Sum"),
+    "GetRecords.Bytes": ("bytes", "Sum"),
+    "GetRecords.Records": ("count", "Sum"),
+    "GetRecords.IteratorAgeMilliseconds": ("milliseconds", "Maximum"),
+    "ReadProvisionedThroughputExceeded": ("count", "Sum"),
+    "WriteProvisionedThroughputExceeded": ("count", "Sum"),
+    "PutRecords.FailedRecords": ("count", "Sum"),
+    "PutRecords.ThrottledRecords": ("count", "Sum"),
+}
+
+SQS_METRICS = {
+    "ApproximateNumberOfMessagesVisible": ("count", "Average"),
+    "ApproximateNumberOfMessagesNotVisible": ("count", "Average"),
+    "ApproximateNumberOfMessagesDelayed": ("count", "Average"),
+    "ApproximateAgeOfOldestMessage": ("seconds", "Maximum"),
+    "NumberOfMessagesSent": ("count", "Sum"),
+    "NumberOfMessagesReceived": ("count", "Sum"),
+    "NumberOfMessagesDeleted": ("count", "Sum"),
+    "SentMessageSize": ("bytes", "Average"),
+}
+
 METRIC_REGISTRY = {
     "rds": ("AWS/RDS", ("DBInstanceIdentifier",), RDS_METRICS, 300, 100),
     "glue": ("Glue", ("JobName", "Type"), {}, 300, 100),
@@ -149,6 +172,8 @@ METRIC_REGISTRY = {
         300,
         100,
     ),
+    "kinesis": ("AWS/Kinesis", ("StreamName", "ShardId"), KINESIS_METRICS, 300, 100),
+    "sqs": ("AWS/SQS", ("QueueName",), SQS_METRICS, 300, 100),
 }
 
 
@@ -197,7 +222,8 @@ class CloudWatchAdapter:
             for i, (name, (_, stat)) in enumerate(definitions.items())
         ]
         response, token, results = {}, None, {}
-        while True:
+        # GetMetricData pagination is bounded independently of the provider's retry policy.
+        for _ in range(100):
             response = self.client.get_metric_data(
                 MetricDataQueries=queries,
                 StartTime=now - timedelta(seconds=self.lookback),
@@ -205,10 +231,17 @@ class CloudWatchAdapter:
                 **({"NextToken": token} if token else {}),
             )
             for result in response.get("MetricDataResults", []):
-                results.setdefault(result["Id"], result).get("Values", []).extend([])
+                stored = results.setdefault(result["Id"], {"Values": [], "Timestamps": []})
+                remaining = self.maximum_datapoints - len(stored["Values"])
+                if remaining > 0:
+                    stored["Values"].extend(result.get("Values", [])[:remaining])
+                    stored["Timestamps"].extend(result.get("Timestamps", [])[:remaining])
             token = response.get("NextToken")
             if not token:
                 break
+        else:
+            # Bounded partial metric evidence is preferable to an unbounded provider loop.
+            token = None
         output = []
         for i, (name, (unit, stat)) in enumerate(definitions.items()):
             result = results.get(f"m{i}", {})

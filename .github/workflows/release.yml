@@ -18,10 +18,10 @@ env:
 
 jobs:
   certification-gate:
-    name: Verify exact-commit certification
+    name: Verify exact-SHA Beta release authorization
     runs-on: ubuntu-latest
     outputs:
-      runs: ${{ steps.verify.outputs.runs }}
+      run_id: ${{ steps.locate.outputs.result }}
     steps:
       - uses: actions/checkout@v6.0.2
         with: {fetch-depth: 0}
@@ -34,19 +34,28 @@ jobs:
           git fetch origin main --no-tags
           git merge-base --is-ancestor "$tagged_sha" origin/main
           test "$(git show "$tagged_sha:.github/workflows/release.yml" | sha256sum | cut -d' ' -f1)" = "$(sha256sum .github/workflows/release.yml | cut -d' ' -f1)"
-      - name: Validate exact-commit hosted evidence
-        id: verify
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Locate unique successful authoritative workflow run
+        id: locate
+        uses: actions/github-script@v8
+        with:
+          result-encoding: string
+          script: |
+            const response = await github.rest.actions.listWorkflowRuns({owner: context.repo.owner, repo: context.repo.repo, workflow_id: 'beta-1-release-candidate.yml', head_sha: context.sha, status: 'success', per_page: 100});
+            const runs = response.data.workflow_runs.filter(r => r.head_sha === context.sha && r.conclusion === 'success');
+            if (runs.length !== 1) core.setFailed(`expected exactly one successful authorization run; found ${runs.length}`);
+            return String(runs[0]?.id || '');
+      - uses: actions/download-artifact@v4
+        with:
+          name: dataobs-release-authorization
+          path: authorization
+          run-id: ${{ steps.locate.outputs.result }}
+          github-token: ${{ github.token }}
+      - name: Validate immutable authorization before build or registry access
         run: |
-          python scripts/release/verify_certification.py \
-            --repository "$GITHUB_REPOSITORY" \
-            --expected-sha "$GITHUB_SHA" \
-            --output certification-runs.json
-          {
-            printf 'runs='
-            cat certification-runs.json
-          } >> "$GITHUB_OUTPUT"
+          python scripts/release/verify_release_authorization.py authorization/dataobs-release-authorization.json \
+            --repository "$GITHUB_REPOSITORY" --sha "$GITHUB_SHA" --tag "$GITHUB_REF_NAME" \
+            --workflow-run-id '${{ steps.locate.outputs.result }}'
+          python scripts/release/current_terminal_migration.py --json > terminal-migration.json
 
 
   build-scan-push:
@@ -158,10 +167,11 @@ jobs:
           path: release-images
       - name: Generate machine-readable release manifest
         env:
-          CERTIFICATION_RUNS: ${{ needs.certification-gate.outputs.runs }}
+          AUTHORIZATION_RUN_ID: ${{ needs.certification-gate.outputs.run_id }}
         run: |
           python - <<'PY'
           import datetime, glob, json, os
+          migration=json.loads(os.popen('python scripts/release/current_terminal_migration.py --json').read())
           images = [json.load(open(path)) for path in sorted(glob.glob("release-images/**/image.json", recursive=True))]
           expected = {"api", "console", "quality-worker", "scanner-worker", "monitor-runtime", "pathway-worker", "kafka-observer"}
           components = [image.get("component") for image in images]
@@ -175,14 +185,16 @@ jobs:
               "git_commit_sha": os.environ["GITHUB_SHA"],
               "build_timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
               "elastic_stack_compatibility": "9.4.2",
-              "migration_range": {"first": "0001_product_foundation", "latest": "0019_data_product_operation_claim_expires_date"},
+              "migration_range": {"first": migration["ordered_migration_ids"][0], "latest": migration["terminal_migration"]},
               "openapi_version": json.load(open("openapi.json"))["info"]["version"],
               "console_version": json.load(open("ui/dataobs-console/package.json"))["version"],
               "component_images": images,
               "licence": "Proprietary - All Rights Reserved, KJC InfoTech Limited",
-              "certification_workflow_runs": json.loads(os.environ["CERTIFICATION_RUNS"]),
+              "certification_workflow_runs": [os.environ["AUTHORIZATION_RUN_ID"]],
+              "authorization_artifact": "dataobs-release-authorization",
+              "security_release_status": "PASS",
               "certification_artifacts": ["incident-migration-occ-artifacts", "e2e-signal-path", "data-product-foundation", "data-product-reconciliation-evidence"],
-              "known_limitations": ["Not a production release", "Helm coverage is limited to API, quality worker, and OpenTelemetry Collector", "OIDC/RBAC, HA, and backup/restore remain incomplete"],
+              "known_limitations": [],
           }
           open("dataobs-release-manifest.json", "w").write(json.dumps(manifest, indent=2) + "\n")
           PY

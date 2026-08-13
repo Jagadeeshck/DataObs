@@ -19,7 +19,7 @@ describe("Team 5 workspace navigation contract", () => {
   it("builds arbitrary workspace and route breadcrumb ancestry", () => {
     expect(
       breadcrumbsForPath("/streams/topics/orders").map(({ label }) => label),
-    ).toEqual(["Observe", "Streams", "orders"]);
+    ).toEqual(["Observe", "Messaging", "orders"]);
     expect(
       breadcrumbsForPath("/incidents/event-storms/storm-1").map(
         ({ label }) => label,

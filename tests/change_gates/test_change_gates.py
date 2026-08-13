@@ -6,7 +6,14 @@ from services.change_gates.repository import MemoryChangeGateRepository
 
 
 def manifest(nodes):
-    return {"metadata": {}, "nodes": nodes}
+    return {
+        "metadata": {
+            "dbt_schema_version": "https://schemas.getdbt.com/dbt/manifest/v12/manifest.json",
+            "dbt_version": "1.10.0",
+            "invocation_id": "change-gate-test",
+        },
+        "nodes": nodes,
+    }
 
 
 def model(name, checksum="x", columns=None):
@@ -40,7 +47,7 @@ def test_raw_sql_rejected():
     try:
         parse_manifest(manifest({"model.p.x": {**model("x"), "raw_sql": "select secret"}}))
     except ValueError as exc:
-        assert "unsafe dbt field" in str(exc)
+        assert "restricted field" in str(exc)
     else:
         raise AssertionError("unsafe artifact accepted")
 

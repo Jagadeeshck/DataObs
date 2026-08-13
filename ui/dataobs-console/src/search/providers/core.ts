@@ -110,7 +110,7 @@ export const monitorProvider: SearchProvider = {
   id: "monitors",
   label: "Monitors",
   capabilityId: "quality",
-  ownerTeam: "team-4",
+  ownerTeam: "team-2",
   entityTypes: ["monitor"],
   requiredPermission: "quality:read",
   async search(r, signal) {

@@ -1,5 +1,5 @@
 schema_version: "1"
-terminal_migration: 0030_team1_multi_broker_messaging_runtime
+terminal_migration: 0033_team1_stream_schema_intelligence_runtime
 compatibility: application-backward-compatible
 notes: >-
   The migration adds isolated lifecycle resources. Application rollback may stop lifecycle writers while retaining

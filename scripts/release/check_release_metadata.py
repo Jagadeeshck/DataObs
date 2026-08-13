@@ -14,9 +14,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 from scripts.release.release_metadata import terminal_migration  # noqa: E402
 
-TERMINAL_CLAIM = re.compile(
-    r"(?i)terminal(?: migration)?(?: registry)?[^\n`]{0,80}`?(00\d{2}_[a-z0-9_]+)"
-)
+TERMINAL_CLAIM = re.compile(r"(?i)terminal(?: migration)?(?: registry)?[^\n`]{0,80}`?(00\d{2}_[a-z0-9_]+)")
 
 
 def main() -> int:

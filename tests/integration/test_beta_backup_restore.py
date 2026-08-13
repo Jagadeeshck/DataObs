@@ -25,10 +25,7 @@ pytestmark = pytest.mark.skipif(
 
 def _fingerprint(es: Elasticsearch, resource: str) -> tuple[int, str]:
     response = es.search(index=resource, query={"match_all": {}}, size=1000, sort=["_id"])
-    rows = [
-        {"id": hit["_id"], "source": hit["_source"]}
-        for hit in response["hits"]["hits"]
-    ]
+    rows = [{"id": hit["_id"], "source": hit["_source"]} for hit in response["hits"]["hits"]]
     encoded = json.dumps(rows, sort_keys=True, separators=(",", ":")).encode()
     return len(rows), hashlib.sha256(encoded).hexdigest()
 
@@ -46,8 +43,18 @@ def test_beta_backup_restore_exact_state_and_tenant_isolation() -> None:
     current = "dataobs-incidents-v1"
     stream = "logs-dataobs.security-event-certification"
     fixtures = {
-        "tenant-a": {"tenant_id": "tenant-a", "environment": "beta", "title": "fixture-a", "@timestamp": "2026-01-01T00:00:00Z"},
-        "tenant-b": {"tenant_id": "tenant-b", "environment": "beta", "title": "fixture-b", "@timestamp": "2026-01-01T00:00:01Z"},
+        "tenant-a": {
+            "tenant_id": "tenant-a",
+            "environment": "beta",
+            "title": "fixture-a",
+            "@timestamp": "2026-01-01T00:00:00Z",
+        },
+        "tenant-b": {
+            "tenant_id": "tenant-b",
+            "environment": "beta",
+            "title": "fixture-b",
+            "@timestamp": "2026-01-01T00:00:01Z",
+        },
     }
     for tenant, document in fixtures.items():
         es.index(index=current, id=f"{tenant}-current", document=document)
@@ -82,7 +89,13 @@ def test_beta_backup_restore_exact_state_and_tenant_isolation() -> None:
     tenant_a = es.count(index=f"{current},{stream}", query={"term": {"tenant_id": "tenant-a"}})["count"]
     tenant_b = es.count(index=f"{current},{stream}", query={"term": {"tenant_id": "tenant-b"}})["count"]
     assert tenant_a == tenant_b == 2
-    assert es.count(index=current, query={"bool": {"filter": [{"term": {"tenant_id": "tenant-a"}}, {"term": {"tenant_id": "tenant-b"}}]}})["count"] == 0
+    assert (
+        es.count(
+            index=current,
+            query={"bool": {"filter": [{"term": {"tenant_id": "tenant-a"}}, {"term": {"tenant_id": "tenant-b"}}]}},
+        )["count"]
+        == 0
+    )
     report = {
         "schema_version": "1.0",
         "status": "pass",

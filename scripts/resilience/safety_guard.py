@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Safety controller for destructive certification operations."""
+
 import argparse
 import re
 from urllib.parse import urlparse
@@ -23,9 +24,11 @@ def main() -> int:
         or a.environment not in {"test", "disposable"}
         or not a.synthetic_marker.startswith("synthetic-")
         or not re.fullmatch(r"[0-9a-f]{40}", a.sha)
-        or not host or host != a.allow_elasticsearch_host.lower()
+        or not host
+        or host != a.allow_elasticsearch_host.lower()
         or any(x in host for x in ("*", "prod", "customer"))
-        or "*" in a.kube_context or any(x in a.kube_context.lower() for x in ("prod", "customer"))
+        or "*" in a.kube_context
+        or any(x in a.kube_context.lower() for x in ("prod", "customer"))
         or not 0 < a.maximum_duration <= 28800
         or not a.cleanup_plan.strip()
     )

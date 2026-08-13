@@ -68,7 +68,14 @@ from src.data_observability.service import DataObservabilityService, OpenLineage
 from src.platform_lifecycle import PlatformLifecycleService
 from src.platform_operations.health import Criticality, HealthCheck, HealthState, aggregate
 from src.platform_operations.slo import evaluate_error_budget
-from src.platform_operations.supportability import configuration_view, diagnostic_view, known_issues_view, maintenance_view, readiness_view, support_view
+from src.platform_operations.supportability import (
+    configuration_view,
+    diagnostic_view,
+    known_issues_view,
+    maintenance_view,
+    readiness_view,
+    support_view,
+)
 from src.security.audit import security_event
 from src.security.authentication import Authenticator
 from src.security.authorization import authorize

@@ -29,7 +29,9 @@ class RabbitMqAdapter(ProviderAdapter):
             offsets=S.UNSUPPORTED,
             consumer_groups=S.UNSUPPORTED,
             partitions=S.UNSUPPORTED,
-            limitations=["Management HTTP API v1 is functional-unvalidated; optional statistics and hosted validation remain partial."],
+            limitations=[
+                "Management HTTP API v1 is functional-unvalidated; optional statistics and hosted validation remain partial."
+            ],
         )
 
 

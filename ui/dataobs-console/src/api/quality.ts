@@ -3,6 +3,7 @@ import { instrumentedFetch } from "../observability";
 import { ApiError } from "./common";
 
 export type EvidenceStatus =
+  | "complete"
   | "available"
   | "partial"
   | "stale"
@@ -17,6 +18,8 @@ export interface EvidenceEnvelope {
   confidence?: number;
   missing_inputs?: string[];
   warnings?: string[];
+  request_id?: string;
+  source_coverage?: string[];
 }
 export interface MonitorCapability {
   monitor_type: string;
@@ -120,6 +123,13 @@ export interface Finding {
   severity: string;
   incident_id?: string;
   product_ids: string[];
+  monitor_id: string;
+  monitor_name?: string;
+  target_display_name?: string;
+  relationship?: string;
+  baseline_version?: string;
+  opened_at?: string;
+  updated_at?: string;
 }
 export interface Recommendation {
   id: string;
@@ -138,10 +148,11 @@ export interface Recommendation {
   proposed_fixed_safety_threshold?: ThresholdPolicy;
   state: string;
 }
-export interface Coverage {
+export interface Coverage extends Partial<EvidenceEnvelope> {
   state: string;
   numerator?: number;
   denominator?: number;
+  coverage_percentage?: number | null;
   exclusions?: string[];
   by_category?: Record<string, string>;
   high_risk_gaps?: string[];
@@ -214,6 +225,12 @@ export const qualityApi = {
     }),
   monitors: (t: string, e: string, q: URLSearchParams, s?: AbortSignal) =>
     request<Page<MonitorDefinition>>(t, path(e, "/monitors", q), { signal: s }),
+  findings: (t: string, e: string, q: URLSearchParams, s?: AbortSignal) =>
+    request<Page<Finding> & Partial<EvidenceEnvelope>>(
+      t,
+      path(e, "/findings", q),
+      { signal: s },
+    ),
   monitor: (t: string, e: string, id: string, s?: AbortSignal) =>
     request<MonitorDefinition>(
       t,

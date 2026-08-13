@@ -127,7 +127,7 @@ export const pathwayProvider: InvestigationProvider = {
 export const qualityProvider: InvestigationProvider = {
   id: "quality-monitor",
   capabilityId: "quality",
-  ownerTeam: "team-4",
+  ownerTeam: "team-2",
   supports: ["monitor"],
   requiredPermission: "quality:read",
   maximumEvents: 25,
@@ -159,7 +159,7 @@ export const qualityProvider: InvestigationProvider = {
         key: `evaluation:${x.evaluation_id}`,
         type: "monitor_evaluation",
         capabilityId: "quality",
-        ownerTeam: "team-4" as const,
+        ownerTeam: "team-2" as const,
         effectiveAt: x.evaluated_at,
         observedAt: x.observation.observed_at,
         state: x.missing_inputs.length
@@ -183,7 +183,7 @@ export const qualityProvider: InvestigationProvider = {
         key: `finding:${x.finding_id}`,
         type: "quality_finding",
         capabilityId: "quality",
-        ownerTeam: "team-4" as const,
+        ownerTeam: "team-2" as const,
         state: "available" as const,
         severity: x.severity,
         title: `Quality finding: ${x.state}`,
@@ -235,12 +235,13 @@ export const entityProvider: InvestigationProvider = {
                 signal,
               )
             ).items.find((item) => item.id === r.anchor.entityId) ?? {});
+    const fields: Record<string, unknown> = { ...value };
     const state = String(
-      value.state ?? value.status ?? value.health ?? "unknown",
+      fields.state ?? fields.status ?? fields.health ?? "unknown",
     );
     const at =
       String(
-        value.finished_at ?? value.updated_at ?? value.observed_at ?? "",
+        fields.finished_at ?? fields.updated_at ?? fields.observed_at ?? "",
       ) || undefined;
     return {
       evidence: [

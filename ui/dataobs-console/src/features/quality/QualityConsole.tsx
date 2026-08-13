@@ -1,5 +1,5 @@
 import { useSearchParams } from "react-router-dom";
-import { QualityOverviewView } from "./QualityOverview";
+import { QualityOverview } from "./QualityOverview";
 import { MonitorInventory } from "./MonitorInventory";
 import { QualityFindings } from "./QualityFindings";
 import { QualityAuxiliary } from "./QualityAuxiliary";
@@ -43,7 +43,7 @@ export function QualityConsole() {
         ))}
       </nav>
       {tab === "overview" ? (
-        <QualityOverviewView />
+        <QualityOverview />
       ) : tab === "monitors" ? (
         <MonitorInventory />
       ) : tab === "findings" ? (

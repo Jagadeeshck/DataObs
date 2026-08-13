@@ -11,13 +11,29 @@ import sys
 from pathlib import Path
 
 REPORTS = (
-    "topology", "elasticsearch-latency", "elasticsearch-outage",
-    "elasticsearch-overload", "elasticsearch-resource-failure",
-    "oidc-resilience", "jwks-rotation", "telemetry-outage", "dns-resilience",
-    "ingress-resilience", "upgrade", "rollback", "migration-failure",
-    "migration-exclusivity", "backup", "restore", "control-plane-restore",
-    "recovery-point", "recovery-time", "dr-rehearsal",
-    "multi-cluster-isolation", "fencing", "redaction",
+    "topology",
+    "elasticsearch-latency",
+    "elasticsearch-outage",
+    "elasticsearch-overload",
+    "elasticsearch-resource-failure",
+    "oidc-resilience",
+    "jwks-rotation",
+    "telemetry-outage",
+    "dns-resilience",
+    "ingress-resilience",
+    "upgrade",
+    "rollback",
+    "migration-failure",
+    "migration-exclusivity",
+    "backup",
+    "restore",
+    "control-plane-restore",
+    "recovery-point",
+    "recovery-time",
+    "dr-rehearsal",
+    "multi-cluster-isolation",
+    "fencing",
+    "redaction",
 )
 LEVELS = {"LEVEL_1_STATIC", "LEVEL_2_FUNCTIONAL", "LEVEL_3_HOSTED", "LEVEL_4_CLOUD_DR"}
 PRODUCTION = {"hosted", "cloud-dr"}
@@ -76,9 +92,14 @@ def main() -> int:
             errors.append(f"identity mismatch: {path.name}")
         if name in REQUIRED[args.profile] and report.get("outcome") in {None, "skipped", "pending"}:
             errors.append(f"mandatory scenario not executed: {name}")
-        if name in REQUIRED[args.profile] and report.get("outcome") != "passed" and not (
-            name == "rollback" and report.get("outcome") == "rollback_blocked_by_migration"
-            and report.get("tooling_prevented_unsafe_rollback") is True
+        if (
+            name in REQUIRED[args.profile]
+            and report.get("outcome") != "passed"
+            and not (
+                name == "rollback"
+                and report.get("outcome") == "rollback_blocked_by_migration"
+                and report.get("tooling_prevented_unsafe_rollback") is True
+            )
         ):
             errors.append(f"mandatory scenario not passed: {name}")
 
@@ -99,7 +120,10 @@ def main() -> int:
     topology = reports.get("topology", {})
     if args.profile != "development" and not topology.get("installation_count", 0) >= 2:
         errors.append("topology does not contain two installations")
-    if args.profile != "development" and reports.get("multi-cluster-isolation", {}).get("tenant_isolation_verified") is not True:
+    if (
+        args.profile != "development"
+        and reports.get("multi-cluster-isolation", {}).get("tenant_isolation_verified") is not True
+    ):
         errors.append("multi-installation tenant isolation is not verified")
 
     checksums = args.evidence / "checksums.sha256"
@@ -115,8 +139,12 @@ def main() -> int:
             if not target.is_file() or hashlib.sha256(target.read_bytes()).hexdigest() != parts[0]:
                 errors.append(f"checksum mismatch: {parts[1]}")
 
-    summary = {"exact_sha": args.sha, "profile": args.profile,
-               "release_decision": "NO_GO" if errors else "GO", "errors": sorted(set(errors))}
+    summary = {
+        "exact_sha": args.sha,
+        "profile": args.profile,
+        "release_decision": "NO_GO" if errors else "GO",
+        "errors": sorted(set(errors)),
+    }
     args.evidence.mkdir(parents=True, exist_ok=True)
     (args.evidence / "certification-summary.json").write_text(json.dumps(summary, indent=2) + "\n")
     print(json.dumps(summary, indent=2))

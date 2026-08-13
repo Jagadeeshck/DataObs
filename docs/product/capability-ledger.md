@@ -2,7 +2,7 @@
 
 # Capability ledger
 
-Audited commit: `5164762a6337a44a76ad2c7574a78edc048a70b3` · PR range: #82-#168
+Audited commit: `e9dfa5ddcbc5bc7dfd04ea0112d914b69c9d60dc` · PR range: #82-#283
 
 ## State counts
 
@@ -478,33 +478,3 @@ Evidence-led status for tenant model and boundaries.
 - **State:** `foundation`
 - **Release readiness:** `blocked`
 - **Next gate:** Execute and retain the evidence required for promotion.
-
-### `streams.capacity_planning_v1` — Stream capacity planning v1
-
-- **State:** `functional_unvalidated`
-- **Release readiness:** `blocked`
-- **Next gate:** Verify hosted exact-SHA API, scale, Playwright, and axe evidence.
-
-### `streams.capacity_forecast_v1` — Stream capacity forecast v1
-
-- **State:** `functional_unvalidated`
-- **Release readiness:** `blocked`
-- **Next gate:** Verify retained forecast accuracy evidence.
-
-### `streams.capacity_recommendations_v1` — Advisory capacity recommendations v1
-
-- **State:** `functional_unvalidated`
-- **Release readiness:** `blocked`
-- **Next gate:** Verify provider safety evidence.
-
-### `streams.capacity_what_if_v1` — Bounded capacity what-if v1
-
-- **State:** `functional_unvalidated`
-- **Release readiness:** `blocked`
-- **Next gate:** Verify scenario isolation evidence.
-
-### `pathways.capacity_bottleneck_overlay_v1` — Pathway capacity overlay v1
-
-- **State:** `functional_unvalidated`
-- **Release readiness:** `blocked`
-- **Next gate:** Complete and certify Pathway 360 presentation.

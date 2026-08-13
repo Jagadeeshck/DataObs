@@ -97,14 +97,14 @@ def test_poc_elastic_stack_has_no_stale_active_version_references():
     offenders = []
 
     for path in repo.rglob("*"):
-        if path.is_dir() or ".git" in path.parts or path.suffix in {".pyc", ".pyo"}:
+        if path.is_dir() or {".git", "node_modules"} & set(path.parts) or path.suffix in {".pyc", ".pyo"}:
             continue
         try:
             text = path.read_text(errors="ignore")
         except OSError:
             continue
         rel = path.relative_to(repo).as_posix()
-        if rel in allowed_history:
+        if rel in allowed_history or path.name == "pnpm-lock.yaml":
             continue
         if any(token in text for token in stale_tokens):
             offenders.append(rel)

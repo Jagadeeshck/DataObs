@@ -15,13 +15,33 @@ def validate_static() -> None:
     schema = json.loads((ROOT / "config/platform/environments.schema.json").read_text())
     assert schema["additionalProperties"] is False
     for name in ("platform-ha-profiles.yaml", "platform-capacity-profiles.yaml"):
-        data = yaml.safe_load((ROOT / "docs/operations" / name).read_text()); assert data["schema_version"] == "1"
-    required = ["environment-provisioning", "environment-upgrade", "environment-rollback", "cluster-registration",
-        "tenant-onboarding", "tenant-suspension", "tenant-offboarding", "release-promotion", "deployment-drift",
-        "release-skew", "platform-failover", "ha-failure-domain"]
+        data = yaml.safe_load((ROOT / "docs/operations" / name).read_text())
+        assert data["schema_version"] == "1"
+    required = [
+        "environment-provisioning",
+        "environment-upgrade",
+        "environment-rollback",
+        "cluster-registration",
+        "tenant-onboarding",
+        "tenant-suspension",
+        "tenant-offboarding",
+        "release-promotion",
+        "deployment-drift",
+        "release-skew",
+        "platform-failover",
+        "ha-failure-domain",
+    ]
     for name in required:
         text = (ROOT / "docs/operations" / f"{name}.md").read_text()
-        for section in ("Preconditions", "Permissions and approval", "Plan and execution", "Verification", "Rollback", "Evidence and escalation", "Prohibited actions"):
+        for section in (
+            "Preconditions",
+            "Permissions and approval",
+            "Plan and execution",
+            "Verification",
+            "Rollback",
+            "Evidence and escalation",
+            "Prohibited actions",
+        ):
             assert f"## {section}" in text, (name, section)
 
 
@@ -35,7 +55,14 @@ def validate_terraform() -> None:
 
 
 if __name__ == "__main__":
-    parser=argparse.ArgumentParser(); parser.add_argument("--all", action="store_true"); parser.add_argument("--terraform", action="store_true"); args=parser.parse_args()
-    if args.all: validate_static(); validate_terraform()
-    elif args.terraform: validate_terraform()
-    else: validate_static()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--all", action="store_true")
+    parser.add_argument("--terraform", action="store_true")
+    args = parser.parse_args()
+    if args.all:
+        validate_static()
+        validate_terraform()
+    elif args.terraform:
+        validate_terraform()
+    else:
+        validate_static()

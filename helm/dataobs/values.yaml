@@ -519,7 +519,7 @@ migrationJob:
   - -m
   - packages.elastic_store.cli
   - apply
-  terminalMigration: 0032_team2_data_slo_production_runtime
+  terminalMigration: 0033_team1_stream_schema_intelligence_runtime
   activeDeadlineSeconds: 900
   backoffLimit: 2
   ttlSecondsAfterFinished: 86400

@@ -22,9 +22,10 @@ jobs:
         with: {node-version: '22', cache: pnpm, cache-dependency-path: ui/dataobs-console/pnpm-lock.yaml}
       - run: pnpm install --frozen-lockfile
       - run: pnpm api:generate && git diff --exit-code src/api/generated/schema.ts
+      - run: pnpm navigation:validate && pnpm visualization:check
       - run: pnpm typecheck && pnpm lint && pnpm format:check
       - run: mkdir -p ../../evidence && pnpm test -- --reporter=junit --outputFile=../../evidence/console-junit.xml
-      - run: pnpm build && pnpm bundle:check
+      - run: pnpm build && pnpm bundle:check && pnpm performance:check
       - if: inputs.run-playwright
         run: pnpm exec playwright install --with-deps chromium && pnpm playwright
       - if: inputs.run-accessibility && !inputs.run-playwright

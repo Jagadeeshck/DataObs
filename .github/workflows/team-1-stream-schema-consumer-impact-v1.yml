@@ -1,0 +1,59 @@
+name: Team 1 stream schema consumer impact v1
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'packages/streaming/schema_intelligence.py'
+      - 'integrations/schema_registry/**'
+      - 'tests/stream_360/test_schema_intelligence_v1.py'
+      - 'docs/**/team-1-stream-schema*'
+      - '.github/workflows/team-1-stream-schema-consumer-impact-v1.yml'
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install -r requirements.txt
+      - run: python scripts/check_merge_conflict_markers.py
+      - run: python -m compileall -q src packages services integrations tests scripts
+      - run: ruff check packages/streaming/schema_intelligence.py integrations/schema_registry tests/stream_360/test_schema_intelligence_v1.py
+      - run: black --check packages/streaming/schema_intelligence.py integrations/schema_registry tests/stream_360/test_schema_intelligence_v1.py
+      - run: python scripts/check_team_boundaries.py
+      - run: python scripts/check_docs_links.py
+      - run: python scripts/validate_capability_ledger.py
+      - run: python scripts/release/current_terminal_migration.py
+      - run: python scripts/check_migration_immutability.py --base-ref origin/main
+      - run: python scripts/security/check_route_permissions.py
+      - run: python scripts/generate_openapi.py --check
+      - run: python -m pytest tests/stream_360/test_schema_intelligence_v1.py tests/stream_360 tests/pathways tests/security -q
+  elasticsearch-9-4-2:
+    runs-on: ubuntu-latest
+    services:
+      elasticsearch:
+        image: docker.elastic.co/elasticsearch/elasticsearch:9.4.2
+        env: {discovery.type: single-node, xpack.security.enabled: 'false'}
+        ports: ['9200:9200']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install -r requirements.txt
+      - run: python scripts/migrate_to_es.py
+        env: {ELASTICSEARCH_URL: 'http://localhost:9200'}
+      - run: python -m pytest tests/stream_360/test_schema_intelligence_v1.py -q
+  evidence:
+    if: github.event_name == 'workflow_dispatch'
+    needs: [backend, elasticsearch-9-4-2]
+    runs-on: ubuntu-latest
+    steps:
+      - run: printf 'producer_sha=%s\nrun=%s\nattempt=%s\nelasticsearch=9.4.2\nterminal_migration=0030_team1_multi_broker_messaging_runtime\n' "$GITHUB_SHA" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" > evidence.txt
+      - run: sha256sum evidence.txt > checksums.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: team-1-stream-schema-consumer-impact-v1-evidence
+          path: |
+            evidence.txt
+            checksums.txt
+          retention-days: 30

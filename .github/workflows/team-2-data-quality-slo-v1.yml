@@ -1,0 +1,38 @@
+name: Team 2 — Data Quality SLOs, Error Budgets and Burn Rate Intelligence v1
+
+on:
+  pull_request:
+    paths:
+      - packages/domain_model/slo.py
+      - services/data_products/slo_evaluator.py
+      - tests/domain_model/test_data_reliability_slo.py
+      - tests/data_products/test_slo_rollup.py
+      - docs/**
+      - .github/workflows/team-2-data-quality-slo-v1.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  canonical-semantics:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -r requirements.txt
+      - name: Conflict markers
+        run: '! git grep -nE "^(<<<<<<< |=======$|>>>>>>> )"'
+      - name: SLI budget burn and roll-up tests
+        run: pytest -q tests/domain_model/test_data_reliability_slo.py tests/data_products/test_slo_rollup.py
+      - name: Numerical safety
+        run: '! pytest -q tests/domain_model/test_data_reliability_slo.py | grep -E "NaN|Infinity|-Infinity"'
+      - name: Record unvalidated evidence manifest
+        run: |
+          printf '{"repository":"%s","producer_sha":"%s","workflow":"%s","formula_version":"data-reliability-v1","validation":"unvalidated","utc_timestamp":"%s"}\n' "$GITHUB_REPOSITORY" "$GITHUB_SHA" "$GITHUB_WORKFLOW" "$(date -u +%FT%TZ)" > team-2-data-quality-slo-v1-evidence.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: team-2-data-quality-slo-v1-evidence
+          path: team-2-data-quality-slo-v1-evidence.json

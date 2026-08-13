@@ -2229,6 +2229,51 @@ capabilities:
   certification_status: functional_unvalidated
   last_audited_at: '2026-08-12'
   last_audited_commit: pending-final-sha
+- id: monitoring.data_slo
+  name: Data Quality SLOs, Error Budgets and Burn Rate
+  summary: Canonical Team 2 asset and job SLI, error-budget, burn-rate, and Data Product child-roll-up semantics.
+  pillar: data
+  domain: monitoring
+  state: functional_unvalidated
+  release_readiness: blocked
+  implementation:
+    code_paths:
+    - packages/domain_model/slo.py
+    - services/data_products/slo_evaluator.py
+    api_paths: []
+    ui_routes: []
+    storage_resources: []
+    migrations: []
+  validation:
+    unit: passed
+    integration: defined_not_run
+    real_stack: missing
+    hosted_ci: missing
+    browser: missing
+    accessibility: missing
+    security: defined_not_run
+    scale: defined_not_run
+    upgrade: not_applicable
+    release: missing
+  evidence:
+    tests:
+    - tests/domain_model/test_data_reliability_slo.py
+    - tests/data_products/test_slo_rollup.py
+    workflow_jobs: []
+    audit_docs:
+    - docs/development/team-2-data-quality-slo-v1-audit.md
+    runbooks:
+    - docs/operations/data-slo-runtime.md
+    artifacts: []
+  blockers:
+  - Production repository/runtime, API, Console, Elasticsearch 9.4.2, browser, accessibility, scale, and exact-head independent evidence remain outstanding.
+  non_goals:
+  - Stream and platform SLOs, arbitrary expressions, raw-row evaluation, incident creation, and autonomous remediation.
+  next_gate: Complete the production vertical slice and independently verify its retained exact-head artifact.
+  owner: Team 2
+  owner_team: Team 2
+  last_audited_at: '2026-08-13'
+  last_audited_commit: pending-final-sha
 migration_checksums:
   0001_product_foundation: 71d939094a97b4dd7c61de60542b60dd41cb238fd6bebfd75d53d723b00f3556
   0002_postgres_observability: c2098fa24ddae209fcf2ffeb369f7040d57018d58682a8513db9e943c749aa2d

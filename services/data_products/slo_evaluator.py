@@ -5,6 +5,43 @@ from datetime import datetime, timezone
 from hashlib import sha256
 
 from packages.domain_model.data_product import DataProductSLODefinition, DataProductSLOEvaluation
+from packages.domain_model.slo import DataReliabilitySLOEvaluation
+
+
+def roll_up_child_slos(
+    children: list[tuple[DataReliabilitySLOEvaluation, float, bool]],
+) -> dict[str, object]:
+    """Aggregate canonical child evaluations without re-reading raw evidence.
+
+    Duplicate evaluation IDs are counted once. Unknown/partial children do not
+    enter the weighted value, and a failed critical child caps the result state.
+    """
+    unique: dict[str, tuple[DataReliabilitySLOEvaluation, float, bool]] = {}
+    for child, weight, critical in children:
+        if weight < 0:
+            raise ValueError("child SLO weight cannot be negative")
+        unique.setdefault(child.id, (child, weight, critical))
+    observed = [
+        item
+        for item in unique.values()
+        if item[0].sli_actual is not None and item[0].state not in ("unknown", "partial")
+    ]
+    denominator = sum(weight for _, weight, _ in observed)
+    actual = sum(child.sli_actual * weight for child, weight, _ in observed) / denominator if denominator else None
+    critical_failed = any(
+        critical and child.state in ("critical", "exhausted") for child, _, critical in unique.values()
+    )
+    state = "unknown" if actual is None else ("failed" if critical_failed else "passed")
+    return {
+        "actual_value": actual,
+        "state": state,
+        "critical_component_cap_applied": critical_failed,
+        "component_evaluation_ids": sorted(unique),
+        "missing_component_ids": sorted(
+            child.slo_id for child, _, _ in unique.values() if child.state in ("unknown", "partial")
+        ),
+        "formula": "deduplicated weighted mean of observed canonical child SLO evaluations",
+    }
 
 
 def evaluate_slo(

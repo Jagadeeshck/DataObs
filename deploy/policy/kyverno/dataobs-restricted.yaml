@@ -1,0 +1,44 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata: {name: dataobs-restricted-reference}
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: immutable-images
+      match:
+        any:
+          - resources:
+              kinds: [Pod]
+              namespaceSelector:
+                matchLabels: {app.kubernetes.io/part-of: dataobs}
+      validate:
+        message: DataObs production images must use sha256 digests.
+        pattern:
+          spec:
+            containers:
+              - image: "*@sha256:*"
+    - name: restricted-context
+      match:
+        any:
+          - resources:
+              kinds: [Pod]
+              namespaceSelector:
+                matchLabels: {app.kubernetes.io/part-of: dataobs}
+      validate:
+        message: DataObs pods require restricted security contexts and no API token.
+        pattern:
+          spec:
+            automountServiceAccountToken: false
+            securityContext:
+              runAsNonRoot: true
+              seccompProfile: {type: RuntimeDefault}
+            containers:
+              - securityContext:
+                  allowPrivilegeEscalation: false
+                  privileged: "false | null"
+                  readOnlyRootFilesystem: true
+                  capabilities: {drop: [ALL]}
+                  resources:
+                    requests: {cpu: "?*", memory: "?*"}
+                    limits: {cpu: "?*", memory: "?*"}

@@ -159,6 +159,13 @@ api:
     periodSeconds: 10
     timeoutSeconds: 3
     failureThreshold: 6
+  startupProbe:
+    httpGet:
+      path: /readyz
+      port: http
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 30
   livenessProbe:
     httpGet:
       path: /livez

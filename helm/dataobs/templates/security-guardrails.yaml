@@ -1,0 +1,15 @@
+{{- if eq .Values.global.environment "production" }}
+{{- $digests := list .Values.api.image .Values.console.image .Values.qualityWorker.image .Values.scannerWorker.image .Values.monitorRuntime.image .Values.pathwayWorker.image .Values.kafkaObserver.image .Values.migrationJob.image }}
+{{- range $image := $digests }}
+{{- if or (not $image.digest) (not (regexMatch "^sha256:[a-fA-F0-9]{64}$" $image.digest)) (eq $image.digest "sha256:0000000000000000000000000000000000000000000000000000000000000000") (eq $image.digest "sha256:1111111111111111111111111111111111111111111111111111111111111111") (eq $image.digest "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff") (eq $image.tag "latest") }}{{ fail "production images require a non-placeholder sha256 digest and must not use latest" }}{{- end }}
+{{- end }}
+{{- if not .Values.networkPolicy.enabled }}{{ fail "production requires NetworkPolicy" }}{{- end }}
+{{- if not .Values.external.elasticsearch.verifyCertificates }}{{ fail "production Elasticsearch certificate verification is mandatory" }}{{- end }}
+{{- if not (hasPrefix "https://" .Values.external.elasticsearch.url) }}{{ fail "production Elasticsearch must use HTTPS" }}{{- end }}
+{{- if not (hasPrefix "https://" .Values.external.oidc.issuer) }}{{ fail "production OIDC issuer must use HTTPS" }}{{- end }}
+{{- if ne .Values.global.podSecurityContext.runAsNonRoot true }}{{ fail "production requires runAsNonRoot" }}{{- end }}
+{{- if ne .Values.global.podSecurityContext.seccompProfile.type "RuntimeDefault" }}{{ fail "production requires RuntimeDefault seccomp" }}{{- end }}
+{{- if ne .Values.global.securityContext.allowPrivilegeEscalation false }}{{ fail "production forbids privilege escalation" }}{{- end }}
+{{- if ne .Values.global.securityContext.readOnlyRootFilesystem true }}{{ fail "production requires a read-only root filesystem" }}{{- end }}
+{{- if not (has "ALL" .Values.global.securityContext.capabilities.drop) }}{{ fail "production must drop ALL capabilities" }}{{- end }}
+{{- end }}

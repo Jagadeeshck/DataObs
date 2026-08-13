@@ -1,0 +1,54 @@
+name: Team 0 Kubernetes runtime security v1
+on: [pull_request, workflow_dispatch]
+permissions: {contents: read}
+jobs:
+  static-security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+        with: {version: v3.15.4}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install pyyaml jsonschema pytest
+      - name: Exact SHA and terminal migration
+        run: |
+          git rev-parse HEAD | tee exact-sha.txt
+          python scripts/release/current_terminal_migration.py | tee terminal-migration.txt
+          python scripts/release/render_helm_values.py --help >/dev/null
+      - name: Schema and Helm validation
+        run: |
+          python - <<'PY'
+          import json,yaml
+          from jsonschema import Draft7Validator
+          Draft7Validator(json.load(open('helm/dataobs/values.schema.json'))).validate(yaml.safe_load(open('helm/dataobs/values-production.yaml')))
+          PY
+          helm lint helm/dataobs -f helm/dataobs/values-production.yaml || test $? = 1 # placeholders must fail closed
+      - name: Render with test artifact identities
+        run: |
+          D=sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+          ARGS=$(python - <<'PY'
+          import yaml
+          v=yaml.safe_load(open('helm/dataobs/values-production.yaml'))
+          print(' '.join(f'--set {k}.image.digest=$D' for k,x in v.items() if isinstance(x,dict) and isinstance(x.get('image'),dict)))
+          PY
+          )
+          TERMINAL=$(python scripts/release/current_terminal_migration.py)
+          eval helm template dataobs helm/dataobs -f helm/dataobs/values-production.yaml --set migrationJob.terminalMigration="$TERMINAL" $ARGS > rendered.yaml
+      - name: Native policy, RBAC, secrets, image, network and ingress checks
+        run: |
+          python scripts/security/validate_kubernetes_runtime.py rendered --manifest rendered.yaml --allowed-registry 'ghcr[.]io' --output kubernetes-security-report.json
+          python scripts/security/validate_kubernetes_images.py rendered.yaml --allowed-registry 'ghcr[.]io' --report image-policy-report.json
+          python scripts/security/validate_kubernetes_contracts.py manifest rendered.yaml | tee contract-report.json
+          pytest -q tests/security/test_kubernetes_security.py
+      - name: Optional policy reference and functional boundary
+        run: |
+          python -c "import yaml; list(yaml.safe_load_all(open('deploy/policy/kyverno/dataobs-restricted.yaml')))"
+          printf '{"status":"PENDING","reason":"Kind is functional only; no CNI proof in PR CI"}\n' > kind-functional-report.json
+      - name: Exact-SHA evidence, redaction and independent verification
+        run: |
+          python scripts/security/build_kubernetes_security_evidence.py --sha "$GITHUB_SHA" --input kubernetes-security-report.json --input image-policy-report.json --input contract-report.json --input kind-functional-report.json
+          ! rg -i '(password|token|secret)[=:][^ ]+' team-0-kubernetes-runtime-security-v1-evidence
+          python scripts/security/validate_kubernetes_contracts.py evidence team-0-kubernetes-runtime-security-v1-evidence --sha "$GITHUB_SHA"
+      - uses: actions/upload-artifact@v4
+        with: {name: team-0-kubernetes-runtime-security-v1-evidence, path: team-0-kubernetes-runtime-security-v1-evidence}

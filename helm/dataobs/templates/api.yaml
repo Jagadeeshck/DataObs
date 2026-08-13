@@ -30,6 +30,8 @@ spec:
             - {name: http, containerPort: 8080, protocol: TCP}
           readinessProbe:
 {{ toYaml .Values.api.readinessProbe | indent 12 }}
+          startupProbe:
+{{ toYaml .Values.api.startupProbe | indent 12 }}
           livenessProbe:
 {{ toYaml .Values.api.livenessProbe | indent 12 }}
           env:

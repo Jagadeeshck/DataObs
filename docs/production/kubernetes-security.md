@@ -1,3 +1,5 @@
-# Kubernetes security
+# Production Kubernetes security
 
-Pods default to non-root, RuntimeDefault seccomp, all capabilities dropped, no privilege escalation, read-only roots and no service-account token. Dedicated accounts have no RBAC. Credentials are never generated or copied into ConfigMaps. NetworkPolicy defaults deny unlisted paths while allowing DNS and configured namespace/CIDR traffic; actual enforcement depends on the CNI. Rotate referenced Secrets through the organisation's secret manager. Confirm image signatures, SBOMs and provenance from the release manifest.
+Install through `helm/dataobs` only. Create or label a dedicated namespace using the reference manifest, supply real release digests and allowed registry patterns, external HTTPS Elasticsearch/OIDC, referenced Secrets, and an enforcing NetworkPolicy CNI. Production Helm guardrails fail closed; placeholder digests intentionally prevent certification.
+
+Apply no policy exception without schema-valid ownership, approval, expiry, scope and compensating control. Exceptions do not make Restricted compatibility true. Revalidate after Kubernetes/chart/CNI/ingress upgrades. Admission engines are optional, but production requires enforce-equivalent native validation.

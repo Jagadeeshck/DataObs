@@ -12,11 +12,11 @@ ROOT = Path(__file__).parents[2]
 
 def test_terminal_migration_comes_from_ordered_registry():
     report = migration_report()
-    assert report["terminal_migration"] == "0030_team1_multi_broker_messaging_runtime"
-    assert report["migration_count"] == 30
+    assert report["terminal_migration"] == "0033_team1_stream_schema_intelligence_runtime"
+    assert report["migration_count"] == 33
     assert report["ordered_migration_ids"][-2:] == [
-        "0029_team2_data_intelligence_reconciliation",
-        "0030_team1_multi_broker_messaging_runtime",
+        "0032_team2_data_slo_production_runtime",
+        "0033_team1_stream_schema_intelligence_runtime",
     ]
     assert len(report["registry_checksum"]) == 64
 

@@ -32,6 +32,10 @@ def main() -> int:
             if found != expected:
                 errors.append(f"{path.relative_to(ROOT)} contains stale terminal migration {found}")
     for path in ROOT.glob("**/evidence.json"):
+        # Retained evidence describes the terminal at its producer SHA and must
+        # never be rewritten merely because the forward-only registry advances.
+        if "artifacts" in path.relative_to(ROOT).parts:
+            continue
         try:
             value = json.loads(path.read_text(encoding="utf-8"))
         except json.JSONDecodeError:

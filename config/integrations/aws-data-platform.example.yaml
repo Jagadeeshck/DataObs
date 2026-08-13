@@ -1,4 +1,4 @@
-schema_version: v1 # configuration envelope remains backward compatible; AWS provider implementation is v2
+schema_version: v1 # configuration envelope remains backward compatible; AWS provider implementation is v3
 integration_id: aws-data-platform-dev
 provider_type: aws
 enabled: false
@@ -11,7 +11,7 @@ provider:
     external_id_ref: env:DATAOBS_AWS_EXTERNAL_ID
     session_duration_seconds: 3600
   regions: [eu-west-1, eu-west-2]
-  services: [rds, glue, athena, emr-serverless, s3, lambda, sagemaker, mwaa, redshift, redshift-serverless]
+  services: [rds, glue, athena, emr-serverless, s3, lambda, sagemaker, mwaa, redshift, redshift-serverless, kinesis, sqs]
   service_options:
     s3:
       include_buckets: [synthetic-data-bucket]
@@ -22,5 +22,20 @@ provider:
     sagemaker: {include_training_jobs: true, include_processing_jobs: true, include_pipeline_executions: true, include_endpoints: true, history_lookback_seconds: 86400}
     mwaa: {collect_environment_metrics: true}
     redshift: {include_query_summaries: false, query_history_lookback_seconds: 3600}
+    kinesis:
+      include_streams: []
+      include_shards: true
+      include_metrics: true
+      include_shard_metrics_if_enabled: false
+      maximum_streams: 500
+      maximum_stream_pages: 50
+      maximum_shards_per_stream: 1000
+      maximum_shard_pages: 100
+    sqs:
+      include_queues: []
+      include_metrics: true
+      include_dlq_relationships: true
+      maximum_queues: 1000
+      maximum_queue_pages: 100
   cloudwatch: {enabled: true, lookback_seconds: 900, period_seconds: 300}
   ownership_tag_keys: [Owner, Team, Application, DataProduct]

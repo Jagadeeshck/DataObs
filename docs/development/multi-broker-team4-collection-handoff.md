@@ -10,3 +10,5 @@
 | Pulsar | inventory and broker aggregate metrics | authoritative source not selected | TBD read-only | TBD | no payload/config blob; keep runtime not_implemented |
 
 All observations must carry tenant, environment, system/provider, account scope, location, kind and provider ID, observed/ingested times, status/confidence/coverage, collection source/method, and schema version.
+
+Kinesis and SQS provider-native collectors are implemented in AWS provider v3 with bounded pagination and closed CloudWatch allowlists. Status remains functional_unvalidated pending hosted exact-SHA evidence.

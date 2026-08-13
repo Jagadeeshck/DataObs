@@ -2,17 +2,17 @@
 
 ## Status and architecture
 
-AWS collector v2 is **functional_unvalidated**. It extends the same Integration SDK provider rather than creating a second framework. Explicit
+AWS collector v3 is **functional_unvalidated**. It extends the same Integration SDK provider rather than creating a second framework. Explicit
 registration creates a provider per bounded execution. A private client factory uses the boto3 credential chain,
 optionally calls STS AssumeRole, and caches clients only for that execution by account, region and service. Collection
 loops isolate every region and service; stable, redacted partial failures do not discard other metadata.
 
 The v1-compatible services are RDS/Aurora instances and clusters, Glue jobs/crawlers/workflows/triggers and bounded runs, Athena
 workgroups and bounded query history, EMR Serverless applications and bounded runs, and static CloudWatch metrics.
-V2 adds S3 bucket inventory and configured-prefix samples, Lambda functions, SageMaker infrastructure and bounded job
+V2 added S3 bucket inventory and configured-prefix samples, Lambda functions, SageMaker infrastructure and bounded job
 history, MWAA managed environments, Redshift clusters, and Redshift Serverless namespaces/workgroups. The stable service
 registry is `rds`, `glue`, `athena`, `emr-serverless`, `s3`, `lambda`, `sagemaker`, `mwaa`, `redshift`, and
-`redshift-serverless`; boto3 names are explicitly mapped.
+`redshift-serverless`. V3 adds bounded `kinesis` and `sqs`; boto3 names are explicitly mapped.
 Capabilities are resource discovery, metadata, metrics, health and incremental collection. Logs, SQL, profiling,
 lineage, cost, event-driven collection, remediation and complete account coverage are not claimed.
 
@@ -38,5 +38,5 @@ History cursor scopes include tenant, environment, integration, account, region,
 Training, processing, transform, pipeline execution, S3 prefix, Redshift summary and metric windows are independent.
 Persistence precedes checkpoint advancement and failure of one scope cannot advance it or block unrelated scopes.
 
-Static bounds cover 20 regions, ten services, 100 API pages, 50 recent runs per request, 100 CloudWatch queries,
+Static bounds cover 20 regions, twelve services, 100 API pages, 50 recent runs per request, 100 CloudWatch queries,
 1,000 datapoints, 10,000 observations and SDK/runtime deadlines. Exact-commit hosted evidence remains pending.

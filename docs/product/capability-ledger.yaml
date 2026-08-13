@@ -1631,7 +1631,7 @@ capabilities:
   last_audited_commit: 5164762a6337a44a76ad2c7574a78edc048a70b3
 - id: integration.cloud
   name: AWS, Azure, GCP, and Snowflake providers
-  summary: AWS collector v2 and Snowflake warehouse collector v1 are bounded and functional_unvalidated; Azure and GCP remain deferred.
+  summary: AWS collector v3 (including Kinesis/SQS) and Snowflake warehouse collector v1 are bounded and functional_unvalidated; Azure and GCP remain deferred.
   pillar: platform
   domain: integrations
   state: functional_unvalidated
@@ -1658,11 +1658,11 @@ capabilities:
     upgrade: defined_not_run
     release: defined_not_run
   evidence:
-    tests: [tests/integrations/test_aws_provider.py, tests/integrations/test_aws_provider_v2.py, tests/integrations/test_snowflake_provider.py]
-    workflow_jobs: [aws-data-platform-collector-v2.yml:validate, aws-data-platform-collector-v2.yml:verify-evidence, snowflake-warehouse-collector-v1.yml:validate, snowflake-warehouse-collector-v1.yml:verify-evidence]
-    audit_docs: [docs/development/aws-data-platform-collector-v2-audit.md, docs/development/snowflake-warehouse-collector-v1-audit.md]
+    tests: [tests/integrations/test_aws_provider.py, tests/integrations/test_aws_provider_v2.py, tests/integrations/test_aws_messaging.py, tests/integrations/test_snowflake_provider.py]
+    workflow_jobs: [aws-data-platform-collector-v2.yml:validate, aws-data-platform-collector-v2.yml:verify-evidence, team-4-aws-kinesis-sqs-messaging-v1.yml:validate, team-4-aws-kinesis-sqs-messaging-v1.yml:verify-evidence, snowflake-warehouse-collector-v1.yml:validate, snowflake-warehouse-collector-v1.yml:verify-evidence]
+    audit_docs: [docs/development/aws-data-platform-collector-v2-audit.md, docs/development/team-4-aws-kinesis-sqs-messaging-v1-audit.md, docs/development/snowflake-warehouse-collector-v1-audit.md]
     runbooks: [docs/operations/aws-data-platform-collector.md, docs/operations/snowflake-warehouse-collector.md]
-    artifacts: [aws-data-platform-collector-v2-evidence (defined; final-head hosted run pending)]
+    artifacts: [aws-data-platform-collector-v2-evidence (defined; final-head hosted run pending), team-4-aws-kinesis-sqs-messaging-v1-evidence (defined; hosted exact-SHA run pending)]
   blockers:
   - Exact-commit hosted and independently verified AWS and Snowflake evidence is absent; Azure and GCP remain deferred.
   non_goals:

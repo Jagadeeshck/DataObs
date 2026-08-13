@@ -7,7 +7,20 @@ from typing import Any, Mapping
 from packages.collectors.sdk.errors import InvalidConfigurationError
 
 SERVICES = frozenset(
-    {"rds", "glue", "athena", "emr-serverless", "s3", "lambda", "sagemaker", "mwaa", "redshift", "redshift-serverless"}
+    {
+        "rds",
+        "glue",
+        "athena",
+        "emr-serverless",
+        "s3",
+        "lambda",
+        "sagemaker",
+        "mwaa",
+        "redshift",
+        "redshift-serverless",
+        "kinesis",
+        "sqs",
+    }
 )
 REGION = re.compile(r"^[a-z]{2}(?:-gov)?-[a-z]+-\d$")
 ACCOUNT = re.compile(r"^\d{12}$")
@@ -105,6 +118,23 @@ def parse_configuration(raw: Mapping[str, Any]) -> AwsConfiguration:
             "history_overlap_seconds",
             "maximum_query_summaries",
         },
+        "kinesis": {
+            "include_streams",
+            "include_shards",
+            "include_metrics",
+            "include_shard_metrics_if_enabled",
+            "maximum_streams",
+            "maximum_stream_pages",
+            "maximum_shards_per_stream",
+            "maximum_shard_pages",
+        },
+        "sqs": {
+            "include_queues",
+            "include_metrics",
+            "include_dlq_relationships",
+            "maximum_queues",
+            "maximum_queue_pages",
+        },
     }
     for service, value in options.items():
         if not isinstance(value, Mapping) or set(value) - allowed_options.get(service, set()):
@@ -134,6 +164,23 @@ def parse_configuration(raw: Mapping[str, Any]) -> AwsConfiguration:
             raise InvalidConfigurationError(f"{service} history lookback is out of bounds")
         if not 1 <= int(value.get("maximum_history_items", value.get("maximum_query_summaries", 200))) <= 1000:
             raise InvalidConfigurationError(f"{service} history item limit is out of bounds")
+    kin = options.get("kinesis", {})
+    if len(kin.get("include_streams", ())) > 500:
+        raise InvalidConfigurationError("too many Kinesis stream selections")
+    for key, default, maximum in (
+        ("maximum_streams", 500, 1000),
+        ("maximum_stream_pages", 50, 100),
+        ("maximum_shards_per_stream", 1000, 10000),
+        ("maximum_shard_pages", 100, 1000),
+    ):
+        if not 1 <= int(kin.get(key, default)) <= maximum:
+            raise InvalidConfigurationError(f"Kinesis {key} is out of bounds")
+    sqs = options.get("sqs", {})
+    if len(sqs.get("include_queues", ())) > 1000:
+        raise InvalidConfigurationError("too many SQS queue selections")
+    for key, default, maximum in (("maximum_queues", 1000, 1000), ("maximum_queue_pages", 100, 100)):
+        if not 1 <= int(sqs.get(key, default)) <= maximum:
+            raise InvalidConfigurationError(f"SQS {key} is out of bounds")
     endpoint = raw.get("sts_endpoint_url")
     if endpoint and not str(endpoint).startswith(("http://localhost", "http://127.0.0.1")):
         raise InvalidConfigurationError("custom STS endpoints are test-only")

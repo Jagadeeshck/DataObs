@@ -1,0 +1,14 @@
+name: Team 1 stream capacity saturation runtime v1
+on: [pull_request]
+jobs:
+  capacity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: pip install -r requirements.txt
+      - run: python scripts/release/validate_migration_graph.py
+      - run: python scripts/check_migration_immutability.py --base-ref origin/main
+      - run: pytest -q tests/stream_360/test_stream_capacity_runtime.py tests/stream_360/test_anomaly_retention_intelligence_v1.py tests/stream_360/test_reliability_runtime.py tests/stream_360/test_multi_broker_runtime.py
+      - run: ruff check packages/streaming/capacity.py services/kafka_observer/capacity_evaluator.py

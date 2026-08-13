@@ -1630,8 +1630,8 @@ capabilities:
   last_audited_at: '2026-07-27'
   last_audited_commit: 5164762a6337a44a76ad2c7574a78edc048a70b3
 - id: integration.cloud
-  name: AWS, Azure, GCP, and Snowflake providers
-  summary: AWS collector v3 (including Kinesis/SQS) and Snowflake warehouse collector v1 are bounded and functional_unvalidated; Azure and GCP remain deferred.
+  name: Cloud, warehouse, and RabbitMQ providers
+  summary: AWS v3, Snowflake v1, and RabbitMQ Management HTTP API v1 are bounded and functional_unvalidated; hosted RabbitMQ 4.3.x evidence is pending.
   pillar: platform
   domain: integrations
   state: functional_unvalidated
@@ -1640,6 +1640,7 @@ capabilities:
     code_paths:
     - integrations/aws
     - integrations/snowflake
+    - integrations/rabbitmq
     - services/collection_manager
     api_paths: []
     ui_routes: []
@@ -1658,13 +1659,13 @@ capabilities:
     upgrade: defined_not_run
     release: defined_not_run
   evidence:
-    tests: [tests/integrations/test_aws_provider.py, tests/integrations/test_aws_provider_v2.py, tests/integrations/test_aws_messaging.py, tests/integrations/test_snowflake_provider.py]
-    workflow_jobs: [aws-data-platform-collector-v2.yml:validate, aws-data-platform-collector-v2.yml:verify-evidence, team-4-aws-kinesis-sqs-messaging-v1.yml:validate, team-4-aws-kinesis-sqs-messaging-v1.yml:verify-evidence, snowflake-warehouse-collector-v1.yml:validate, snowflake-warehouse-collector-v1.yml:verify-evidence]
-    audit_docs: [docs/development/aws-data-platform-collector-v2-audit.md, docs/development/team-4-aws-kinesis-sqs-messaging-v1-audit.md, docs/development/snowflake-warehouse-collector-v1-audit.md]
-    runbooks: [docs/operations/aws-data-platform-collector.md, docs/operations/snowflake-warehouse-collector.md]
-    artifacts: [aws-data-platform-collector-v2-evidence (defined; final-head hosted run pending), team-4-aws-kinesis-sqs-messaging-v1-evidence (defined; hosted exact-SHA run pending)]
+    tests: [tests/integrations/test_aws_provider.py, tests/integrations/test_aws_provider_v2.py, tests/integrations/test_aws_messaging.py, tests/integrations/test_snowflake_provider.py, tests/unit/rabbitmq_provider]
+    workflow_jobs: [aws-data-platform-collector-v2.yml:validate, aws-data-platform-collector-v2.yml:verify-evidence, team-4-aws-kinesis-sqs-messaging-v1.yml:validate, team-4-aws-kinesis-sqs-messaging-v1.yml:verify-evidence, snowflake-warehouse-collector-v1.yml:validate, snowflake-warehouse-collector-v1.yml:verify-evidence, team-4-rabbitmq-messaging-collector-v1.yml:validate]
+    audit_docs: [docs/development/aws-data-platform-collector-v2-audit.md, docs/development/team-4-aws-kinesis-sqs-messaging-v1-audit.md, docs/development/snowflake-warehouse-collector-v1-audit.md, docs/development/team-4-rabbitmq-messaging-collector-v1-audit.md]
+    runbooks: [docs/operations/aws-data-platform-collector.md, docs/operations/snowflake-warehouse-collector.md, docs/operations/team-4-rabbitmq-messaging-collector.md]
+    artifacts: [aws-data-platform-collector-v2-evidence (defined; final-head hosted run pending), team-4-aws-kinesis-sqs-messaging-v1-evidence (defined; hosted exact-SHA run pending), team-4-rabbitmq-messaging-collector-v1-evidence (defined; hosted exact-SHA run pending)]
   blockers:
-  - Exact-commit hosted and independently verified AWS and Snowflake evidence is absent; Azure and GCP remain deferred.
+  - Exact-commit hosted and independently verified AWS, Snowflake, and RabbitMQ 4.3.x evidence is absent.
   non_goals:
   - No complete AWS or Snowflake coverage, Azure, GCP, lineage, cost, UI onboarding, or deployment packaging is claimed.
   next_gate: Retain and independently verify exact-commit hosted AWS v2 and Snowflake v1 evidence.

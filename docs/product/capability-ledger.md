@@ -7,7 +7,7 @@ Audited commit: `5164762a6337a44a76ad2c7574a78edc048a70b3` · PR range: #82-#168
 ## State counts
 
 - **foundation**: 12
-- **functional_unvalidated**: 31
+- **functional_unvalidated**: 32
 - **not_started**: 6
 - **optional_integration**: 1
 - **scaffold**: 1
@@ -16,7 +16,7 @@ Audited commit: `5164762a6337a44a76ad2c7574a78edc048a70b3` · PR range: #82-#168
 
 - **ai_agent**: 2
 - **business**: 2
-- **data**: 8
+- **data**: 9
 - **data_pipeline**: 16
 - **finops_cost**: 1
 - **platform**: 22
@@ -118,6 +118,14 @@ Evidence-led status for monitor runtime, baselines, and recommendations.
 - **State:** `functional_unvalidated`
 - **Release readiness:** `blocked`
 - **Next gate:** Execute and retain the evidence required for promotion.
+
+### `quality.asset_trust` — Asset Trust and Reliability Score
+
+Explainable asset-level aggregation of canonical reliability and observability evidence.
+
+- **State:** `functional_unvalidated`
+- **Release readiness:** `blocked`
+- **Next gate:** Add the forward migration and complete API, Console, ES 9.4.2, browser, axe, scale, and independent exact-head certification.
 
 ### `data.pathways` — Lineage and Pathway Explorer
 
@@ -303,9 +311,9 @@ Deterministic evidence-first incident fingerprints, bounded historical candidate
 - **Release readiness:** `blocked`
 - **Next gate:** Complete the production vertical slice and certify against Elasticsearch 9.4.2 and the Console.
 
-### `integration.cloud` — AWS, Azure, GCP, and Snowflake providers
+### `integration.cloud` — Cloud, warehouse, and RabbitMQ providers
 
-AWS collector v3 (including Kinesis/SQS) and Snowflake warehouse collector v1 are bounded and functional_unvalidated; Azure and GCP remain deferred.
+AWS v3, Snowflake v1, and RabbitMQ Management HTTP API v1 are bounded and functional_unvalidated; hosted RabbitMQ 4.3.x evidence is pending.
 
 - **State:** `functional_unvalidated`
 - **Release readiness:** `blocked`

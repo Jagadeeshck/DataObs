@@ -25,6 +25,8 @@ from integrations.databricks import DatabricksLakehouseProvider
 from integrations.databricks.configuration import parse_configuration as parse_databricks_configuration
 from integrations.presto import PrestoSqlEngineProvider
 from integrations.presto.configuration import parse_configuration as parse_presto_configuration
+from integrations.rabbitmq import RabbitMqMessagingProvider
+from integrations.rabbitmq.configuration import parse_configuration as parse_rabbitmq_configuration
 from integrations.snowflake import SnowflakeWarehouseProvider
 from integrations.snowflake.configuration import parse_configuration as parse_snowflake_configuration
 from integrations.trino import TrinoSqlEngineProvider
@@ -46,6 +48,7 @@ def build_registry():
     registry.register(MariaDbDatabaseProvider)
     registry.register(SqlServerDatabaseProvider)
     registry.register(OracleDatabaseProvider)
+    registry.register(RabbitMqMessagingProvider)
     return registry
 
 
@@ -75,6 +78,7 @@ def main(argv=None):
             "mariadb": parse_mariadb_configuration,
             "sqlserver": parse_sqlserver_configuration,
             "oracle": parse_oracle_configuration,
+            "rabbitmq": parse_rabbitmq_configuration,
         }
         config_parsers[payload.get("provider_type")](payload["provider"])
         print(json.dumps({"valid": True}))

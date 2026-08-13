@@ -1,0 +1,23 @@
+name: Team 4 Oracle database collector v1
+on:
+  pull_request:
+  workflow_dispatch:
+jobs:
+  oracle:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install -r requirements-oracle.txt pytest ruff black mypy
+      - run: python -m compileall integrations/databases/oracle
+      - run: ruff check integrations/databases/oracle tests/unit/oracle_provider
+      - run: black --check integrations/databases/oracle tests/unit/oracle_provider
+      - run: mypy --ignore-missing-imports integrations/databases/oracle
+      - run: pytest -q tests/unit/oracle_provider tests/unit/database_foundation tests/unit/postgres_provider tests/unit/mysql_provider tests/unit/mariadb_provider tests/unit/sqlserver_provider
+      - run: python scripts/release/current_terminal_migration.py
+      - run: python scripts/check_migration_immutability.py --base-ref origin/main
+      - run: python scripts/release/check_release_metadata.py
+      - run: python scripts/validate_capability_ledger.py
+      - run: python scripts/check_generated_artifacts.py
+      - run: '! rg -n "V\\$SQL|V\\$SESSION|DBA_HIST|ACTIVE_SESSION_HISTORY|DBMS_VECTOR|SELECT \\*" integrations/databases/oracle'

@@ -9,3 +9,7 @@ MySQL is the second adapter on this foundation. Its v1 provider reuses these con
 ## MariaDB implementation
 
 The first-class `mariadb` v1 provider reuses this foundation while retaining MariaDB product detection, catalogs, normalisation, and connection policy in `integrations/databases/mariadb`.
+
+### Oracle adapter
+
+Oracle v1 reuses this foundation's fixed-statement execution, identities, evidence, fingerprints, bounds, and OCC checkpoint ordering. Its adapter uses accessible `ALL_*` dictionary views and feature-detected optional vector metadata; it does not introduce a parallel framework.

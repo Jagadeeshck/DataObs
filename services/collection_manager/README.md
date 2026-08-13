@@ -16,3 +16,7 @@ MySQL provider type `mysql`, version `1`, is explicitly registered alongside Pos
 MariaDB provider type `mariadb`, version `1`, is explicitly registered separately from MySQL. Its generic observations use the existing persist-before-advance OCC checkpoint path; install `requirements-mariadb.txt` only on MariaDB workers.
 
 Microsoft SQL Server provider type `sqlserver`, version `1`, uses the same generic observation and persist-before-advance OCC checkpoint path. Install optional `requirements-sqlserver.txt` only on SQL Server workers.
+
+## Oracle database provider v1
+
+The registry includes `oracle` v1 using python-oracledb Thin mode. It requires structured TCPS service/PDB configuration and exposes accessible structural metadata, policy-owned freshness, and aggregate-only profiling. Query history, AWR/ASH, SQL text, and raw-row persistence are unsupported. See `config/integrations/oracle-database.example.yaml`.

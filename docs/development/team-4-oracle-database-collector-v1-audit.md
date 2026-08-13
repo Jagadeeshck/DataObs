@@ -1,0 +1,13 @@
+# Team 4 Oracle database collector v1 audit
+
+- **Team / base:** Team 4 — Integrations and Collection; audited base SHA `96d6e4fc0e20d11ee7dcaca5f681660d5dd2be52` on the pre-existing `work` branch.
+- **Terminal migration / doctor:** dynamic terminal is `0031_team3_post_incident_review_analytics`. The repository has no standalone local doctor command discoverable by name; release metadata validation reports pre-existing stale terminal references. Immutability is validated against the audited base. No migration is required: generic provider observations, runs, and OCC checkpoints support Oracle.
+- **Registry before work:** aws, snowflake, databricks, bigquery, azure, trino, presto, postgres, mysql, mariadb, and sqlserver.
+- **Oracle preflight:** scoped searches found no Oracle provider, `oracledb`, `cx_Oracle`, Oracle `ALL_*` statements, AWR/ASH, or Oracle performance-view use in the audited integration/foundation paths.
+- **Foundation reuse:** reuse `FixedStatementRegistry`, `BoundedStatementExecutor`, `DatabaseIdentity`, deterministic structural fingerprinting, SDK observations/capabilities, Collection Manager storage, and durable tenant/environment OCC checkpoints. No second database framework and no Team 2 changes.
+- **Driver / Python:** `oracledb>=4.0.2,<4.1`; repository Python 3 compatibility is retained. Thin mode only, so Oracle Client/Instant Client and Thick initialization are not required.
+- **Compatibility:** Oracle AI Database 26ai is primary and Oracle Database 19c secondary. Product branding is not inferred from a numeric major. Optional vector dictionary columns are attempted and safely fall back to the 19c shape. Neither target was live-tested locally.
+- **TLS / auth:** direct structured TCPS parameters require certificate hostname/DN matching; system roots or referenced wallet material may be used. TLS-off and inline wallet material are rejected. Password by Team 4 secret reference is the only mode; arbitrary descriptors, tokens, external/proxy auth, and privileged modes are absent.
+- **Multitenant:** one configured service/PDB is one integration. CDB/PDB enumeration, RAC, Data Guard, and cross-tenant pooling are excluded.
+- **Visibility:** schemas are the union of owners exposed through accessible `ALL_TABLES`, `ALL_VIEWS`, and `ALL_MVIEWS`; no DBA user/account/privilege inventory is used.
+- **Known limits:** no Autonomous certification, AWR, ASH, SQL/query/session/user analytics, SQL text, lineage, logs, costs, events, Data Quality, business-row samples, vector search, topology monitoring, or production-readiness claim. Live 26ai/19c validation and independently retained hosted exact-commit evidence remain pending.

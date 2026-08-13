@@ -1,0 +1,24 @@
+integration_id: oracle-production
+provider_type: oracle
+enabled: false
+allowed_capabilities: [resource_discovery, metadata_collection, schema_discovery, metric_collection, health_check, incremental_collection]
+provider:
+  host: oracle.example.internal
+  port: 1521
+  service_name: apppdb
+  authentication: {type: password, username: DATAOBS_COLLECTOR, password_ref: 'env:DATAOBS_ORACLE_PASSWORD'}
+  tls: {enabled: true, protocol: tcps, verify_server_identity: true, wallet_location_ref: null, wallet_password_ref: null, server_certificate_dn: null}
+  discovery:
+    include_schemas: []
+    exclude_schemas: [SYS, SYSTEM]
+    include_tables: []
+    exclude_tables: []
+    include_views: true
+    include_materialized_views: true
+    include_constraints: true
+    include_indexes: true
+    include_partitions: true
+    include_vector_metadata: true
+  freshness: {enabled: false}
+  profiling: {enabled: false}
+  limits: {connection_timeout_seconds: 10, statement_timeout_seconds: 15, maximum_schemas: 1000, maximum_relations: 100000, maximum_columns: 1000000, maximum_constraints: 1000000, maximum_indexes: 500000, maximum_partitions: 500000, maximum_observations: 1000000, total_timeout_seconds: 300}

@@ -3,10 +3,10 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+from services.incident_manager.elasticsearch_repository import INCIDENTS_READ_ALIAS
+
 from .features import IncidentFeatures
 from .repository import ALLOWED_LOOKBACK_DAYS, MAX_CANDIDATE_POOL
-
-INCIDENT_READ_ALIAS = "dataobs-incidents-read"
 
 
 class ElasticsearchCandidateRepository:
@@ -32,7 +32,8 @@ class ElasticsearchCandidateRepository:
         if not should:
             return []
         response = self.client.search(
-            index=INCIDENT_READ_ALIAS,
+            index=INCIDENTS_READ_ALIAS,
+            seq_no_primary_term=True,
             size=min(max(1, limit), MAX_CANDIDATE_POOL),
             timeout="2s",
             query={
@@ -58,4 +59,10 @@ class ElasticsearchCandidateRepository:
             },
             sort=[{"opened_at": "desc"}, {"id": "asc"}],
         )
-        return [hit["_source"] for hit in response["hits"]["hits"]]
+        candidates = []
+        for hit in response["hits"]["hits"]:
+            candidate = dict(hit["_source"])
+            candidate["seq_no"] = hit.get("_seq_no")
+            candidate["primary_term"] = hit.get("_primary_term")
+            candidates.append(candidate)
+        return candidates

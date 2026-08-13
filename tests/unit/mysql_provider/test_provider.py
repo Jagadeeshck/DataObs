@@ -45,6 +45,7 @@ def test_registration_capabilities_and_version():
         "postgres",
         "presto",
         "snowflake",
+        "sqlserver",
         "trino",
     )
     provider = registry.create("mysql")

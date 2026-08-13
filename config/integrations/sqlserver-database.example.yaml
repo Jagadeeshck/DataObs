@@ -1,0 +1,24 @@
+integration_id: sqlserver-production
+provider_type: sqlserver
+enabled: false
+allowed_capabilities: [resource_discovery, metadata_collection, schema_discovery, metric_collection, health_check, incremental_collection]
+provider:
+  host: sqlserver.example.internal
+  port: 1433
+  database: application
+  authentication: {type: sql_password, username: dataobs_collector, password_ref: "env:DATAOBS_SQLSERVER_PASSWORD"}
+  tls: {mode: strict, trust_server_certificate: false, hostname_in_certificate: null}
+  discovery:
+    include_schemas: []
+    exclude_schemas: [sys, INFORMATION_SCHEMA]
+    include_tables: []
+    exclude_tables: []
+    include_views: true
+    include_constraints: true
+    include_indexes: true
+    include_partitions: true
+    include_table_features: true
+    include_storage_statistics: false
+  freshness: {enabled: false}
+  profiling: {enabled: false}
+  limits: {connection_timeout_seconds: 10, query_timeout_seconds: 15, maximum_schemas: 1000, maximum_relations: 100000, maximum_columns: 1000000, maximum_constraints: 1000000, maximum_indexes: 500000, maximum_partitions: 500000, maximum_observations: 1000000, total_timeout_seconds: 300}

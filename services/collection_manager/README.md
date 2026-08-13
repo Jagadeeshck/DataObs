@@ -14,3 +14,5 @@ The explicit provider composition includes AWS, Snowflake, Databricks, BigQuery,
 MySQL provider type `mysql`, version `1`, is explicitly registered alongside PostgreSQL and the existing cloud/SQL-engine providers. Install `requirements-mysql.txt` only on MySQL workers; missing Connector/Python fails as `dependency_unavailable`. Generic provider observations and persist-before-advance OCC checkpoints are reused.
 
 MariaDB provider type `mariadb`, version `1`, is explicitly registered separately from MySQL. Its generic observations use the existing persist-before-advance OCC checkpoint path; install `requirements-mariadb.txt` only on MariaDB workers.
+
+Microsoft SQL Server provider type `sqlserver`, version `1`, uses the same generic observation and persist-before-advance OCC checkpoint path. Install optional `requirements-sqlserver.txt` only on SQL Server workers.

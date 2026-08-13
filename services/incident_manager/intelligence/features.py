@@ -10,7 +10,9 @@ MAX_VALUES = 100
 
 def _values(values: Iterable[Any] | None) -> tuple[str, ...]:
     """Canonicalize bounded categorical evidence; never accepts evidence blobs."""
-    return tuple(sorted({str(value).strip().lower() for value in values or () if str(value).strip()}))[:MAX_VALUES]
+    return tuple(
+        sorted({str(value).strip().lower() for value in values or () if value is not None and str(value).strip()})
+    )[:MAX_VALUES]
 
 
 class FailureSignature(BaseModel):

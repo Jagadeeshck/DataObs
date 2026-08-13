@@ -35,6 +35,14 @@ class InMemoryIntelligenceRepository:
             return deepcopy(existing)
         if not existing:
             self.relationships[item.relationship_id] = deepcopy(item)
+        elif existing.status == RelationshipStatus.CANDIDATE and (
+            existing.scoring_version != item.scoring_version
+            or existing.feature_version != item.feature_version
+            or existing.reason_codes != item.reason_codes
+            or existing.similarity_score != item.similarity_score
+        ):
+            item.revision = existing.revision + 1
+            self.relationships[item.relationship_id] = deepcopy(item)
         return deepcopy(self.relationships[item.relationship_id])
 
     def decide(

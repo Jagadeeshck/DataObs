@@ -10,6 +10,16 @@ FAILURE_SIGNATURE_VERSION = "failure-signature/v1"
 
 
 def _digest(version: str, payload: dict[str, object]) -> str:
+    # Pydantic callers may construct models directly, bypassing feature extraction.
+    # Canonicalize every set-like collection at the hashing boundary as defence in depth.
+    payload = {
+        key: (
+            sorted({str(item).strip().lower() for item in value if item is not None and str(item).strip()})
+            if isinstance(value, (list, tuple, set))
+            else value
+        )
+        for key, value in payload.items()
+    }
     canonical = json.dumps({"version": version, **payload}, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(canonical.encode()).hexdigest()
 

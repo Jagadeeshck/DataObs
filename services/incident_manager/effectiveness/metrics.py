@@ -20,9 +20,16 @@ class EffectivenessSummary:
 
 def summarize(episodes: Iterable[RemediationEpisode]) -> EffectivenessSummary:
     items = tuple(episodes)
+    for attribute in ("tenant_id", "environment", "effectiveness_definition_version"):
+        if len({getattr(item, attribute) for item in items}) > 1:
+            raise ValueError(f"mixed {attribute} effectiveness summary is prohibited")
     eligible = tuple(e for e in items if e.verification_status != VerificationStatus.UNAVAILABLE)
     verified = sum(e.effectiveness_class == EffectivenessClass.VERIFIED_EFFECTIVE for e in eligible)
-    timings = [e.time_to_verified_effect_ms for e in items if e.time_to_verified_effect_ms is not None]
+    timings = [
+        e.time_to_verified_effect_ms
+        for e in items
+        if e.effectiveness_class == EffectivenessClass.VERIFIED_EFFECTIVE and e.time_to_verified_effect_ms is not None
+    ]
     return EffectivenessSummary(
         attempt_count=len(items),
         verification_eligible_count=len(eligible),

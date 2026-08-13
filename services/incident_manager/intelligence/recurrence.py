@@ -76,9 +76,10 @@ def _identity(prefix: str, parts: list[str]) -> str:
     return prefix + hashlib.sha256(raw.encode()).hexdigest()[:32]
 
 
-def relationship_identity(tenant: str, environment: str, a: str, b: str, scoring_version: str) -> str:
+def relationship_identity(tenant: str, environment: str, a: str, b: str, scoring_version: str | None = None) -> str:
+    """Identify the logical relationship, independently of scoring generation."""
     first, second = sorted((a, b))
-    return _identity("recurrence-", [tenant, environment, "recurrence", first, second, scoring_version])
+    return _identity("recurrence-", [tenant, environment, "recurrence", first, second])
 
 
 def family_identity(tenant: str, environment: str, features: IncidentFeatures) -> str:
@@ -121,15 +122,24 @@ def propose_recurrence(
     ):
         return None
     matched = {item.feature for item in similarity.matched_features if item.similarity == 1}
-    if similarity.same_structural_signature:
+    same_signature = failure_signature_fingerprint(source.failure_signature) == failure_signature_fingerprint(
+        candidate.failure_signature
+    )
+    if same_signature:
         recurrence_type = RecurrenceType.SAME_FAILURE_SIGNATURE
     else:
         supported = (
+            ("primary_asset", RecurrenceType.SAME_ASSET_FAILURE),
             ("affected_assets", RecurrenceType.SAME_ASSET_FAILURE),
             ("rule_ids", RecurrenceType.SAME_RULE_FAILURE),
             ("data_product_ids", RecurrenceType.SAME_DATA_PRODUCT_FAILURE),
             ("business_services", RecurrenceType.SAME_BUSINESS_SERVICE_FAILURE),
+            ("confirmed_root_cause_categories", RecurrenceType.SAME_ROOT_CAUSE_CATEGORY),
         )
+        if source.primary_asset and source.primary_asset == candidate.primary_asset:
+            matched.add("primary_asset")
+        if set(source.confirmed_root_cause_categories) & set(candidate.confirmed_root_cause_categories):
+            matched.add("confirmed_root_cause_categories")
         recurrence_type = next((kind for feature, kind in supported if feature in matched), None)
     if recurrence_type is None:
         return None

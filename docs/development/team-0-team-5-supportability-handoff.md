@@ -1,0 +1,3 @@
+# Team 0 to Team 5 supportability handoff
+
+Team 5 owns presentation; Team 0 owns these bounded, read-only fields under the existing permissioned platform section route. A future Console may display support state and blockers, diagnostic `id/state/severity/reason_code/remediation_code/checked_at`, maintenance state and safe dates/areas, bounded known issues, operational-readiness category state/evidence reference, and the response `X-Request-ID`. It must not render raw exceptions, environment variables, hosts, credentials, customer payloads, unrestricted logs, or private ticket content. Unknown/unvalidated evidence must remain visibly distinct from healthy/supported, and maintenance must never recolor an unhealthy result as healthy.

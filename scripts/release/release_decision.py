@@ -22,13 +22,23 @@ MANDATORY_RESULTS = (
 )
 
 
-def decide(manifest: dict[str, Any], *, dry_run: bool, publication_verified: bool = False) -> dict[str, Any]:
+def decide(
+    manifest: dict[str, Any],
+    *,
+    dry_run: bool,
+    publication_verified: bool = False,
+    security_gate: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     failures = [key for key in MANDATORY_RESULTS if manifest.get(key) != "pass"]
     capabilities = manifest.get("capability_artifact_inventory")
     if not isinstance(capabilities, list) or any(
         x.get("mandatory", True) and x.get("status") != "pass" for x in capabilities
     ):
         failures.append("capability_artifact_inventory")
+    # Security posture is an input to the existing authority, never a second
+    # publisher. Missing, incomplete, or unvalidated security cannot become GO.
+    if security_gate is not None and security_gate.get("state") != "PASS":
+        failures.append("security_release_gate")
     if manifest.get("publication_status") == "published" and not publication_verified:
         state = "VERIFICATION_FAILED"
         failures.append("publication_verification")
@@ -59,9 +69,13 @@ def main() -> int:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--publication-verified", action="store_true")
+    parser.add_argument("--security-gate", type=Path)
     args = parser.parse_args()
     decision = decide(
-        json.loads(args.manifest.read_text()), dry_run=args.dry_run, publication_verified=args.publication_verified
+        json.loads(args.manifest.read_text()),
+        dry_run=args.dry_run,
+        publication_verified=args.publication_verified,
+        security_gate=json.loads(args.security_gate.read_text()) if args.security_gate else None,
     )
     args.output.write_text(json.dumps(decision, indent=2, sort_keys=True) + "\n")
     return 0 if decision["state"] != "VERIFICATION_FAILED" else 1

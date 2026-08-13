@@ -1,0 +1,26 @@
+schema_version: '1.0'
+findings:
+  - id: SECF-001
+    control: SEC-OPERATIONS-002
+    severity: high
+    owner: Release Team
+    state: open
+    evidence: workflow-security-report.json
+    remediation: Review reported workflows and record narrow exceptions or reduce permissions.
+    target_milestone: null
+  - id: SECF-002
+    control: SEC-TENANCY-001
+    severity: critical
+    owner: Platform Team
+    state: open
+    evidence: tenant-hosted evidence is absent for the audited SHA
+    remediation: Retain protected hosted adversarial isolation evidence for the release candidate.
+    target_milestone: null
+  - id: SECF-003
+    control: SEC-SUPPLY-003
+    severity: critical
+    owner: Release Team
+    state: open
+    evidence: exact-SHA independent signature-verification evidence is absent
+    remediation: Sign the immutable candidate and retain independent verification.
+    target_milestone: null

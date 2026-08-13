@@ -138,6 +138,52 @@ const route = (
 /** Authoritative routing, navigation, breadcrumb, permission and discovery model. */
 export const consoleRoutes: readonly ConsoleRoute[] = [
   route({
+    id: "platform-operations",
+    path: "/administration/platform",
+    name: "Platform Operations",
+    aliases: [
+      "fleet",
+      "environments",
+      "installations",
+      "clusters",
+      "tenants",
+      "drift",
+    ],
+    group: "Configure",
+    capabilityId: "platform-operations",
+    icon: "⌘",
+    owner: "team-5",
+    workspace: "admin",
+    navigation: true,
+    section: "Platform Operations",
+    requiredPermission: "platform_operations:read",
+    loader: load(
+      "../features/administration/PlatformOperations",
+      "PlatformOperations",
+    ),
+  }),
+  route({
+    id: "platform-resource-360",
+    path: "/administration/platform/:resourceKind/:resourceId",
+    name: "Platform Resource",
+    group: "System",
+    capabilityId: "platform-operations",
+    owner: "team-5",
+    workspace: "admin",
+    parentId: "platform-operations",
+    entityParameters: [
+      parameter("resourceKind", "resource-kind"),
+      parameter("resourceId", "platform-resource"),
+    ],
+    requiredPermission: "platform_operations:read",
+    quickFind: false,
+    searchEligible: false,
+    loader: load(
+      "../features/administration/PlatformOperations",
+      "PlatformResource360",
+    ),
+  }),
+  route({
     id: "command-center",
     path: "/",
     name: "Command Center",

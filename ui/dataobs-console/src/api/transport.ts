@@ -67,7 +67,7 @@ export type TransportResult<T> = {
 /** Shared authenticated transport for capability clients that require OCC metadata. */
 export async function request<T>(
   path: string,
-  tenant: string,
+  tenant: string | undefined,
   options: {
     method?: "GET" | "POST" | "PATCH" | "DELETE";
     body?: unknown;
@@ -86,7 +86,7 @@ export async function request<T>(
       ...(options.body === undefined
         ? {}
         : { "Content-Type": "application/json" }),
-      "X-DataObs-Tenant": tenant,
+      ...(tenant ? { "X-DataObs-Tenant": tenant } : {}),
       ...(options.environment
         ? { "X-DataObs-Environment": options.environment }
         : {}),

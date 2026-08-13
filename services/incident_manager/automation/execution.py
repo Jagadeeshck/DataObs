@@ -152,12 +152,17 @@ class ExecutionWorker:
             if finished_at > execution_deadline:
                 # The provider may have completed, so this is never blindly
                 # retried and no provider response body crosses the boundary.
-                self._record_failure(
-                    item,
-                    "execution_deadline_exceeded",
-                    uncertain=True,
-                    observed_at=finished_at,
-                )
+                try:
+                    self._record_failure(
+                        item,
+                        "execution_deadline_exceeded",
+                        uncertain=True,
+                        observed_at=finished_at,
+                    )
+                except Conflict:
+                    # A reconciler fenced this expired item while the provider
+                    # returned.  Fence loss is local to this item.
+                    pass
                 processed += 1
                 continue
             item.operation_reference = result.operation_reference[:200]
@@ -175,7 +180,11 @@ class ExecutionWorker:
             event_id = canonical_hash([item.execution_id, item.state.value, item.attempt])
             item.transition_event_id = event_id
             item.transition_event_pending = True
-            self.repository.update_execution(item, item.lease_token)
+            try:
+                self.repository.update_execution(item, item.lease_token)
+            except Conflict:
+                processed += 1
+                continue
             try:
                 self.repository.append_event(
                     "remediation_action",

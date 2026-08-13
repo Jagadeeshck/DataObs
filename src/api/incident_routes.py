@@ -188,61 +188,69 @@ def create_incident_workbench_router(auth_dependency: Callable[..., Any]) -> API
                     incident_id=incident_id,
                     action_type=body.action_type,
                 )
-                if resolution.status == "selection_required":
-                    selection_codec = TargetSelectionCodec()
-                    if body.selection_id:
-                        try:
-                            selected = selection_codec.select(
-                                body.selection_id,
+                selection_codec = TargetSelectionCodec()
+                # A caller-supplied selection is a binding to the resolution
+                # generation that issued it.  Validate it even when the latest
+                # resolution has collapsed to one candidate; silently choosing
+                # that new candidate would execute against a different target.
+                if body.selection_id:
+                    if not resolution.candidates:
+                        raise HTTPException(status_code=409, detail={"code": "target_selection_stale"})
+                    try:
+                        selected = selection_codec.select(
+                            body.selection_id,
+                            tenant_id=request.state.tenant_id,
+                            environment=environment,
+                            incident_id=incident_id,
+                            action_type=body.action_type,
+                            candidates=resolution.candidates,
+                        )
+                    except InvalidCursor as exc:
+                        raise HTTPException(status_code=409, detail={"code": "target_selection_stale"}) from exc
+                    try:
+                        selected = resolver.reload(
+                            tenant_id=request.state.tenant_id,
+                            environment=environment,
+                            target=selected,
+                        )
+                    except LookupError as exc:
+                        raise HTTPException(status_code=409, detail={"code": "target_selection_stale"}) from exc
+                    payload = {"target_id": selected.target_id, "target_revision": selected.revision}
+                elif resolution.status == "selection_required":
+                    candidates = [
+                        {
+                            "type": item.target_type,
+                            "id": item.target_id,
+                            "selection_id": selection_codec.issue(
                                 tenant_id=request.state.tenant_id,
                                 environment=environment,
                                 incident_id=incident_id,
                                 action_type=body.action_type,
                                 candidates=resolution.candidates,
-                            )
-                        except InvalidCursor as exc:
-                            raise HTTPException(status_code=422, detail={"code": "invalid_target_selection"}) from exc
-                        try:
-                            selected = resolver.reload(
-                                tenant_id=request.state.tenant_id,
-                                environment=environment,
-                                target=selected,
-                            )
-                        except LookupError as exc:
-                            raise HTTPException(status_code=409, detail={"code": "target_selection_stale"}) from exc
-                        payload = {"target_id": selected.target_id, "target_revision": selected.revision}
-                    else:
-                        candidates = [
-                            {
-                                "type": item.target_type,
-                                "id": item.target_id,
-                                "selection_id": selection_codec.issue(
-                                    tenant_id=request.state.tenant_id,
-                                    environment=environment,
-                                    incident_id=incident_id,
-                                    action_type=body.action_type,
-                                    candidates=resolution.candidates,
-                                    candidate=item,
-                                ),
-                            }
-                            for item in resolution.candidates
-                        ]
-                        raise HTTPException(
-                            status_code=422,
-                            detail={
-                                "code": "target_selection_required",
-                                "reason_codes": resolution.reason_codes,
-                                "candidates": candidates,
-                            },
-                        )
+                                candidate=item,
+                            ),
+                        }
+                        for item in resolution.candidates
+                    ]
+                    raise HTTPException(
+                        status_code=422,
+                        detail={
+                            "code": "target_selection_required",
+                            "reason_codes": resolution.reason_codes,
+                            "candidates": candidates,
+                        },
+                    )
                 elif resolution.status != "resolved" or resolution.target is None:
                     raise HTTPException(status_code=422, detail={"code": "authoritative_target_unavailable"})
                 else:
-                    current = resolver.reload(
-                        tenant_id=request.state.tenant_id,
-                        environment=environment,
-                        target=resolution.target,
-                    )
+                    try:
+                        current = resolver.reload(
+                            tenant_id=request.state.tenant_id,
+                            environment=environment,
+                            target=resolution.target,
+                        )
+                    except LookupError as exc:
+                        raise HTTPException(status_code=409, detail={"code": "target_stale"}) from exc
                     payload = {"target_id": current.target_id, "target_revision": current.revision}
             result = PreviewService().create(
                 tenant_id=request.state.tenant_id,

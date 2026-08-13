@@ -2267,6 +2267,37 @@ TEAM1_MULTI_BROKER_MESSAGING_RUNTIME_MIGRATION = Migration(
 )
 
 
+POST_INCIDENT_REVIEW_ANALYTICS_MIGRATION = Migration(
+    "0031_team3_post_incident_review_analytics",
+    "Add strict post-incident review, follow-up, event, and per-incident analytics resources",
+    "v1",
+    dependencies=["0030_team1_multi_broker_messaging_runtime"],
+    rollback_strategy="stop Team 3 writers; retain immutable review and follow-up audit evidence",
+    operations={
+        "mutable_indices": ["dataobs-incident-reviews-current-v1", "dataobs-incident-followups-current-v1", "dataobs-incident-analytics-current-v1"],
+        "mapping_updates": {
+            "dataobs-incident-reviews-current-v1": {"dynamic": "strict", "properties": {
+                "tenant_id": {"type": "keyword"}, "environment": {"type": "keyword"}, "review_id": {"type": "keyword"}, "incident_id": {"type": "keyword"},
+                "review_generation": {"type": "integer"}, "review_status": {"type": "keyword"}, "requirement_state": {"type": "keyword"}, "owner": {"type": "keyword"},
+                "due_at": {"type": "date"}, "completed_at": {"type": "date"}, "incident_revision": {"type": "keyword"}, "evidence_cutoff": {"type": "date"},
+                "policy_id": {"type": "keyword"}, "policy_version": {"type": "keyword"}, "policy_hash": {"type": "keyword"}, "sections": {"type": "object", "enabled": False}}},
+            "dataobs-incident-followups-current-v1": {"dynamic": "strict", "properties": {
+                "tenant_id": {"type": "keyword"}, "environment": {"type": "keyword"}, "followup_id": {"type": "keyword"}, "incident_id": {"type": "keyword"}, "review_id": {"type": "keyword"},
+                "followup_status": {"type": "keyword"}, "followup_category": {"type": "keyword"}, "priority": {"type": "keyword"}, "owner": {"type": "keyword"}, "due_at": {"type": "date"}, "completed_at": {"type": "date"}}},
+            "dataobs-incident-analytics-current-v1": {"dynamic": "strict", "properties": {
+                "tenant_id": {"type": "keyword"}, "environment": {"type": "keyword"}, "incident_id": {"type": "keyword"}, "opened_at": {"type": "date"}, "severity": {"type": "keyword"}, "priority": {"type": "keyword"},
+                "time_to_acknowledge_ms": {"type": "long"}, "time_to_resolve_ms": {"type": "long"}, "time_to_close_ms": {"type": "long"}, "signal_to_incident_ms": {"type": "long"},
+                "waiting_for_approval_duration_ms": {"type": "long"}, "monitoring_recovery_duration_ms": {"type": "long"}, "reopen_count": {"type": "integer"}, "was_reopened": {"type": "boolean"},
+                "source_incident_revision": {"type": "keyword"}, "source_timeline_checkpoint": {"type": "keyword"}, "metric_definition_version": {"type": "keyword"}, "projection_version": {"type": "integer"}, "computed_at": {"type": "date"}}},
+        },
+        "data_stream_contracts": {
+            "logs-dataobs.incident-review-event-*": {"retention": "2555d", "properties": {"tenant_id": {"type": "keyword"}, "environment": {"type": "keyword"}, "incident_id": {"type": "keyword"}, "review_id": {"type": "keyword"}, "event_type": {"type": "keyword"}, "@timestamp": {"type": "date"}}},
+            "logs-dataobs.incident-followup-event-*": {"retention": "2555d", "properties": {"tenant_id": {"type": "keyword"}, "environment": {"type": "keyword"}, "incident_id": {"type": "keyword"}, "followup_id": {"type": "keyword"}, "event_type": {"type": "keyword"}, "@timestamp": {"type": "date"}}},
+        },
+    },
+)
+
+
 
 def migrations() -> List[Migration]:
     return [
@@ -2300,6 +2331,7 @@ def migrations() -> List[Migration]:
         PATHWAY_INVESTIGATION_HISTORY_MIGRATION,
         TEAM2_DATA_INTELLIGENCE_RECONCILIATION_MIGRATION,
         TEAM1_MULTI_BROKER_MESSAGING_RUNTIME_MIGRATION,
+        POST_INCIDENT_REVIEW_ANALYTICS_MIGRATION,
     ]
 
 

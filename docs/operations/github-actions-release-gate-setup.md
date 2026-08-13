@@ -3,6 +3,10 @@
 Repository administration could not be inspected from the supplied checkout because no Git remote or authenticated
 GitHub CLI session was available. An administrator must complete these steps; local validation is not hosted CI evidence.
 
+As checked on 2026-08-13, this checkout still has no configured Git remote and `gh auth status` reports no authenticated
+GitHub host. Consequently workflow active state, repository Actions permissions, rulesets, required checks, run history,
+and PR-trigger suppression could not be queried. Do not interpret that limitation as evidence that Actions are disabled.
+
 1. In **Settings → Actions → General**, allow Actions and permit the repository's required first-party actions.
 2. In **Settings → Rules → Rulesets** (or **Branches → Branch protection rules**), create or edit the rule targeting
    `main`; require a pull request and require branches to be up to date before merging.

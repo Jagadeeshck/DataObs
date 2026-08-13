@@ -1,0 +1,34 @@
+name: Team 2 — Asset Trust and Reliability Score v1
+
+on:
+  pull_request:
+    paths:
+      - "packages/domain_model/asset_trust.py"
+      - "services/asset_trust/**"
+      - "tests/asset_trust/**"
+      - "docs/**asset-trust*"
+      - ".github/workflows/team-2-asset-trust-score-v1.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  asset-trust-domain:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt
+      - name: Repository guards and domain tests
+        run: |
+          python scripts/check_migration_immutability.py --base-ref "${{ github.event.pull_request.base.sha || github.event.before }}"
+          ruff check packages/domain_model/asset_trust.py services/asset_trust tests/asset_trust
+          pytest --junitxml=asset-trust-junit.xml tests/asset_trust
+      - name: Retain unvalidated evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: team-2-asset-trust-score-v1-evidence
+          path: asset-trust-junit.xml

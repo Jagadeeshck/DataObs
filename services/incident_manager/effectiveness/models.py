@@ -4,7 +4,7 @@ import hashlib
 from datetime import datetime
 from enum import StrEnum
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 EFFECTIVENESS_DEFINITION_VERSION = "remediation-effectiveness/1.0.0"
 
@@ -100,3 +100,20 @@ class RemediationEpisode(BaseModel):
     timeline_checkpoint: str | None = None
     effectiveness_definition_version: str = EFFECTIVENESS_DEFINITION_VERSION
     computed_at: datetime
+
+    @model_validator(mode="after")
+    def validate_derived_fields(self):
+        # Keep persisted projections honest when they are replayed/deserialized.
+        from .classifier import classify
+
+        expected_class = classify(self.provider_status, self.verification_status)
+        if self.effectiveness_class != expected_class:
+            raise ValueError("effectiveness_class contradicts provider/verification statuses")
+        if abs(self.evidence_coverage - self.evidence.coverage) > 1e-9:
+            raise ValueError("evidence_coverage must be derived from evidence.coverage")
+        if (
+            self.effectiveness_class != EffectivenessClass.VERIFIED_EFFECTIVE
+            and self.time_to_verified_effect_ms is not None
+        ):
+            raise ValueError("time_to_verified_effect_ms requires a currently verified-effective episode")
+        return self

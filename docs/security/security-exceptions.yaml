@@ -1,0 +1,5 @@
+schema_version: '1.0'
+policy:
+  permanent_exceptions_allowed: false
+  wildcard_exceptions_allowed: false
+exceptions: []

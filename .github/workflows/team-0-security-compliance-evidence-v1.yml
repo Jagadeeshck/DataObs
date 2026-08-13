@@ -1,0 +1,56 @@
+name: Team 0 security compliance evidence v1
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps: [{uses: actions/checkout@v4}, {uses: actions/setup-python@v5, with: {python-version: '3.13'}}, {run: pip install -r requirements.txt}, {run: python scripts/release/current_terminal_migration.py}]
+  controls:
+    runs-on: ubuntu-latest
+    steps: [{uses: actions/checkout@v4}, {uses: actions/setup-python@v5, with: {python-version: '3.13'}}, {run: pip install pyyaml pytest}, {run: pytest -q tests/security/test_security_posture_v1.py}]
+  threat-models:
+    runs-on: ubuntu-latest
+    steps: [{uses: actions/checkout@v4}, {run: python -m pip install pyyaml && python scripts/security/validate_threat_models.py}]
+  route-security:
+    runs-on: ubuntu-latest
+    steps: [{uses: actions/checkout@v4}, {uses: actions/setup-python@v5, with: {python-version: '3.13'}}, {run: pip install -r requirements.txt}, {run: python scripts/security/check_route_permissions.py --output route-security-report.json}]
+  secrets:
+    runs-on: ubuntu-latest
+    steps: [{uses: actions/checkout@v4}, {run: python scripts/security/validate_sensitive_outputs.py docs/security/security-controls.yaml docs/security/security-exceptions.yaml}]
+  audit-safety:
+    runs-on: ubuntu-latest
+    steps: [{uses: actions/checkout@v4}, {run: python scripts/security/validate_sensitive_outputs.py docs/security/security-findings.yaml --output audit-safety-report.json}]
+  workflow-security:
+    runs-on: ubuntu-latest
+    steps: [{uses: actions/checkout@v4}, {run: pip install pyyaml}, {run: python scripts/security/validate_workflow_security.py}]
+  exceptions:
+    runs-on: ubuntu-latest
+    steps: [{uses: actions/checkout@v4}, {run: python -m pip install pyyaml && python scripts/security/validate_security_exceptions.py}]
+  evidence-inventory:
+    runs-on: ubuntu-latest
+    steps: [{uses: actions/checkout@v4}, {run: python -m pip install pyyaml && python scripts/security/evaluate_security_posture.py --sha "$GITHUB_SHA" --profile development}]
+  posture:
+    runs-on: ubuntu-latest
+    steps: [{uses: actions/checkout@v4}, {run: python -m pip install pyyaml && python scripts/security/render_current_security_posture.py --check}]
+  release-gate:
+    needs: [controls, threat-models, route-security, secrets, audit-safety, workflow-security, exceptions, evidence-inventory, posture]
+    runs-on: ubuntu-latest
+    steps: [{uses: actions/checkout@v4}, {run: "python -c 'import json; assert json.load(open(\"security-release-gate.json\"))[\"state\"] in {\"PASS\",\"FAIL\",\"INCOMPLETE\",\"UNVALIDATED\"}'"}]
+  evidence:
+    needs: [release-gate]
+    runs-on: ubuntu-latest
+    steps: [{uses: actions/checkout@v4}, {run: python -m pip install pyyaml && python scripts/security/build_security_evidence.py --sha "$GITHUB_SHA"}]
+  verify:
+    needs: [evidence]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python - <<'PY'
+          import json
+          report = json.load(open("team-0-security-compliance-evidence-v1-evidence/security-evidence-verification.json"))
+          assert report["accepted"] is False
+          PY

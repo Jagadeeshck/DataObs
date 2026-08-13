@@ -1,0 +1,21 @@
+schema_version: '1.0'
+classes:
+  public: Approved public product material.
+  internal: Operational metadata not intended for public disclosure.
+  sensitive: Tenant-scoped metadata whose disclosure can cause harm.
+  secret: Authentication or cryptographic material that must never enter evidence.
+data:
+  telemetry_metadata: internal
+  asset_metadata: sensitive
+  lineage: sensitive
+  incidents: sensitive
+  audit_events: sensitive
+  credentials: secret
+  tokens: secret
+  certificates: sensitive
+  private_keys: secret
+  configuration: internal
+minimization:
+  prohibited_by_default: [database_business_rows, authentication_tokens, credentials, private_keys, raw_environment_dumps]
+  conditional: [raw_sql, raw_schema_payloads]
+  rule: Conditional fields require a documented provider contract, tenant scope, and redaction/retention controls.

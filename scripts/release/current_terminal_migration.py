@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from packages.elastic_store.manifest import migrations
 from scripts.release.validate_migration_graph import validate
 
 
@@ -30,15 +31,9 @@ def migration_report() -> dict[str, Any]:
             "migration registry contains duplicate numeric prefixes: "
             + ", ".join(duplicate_prefixes)
         )
-    previous: str | None = None
-    for migration in registry:
-        expected = [] if previous is None else [previous]
-        if list(migration.dependencies) != expected:
-            raise ValueError(
-                f"invalid migration ordering at {migration.migration_id}: "
-                f"expected dependencies {expected}, got {migration.dependencies}"
-            )
-        previous = migration.migration_id
+    graph = validate(registry)
+    if graph["state"] != "valid":
+        raise ValueError("invalid migration graph: " + ", ".join(graph["errors"]))
     checksum = hashlib.sha256(
         json.dumps(
             [{"id": migration.migration_id, "checksum": migration.checksum} for migration in registry],

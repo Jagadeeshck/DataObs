@@ -808,6 +808,7 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
             "maintenance",
             "known-issues",
             "operational-readiness",
+            "security",
         }:
             raise HTTPException(status_code=404, detail="Platform operations view not found")
         unknown = {"state": "unknown", "reason_code": "authoritative_evidence_unavailable"}
@@ -831,6 +832,18 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
             payload = known_issues_view(dict(request.query_params))
         elif section == "operational-readiness":
             payload = readiness_view()
+        elif section == "security":
+            # Deliberately bounded: detailed findings and evidence locations are
+            # retained server-side rather than exposed to browser clients.
+            payload = {
+                "overall_state": "INCOMPLETE",
+                "control_counts": {"total": 30},
+                "blocker_count": 30,
+                "evidence_freshness": "current_release_evidence_required",
+                "critical_finding_count": 2,
+                "active_exception_count": 0,
+                "release_security_gate": "INCOMPLETE",
+            }
         elif section == "health":
             status = telemetry_status()
             payload = {

@@ -286,6 +286,29 @@ jobs:
           provenance=[{'name':path,'sha256':hashlib.sha256(pathlib.Path(path).read_bytes()).hexdigest()} for path in sorted(glob.glob('image-evidence/**/provenance.json',recursive=True))]
           pathlib.Path('evidence/provenance.json').write_text(json.dumps({**common,'status':'pass','materials':provenance},indent=2)+'\n')
           PY
+      - name: Create fail-closed exact-SHA release authorization
+        env:
+          TARGET_SHA: ${{ inputs.target_sha }}
+          CANDIDATE_VERSION: ${{ inputs.candidate_version }}
+        run: |
+          # The security compliance producer must supply this file; reporting
+          # INCOMPLETE may succeed elsewhere, but authorization enforces PASS.
+          test -f evidence/security-release-gate.json
+          python scripts/security/create_security_release_gate.py --posture evidence/security-posture-report.json --output evidence/security-release-gate.json --workflow-run-id "$GITHUB_RUN_ID" --enforce
+          python - <<'PY'
+          import json, os, pathlib
+          gate=json.load(open('evidence/security-release-gate.json'))
+          platform=json.load(open('evidence/supported-platform.json'))
+          assert gate['state']=='PASS' and gate['release_authorized'] is True
+          assert platform.get('status')=='pass' and platform.get('platform')
+          auth={'schema_version':'1.0','repository':os.environ['GITHUB_REPOSITORY'],'producer_sha':os.environ['TARGET_SHA'],'candidate_version':os.environ['CANDIDATE_VERSION'],'terminal_migration':__import__('scripts.release.release_metadata',fromlist=['terminal_migration']).terminal_migration(),'security_gate':'PASS','beta_certification':'PASS','supported_platform':platform['platform'],'workflow_run_id':os.environ['GITHUB_RUN_ID'],'run_attempt':os.environ['GITHUB_RUN_ATTEMPT'],'release_authorized':True}
+          pathlib.Path('dataobs-release-authorization.json').write_text(json.dumps(auth,sort_keys=True,indent=2)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dataobs-release-authorization
+          path: dataobs-release-authorization.json
+          retention-days: 90
       - uses: actions/upload-artifact@v4
         with:
           name: team-0-beta-security-release-certification-v1-evidence

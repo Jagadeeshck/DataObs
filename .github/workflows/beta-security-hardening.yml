@@ -47,7 +47,7 @@ jobs:
             --supporting-file security-junit.xml --tool-version "python=$(python --version | cut -d' ' -f2)"
           find team-0-security-hardening-evidence -type f -printf '%P\n' | sort > team-0-security-hardening-evidence/inventory.txt
           sha256sum team-0-security-hardening-evidence/* > team-0-security-hardening-evidence/SHA256SUMS
-      - name: Independent evidence verification
+      - name: Evidence checksum verification
         run: cd team-0-security-hardening-evidence && sha256sum -c SHA256SUMS
       - uses: actions/upload-artifact@v4
         with:

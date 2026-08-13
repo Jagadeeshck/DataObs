@@ -1,0 +1,370 @@
+schema_version: '1.0'
+evidence_states:
+- valid
+- missing
+- stale
+- failed
+- partial
+- unvalidated
+- not_applicable
+provenance_required:
+- repository
+- sha
+- workflow
+- workflow_run_id
+- attempt
+- created_at
+- tool
+- checksum
+- producer
+- verifier
+- environment_class
+evidence:
+- control_id: SEC-AUTHN-001
+  evidence_type: unit-test
+  producer: Authentication Team
+  verifier: Security Team
+  required_profile:
+  - development
+  - standard
+  - production
+  exact_sha_required: true
+  maximum_age: exact_sha
+  source: team-0-security-compliance-evidence-v1-evidence/unit-test.json
+  status: unvalidated
+- control_id: SEC-AUTHN-002
+  evidence_type: oidc-hosted
+  producer: Authentication Team
+  verifier: Security Team
+  required_profile:
+  - production
+  exact_sha_required: false
+  maximum_age: requires_current_release_evidence
+  source: team-0-security-compliance-evidence-v1-evidence/oidc-hosted.json
+  status: missing
+- control_id: SEC-AUTHN-003
+  evidence_type: security-test
+  producer: Authentication Team
+  verifier: Security Team
+  required_profile:
+  - development
+  - standard
+  - production
+  exact_sha_required: true
+  maximum_age: exact_sha
+  source: team-0-security-compliance-evidence-v1-evidence/security-test.json
+  status: unvalidated
+- control_id: SEC-AUTHZ-001
+  evidence_type: route-security
+  producer: IAM Team
+  verifier: Security Team
+  required_profile:
+  - development
+  - standard
+  - production
+  exact_sha_required: true
+  maximum_age: exact_sha
+  source: team-0-security-compliance-evidence-v1-evidence/route-security.json
+  status: unvalidated
+- control_id: SEC-AUTHZ-002
+  evidence_type: unit-test
+  producer: IAM Team
+  verifier: Security Team
+  required_profile:
+  - development
+  - standard
+  - production
+  exact_sha_required: true
+  maximum_age: exact_sha
+  source: team-0-security-compliance-evidence-v1-evidence/unit-test.json
+  status: unvalidated
+- control_id: SEC-TENANCY-001
+  evidence_type: tenant-hosted
+  producer: Platform Team
+  verifier: Security Team
+  required_profile:
+  - production
+  exact_sha_required: false
+  maximum_age: requires_current_release_evidence
+  source: team-0-security-compliance-evidence-v1-evidence/tenant-hosted.json
+  status: missing
+- control_id: SEC-TENANCY-002
+  evidence_type: tenant-hosted
+  producer: Platform Team
+  verifier: Security Team
+  required_profile:
+  - production
+  exact_sha_required: false
+  maximum_age: requires_current_release_evidence
+  source: team-0-security-compliance-evidence-v1-evidence/tenant-hosted.json
+  status: missing
+- control_id: SEC-PRIV-001
+  evidence_type: privileged-test
+  producer: IAM Team
+  verifier: Security Team
+  required_profile:
+  - development
+  - standard
+  - production
+  exact_sha_required: true
+  maximum_age: exact_sha
+  source: team-0-security-compliance-evidence-v1-evidence/privileged-test.json
+  status: unvalidated
+- control_id: SEC-PRIV-002
+  evidence_type: privileged-test
+  producer: IAM Team
+  verifier: Security Team
+  required_profile:
+  - development
+  - standard
+  - production
+  exact_sha_required: true
+  maximum_age: exact_sha
+  source: team-0-security-compliance-evidence-v1-evidence/privileged-test.json
+  status: unvalidated
+- control_id: SEC-SECRETS-001
+  evidence_type: secret-scan
+  producer: Platform Team
+  verifier: Security Team
+  required_profile:
+  - development
+  - standard
+  - production
+  exact_sha_required: true
+  maximum_age: exact_sha
+  source: team-0-security-compliance-evidence-v1-evidence/secret-scan.json
+  status: unvalidated
+- control_id: SEC-SECRETS-002
+  evidence_type: audit-safety
+  producer: Operations Team
+  verifier: Security Team
+  required_profile:
+  - development
+  - standard
+  - production
+  exact_sha_required: true
+  maximum_age: exact_sha
+  source: team-0-security-compliance-evidence-v1-evidence/audit-safety.json
+  status: unvalidated
+- control_id: SEC-CRYPTO-001
+  evidence_type: hosted-tls
+  producer: Platform Team
+  verifier: Security Team
+  required_profile:
+  - production
+  exact_sha_required: false
+  maximum_age: requires_current_release_evidence
+  source: team-0-security-compliance-evidence-v1-evidence/hosted-tls.json
+  status: missing
+- control_id: SEC-CRYPTO-002
+  evidence_type: configuration-review
+  producer: Platform Team
+  verifier: Security Team
+  required_profile:
+  - development
+  - standard
+  - production
+  exact_sha_required: true
+  maximum_age: exact_sha
+  source: team-0-security-compliance-evidence-v1-evidence/configuration-review.json
+  status: unvalidated
+- control_id: SEC-K8S-001
+  evidence_type: kubernetes-report
+  producer: Platform Team
+  verifier: Security Team
+  required_profile:
+  - development
+  - standard
+  - production
+  exact_sha_required: true
+  maximum_age: exact_sha
+  source: team-0-security-compliance-evidence-v1-evidence/kubernetes-report.json
+  status: unvalidated
+- control_id: SEC-K8S-002
+  evidence_type: kubernetes-report
+  producer: Release Team
+  verifier: Security Team
+  required_profile:
+  - development
+  - standard
+  - production
+  exact_sha_required: true
+  maximum_age: exact_sha
+  source: team-0-security-compliance-evidence-v1-evidence/kubernetes-report.json
+  status: unvalidated
+- control_id: SEC-NETWORK-001
+  evidence_type: kubernetes-report
+  producer: Platform Team
+  verifier: Security Team
+  required_profile:
+  - development
+  - standard
+  - production
+  exact_sha_required: true
+  maximum_age: exact_sha
+  source: team-0-security-compliance-evidence-v1-evidence/kubernetes-report.json
+  status: unvalidated
+- control_id: SEC-AUDIT-001
+  evidence_type: audit-test
+  producer: Operations Team
+  verifier: Security Team
+  required_profile:
+  - development
+  - standard
+  - production
+  exact_sha_required: true
+  maximum_age: exact_sha
+  source: team-0-security-compliance-evidence-v1-evidence/audit-test.json
+  status: unvalidated
+- control_id: SEC-AUDIT-002
+  evidence_type: audit-safety
+  producer: Operations Team
+  verifier: Security Team
+  required_profile:
+  - development
+  - standard
+  - production
+  exact_sha_required: true
+  maximum_age: exact_sha
+  source: team-0-security-compliance-evidence-v1-evidence/audit-safety.json
+  status: unvalidated
+- control_id: SEC-SUPPLY-001
+  evidence_type: sbom
+  producer: Release Team
+  verifier: Security Team
+  required_profile:
+  - development
+  - standard
+  - production
+  exact_sha_required: true
+  maximum_age: exact_sha
+  source: team-0-security-compliance-evidence-v1-evidence/sbom.json
+  status: unvalidated
+- control_id: SEC-SUPPLY-002
+  evidence_type: provenance
+  producer: Release Team
+  verifier: Security Team
+  required_profile:
+  - development
+  - standard
+  - production
+  exact_sha_required: true
+  maximum_age: exact_sha
+  source: team-0-security-compliance-evidence-v1-evidence/provenance.json
+  status: unvalidated
+- control_id: SEC-SUPPLY-003
+  evidence_type: signature-verification
+  producer: Release Team
+  verifier: Security Team
+  required_profile:
+  - development
+  - standard
+  - production
+  exact_sha_required: true
+  maximum_age: exact_sha
+  source: team-0-security-compliance-evidence-v1-evidence/signature-verification.json
+  status: unvalidated
+- control_id: SEC-VULN-001
+  evidence_type: vulnerability-scan
+  producer: Security Team
+  verifier: Security Team
+  required_profile:
+  - development
+  - standard
+  - production
+  exact_sha_required: true
+  maximum_age: exact_sha
+  source: team-0-security-compliance-evidence-v1-evidence/vulnerability-scan.json
+  status: unvalidated
+- control_id: SEC-VULN-002
+  evidence_type: dependency-report
+  producer: Security Team
+  verifier: Security Team
+  required_profile:
+  - development
+  - standard
+  - production
+  exact_sha_required: true
+  maximum_age: exact_sha
+  source: team-0-security-compliance-evidence-v1-evidence/dependency-report.json
+  status: unvalidated
+- control_id: SEC-BACKUP-001
+  evidence_type: backup-hosted
+  producer: Operations Team
+  verifier: Security Team
+  required_profile:
+  - production
+  exact_sha_required: false
+  maximum_age: requires_current_release_evidence
+  source: team-0-security-compliance-evidence-v1-evidence/backup-hosted.json
+  status: missing
+- control_id: SEC-DR-001
+  evidence_type: dr-hosted
+  producer: Operations Team
+  verifier: Security Team
+  required_profile:
+  - production
+  exact_sha_required: false
+  maximum_age: requires_current_release_evidence
+  source: team-0-security-compliance-evidence-v1-evidence/dr-hosted.json
+  status: missing
+- control_id: SEC-RELEASE-001
+  evidence_type: release-gate
+  producer: Release Team
+  verifier: Security Team
+  required_profile:
+  - development
+  - standard
+  - production
+  exact_sha_required: true
+  maximum_age: exact_sha
+  source: team-0-security-compliance-evidence-v1-evidence/release-gate.json
+  status: unvalidated
+- control_id: SEC-DATA-001
+  evidence_type: contract-test
+  producer: Data Platform Team
+  verifier: Security Team
+  required_profile:
+  - development
+  - standard
+  - production
+  exact_sha_required: true
+  maximum_age: exact_sha
+  source: team-0-security-compliance-evidence-v1-evidence/contract-test.json
+  status: unvalidated
+- control_id: SEC-OPERATIONS-001
+  evidence_type: support-bundle
+  producer: Operations Team
+  verifier: Security Team
+  required_profile:
+  - development
+  - standard
+  - production
+  exact_sha_required: true
+  maximum_age: exact_sha
+  source: team-0-security-compliance-evidence-v1-evidence/support-bundle.json
+  status: unvalidated
+- control_id: SEC-OPERATIONS-002
+  evidence_type: workflow-security
+  producer: Release Team
+  verifier: Security Team
+  required_profile:
+  - development
+  - standard
+  - production
+  exact_sha_required: true
+  maximum_age: exact_sha
+  source: team-0-security-compliance-evidence-v1-evidence/workflow-security.json
+  status: unvalidated
+- control_id: SEC-OPERATIONS-003
+  evidence_type: evidence-verification
+  producer: Security Team
+  verifier: Security Team
+  required_profile:
+  - development
+  - standard
+  - production
+  exact_sha_required: true
+  maximum_age: exact_sha
+  source: team-0-security-compliance-evidence-v1-evidence/evidence-verification.json
+  status: unvalidated

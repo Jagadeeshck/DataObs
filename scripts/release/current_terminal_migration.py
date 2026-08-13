@@ -36,6 +36,13 @@ def migration_report() -> dict[str, Any]:
                 f"expected dependencies {expected}, got {migration.dependencies}"
             )
         previous = migration.migration_id
+        raise ValueError(
+            "migration registry contains duplicate numeric prefixes: "
+            + ", ".join(duplicate_prefixes)
+        )
+    graph = validate(registry)
+    if graph["state"] != "valid":
+        raise ValueError("invalid migration graph: " + ", ".join(graph["errors"]))
     checksum = hashlib.sha256(
         json.dumps(
             [{"id": migration.migration_id, "checksum": migration.checksum} for migration in registry],

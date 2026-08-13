@@ -1,0 +1,12 @@
+schema_version: '1.0'
+profiles:
+  development:
+    minimum_control_state: implemented
+    allow_unvalidated: true
+  standard:
+    minimum_control_state: local_tested
+    allow_unvalidated: false
+  production:
+    minimum_control_state: hosted_tested
+    allow_unvalidated: false
+    mandatory_evidence: [oidc-hosted, tenant-hosted, kubernetes-report, vulnerability-scan, sbom, provenance, signature-verification, backup-hosted, release-gate]

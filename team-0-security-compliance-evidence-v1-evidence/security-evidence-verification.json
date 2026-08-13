@@ -1,0 +1,20 @@
+{
+  "schema_version": "1.0",
+  "sha": "ad31a9a38d69dd98b2191318b331a7134f5339e4",
+  "state": "INCOMPLETE",
+  "accepted": false,
+  "rejections": [
+    "missing critical evidence",
+    "unvalidated exact-SHA evidence",
+    "missing hosted evidence"
+  ],
+  "rules": [
+    "reject wrong SHA",
+    "reject stale evidence",
+    "reject missing checksum",
+    "reject failed mandatory control",
+    "reject expired waiver",
+    "reject unknown producer",
+    "reject simulation as hosted proof"
+  ]
+}

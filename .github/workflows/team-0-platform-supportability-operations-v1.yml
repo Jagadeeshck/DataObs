@@ -1,0 +1,26 @@
+name: team-0-platform-supportability-operations-v1
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: pip install -r requirements.txt
+      - run: python scripts/check_migration_immutability.py
+      - run: python scripts/release/current_terminal_migration.py --json
+      - run: python scripts/operations/validate_supportability_contracts.py
+      - run: python scripts/operations/validate_runbook_coverage.py
+      - run: python scripts/release/render_current_production_readiness.py --check
+      - run: pytest -q tests/platform_operations tests/release/test_current_production_readiness.py
+      - run: python scripts/operations/generate_supportability_evidence.py "$RUNNER_TEMP/team-0-platform-supportability-operations-v1-evidence" --sha "$GITHUB_SHA"
+      - run: python scripts/operations/generate_supportability_evidence.py "$RUNNER_TEMP/team-0-platform-supportability-operations-v1-evidence" --sha "$GITHUB_SHA" --verify
+      - uses: actions/upload-artifact@v4
+        with:
+          name: team-0-platform-supportability-operations-v1-evidence
+          path: ${{ runner.temp }}/team-0-platform-supportability-operations-v1-evidence

@@ -1,0 +1,19 @@
+schema_version: '1.0'
+overall_state: blocked
+evidence_freshness: stale
+# A dimension is never supported without retained evidence.
+dimensions:
+  application: &unvalidated {state: unvalidated, evidence_source: helm/dataobs/Chart.yaml, evidence_timestamp: null, reason_code: EVIDENCE_NOT_CERTIFIED, remediation_code: RUN_EXACT_SHA_CERTIFICATION}
+  kubernetes: {state: blocked, evidence_source: docs/release/supported-platform-matrix.yaml, evidence_timestamp: null, reason_code: HOSTED_EVIDENCE_MISSING, remediation_code: RUN_KUBERNETES_CERTIFICATION}
+  elasticsearch: {state: unvalidated, evidence_source: docs/release/supported-platform-matrix.yaml, evidence_timestamp: null, reason_code: HOSTED_EVIDENCE_MISSING, remediation_code: RUN_ELASTICSEARCH_CERTIFICATION}
+  oidc: {state: unvalidated, evidence_source: docs/release/first-supported-platform-candidate.yaml, evidence_timestamp: null, reason_code: HOSTED_EVIDENCE_MISSING, remediation_code: RUN_OIDC_CONFORMANCE}
+  helm: *unvalidated
+  migrations: {state: unvalidated, evidence_source: scripts/release/current_terminal_migration.py, evidence_timestamp: null, reason_code: HOSTED_APPLY_MISSING, remediation_code: RUN_MIGRATION_CERTIFICATION}
+  backup: *unvalidated
+  restore: {state: blocked, evidence_source: evidence/team-0-first-supported-platform-release-v1-evidence/final-release-decision.json, evidence_timestamp: null, reason_code: RESTORE_EVIDENCE_MISSING, remediation_code: RUN_RESTORE_REHEARSAL}
+  ha: {state: unsupported, evidence_source: docs/release/current-production-readiness.md, evidence_timestamp: null, reason_code: HA_NOT_CERTIFIED, remediation_code: DEFINE_AND_CERTIFY_HA_PROFILE}
+  scale: *unvalidated
+  browser: *unvalidated
+  integrations: *unvalidated
+  security: *unvalidated
+  release_evidence: {state: blocked, evidence_source: evidence/team-0-first-supported-platform-release-v1-evidence/final-release-decision.json, evidence_timestamp: '2026-08-12T16:12:36.741733+00:00', reason_code: RELEASE_NO_GO, remediation_code: SATISFY_RELEASE_GATES}

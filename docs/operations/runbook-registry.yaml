@@ -1,0 +1,112 @@
+schema_version: '1.0'
+runbooks:
+  - id: elasticsearch_unavailable
+    reason_codes: [ELASTICSEARCH_UNAVAILABLE]
+    capability: elasticsearch
+    severity_coverage: [SEV1]
+    detection: docs/operations/elasticsearch-dependency-outage.md
+    mitigation: docs/operations/elasticsearch-dependency-outage.md
+    recovery: docs/operations/elasticsearch-dependency-outage.md
+    verification: docs/operations/elasticsearch-dependency-outage.md
+    escalation: docs/operations/platform-escalation-matrix.yaml
+    evidence_requirements: [request_id, diagnostic_result]
+  - id: elasticsearch_overload
+    reason_codes: [ELASTICSEARCH_OVERLOAD]
+    capability: elasticsearch
+    severity_coverage: [SEV2]
+    detection: docs/operations/elasticsearch-overload.md
+    mitigation: docs/operations/elasticsearch-overload.md
+    recovery: docs/operations/elasticsearch-overload.md
+    verification: docs/operations/elasticsearch-overload.md
+    escalation: docs/operations/platform-escalation-matrix.yaml
+    evidence_requirements: [request_id, diagnostic_result]
+  - id: authentication_failure
+    reason_codes: [AUTHENTICATION_FAILURE]
+    capability: oidc
+    severity_coverage: [SEV1]
+    detection: docs/operations/oidc-outage.md
+    mitigation: docs/operations/oidc-outage.md
+    recovery: docs/operations/oidc-outage.md
+    verification: docs/operations/oidc-outage.md
+    escalation: docs/operations/platform-escalation-matrix.yaml
+    evidence_requirements: [request_id, diagnostic_result]
+  - id: telemetry_unavailable
+    reason_codes: [TELEMETRY_UNAVAILABLE]
+    capability: telemetry
+    severity_coverage: [SEV2]
+    detection: docs/operations/telemetry-exporter-outage.md
+    mitigation: docs/operations/telemetry-exporter-outage.md
+    recovery: docs/operations/telemetry-exporter-outage.md
+    verification: docs/operations/telemetry-exporter-outage.md
+    escalation: docs/operations/platform-escalation-matrix.yaml
+    evidence_requirements: [request_id, diagnostic_result]
+  - id: migration_failure
+    reason_codes: [MIGRATION_FAILURE]
+    capability: migrations
+    severity_coverage: [SEV1]
+    detection: docs/operations/migration-failure.md
+    mitigation: docs/operations/migration-failure.md
+    recovery: docs/operations/migration-failure.md
+    verification: docs/operations/migration-failure.md
+    escalation: docs/operations/platform-escalation-matrix.yaml
+    evidence_requirements: [request_id, diagnostic_result]
+  - id: backup_failure
+    reason_codes: [BACKUP_FAILURE]
+    capability: backup
+    severity_coverage: [SEV2]
+    detection: docs/operations/backup-stale.md
+    mitigation: docs/operations/backup-stale.md
+    recovery: docs/operations/backup-stale.md
+    verification: docs/operations/backup-stale.md
+    escalation: docs/operations/platform-escalation-matrix.yaml
+    evidence_requirements: [request_id, diagnostic_result]
+  - id: restore_failure
+    reason_codes: [RESTORE_FAILURE]
+    capability: restore
+    severity_coverage: [SEV1]
+    detection: docs/operations/restore-verification-failure.md
+    mitigation: docs/operations/restore-verification-failure.md
+    recovery: docs/operations/restore-verification-failure.md
+    verification: docs/operations/restore-verification-failure.md
+    escalation: docs/operations/platform-escalation-matrix.yaml
+    evidence_requirements: [request_id, diagnostic_result]
+  - id: kubernetes_security_failure
+    reason_codes: [KUBERNETES_SECURITY_FAILURE]
+    capability: kubernetes
+    severity_coverage: [SEV1]
+    detection: docs/operations/kubernetes-policy-failure.md
+    mitigation: docs/operations/kubernetes-policy-failure.md
+    recovery: docs/operations/kubernetes-policy-failure.md
+    verification: docs/operations/kubernetes-policy-failure.md
+    escalation: docs/operations/platform-escalation-matrix.yaml
+    evidence_requirements: [request_id, diagnostic_result]
+  - id: release_verification_failure
+    reason_codes: [RELEASE_VERIFICATION_FAILURE]
+    capability: release
+    severity_coverage: [SEV1]
+    detection: docs/operations/release-integrity-failure.md
+    mitigation: docs/operations/release-integrity-failure.md
+    recovery: docs/operations/release-integrity-failure.md
+    verification: docs/operations/release-integrity-failure.md
+    escalation: docs/operations/platform-escalation-matrix.yaml
+    evidence_requirements: [request_id, diagnostic_result]
+  - id: worker_stalled
+    reason_codes: [WORKER_STALLED]
+    capability: workers
+    severity_coverage: [SEV2]
+    detection: docs/operations/worker-stall.md
+    mitigation: docs/operations/worker-stall.md
+    recovery: docs/operations/worker-stall.md
+    verification: docs/operations/worker-stall.md
+    escalation: docs/operations/platform-escalation-matrix.yaml
+    evidence_requirements: [request_id, diagnostic_result]
+  - id: privileged_access_failure
+    reason_codes: [PRIVILEGED_ACCESS_FAILURE]
+    capability: iam
+    severity_coverage: [SEV1]
+    detection: docs/operations/break-glass-access.md
+    mitigation: docs/operations/break-glass-access.md
+    recovery: docs/operations/break-glass-access.md
+    verification: docs/operations/break-glass-access.md
+    escalation: docs/operations/platform-escalation-matrix.yaml
+    evidence_requirements: [request_id, diagnostic_result]

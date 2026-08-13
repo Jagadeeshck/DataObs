@@ -351,3 +351,12 @@ gates:
   remediation: Run protected exact-SHA workflow and retain independently verifiable
     artifacts.
   blocker: true
+- id: T0-OPERATIONAL-SUPPORTABILITY
+  category: operational-supportability
+  severity: mandatory
+  mandatory_profiles: [development, standard-ha, production-ha]
+  evidence_source: team-0-platform-supportability-operations-v1-evidence
+  result: PENDING
+  reason_code: EXACT_SHA_SUPPORTABILITY_EVIDENCE_NOT_AVAILABLE
+  remediation: Validate diagnostics, support bundle redaction, ownership, critical runbooks, active readiness and absence of critical support-contract defects at the candidate SHA.
+  blocker: true

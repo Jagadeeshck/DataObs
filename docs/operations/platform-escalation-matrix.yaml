@@ -1,0 +1,14 @@
+schema_version: '1.0'
+reason_codes: [SECURITY_ISOLATION_FAILURE, AUTHENTICATION_FAILURE, MIGRATION_FAILURE, BACKUP_FAILURE, RESTORE_FAILURE, ELASTICSEARCH_UNAVAILABLE, WORKER_STALLED, RELEASE_VERIFICATION_FAILURE, CERTIFICATION_EVIDENCE_STALE, CAPABILITY_OWNER_REQUIRED]
+areas:
+  platform: {primary_owner: team-0, secondary_owner: null, escalation_condition: CAPABILITY_OWNER_REQUIRED}
+  security: {primary_owner: team-0, secondary_owner: null, escalation_condition: SECURITY_ISOLATION_FAILURE}
+  iam: {primary_owner: team-0, secondary_owner: null, escalation_condition: AUTHENTICATION_FAILURE}
+  kubernetes: {primary_owner: team-0, secondary_owner: null, escalation_condition: CERTIFICATION_EVIDENCE_STALE}
+  elasticsearch_platform_connectivity: {primary_owner: team-0, secondary_owner: null, escalation_condition: ELASTICSEARCH_UNAVAILABLE}
+  release_migrations_backup_restore_slo_lifecycle_certification: {primary_owner: team-0, secondary_owner: null, escalation_condition: RELEASE_VERIFICATION_FAILURE}
+  streams_pathways_and_messaging: {primary_owner: team-1, secondary_owner: team-0, escalation_condition: CAPABILITY_OWNER_REQUIRED}
+  data_quality_lineage_contracts_dbt: {primary_owner: team-2, secondary_owner: team-0, escalation_condition: CAPABILITY_OWNER_REQUIRED}
+  incidents_remediation_workflows_cases: {primary_owner: team-3, secondary_owner: team-0, escalation_condition: CAPABILITY_OWNER_REQUIRED}
+  integration_collectors_providers: {primary_owner: team-4, secondary_owner: team-0, escalation_condition: CAPABILITY_OWNER_REQUIRED}
+  console_browser_ux: {primary_owner: team-5, secondary_owner: team-0, escalation_condition: CAPABILITY_OWNER_REQUIRED}

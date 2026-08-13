@@ -113,3 +113,19 @@ def test_invalid_evidence_object_is_reported_without_token_or_payload_content():
     result = verify(payload={})
     assert result["status"] == "fail"
     assert validate_evidence(ENTRY, {}, SHA, "0021_lineage_analysis_explorer")
+
+
+@pytest.mark.parametrize("status", ["not_run", "fail", "blocked_external"])
+def test_required_category_must_have_pass_status(status):
+    entry = {**ENTRY, "required_test_categories": ["browser"]}
+    result = verify(entry=entry, payload=evidence(test_summaries=[{"category": "browser", "status": status}]))
+    assert result["status"] == "fail"
+    assert any("not pass" in error for error in result["errors"])
+
+
+def test_required_category_with_pass_status_succeeds():
+    entry = {**ENTRY, "required_test_categories": ["browser"]}
+    assert (
+        verify(entry=entry, payload=evidence(test_summaries=[{"category": "browser", "status": "pass"}]))["status"]
+        == "pass"
+    )

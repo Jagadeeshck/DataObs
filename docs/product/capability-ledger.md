@@ -2,7 +2,7 @@
 
 # Capability ledger
 
-Audited commit: `e9dfa5ddcbc5bc7dfd04ea0112d914b69c9d60dc` · PR range: #82-#283
+Audited commit: `786c18e69c49cc55bcf1349da803324c60cc7299` · PR range: #82-#284
 
 ## State counts
 

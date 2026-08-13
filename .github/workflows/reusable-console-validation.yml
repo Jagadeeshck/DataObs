@@ -38,7 +38,9 @@ jobs:
           python scripts/certification/write_evidence_envelope.py --output evidence/evidence.json \
             --repository "$GITHUB_REPOSITORY" --producer-sha "$GITHUB_SHA" --workflow-file '${{ inputs.workflow-file }}' \
             --workflow-run-id "$GITHUB_RUN_ID" --workflow-run-attempt "$GITHUB_RUN_ATTEMPT" --event "$GITHUB_EVENT_NAME" \
-            --status pass --test-category typecheck --test-category browser --test-category accessibility --test-category build \
+            --status pass --test-result typecheck=pass --test-result build=pass \
+            --test-result browser=${{ inputs.run-playwright && 'pass' || 'not_run' }} \
+            --test-result accessibility=${{ inputs.run-accessibility && inputs.run-playwright && 'pass' || 'not_run' }} \
             --supporting-file evidence/console-junit.xml --supporting-file evidence/console.json --tool-version "node=$(node --version)"
       - uses: actions/upload-artifact@v4
         with: {name: '${{ inputs.artifact-name }}', path: evidence/, retention-days: 30}

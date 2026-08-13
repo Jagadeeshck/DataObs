@@ -10,8 +10,8 @@ canonical_pillars:
 - business
 - ai_agent
 last_audited_at: '2026-08-13'
-last_audited_commit: e9dfa5ddcbc5bc7dfd04ea0112d914b69c9d60dc
-audited_pr_range: '#82-#283'
+last_audited_commit: 786c18e69c49cc55bcf1349da803324c60cc7299
+audited_pr_range: '#82-#284'
 ownership_metadata_schema:
   description: Optional delivery metadata; legacy entries remain valid.
   optional_fields:

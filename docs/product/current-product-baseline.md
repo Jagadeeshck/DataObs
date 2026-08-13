@@ -1,6 +1,6 @@
 # Current product baseline
 
-> Audit date: 2026-08-13. Integrated implementation baseline: `e9dfa5ddcbc5bc7dfd04ea0112d914b69c9d60dc`, including merged work through PR #283. This document records implemented capability, not hosted certification or production readiness.
+> Audit date: 2026-08-13. Integrated implementation baseline: `786c18e69c49cc55bcf1349da803324c60cc7299`, including the PR #284 integration repair. This document records implemented capability, not hosted certification or production readiness.
 
 ## 1. Product identity
 

@@ -37,6 +37,13 @@ def test_stable_integration_gate_contract():
     ):
         assert check in backend
 
+    assert "tenant_isolation_result':'pass' if isolation_path else 'not_run'" in backend
+    assert "independent_verification_result':'pending'" in backend
+
+    console = (ROOT / ".github/workflows/reusable-console-validation.yml").read_text()
+    assert "browser=${{ inputs.run-playwright && 'pass' || 'not_run' }}" in console
+    assert "accessibility=${{ inputs.run-accessibility && inputs.run-playwright && 'pass' || 'not_run' }}" in console
+
 
 def test_console_compatibility_and_modules():
     assert 'export * from "./index"' in (ROOT / "ui/dataobs-console/src/api/client.ts").read_text()

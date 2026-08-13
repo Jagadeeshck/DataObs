@@ -4,10 +4,10 @@ findings:
     control: SEC-OPERATIONS-002
     severity: high
     owner: Release Team
-    state: open
-    evidence: workflow-security-report.json
-    remediation: Review reported workflows and record narrow exceptions or reduce permissions.
-    target_milestone: null
+    state: resolved
+    evidence: scripts/security/validate_workflow_security.py reports zero findings at integrated main 786c18e69c49cc55bcf1349da803324c60cc7299
+    remediation: Workflow permissions were reduced to the validator's least-privilege contract; the finding history is retained here.
+    target_milestone: PR-284
   - id: SECF-002
     control: SEC-TENANCY-001
     severity: critical

@@ -51,9 +51,11 @@ jobs:
         run: |
           mkdir -p hosted-evidence
           python - <<'PY'
-          import json, os
-          source=json.load(open('team-4-aws-kinesis-sqs-messaging-v1-evidence/evidence.json'))
-          source['exact_sha']=os.environ['EVIDENCE_SHA']; source['aws_regression_result']='passed'; source['team_4_regression_result']='passed'
+          import json, os, subprocess
+          source=json.load(open('team-4-aws-kinesis-sqs-messaging-v1-evidence/evidence-template.json'))
+          source['exact_sha']=os.environ['EVIDENCE_SHA']
+          source['terminal_migration']=subprocess.check_output(['python','scripts/release/current_terminal_migration.py'],text=True).strip()
+          source['aws_regression_result']='passed'; source['team_4_regression_result']='passed'
           json.dump(source,open('hosted-evidence/evidence.json','w'),indent=2)
           PY
       - uses: actions/upload-artifact@v4

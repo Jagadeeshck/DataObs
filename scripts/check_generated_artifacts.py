@@ -8,6 +8,7 @@ from pathlib import PurePosixPath
 
 FORBIDDEN_PARTS = {"node_modules", "playwright-report", "test-results", "coverage", ".playwright"}
 FORBIDDEN_PREFIXES = ("ui/dataobs-console/dist/", "ui/dataobs-console/.vite/")
+FORBIDDEN_ROOT_REPORTS = {"migration-graph-report.json"}
 
 
 def tracked_generated_files() -> list[str]:
@@ -18,7 +19,9 @@ def tracked_generated_files() -> list[str]:
     return sorted(
         path
         for path in paths
-        if FORBIDDEN_PARTS.intersection(PurePosixPath(path).parts) or path.startswith(FORBIDDEN_PREFIXES)
+        if path in FORBIDDEN_ROOT_REPORTS
+        or FORBIDDEN_PARTS.intersection(PurePosixPath(path).parts)
+        or path.startswith(FORBIDDEN_PREFIXES)
     )
 
 

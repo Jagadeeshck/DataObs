@@ -92,11 +92,21 @@ def validate_evidence(
     if evidence.get("status") != "pass":
         errors.append("overall evidence status is not pass")
     categories = (
-        {item.get("category") for item in summaries if isinstance(item, dict)} if isinstance(summaries, list) else set()
+        {
+            item.get("category"): item.get("status")
+            for item in summaries
+            if isinstance(item, dict) and isinstance(item.get("category"), str)
+        }
+        if isinstance(summaries, list)
+        else {}
     )
-    missing = set(entry.get("required_test_categories", ())) - categories
+    required = set(entry.get("required_test_categories", ()))
+    missing = required - categories.keys()
     if missing:
         errors.append("required test categories are missing")
+    not_passing = sorted(category for category in required & categories.keys() if categories[category] != "pass")
+    if not_passing:
+        errors.append(f"required test categories are not pass: {', '.join(not_passing)}")
     return errors
 
 

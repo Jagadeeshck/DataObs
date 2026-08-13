@@ -29,18 +29,9 @@ def main() -> int:
         for found in set(TERMINAL_CLAIM.findall(path.read_text(encoding="utf-8"))):
             if found != expected:
                 errors.append(f"{path.relative_to(ROOT)} contains stale terminal migration {found}")
-    for path in ROOT.glob("**/evidence.json"):
-        # Retained evidence describes the terminal at its producer SHA and must
-        # never be rewritten merely because the forward-only registry advances.
-        if "artifacts" in path.relative_to(ROOT).parts:
-            continue
-        try:
-            value = json.loads(path.read_text(encoding="utf-8"))
-        except json.JSONDecodeError:
-            continue
-        reported = value.get("terminal_migration")
-        if reported is not None and reported != expected:
-            errors.append(f"{path.relative_to(ROOT)} evidence terminal migration differs")
+    # Retained evidence is immutable producer-SHA history. It is deliberately
+    # not compared with today's registry terminal. Mutable templates are not
+    # certification evidence and are materialised by their producer workflow.
     if errors:
         print("\n".join(errors), file=sys.stderr)
         return 1

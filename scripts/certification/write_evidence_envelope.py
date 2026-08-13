@@ -26,6 +26,13 @@ def build_envelope(args: argparse.Namespace) -> dict[str, object]:
     if not SHA.fullmatch(args.producer_sha):
         raise ValueError("producer SHA must be an exact lowercase 40-character SHA")
     summaries = [{"category": item, "status": "pass"} for item in args.test_category]
+    summaries.extend(
+        {"category": category, "status": status}
+        for category, status in (item.split("=", 1) for item in args.test_result)
+    )
+    categories = [item["category"] for item in summaries]
+    if len(categories) != len(set(categories)):
+        raise ValueError("test categories must be unique")
     inventory = []
     for item in args.supporting_file:
         path = Path(item)
@@ -62,11 +69,24 @@ def main() -> int:
     parser.add_argument("--workflow-run-id", required=True)
     parser.add_argument("--workflow-run-attempt", required=True)
     parser.add_argument("--event", required=True)
-    parser.add_argument("--status", choices=("pass", "fail"), required=True)
-    parser.add_argument("--test-category", action="append", required=True)
+    parser.add_argument("--status", choices=("pass", "fail", "not_run", "blocked_external"), required=True)
+    parser.add_argument("--test-category", action="append", default=[], help="executed, passing category")
+    parser.add_argument(
+        "--test-result",
+        action="append",
+        default=[],
+        metavar="CATEGORY=STATUS",
+        help="category result; STATUS is pass, fail, not_run, or blocked_external",
+    )
     parser.add_argument("--tool-version", action="append", default=[])
     parser.add_argument("--supporting-file", action="append", default=[])
     args = parser.parse_args()
+    allowed = {"pass", "fail", "not_run", "blocked_external"}
+    for result in args.test_result:
+        if "=" not in result or result.split("=", 1)[1] not in allowed:
+            parser.error("--test-result must be CATEGORY=pass|fail|not_run|blocked_external")
+    if not args.test_category and not args.test_result:
+        parser.error("at least one test category/result is required")
     value = build_envelope(args)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")

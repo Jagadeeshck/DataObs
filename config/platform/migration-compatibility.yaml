@@ -2,5 +2,7 @@ schema_version: "1"
 terminal_migration: 0033_team1_stream_schema_intelligence_runtime
 compatibility: application-backward-compatible
 notes: >-
-  The migration adds isolated lifecycle resources. Application rollback may stop lifecycle writers while retaining
-  projections and evidence. This contract never authorizes destructive reverse migrations.
+  The terminal migration adds schema-intelligence runtime state, durable work coordination, source observations,
+  compatibility projections, consumer-impact projections, and append-only evaluation evidence. Application rollback
+  may stop schema-intelligence writers while retaining derived evidence. This contract never authorizes destructive
+  reverse migrations.

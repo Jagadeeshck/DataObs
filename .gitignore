@@ -66,3 +66,4 @@ ui/dataobs-console/playwright-report/
 # ── OS ───────────────────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
+/migration-graph-report.json

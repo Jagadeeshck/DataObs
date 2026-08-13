@@ -10,6 +10,7 @@ on:
       requires-kafka: {type: boolean, default: false}
       artifact-name: {type: string, default: backend-validation-evidence}
       evidence-profile: {type: string, default: foundation}
+      tenant-isolation-test-path: {type: string, default: ''}
       timeout-minutes: {type: number, default: 30}
 permissions: {contents: read}
 jobs:
@@ -37,6 +38,10 @@ jobs:
       - run: mkdir -p evidence && python -m compileall -q src packages services integrations tests scripts
       - run: ruff check . && black --check . && mypy ${{ inputs.mypy-scope }}
       - run: python -m pytest ${{ inputs.test-path }} -q --junitxml=evidence/junit.xml
+      - name: Adversarial tenant-isolation tests
+        if: inputs.tenant-isolation-test-path != ''
+        env: {TENANT_ISOLATION_TEST_PATH: '${{ inputs.tenant-isolation-test-path }}'}
+        run: python -m pytest "$TENANT_ISOLATION_TEST_PATH" -q --junitxml=evidence/tenant-isolation-junit.xml
       - name: Repository and release integrity
         run: |
           python scripts/check_merge_conflict_markers.py
@@ -51,11 +56,14 @@ jobs:
           python scripts/security/validate_workflow_security.py
       - run: python scripts/check_migration_immutability.py --base-ref origin/main
       - name: Exact-commit evidence
+        env: {TENANT_ISOLATION_TEST_PATH: '${{ inputs.tenant-isolation-test-path }}'}
         run: |
           python - <<'PY'
           import json,os,platform,subprocess,datetime,pathlib
           sha=subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip()
-          data={'repository':os.getenv('GITHUB_REPOSITORY'),'commit_sha':sha,'base_sha':os.getenv('GITHUB_BASE_SHA'),'workflow':os.getenv('GITHUB_WORKFLOW'),'workflow_run_id':os.getenv('GITHUB_RUN_ID'),'job':'validate','event':os.getenv('GITHUB_EVENT_NAME'),'branch':os.getenv('GITHUB_REF_NAME'),'generated_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'tool_versions':{'python':platform.python_version()},'Elasticsearch_version':'9.4.2' if '${{ inputs.requires-elasticsearch }}' == 'true' else None,'terminal_migration':__import__('packages.elastic_store.manifest',fromlist=['migrations']).migrations()[-1].migration_id,'test_summaries':['junit.xml'],'artifact_inventory':['junit.xml'],'security_scan_summary':'not requested by profile','tenant_isolation_result':'covered by supplied scope','migration_immutability_result':'passed','independent_verification_result':'pending','evidence_profile':'${{ inputs.evidence-profile }}'}
+          isolation_path=os.environ['TENANT_ISOLATION_TEST_PATH']
+          summaries=['junit.xml'] + (['tenant-isolation-junit.xml'] if isolation_path else [])
+          data={'repository':os.getenv('GITHUB_REPOSITORY'),'commit_sha':sha,'base_sha':os.getenv('GITHUB_BASE_SHA'),'workflow':os.getenv('GITHUB_WORKFLOW'),'workflow_run_id':os.getenv('GITHUB_RUN_ID'),'job':'validate','event':os.getenv('GITHUB_EVENT_NAME'),'branch':os.getenv('GITHUB_REF_NAME'),'generated_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'tool_versions':{'python':platform.python_version()},'Elasticsearch_version':'9.4.2' if '${{ inputs.requires-elasticsearch }}' == 'true' else None,'terminal_migration':__import__('packages.elastic_store.manifest',fromlist=['migrations']).migrations()[-1].migration_id,'test_summaries':summaries,'artifact_inventory':summaries,'security_scan_summary':'not requested by profile','tenant_isolation_result':'pass' if isolation_path else 'not_run','migration_immutability_result':'passed','independent_verification_result':'pending','evidence_profile':'${{ inputs.evidence-profile }}'}
           pathlib.Path('evidence/team-delivery.json').write_text(json.dumps(data,indent=2)+'\n')
           PY
           test "$(jq -r .commit_sha evidence/team-delivery.json)" = "$(git rev-parse HEAD)"

@@ -1,0 +1,46 @@
+name: Team 1 Stream Schema Production Runtime v1
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  team-1-schema-runtime:
+    name: Team 1 schema runtime privacy and reconciliation
+    runs-on: ubuntu-latest
+    services:
+      elasticsearch:
+        image: docker.elastic.co/elasticsearch/elasticsearch:9.4.2
+        env:
+          discovery.type: single-node
+          xpack.security.enabled: "false"
+        ports: ["9200:9200"]
+        options: >-
+          --health-cmd "curl -fsS http://localhost:9200/_cluster/health"
+          --health-interval 10s --health-timeout 5s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e '.[dev]'
+      - name: Team 1 migration doctor
+        run: python -m packages.elastic_store.cli doctor
+      - name: Team 1 schema intelligence tests
+        run: pytest -q tests/stream_360/test_schema_intelligence_v1.py tests/stream_360/test_schema_intelligence_runtime_v1.py tests/elastic_store/test_migrations.py
+      - name: Team 1 privacy and repository checks
+        run: |
+          python scripts/check_merge_conflict_markers.py
+          python scripts/check_migration_immutability.py
+          python scripts/check_docs_links.py
+      - name: Team 1 evidence manifest
+        if: always()
+        run: |
+          mkdir -p team-1-stream-schema-production-runtime-v1-evidence
+          printf 'producer_sha=%s\nelasticsearch=9.4.2\nterminal_migration=%s\nrun_attempt=%s\n' "$GITHUB_SHA" "$(python scripts/release/current_terminal_migration.py)" "$GITHUB_RUN_ATTEMPT" > team-1-stream-schema-production-runtime-v1-evidence/manifest.txt
+          sha256sum team-1-stream-schema-production-runtime-v1-evidence/manifest.txt > team-1-stream-schema-production-runtime-v1-evidence/checksums.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: team-1-stream-schema-production-runtime-v1-evidence
+          path: team-1-stream-schema-production-runtime-v1-evidence

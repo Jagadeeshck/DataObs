@@ -1,0 +1,3 @@
+# Post-Incident Review threat model
+
+All reads and writes bind tenant and environment from trusted authentication context and require incident permissions. Deterministic IDs are not authorization. Updates use OCC; completed content is immutable. Evidence types and counts, taxonomy, pagination, time ranges, buckets and group-bys are allowlisted and bounded. Signed cursors prevent tampering. Safe-text validation rejects controls and likely secrets without echoing their values. Persist references and bounded summaries, never raw logs, SQL, credentials, workflow bodies, provider responses, HTML or arbitrary URLs.

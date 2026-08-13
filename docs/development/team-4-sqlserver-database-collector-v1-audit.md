@@ -1,0 +1,13 @@
+# Team 4 SQL Server Database Collector v1 audit
+
+- **Team / task:** Team 4 — Integrations and Collection; “Team 4: Build Microsoft SQL Server Database Collector v1”.
+- **Audited base SHA / branch:** `141ec426bef2f168996df122655b9bf2cb395ff7`; `codex/team-4-sqlserver-database-collector-v1` (created from local branch `work`).
+- **Terminal migration / doctor:** `0030_team1_multi_broker_messaging_runtime`. Capability-ledger and generated-artifact checks passed. Release metadata reported a pre-existing PostgreSQL evidence terminal mismatch. Immutability requires a base ref and is run against the audited base in CI.
+- **Existing registry:** aws, azure, bigquery, databricks, mariadb, mysql, postgres, presto, snowflake, trino. Before implementation, SQL Server appeared only in target documentation, dbt naming, and Presto normalization; no SQL Server provider/driver/catalog implementation existed.
+- **Driver audit (2026-08-13):** Microsoft's optional `mssql-python` selected. The package index reports GA `1.13.0`; requirement is `>=1.13,<1.14`. Its `mssql-python-odbc` dependency index reports `18.6.2.1`. Supported repository runtime is Python 3.10+; local audit used the version recorded in evidence.
+- **Compatibility:** SQL Server Database Engine 2025/17.x primary and 2022/16.x secondary. 2019/15.x, Azure SQL Database, Managed Instance, and Synapse are not tested/certified targets. Prompt baseline CUs (17.0.4065.4 and 16.0.4265.3) were not live-verified in this environment.
+- **Authentication / TLS:** SQL password secret reference, `ActiveDirectoryMSI`, and `ActiveDirectoryServicePrincipal`. Interactive/device-code/password/default/integrated Entra flows are excluded. Strict is preferred; Mandatory/no-trust is the only fallback; certificate bypass is rejected; approved hostname alias is structured.
+- **Pooling:** disabled before every connection because there is no tenant-safe shared pool abstraction. Connections are bounded, autocommit read-only, execution-local, and closed.
+- **Catalogs / permissions:** core fixed queries use catalog views. 17.x uses vector fields; 16.x does not. Metadata visibility is principal-scoped. The optional partition-stat DMV has additional database performance/security metadata permissions and degrades independently.
+- **Migration decision:** `migration_required = false`; generic provider observations, runs, and tenant/environment OCC checkpoints suffice. No released migration is changed.
+- **Known limitations:** no live SQL Server was available; Query Store/history, SQL text, raw rows, lineage, Azure certification, and production readiness are excluded. Freshness/profiling require explicit policies and relation `SELECT`.

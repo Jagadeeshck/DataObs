@@ -30,3 +30,7 @@ PrestoDB is independently registered as `presto` and uses the same SQL-engine fo
 ## MariaDB v1
 
 Use the dedicated `mariadb` provider and structured configuration example. Do not route MariaDB through MySQL. Optional driver, TLS identity, fixed SQL, no-raw-row, and product-mismatch contracts are release gates.
+
+## Microsoft SQL Server v1
+
+Use the dedicated `sqlserver` relational provider with the optional Microsoft driver. Strict/validated TLS, non-interactive authentication, disabled pooling, fixed catalog SQL, aggregate-only policies, and no raw rows are mandatory. Do not route SQL Server through Trino, Presto, generic JDBC, or Synapse, and do not claim Query Store support.

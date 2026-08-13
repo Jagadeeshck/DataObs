@@ -1,0 +1,2 @@
+# Optional SQL Server collector dependency; the Microsoft package brings its ODBC runtime dependency.
+mssql-python>=1.13,<1.14

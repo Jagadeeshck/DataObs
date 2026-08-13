@@ -15,7 +15,7 @@ cloud provider implemented. Provider status is governed by the capability ledger
 | GCP | Yes gcp | Yes | Sometimes | metrics/logs/data services | workload identity/Secret Manager | viewer | gcp, dataobs cloud |
 | PostgreSQL | Yes postgresql | Yes | Yes, Integration SDK v1 `functional_unvalidated` | metadata/schema/policy-driven freshness/bounded aggregate profiling; Collection Manager runtime; Scanner Worker compatibility path | shared secret refs | connect/catalog/select opt-in | generic provider evidence |
 | MySQL | Yes mysql | Yes | Yes | ops metrics plus schema/freshness/profile | secret ref | information_schema/select opt-in | dataobs database streams |
-| Microsoft SQL Server | Yes mssql | Yes | Yes | ops metrics plus schema/freshness/profile | secret ref | view definition/select opt-in | dataobs database streams |
+| Microsoft SQL Server | Yes mssql | Yes | Integration SDK v1 `functional_unvalidated` | metadata/schema/safe structural features; policy freshness; bounded aggregate profiling (no Query Store) | secret refs, managed identity, service principal | scoped metadata visibility/select opt-in | generic provider evidence |
 | Oracle | Yes oracle | Yes | Yes | ops metrics plus schema/freshness/profile | secret ref | dictionary/select opt-in | dataobs database streams |
 | Snowflake | Partial | Yes | Yes, v1 functional-unvalidated | bounded account/warehouse/catalog/query-history (SQL-free)/load/metering/storage metadata | key pair, OAuth or supported workload identity via secret refs | dedicated read-only role; MONITOR USAGE/imported privileges as needed | generic provider evidence |
 | Redshift | Yes aws/redshift | Yes | Yes | cluster/query/schema/profile | IAM/secret ref | system table/select opt-in | dataobs warehouse streams |

@@ -17,6 +17,8 @@ from integrations.databases.mysql import MySqlDatabaseProvider
 from integrations.databases.mysql.configuration import parse_configuration as parse_mysql_configuration
 from integrations.databases.postgres import PostgreSqlDatabaseProvider
 from integrations.databases.postgres.configuration import parse_configuration as parse_postgres_configuration
+from integrations.databases.sqlserver import SqlServerDatabaseProvider
+from integrations.databases.sqlserver.configuration import parse_configuration as parse_sqlserver_configuration
 from integrations.databricks import DatabricksLakehouseProvider
 from integrations.databricks.configuration import parse_configuration as parse_databricks_configuration
 from integrations.presto import PrestoSqlEngineProvider
@@ -40,6 +42,7 @@ def build_registry():
     registry.register(PostgreSqlDatabaseProvider)
     registry.register(MySqlDatabaseProvider)
     registry.register(MariaDbDatabaseProvider)
+    registry.register(SqlServerDatabaseProvider)
     return registry
 
 
@@ -67,6 +70,7 @@ def main(argv=None):
             "postgres": parse_postgres_configuration,
             "mysql": parse_mysql_configuration,
             "mariadb": parse_mariadb_configuration,
+            "sqlserver": parse_sqlserver_configuration,
         }
         config_parsers[payload.get("provider_type")](payload["provider"])
         print(json.dumps({"valid": True}))

@@ -118,3 +118,4 @@ Trino v1 is `functional_unvalidated` with fixed, privacy-safe metadata and bound
 MySQL collector v1 is `functional_unvalidated`: provider generation 1 targets MySQL 8.4 LTS primarily and 9.7 where GA/qualified, uses optional vendor Connector/Python `>=26.7,<26.8`, and requires independently verified exact-commit hosted evidence before readiness promotion.
 
 - MariaDB database collector v1 is `functional_unvalidated` for 11.8/11.4 LTS pending hosted live and TLS-native evidence.
+- Microsoft SQL Server database collector v1 is `functional_unvalidated` for Database Engine 2025/17.x and 2022/16.x pending hosted live, exact-SHA, and independently verified evidence; Azure SQL, Synapse, Query Store, and production readiness are not claimed.

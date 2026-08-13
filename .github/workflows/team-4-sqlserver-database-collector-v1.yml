@@ -1,0 +1,39 @@
+name: Team 4 SQL Server Database Collector v1
+on:
+  pull_request:
+    paths: ["integrations/database/**", "integrations/databases/sqlserver/**", "tests/unit/sqlserver_provider/**", "requirements-sqlserver.txt", "docs/**", "config/integrations/sqlserver-database.example.yaml"]
+  workflow_dispatch:
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: pip install pytest ruff black mypy pyyaml
+      - name: Compile, formatting, typing and static safety
+        run: |
+          python -m compileall integrations/databases/sqlserver services/collection_manager
+          ruff check integrations/databases/sqlserver tests/unit/sqlserver_provider
+          black --check integrations/databases/sqlserver tests/unit/sqlserver_provider
+          mypy --ignore-missing-imports integrations/databases/sqlserver
+      - name: SQL Server and relational regressions
+        run: |
+          pytest -q tests/unit/sqlserver_provider/test_provider.py
+          pytest -q tests/unit/database_foundation
+          pytest -q tests/unit/postgres_provider/test_provider.py
+          pytest -q tests/unit/mysql_provider/test_provider.py
+          pytest -q tests/unit/mariadb_provider/test_provider.py
+      - name: Team 4 provider regressions
+        run: pytest -q tests/integrations/test_aws_provider.py tests/integrations/test_snowflake_provider.py tests/integrations/test_databricks_provider.py tests/integrations/test_bigquery_provider.py tests/integrations/test_azure_provider.py tests/integrations/test_trino_provider.py tests/integrations/test_presto_provider.py
+      - name: Migration, release, ledger, generated artifact and docs checks
+        run: |
+          python scripts/release/current_terminal_migration.py
+          python scripts/check_migration_immutability.py --base-ref origin/main
+          python scripts/release/check_release_metadata.py
+          python scripts/validate_capability_ledger.py
+          python scripts/check_generated_artifacts.py
+          python scripts/check_docs_links.py
+      - name: Optional dependency audit
+        run: python -m pip install --dry-run -r requirements-sqlserver.txt

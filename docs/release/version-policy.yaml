@@ -1,0 +1,9 @@
+schema_version: '1.0'
+semver: true
+levels:
+  patch: {api_removal: prohibited, destructive_migration: prohibited, configuration: backward_compatible}
+  minor: {features: backward_compatible, api: additive, migrations: additive, deprecations: allowed}
+  major: {breaking_api: allowed_with_new_api_version_and_guide, configuration_removal: allowed_with_lifecycle, incompatible_migrations: allowed_with_explicit_barrier, platform_support_change: allowed}
+enforcement:
+  machine_validated: [semver_syntax, migration_graph, openapi_structural_diff, configuration_structural_diff, deprecation_order]
+  not_yet_perfect: [semantic_behavior, security_default_semantics, third_party_provider_behavior]

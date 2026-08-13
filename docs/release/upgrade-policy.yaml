@@ -1,0 +1,12 @@
+schema_version: '1.0'
+states: [supported, requires_validation, blocked, unsupported, unknown]
+current_evidence:
+  supported_predecessor: null
+  status: no_supported_predecessor
+  upgrade_source: null
+  rollback_policy: rollback_not_applicable_first_release
+paths:
+  - {source: '0.2.x', target: '0.2.y', state: requires_validation, requires: [exact_sha_certification, fresh_backup_manifest, restore_validation, migration_validation]}
+  - {source: '0.2.x', target: '0.3.x', state: unknown, reason: no_retained_evidence}
+  - {source: '0.2.x', target: '1.0.x', state: unsupported, reason: major_transition_not_certified}
+future_policy: certify_N_minus_1_to_N_before_support

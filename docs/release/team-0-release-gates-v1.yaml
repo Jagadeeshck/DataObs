@@ -360,3 +360,12 @@ gates:
   reason_code: EXACT_SHA_SUPPORTABILITY_EVIDENCE_NOT_AVAILABLE
   remediation: Validate diagnostics, support bundle redaction, ownership, critical runbooks, active readiness and absence of critical support-contract defects at the candidate SHA.
   blocker: true
+- id: T0-COMPATIBILITY-LIFECYCLE
+  category: version-upgrade-compatibility
+  severity: mandatory
+  mandatory_profiles: [development, standard-ha, production-ha]
+  evidence_source: team-0-version-upgrade-compatibility-v1-evidence/manifest.json
+  result: PENDING
+  reason_code: EXACT_SHA_COMPATIBILITY_EVIDENCE_NOT_AVAILABLE
+  remediation: Run the canonical compatibility workflow and retain exact-SHA evidence.
+  blocker: true

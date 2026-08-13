@@ -1,0 +1,24 @@
+{
+  "artifacts": {
+    "configuration-report.json": "2fc62621cb7ddcfa0edc08488b6dd708d14bedfa2a579c5e39e22faa59204ad6",
+    "elasticsearch-report.json": "2fc62621cb7ddcfa0edc08488b6dd708d14bedfa2a579c5e39e22faa59204ad6",
+    "helm-report.json": "2fc62621cb7ddcfa0edc08488b6dd708d14bedfa2a579c5e39e22faa59204ad6",
+    "kubernetes-report.json": "2fc62621cb7ddcfa0edc08488b6dd708d14bedfa2a579c5e39e22faa59204ad6",
+    "migration-collision-report.json": "cd4d3f03ac889e1641b48ebed0a0f772f92a816b33e8ad3827005ca60f116e31",
+    "migration-graph-report.json": "40b142ba88e524b88a80363c180cb585cae64326e7245c72993e9aa614a4a333",
+    "oidc-report.json": "2fc62621cb7ddcfa0edc08488b6dd708d14bedfa2a579c5e39e22faa59204ad6",
+    "openapi-report.json": "2fc62621cb7ddcfa0edc08488b6dd708d14bedfa2a579c5e39e22faa59204ad6",
+    "release-gate-report.json": "cbf64110c20e7970a5b1b182fc1a29fa63971dacfdabf6aa9341a7c8c81cdbc8",
+    "rollback-report.json": "2fc62621cb7ddcfa0edc08488b6dd708d14bedfa2a579c5e39e22faa59204ad6",
+    "runtime-report.json": "2fc62621cb7ddcfa0edc08488b6dd708d14bedfa2a579c5e39e22faa59204ad6",
+    "supportability-report.json": "2fc62621cb7ddcfa0edc08488b6dd708d14bedfa2a579c5e39e22faa59204ad6",
+    "upgrade-readiness-report.json": "2fc62621cb7ddcfa0edc08488b6dd708d14bedfa2a579c5e39e22faa59204ad6"
+  },
+  "audit": "docs/development/team-0-version-upgrade-compatibility-v1-audit.md",
+  "exact_sha": "39b7757a8cce5634bf84f17da53d745f59eefc6b",
+  "schema_version": "1.0",
+  "terminal_migration": "0032_team2_data_slo_production_runtime",
+  "tool_versions": {
+    "python": "3.14.4"
+  }
+}

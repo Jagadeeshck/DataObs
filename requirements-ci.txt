@@ -1,0 +1,10 @@
+# Canonical Python tooling used by hosted CI and local validation.
+# Runtime dependencies remain in requirements.txt; workflows install both files.
+pytest>=8.3,<9.0
+pytest-asyncio>=0.24,<1.0
+pytest-cov>=6.0,<7.0
+ruff==0.12.4
+black==25.1.0
+mypy==1.17.0
+pip-audit==2.9.0
+

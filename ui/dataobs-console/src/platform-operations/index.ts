@@ -8,3 +8,7 @@ export * from "./stateSemantics";
 export * from "./permissions";
 export * from "./privacy";
 export * from "./actions";
+export * from "./upgradeTypes";
+export * from "./upgradeClient";
+export * from "./upgradeSemantics";
+export * from "./upgradePrivacy";

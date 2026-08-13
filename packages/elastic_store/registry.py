@@ -492,6 +492,8 @@ def status(es: Elasticsearch) -> Dict[str, Any]:
     registry = migrations()
     ids = [migration.migration_id for migration in registry]
     duplicate_ids = sorted({migration_id for migration_id in ids if ids.count(migration_id) > 1})
+    prefixes = [migration_id.split("_", 1)[0] for migration_id in ids]
+    duplicate_prefixes = sorted({prefix for prefix in prefixes if prefixes.count(prefix) > 1})
     required = {migration.migration_id: migration for migration in registry}
     applied: dict[str, dict[str, Any]] = {}
     if es.indices.exists(index=MIGRATION_STATE_INDEX):
@@ -576,6 +578,7 @@ def status(es: Elasticsearch) -> Dict[str, Any]:
             conflicts,
             dependency_violations,
             duplicate_ids,
+            duplicate_prefixes,
             [name for name, present in resource_readiness.items() if not present],
         ]
     )
@@ -593,6 +596,7 @@ def status(es: Elasticsearch) -> Dict[str, Any]:
         ],
         "dependency_violations": dependency_violations,
         "duplicate_id_definitions": duplicate_ids,
+        "duplicate_numeric_prefixes": duplicate_prefixes,
         "conflicts": conflicts,
         "resource_readiness": resource_readiness,
         "ready": ready,

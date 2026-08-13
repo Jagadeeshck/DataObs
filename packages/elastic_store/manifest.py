@@ -2343,6 +2343,7 @@ SCHEMA_INTELLIGENCE_PROPERTIES = {
                 "evaluation_method",
                 "policy",
                 "result",
+                "compatibility_result",
                 "technical_severity",
                 "resource_id",
                 "messaging_system",
@@ -2392,17 +2393,24 @@ SCHEMA_INTELLIGENCE_PROPERTIES = {
         **{key: {"type": "boolean"} for key in ["authoritative", "configured"]},
         **{
             key: {"type": "keyword"}
-            for key in ["limitations", "evidence_refs", "change_categories", "field_hashes", "reason_codes"]
+            for key in [
+                "limitations",
+                "evidence_refs",
+                "change_categories",
+                "field_hashes",
+                "missing_inputs",
+                "reason_codes",
+            ]
         },
         "change_counts": {"type": "flattened"},
     },
 }
 
 TEAM1_STREAM_SCHEMA_INTELLIGENCE_RUNTIME_MIGRATION = Migration(
-    "0032_team1_stream_schema_intelligence_runtime",
+    "0033_team1_stream_schema_intelligence_runtime",
     "Add privacy-safe schema evidence, OCC projections, bindings, impacts, and fenced runtime state",
     "v1",
-    dependencies=["0031_team3_post_incident_review_analytics"],
+    dependencies=["0032_team2_data_slo_production_runtime"],
     rollback_strategy="stop schema intelligence writers; retain append-only derived evidence",
     operations={
         "mutable_indices": [
@@ -2470,6 +2478,7 @@ def migrations() -> List[Migration]:
         TEAM1_MULTI_BROKER_MESSAGING_RUNTIME_MIGRATION,
         POST_INCIDENT_REVIEW_ANALYTICS_MIGRATION,
         TEAM2_DATA_SLO_PRODUCTION_RUNTIME_MIGRATION,
+        TEAM1_STREAM_SCHEMA_INTELLIGENCE_RUNTIME_MIGRATION,
     ]
 
 

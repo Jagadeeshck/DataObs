@@ -15,11 +15,36 @@ from scripts.release.validate_migration_graph import validate
 
 
 def migration_report() -> dict[str, Any]:
-    graph = validate()
-    if graph["state"] != "valid" or not graph["terminal_migration"]:
-        raise ValueError(f"migration graph has no deterministic terminal: {graph['errors']}")
-    ids = [item["id"] for item in graph["migrations"]]
-    checksum = hashlib.sha256(json.dumps(graph["migrations"], sort_keys=True).encode()).hexdigest()
+    registry = migrations()
+    if not registry:
+        raise ValueError("migration registry is empty")
+    ids = [migration.migration_id for migration in registry]
+    if len(ids) != len(set(ids)):
+        raise ValueError("migration registry contains duplicate IDs")
+    numeric_prefixes = [migration_id.split("_", 1)[0] for migration_id in ids]
+    duplicate_prefixes = sorted(
+        {prefix for prefix in numeric_prefixes if numeric_prefixes.count(prefix) > 1}
+    )
+    if duplicate_prefixes:
+        raise ValueError(
+            "migration registry contains duplicate numeric prefixes: "
+            + ", ".join(duplicate_prefixes)
+        )
+    previous: str | None = None
+    for migration in registry:
+        expected = [] if previous is None else [previous]
+        if list(migration.dependencies) != expected:
+            raise ValueError(
+                f"invalid migration ordering at {migration.migration_id}: "
+                f"expected dependencies {expected}, got {migration.dependencies}"
+            )
+        previous = migration.migration_id
+    checksum = hashlib.sha256(
+        json.dumps(
+            [{"id": migration.migration_id, "checksum": migration.checksum} for migration in registry],
+            sort_keys=True,
+        ).encode()
+    ).hexdigest()
     return {
         "migration_count": len(ids),
         "terminal_migration": graph["terminal_migration"],

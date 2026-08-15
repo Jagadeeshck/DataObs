@@ -26,6 +26,8 @@ jobs:
       - uses: actions/setup-node@v4
         with: {node-version: "22", cache: pnpm, cache-dependency-path: ui/dataobs-console/pnpm-lock.yaml}
       - run: pip install -r requirements.txt
+      - name: Wait for Elasticsearch readiness
+        run: python scripts/ci/wait_for_elasticsearch.py --url http://localhost:9200 --timeout 120
       - run: python scripts/check_migration_immutability.py --base-ref origin/main
       - name: Apply migrations and seed deterministic stream projections
         run: mkdir -p evidence && python -m packages.elastic_store.cli apply && python -m pytest tests/stream_360/test_observer_backend_v1.py -q --junitxml=evidence/api.xml

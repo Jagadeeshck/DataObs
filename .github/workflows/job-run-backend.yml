@@ -24,12 +24,15 @@ jobs:
           --health-interval 10s --health-timeout 5s --health-retries 12
     steps:
       - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
           cache: pip
       - name: Install Python dependencies
         run: pip install -r requirements.txt pytest pytest-cov ruff black
+      - name: Wait for Elasticsearch readiness
+        run: python scripts/ci/wait_for_elasticsearch.py --url http://localhost:9200 --timeout 120
       - name: Bounded Elasticsearch readiness and version check
         shell: bash
         run: |
@@ -71,6 +74,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
       - uses: actions/download-artifact@v4
         with:
           name: job-run-backend-evidence

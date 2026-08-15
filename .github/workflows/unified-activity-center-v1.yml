@@ -16,6 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
       - run: python scripts/check_merge_conflict_markers.py
       - run: python scripts/security/check_route_permissions.py
       - run: python scripts/check_team_boundaries.py

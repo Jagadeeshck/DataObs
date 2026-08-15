@@ -21,6 +21,8 @@ jobs:
       - uses: actions/setup-node@v4
         with: {node-version: "22"}
       - run: pip install -r requirements.txt
+      - name: Wait for Elasticsearch readiness
+        run: python scripts/ci/wait_for_elasticsearch.py --url http://localhost:9200 --timeout 120
       - name: Boundaries, generated files, docs, ledger, migrations
         run: |
           python scripts/check_team_boundaries.py

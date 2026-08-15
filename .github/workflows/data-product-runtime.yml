@@ -100,6 +100,8 @@ jobs:
       - uses: actions/setup-python@v5
         with: {python-version: '3.12'}
       - run: pip install -r requirements.txt pytest black mypy ruff
+      - name: Wait for Elasticsearch readiness
+        run: python scripts/ci/wait_for_elasticsearch.py --url http://localhost:9200 --timeout 120
       - run: mkdir -p artifacts/foundation
       - run: RUN_INTEGRATION_TESTS=1 DATA_PRODUCT_ALLOW_DESTRUCTIVE_TEST_RESET=1 DATA_PRODUCT_CERTIFICATION_PROFILE=data-product-runtime-foundation DATA_PRODUCT_EVIDENCE_DIR=artifacts/foundation ELASTICSEARCH_URL=http://127.0.0.1:9200 python -m pytest tests/integration/data_products/test_migrations_elasticsearch.py -q --junitxml=artifacts/foundation/migrations.xml
       - run: RUN_INTEGRATION_TESTS=1 DATA_PRODUCT_CERTIFICATION_PROFILE=data-product-runtime-foundation ELASTICSEARCH_URL=http://127.0.0.1:9200 python -m pytest tests/integration/data_products/test_membership_dependency_elasticsearch.py::test_real_elasticsearch_membership_dependency_profile_is_selected -q
@@ -130,6 +132,8 @@ jobs:
       - uses: actions/setup-python@v5
         with: {python-version: '3.12'}
       - run: pip install -r requirements.txt pytest black mypy ruff
+      - name: Wait for Elasticsearch readiness
+        run: python scripts/ci/wait_for_elasticsearch.py --url http://localhost:9200 --timeout 120
       - run: mkdir -p artifacts/foundation
       - run: ELASTICSEARCH_URL=http://127.0.0.1:9200 ./bin/dataobs elastic apply
       - run: RUN_INTEGRATION_TESTS=1 DATA_PRODUCT_CERTIFICATION_PROFILE=data-product-runtime-foundation ELASTICSEARCH_URL=http://127.0.0.1:9200 python -m pytest tests/integration/data_products/test_membership_dependency_elasticsearch.py::test_real_elasticsearch_membership_dependency_profile_is_selected -q

@@ -25,7 +25,7 @@ jobs:
       - run: python scripts/check_docs_links.py
       - run: python scripts/validate_capability_ledger.py
       - run: python scripts/release/current_terminal_migration.py
-      - run: python scripts/check_migration_immutability.py --base-ref origin/main
+      - run: python scripts/check_migration_immutability.py --base-ref "$(python scripts/resolve_ci_base.py)"
       - run: python scripts/security/check_route_permissions.py
       - run: python scripts/generate_openapi.py --check
       - run: python -m pytest tests/stream_360/test_schema_intelligence_v1.py tests/stream_360 tests/pathways tests/security -q

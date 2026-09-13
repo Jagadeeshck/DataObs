@@ -45,7 +45,7 @@ jobs:
         env: {ELASTICSEARCH_URL: "http://localhost:9200"}
         run: |
           mkdir -p evidence
-          python scripts/check_migration_immutability.py --base-ref origin/main
+          python scripts/check_migration_immutability.py --base-ref "$(python scripts/resolve_ci_base.py)"
           python -m packages.elastic_store.cli apply
           python -m pytest tests/stream_360/test_connector_schema_360.py tests/stream_360 tests/security -q --junitxml=evidence/backend.xml
       - name: Redaction sentinel

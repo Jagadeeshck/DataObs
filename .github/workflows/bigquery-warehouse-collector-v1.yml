@@ -16,7 +16,7 @@ jobs:
       - run: mypy --ignore-missing-imports integrations/bigquery
       - run: pytest -q tests/integrations/test_sdk.py tests/integrations/test_collection_manager_runtime.py tests/integrations/test_bigquery_provider.py tests/integrations/test_bigquery_live.py tests/integrations/test_aws_provider.py tests/integrations/test_aws_provider_v2.py tests/integrations/test_snowflake_provider.py tests/integrations/test_databricks_provider.py tests/integration/postgres_vertical_slice
       - run: python scripts/release/current_terminal_migration.py && python scripts/release/check_release_metadata.py
-      - run: python scripts/check_migration_immutability.py --base-ref origin/${{ github.base_ref }}
+      - run: python scripts/check_migration_immutability.py --base-ref "$(python scripts/resolve_ci_base.py)" github.base_ref }}
       - run: python scripts/validate_capability_ledger.py && python scripts/check_generated_artifacts.py
       - run: python scripts/check_docs_links.py
       - run: pip-audit -r requirements-bigquery.txt

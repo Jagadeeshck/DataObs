@@ -18,7 +18,7 @@ jobs:
         run: |
           python scripts/release/validate_migration_graph.py --output migration-graph-report.json
           python scripts/release/current_terminal_migration.py
-          python scripts/check_migration_immutability.py --base-ref "${{ github.event.pull_request.base.sha || 'HEAD^' }}"
+          python scripts/check_migration_immutability.py --base-ref "$(python scripts/resolve_ci_base.py)"
       - name: Helm migration synchronization
         run: python scripts/release/check_helm_migration_consistency.py
       - name: Compatibility, version and deprecation policies

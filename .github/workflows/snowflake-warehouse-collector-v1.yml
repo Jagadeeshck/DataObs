@@ -23,7 +23,7 @@ jobs:
       - run: mypy packages/collectors services/collection_manager integrations/snowflake
       - name: SDK, manager, AWS regression, Snowflake safety/redaction/isolation
         run: pytest -q tests/integrations
-      - run: python scripts/check_migration_immutability.py --base-ref ${{ github.event.pull_request.base.sha || github.event.before }}
+      - run: python scripts/check_migration_immutability.py --base-ref "$(python scripts/resolve_ci_base.py)" github.event.pull_request.base.sha || github.event.before }}
       - run: test "$(python scripts/release/current_terminal_migration.py)" = 0023_stream_pathway_reliability_runtime
       - run: python scripts/validate_capability_ledger.py && python scripts/check_generated_artifacts.py && python scripts/check_docs_links.py
       - run: pip-audit -r requirements-snowflake.txt

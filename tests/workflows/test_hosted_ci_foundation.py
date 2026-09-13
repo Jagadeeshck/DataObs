@@ -112,9 +112,26 @@ def test_iam_and_cluster_360_shared_root_cause_regressions():
     iam = (WORKFLOWS / "iam-security.yml").read_text()
     rabbit = (WORKFLOWS / "team-4-rabbitmq-messaging-collector-v1.yml").read_text()
     cluster = (WORKFLOWS / "cluster-360-console.yml").read_text()
-    assert "fetch-depth: 0" in iam and "check_migration_immutability.py --base-ref HEAD^" in iam
+    assert (
+        "fetch-depth: 0" in iam
+        and 'check_migration_immutability.py --base-ref "$(python scripts/resolve_ci_base.py)"' in iam
+    )
     assert "requirements.txt -r requirements-ci.txt" in rabbit
     assert cluster.index("wait_for_elasticsearch.py") < cluster.index("packages.elastic_store.cli apply")
+
+
+def test_migration_checks_use_canonical_base_resolution_or_candidate_input():
+    allowed_candidate_workflows = {
+        "beta-1-release-candidate.yml",
+        "team-0-first-supported-platform-release-v1.yml",
+        "team-0-release-candidate.yml",
+    }
+    for path, text in workflow_texts():
+        if "check_migration_immutability.py" not in text or path.name in allowed_candidate_workflows:
+            continue
+        for line in text.splitlines():
+            if "check_migration_immutability.py" in line:
+                assert "scripts/resolve_ci_base.py" in line, f"{path} bypasses canonical base resolution"
 
 
 def test_elasticsearch_jobs_wait_before_application_interaction_without_sleeps():
@@ -141,7 +158,8 @@ def test_elasticsearch_jobs_wait_before_application_interaction_without_sleeps()
 def test_console_lockfile_has_only_patched_js_yaml_and_keeps_high_audit_gate():
     package = yaml.safe_load((ROOT / "ui/dataobs-console/package.json").read_text())
     lock = (ROOT / "ui/dataobs-console/pnpm-lock.yaml").read_text()
-    assert package["pnpm"]["overrides"]["@redocly/openapi-core>js-yaml"] == "4.3.1"
+    assert package["pnpm"]["overrides"]["@redocly/openapi-core>js-yaml"] == "4.3.2"
+    assert package["pnpm"]["overrides"]["browserslist"] == "4.28.7"
     versions = {tuple(map(int, match)) for match in re.findall(r"js-yaml@(\d+)\.(\d+)\.(\d+)", lock)}
     assert versions and all(version >= (4, 1, 1) for version in versions)
     console_workflow = (WORKFLOWS / "reusable-console-validation.yml").read_text()

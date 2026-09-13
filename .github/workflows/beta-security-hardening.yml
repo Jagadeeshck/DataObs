@@ -31,7 +31,7 @@ jobs:
       - name: Security and certification suites
         run: python -m pytest tests/security tests/certification -q --junitxml=security-junit.xml
       - run: python scripts/security/check_route_permissions.py
-      - run: python scripts/check_migration_immutability.py --base-ref origin/main
+      - run: python scripts/check_migration_immutability.py --base-ref "$(python scripts/resolve_ci_base.py)"
       - name: Console OIDC checks
         run: corepack enable && pnpm --dir ui/dataobs-console install --frozen-lockfile && pnpm --dir ui/dataobs-console test
       - name: Helm security render

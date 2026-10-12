@@ -8,6 +8,8 @@ See the [architecture overview](architecture/overview.md).
 
 ## Implementation
 See the [repository structure](development/repository-structure.md).
+For local backend and Console development in a cloud task, see the
+[cloud environment setup guide](development/cloud-environment.md).
 
 ## Operations
 See [operations](operations/incident-response.md).

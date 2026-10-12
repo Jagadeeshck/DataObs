@@ -12,7 +12,7 @@ import yaml
 
 ROOT = Path(__file__).parents[2]
 WORKFLOWS = ROOT / ".github" / "workflows"
-MIGRATION_BASE = '$(python scripts/resolve_ci_base.py)'
+MIGRATION_BASE = "$(python scripts/resolve_ci_base.py)"
 
 
 def workflow_texts():
@@ -55,9 +55,7 @@ def test_console_uses_pinned_toolchain_and_generated_diff_gate():
     assert workflow.index("pnpm api:generate") < workflow.index("pnpm build")
     assert "git diff --exit-code src/api/generated/schema.ts" in workflow
     assert "pnpm exec vitest run --reporter=junit --outputFile=../../evidence/console-junit.xml" in workflow
-    assert workflow.index("test -s ../../evidence/console-junit.xml") < workflow.index(
-        "write_evidence_envelope.py"
-    )
+    assert workflow.index("test -s ../../evidence/console-junit.xml") < workflow.index("write_evidence_envelope.py")
 
 
 def test_elasticsearch_client_pin_is_published_and_checked_for_resolution():

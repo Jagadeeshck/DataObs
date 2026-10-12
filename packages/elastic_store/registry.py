@@ -507,15 +507,17 @@ def status(es: Elasticsearch) -> Dict[str, Any]:
     for observed_id in unknown:
         expected = expected_by_number.get(observed_id.split("_", 1)[0])
         if expected is not None:
-            observed = applied[observed_id]
+            observed_conflict = applied[observed_id]
             conflicts.append(
                 {
                     "state": "migration_registry_conflict",
                     "migration_id": expected.migration_id.split("_", 1)[0],
                     "expected_current_checksum": expected.checksum,
-                    "observed_stored_checksum": observed.get("checksum"),
+                    "observed_stored_checksum": observed_conflict.get("checksum"),
                     "expected_current_name": expected.migration_id,
-                    "observed_stored_name": observed.get("migration_name", observed.get("name", observed_id)),
+                    "observed_stored_name": observed_conflict.get(
+                        "migration_name", observed_conflict.get("name", observed_id)
+                    ),
                     "collision_type": "historical_numeric_id_reuse",
                     "operator_action_required": (
                         "Stop. Export migration-state and resource evidence, verify checksums, "

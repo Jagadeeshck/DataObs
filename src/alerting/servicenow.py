@@ -5,7 +5,7 @@ from __future__ import annotations
 import base64
 import json
 from dataclasses import dataclass
-from typing import Dict, Optional
+from typing import Dict, Optional, cast
 from urllib import request
 
 
@@ -52,7 +52,7 @@ class ServiceNowClient:
         return f"{self.config.instance_url.rstrip('/')}/api/now/table/{self.config.table}"
 
     def _payload(self, event: AlertEvent) -> dict:
-        priority = self.config.severity_to_priority.get(event.severity.lower(), "3")
+        priority = cast(Dict[str, str], self.config.severity_to_priority).get(event.severity.lower(), "3")
         description = event.description
         if event.dataset:
             description += f"\nDataset: {event.dataset}"

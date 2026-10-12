@@ -26,9 +26,11 @@ Optional env vars with sensible defaults:
 
 import os
 import socket
+import sys
 import threading
 import uuid
 from dataclasses import dataclass
+from typing import Callable, cast
 
 from opentelemetry import metrics, trace
 
@@ -48,7 +50,7 @@ from opentelemetry.sdk.trace.sampling import ParentBased, TraceIdRatioBased
 
 _lock = threading.Lock()
 _initialized = False
-_providers: list[object] = []
+_providers: list[TracerProvider | MeterProvider | LoggerProvider] = []
 
 
 @dataclass(frozen=True)
@@ -104,7 +106,7 @@ def _build_resource() -> Resource:
         # https://opentelemetry.io/docs/specs/semconv/resource/process/
         "process.pid": os.getpid(),
         "process.runtime.name": "CPython",
-        "process.runtime.version": f"{os.sys.version_info.major}.{os.sys.version_info.minor}.{os.sys.version_info.micro}",
+        "process.runtime.version": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
         # ── Host ─────────────────────────────────────────────────────────────
         # https://opentelemetry.io/docs/specs/semconv/resource/host/
         "host.name": socket.gethostname(),
@@ -197,7 +199,8 @@ def shutdown_telemetry(timeout_ms: int = 5_000) -> bool:
     ok = True
     for provider in tuple(_providers):
         try:
-            result = provider.shutdown(timeout_millis=min(30_000, max(0, timeout_ms)))
+            shutdown = cast(Callable[..., bool | None], provider.shutdown)
+            result = shutdown(timeout_millis=min(30_000, max(0, timeout_ms)))
             ok = ok and result is not False
         except Exception:
             # SDK provider signatures differ; telemetry shutdown cannot break service shutdown.

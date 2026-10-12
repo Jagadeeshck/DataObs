@@ -58,7 +58,7 @@ jobs:
           python scripts/check_generated_artifacts.py
           python scripts/check_docs_links.py
           python scripts/validate_capability_ledger.py
-          python scripts/check_migration_immutability.py --base-ref d006339b3f855b67a63bd4625d42d2f1688a354c
+          python scripts/check_migration_immutability.py --base-ref "$(python scripts/resolve_ci_base.py)"
           python scripts/release/current_terminal_migration.py
           ! rg -n 'tenant(Id|_id)|environment(Id|_id)|search.term|user.email' ui/dataobs-console/src/observability/navigation.tsx
       - name: Produce Team 5 exact-commit evidence envelope

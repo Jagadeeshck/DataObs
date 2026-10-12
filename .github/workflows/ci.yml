@@ -61,7 +61,7 @@ jobs:
       - name: Wait for Elasticsearch readiness
         run: python scripts/ci/wait_for_elasticsearch.py --url http://localhost:9200 --timeout 120
       - name: Migration immutability against main
-        run: python scripts/check_migration_immutability.py --base-ref HEAD
+        run: python scripts/check_migration_immutability.py --base-ref "$(python scripts/resolve_ci_base.py)"
       - name: Focused quality checks
         run: |
           python scripts/check_generated_artifacts.py
@@ -505,7 +505,7 @@ jobs:
           GITHUB_EVENT_NAME: ${{ github.event_name }}
         run: echo "base=$(python scripts/resolve_ci_base.py --event-file "$GITHUB_EVENT_PATH")" >> "$GITHUB_OUTPUT"
       - name: Migration immutability
-        run: python scripts/check_migration_immutability.py --base-ref "${{ steps.docs-base.outputs.base }}"
+        run: python scripts/check_migration_immutability.py --base-ref "$(python scripts/resolve_ci_base.py)"
       - name: Capability diff
         run: python scripts/capability_diff.py --base-ref "${{ steps.docs-base.outputs.base }}" > capability-diff-report.txt
       - name: Upload documentation truth reports

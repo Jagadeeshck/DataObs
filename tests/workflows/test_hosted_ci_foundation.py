@@ -12,6 +12,7 @@ import yaml
 
 ROOT = Path(__file__).parents[2]
 WORKFLOWS = ROOT / ".github" / "workflows"
+MIGRATION_BASE = '$(python scripts/resolve_ci_base.py)'
 
 
 def workflow_texts():
@@ -53,6 +54,20 @@ def test_console_uses_pinned_toolchain_and_generated_diff_gate():
     assert "pnpm install --frozen-lockfile" in workflow
     assert workflow.index("pnpm api:generate") < workflow.index("pnpm build")
     assert "git diff --exit-code src/api/generated/schema.ts" in workflow
+    assert "pnpm exec vitest run --reporter=junit --outputFile=../../evidence/console-junit.xml" in workflow
+    assert workflow.index("test -s ../../evidence/console-junit.xml") < workflow.index(
+        "write_evidence_envelope.py"
+    )
+
+
+def test_elasticsearch_client_pin_is_published_and_checked_for_resolution():
+    requirement = "elasticsearch[async]==9.4.1"
+    assert requirement in (ROOT / "requirements.txt").read_text()
+    assert requirement in (ROOT / "requirements-poc.txt").read_text()
+    backend = (WORKFLOWS / "reusable-backend-validation.yml").read_text()
+    assert f"pip download --no-deps --dest /tmp/dataobs-elasticsearch-client '{requirement}'" in backend
+    assert ">=9.4.2" not in (ROOT / "requirements.txt").read_text()
+    assert ">=9.4.2" not in (ROOT / "requirements-poc.txt").read_text()
 
 
 def test_elasticsearch_readiness_is_before_work_in_repaired_foundations():
@@ -112,9 +127,59 @@ def test_iam_and_cluster_360_shared_root_cause_regressions():
     iam = (WORKFLOWS / "iam-security.yml").read_text()
     rabbit = (WORKFLOWS / "team-4-rabbitmq-messaging-collector-v1.yml").read_text()
     cluster = (WORKFLOWS / "cluster-360-console.yml").read_text()
-    assert "fetch-depth: 0" in iam and "check_migration_immutability.py --base-ref HEAD^" in iam
+    assert (
+        "fetch-depth: 0" in iam
+        and 'check_migration_immutability.py --base-ref "$(python scripts/resolve_ci_base.py)"' in iam
+    )
     assert "requirements.txt -r requirements-ci.txt" in rabbit
     assert cluster.index("wait_for_elasticsearch.py") < cluster.index("packages.elastic_store.cli apply")
+
+
+def test_migration_checks_use_canonical_base_resolution_or_candidate_input():
+    allowed_candidate_workflows = {
+        "beta-1-release-candidate.yml",
+        "team-0-first-supported-platform-release-v1.yml",
+        "team-0-release-candidate.yml",
+    }
+    for path, text in workflow_texts():
+        if "check_migration_immutability.py" not in text or path.name in allowed_candidate_workflows:
+            continue
+        for line in text.splitlines():
+            if "check_migration_immutability.py" in line:
+                assert "scripts/resolve_ci_base.py" in line, f"{path} bypasses canonical base resolution"
+
+
+def _assert_migration_command_has_no_replacement_leftovers(line: str) -> None:
+    assert "}}" not in line
+    assert "github.event." not in line
+    assert "github.base_ref" not in line
+    suffix = line.partition(MIGRATION_BASE)[2]
+    assert suffix, "canonical resolver command substitution is missing"
+    suffix = suffix.lstrip('"').strip()
+    assert not suffix or suffix.startswith(("&&", "|")), f"unexpected tokens after base resolver: {suffix}"
+
+
+def test_migration_commands_have_no_malformed_replacement_leftovers():
+    for path, text in workflow_texts():
+        for line in text.splitlines():
+            if "check_migration_immutability.py" in line and MIGRATION_BASE in line:
+                _assert_migration_command_has_no_replacement_leftovers(line)
+
+
+def test_migration_command_guard_rejects_known_malformed_replacements():
+    prefix = f'python scripts/check_migration_immutability.py --base-ref "{MIGRATION_BASE}"'
+    malformed = (
+        f"{prefix} }}",
+        f"{prefix} github.event.pull_request.base.sha",
+        f"{prefix} github.base_ref",
+        f"{prefix} unexpected-token",
+    )
+    for line in malformed:
+        try:
+            _assert_migration_command_has_no_replacement_leftovers(line)
+        except AssertionError:
+            continue
+        raise AssertionError(f"guard accepted malformed migration command: {line}")
 
 
 def test_elasticsearch_jobs_wait_before_application_interaction_without_sleeps():
@@ -141,7 +206,8 @@ def test_elasticsearch_jobs_wait_before_application_interaction_without_sleeps()
 def test_console_lockfile_has_only_patched_js_yaml_and_keeps_high_audit_gate():
     package = yaml.safe_load((ROOT / "ui/dataobs-console/package.json").read_text())
     lock = (ROOT / "ui/dataobs-console/pnpm-lock.yaml").read_text()
-    assert package["pnpm"]["overrides"]["@redocly/openapi-core>js-yaml"] == "4.3.1"
+    assert package["pnpm"]["overrides"]["@redocly/openapi-core>js-yaml"] == "4.3.2"
+    assert package["pnpm"]["overrides"]["browserslist"] == "4.28.7"
     versions = {tuple(map(int, match)) for match in re.findall(r"js-yaml@(\d+)\.(\d+)\.(\d+)", lock)}
     assert versions and all(version >= (4, 1, 1) for version in versions)
     console_workflow = (WORKFLOWS / "reusable-console-validation.yml").read_text()

@@ -24,6 +24,7 @@ def test_registry_identity_and_capabilities():
         "azure",
         "bigquery",
         "databricks",
+        "gcp",
         "mariadb",
         "mysql",
         "oracle",

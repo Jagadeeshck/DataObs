@@ -32,7 +32,7 @@ cloud provider implemented. Provider status is governed by the capability ledger
 | Kinesis | Yes aws | Yes | Sometimes | stream metrics/events | IAM | read metrics/describe | aws.kinesis, dataobs stream |
 | SQS | Yes aws | Yes | No | queue metrics/message spans | IAM | sqs read attrs | aws.sqs, otlp |
 | RabbitMQ | Yes rabbitmq | Yes | Yes, v1 functional-unvalidated | bounded Management HTTP API vhost/queue/exchange/binding inventory, health and current counters | Basic password secret ref | monitoring tag with empty configure/write/read | generic provider evidence |
-| Pub/Sub | Yes gcp | Yes | Sometimes | topic/sub metrics/lineage | workload identity | viewer | gcp.pubsub, dataobs stream |
+| Pub/Sub | Yes gcp | Yes | Yes, v1 functional-unvalidated | bounded topic/subscription metadata, declared retention/delivery configuration, visible DLQ topology, allowlisted Monitoring metrics; no payloads | ADC, workload identity, impersonation | Pub/Sub Viewer + Monitoring Viewer | generic provider evidence; Team 1 adapter envelope |
 | Airflow | No/generic API | Yes | Yes | DAG runs/tasks/lineage | API secret ref | read DAG/runs | dataobs jobs |
 | dbt | No/generic | Yes | Yes | manifests/run results/tests | token/files | read artifacts/API | dataobs dbt |
 | Spark | Yes where platform exists | Yes | Yes | jobs/stages/lineage | platform secret | event/log read | dataobs spark |
@@ -57,7 +57,7 @@ cloud provider implemented. Provider status is governed by the capability ledger
 | Kinesis | partial | functional_unvalidated | Iterator age is not committed offset lag |
 | SQS | partial | functional_unvalidated | Counts are approximate; offsets/groups unsupported |
 | RabbitMQ | functional_unvalidated | functional_unvalidated | Management HTTP API current evidence; optional statistics and hosted 4.3.x validation remain partial |
-| Google Pub/Sub | not_configured | functional_unvalidated | Subscription is not a consumer group |
+| Google Pub/Sub | functional_unvalidated | functional_unvalidated | Read-only Team 4 resources/native metrics; Team 1 metric-family projections remain incomplete |
 | Azure Event Hubs | not_configured | functional_unvalidated | Lag requires checkpoint evidence |
 | Azure Service Bus | not_configured | functional_unvalidated | Partitions unsupported |
 | Pulsar | not_implemented | contract_ready | No authoritative production collector |

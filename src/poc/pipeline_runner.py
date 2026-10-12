@@ -19,7 +19,7 @@ import time
 import traceback
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Callable, Dict, Iterable, List, Optional, Protocol
+from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, List, Optional, Protocol
 
 from src.poc.apm import ApmTelemetry, build_default_apm
 
@@ -46,28 +46,31 @@ try:
     from elastic_transport import ConnectionError as ElasticTransportConnectionError
     from elastic_transport import ConnectionTimeout as ElasticTransportConnectionTimeout
 except ImportError:  # pragma: no cover - elasticsearch is optional in tests.
+    if not TYPE_CHECKING:
 
-    class ElasticTransportConnectionError(Exception):
-        pass
+        class ElasticTransportConnectionError(Exception):
+            pass
 
-    class ElasticTransportConnectionTimeout(Exception):
-        pass
+        class ElasticTransportConnectionTimeout(Exception):
+            pass
 
 
 try:
     from py4j.protocol import Py4JError
 except ImportError:  # pragma: no cover - py4j is optional in tests.
+    if not TYPE_CHECKING:
 
-    class Py4JError(RuntimeError):
-        pass
+        class Py4JError(RuntimeError):
+            pass
 
 
 try:
     from pyspark.errors import PySparkException
 except ImportError:  # pragma: no cover - pyspark is optional in tests.
+    if not TYPE_CHECKING:
 
-    class PySparkException(RuntimeError):
-        pass
+        class PySparkException(RuntimeError):
+            pass
 
 
 ES_HOST = _env_or_default("ELASTICHOST", "ELASTICSEARCH_URL", default="http://es01:9200")

@@ -19,7 +19,7 @@ jobs:
       - run: for f in values.yaml values-minimal.yaml values-production.yaml values-external-otel.yaml values-development.yaml; do helm template dataobs helm/dataobs -f helm/dataobs/$f >/tmp/$f.rendered; done
       - run: bash scripts/deployment/chart_assertions.sh
       - run: python scripts/release/render_helm_values.py --manifest docs/release/dataobs-release-manifest.example.json --output /tmp/release-values.yaml && grep -q '@' <(helm template dataobs helm/dataobs -f /tmp/release-values.yaml)
-      - run: python scripts/check_migration_immutability.py --base-ref origin/main
+      - run: python scripts/check_migration_immutability.py --base-ref "$(python scripts/resolve_ci_base.py)"
       - name: Kind smoke (explicitly not passed when unavailable)
         run: bash scripts/deployment/kind_smoke_test.sh
         env: {DATAOBS_SMOKE_VALUES: '${{ secrets.DATAOBS_SMOKE_VALUES }}'}

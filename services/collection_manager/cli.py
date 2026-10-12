@@ -23,6 +23,8 @@ from integrations.databases.sqlserver import SqlServerDatabaseProvider
 from integrations.databases.sqlserver.configuration import parse_configuration as parse_sqlserver_configuration
 from integrations.databricks import DatabricksLakehouseProvider
 from integrations.databricks.configuration import parse_configuration as parse_databricks_configuration
+from integrations.gcp import GoogleCloudMessagingProvider
+from integrations.gcp.configuration import parse_gcp_configuration
 from integrations.presto import PrestoSqlEngineProvider
 from integrations.presto.configuration import parse_configuration as parse_presto_configuration
 from integrations.rabbitmq import RabbitMqMessagingProvider
@@ -40,6 +42,7 @@ def build_registry():
     registry.register(SnowflakeWarehouseProvider)
     registry.register(DatabricksLakehouseProvider)
     registry.register(BigQueryWarehouseProvider)
+    registry.register(GoogleCloudMessagingProvider)
     registry.register(AzureDataPlatformProvider)
     registry.register(TrinoSqlEngineProvider)
     registry.register(PrestoSqlEngineProvider)
@@ -70,6 +73,7 @@ def main(argv=None):
             "snowflake": parse_snowflake_configuration,
             "databricks": parse_databricks_configuration,
             "bigquery": parse_bigquery_configuration,
+            "gcp": parse_gcp_configuration,
             "azure": parse_azure_configuration,
             "trino": parse_trino_configuration,
             "presto": parse_presto_configuration,

@@ -42,7 +42,7 @@ jobs:
           test -s /tmp/es.json || { docker logs "${{ job.services.elasticsearch.id }}"; exit 1; }
           python -c 'import json; d=json.load(open("/tmp/es.json")); assert d["version"]["number"] == "9.4.2"; print(d["version"]["number"])' | tee data-quality-console-v1-evidence/elasticsearch-version.txt
       - name: Migration immutability
-        run: python scripts/check_migration_immutability.py --base-ref "${{ github.event.pull_request.base.sha || github.event.before || 'HEAD^' }}"
+        run: python scripts/check_migration_immutability.py --base-ref "$(python scripts/resolve_ci_base.py)"
       - uses: pnpm/action-setup@v4
         with:
           version: "10.28.1"

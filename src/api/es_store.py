@@ -628,4 +628,4 @@ def _bootstrap_with_dataobs(self):
     self._install_dataobs_templates()
 
 
-ElasticsearchStore._bootstrap = _bootstrap_with_dataobs
+setattr(ElasticsearchStore, "_bootstrap", _bootstrap_with_dataobs)

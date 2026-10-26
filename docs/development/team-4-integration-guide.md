@@ -1,5 +1,11 @@
 # Team 4 integration development guide
 
+## Google Pub/Sub messaging v1
+
+Google Pub/Sub uses the independent `gcp` v1 provider and `requirements-gcp-pubsub.txt`. Configure explicit projects,
+reference-only ADC/WIF/impersonation credentials, and the fixed Pub/Sub/Monitoring read surface documented in
+`docs/operations/team-4-google-pubsub-messaging-collector.md`. It must never be conflated with the `bigquery` provider.
+
 ## Azure Data Platform v1
 
 The Azure provider is explicitly registered as `azure` version `1` and reuses the Integration SDK and Collection Manager generic evidence/checkpoint stores. Install its lazy optional dependencies from `requirements-azure-data-platform.txt`; core and unrelated providers remain importable without them. Its closed configuration requires Azure Public Cloud, a tenant/subscription, and explicitly named ADF, Synapse, or ADLS resources. See the [architecture](../architecture/azure-data-platform-collector.md), [operations](../operations/azure-data-platform-collector.md), and [RBAC](../security/azure-data-platform-collector-rbac.md) guides.

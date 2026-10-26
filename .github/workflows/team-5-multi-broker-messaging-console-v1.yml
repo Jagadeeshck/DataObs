@@ -47,7 +47,7 @@ jobs:
           python scripts/check_generated_artifacts.py
           python scripts/check_docs_links.py
           python scripts/validate_capability_ledger.py
-          python scripts/check_migration_immutability.py --base-ref "${{ github.event.pull_request.base.sha }}"
+          python scripts/check_migration_immutability.py --base-ref "$(python scripts/resolve_ci_base.py)"
           python scripts/release/current_terminal_migration.py
       - name: Secret-field scan
         run: '! rg -i "(sasl_password|aws_secret_access_key|client_secret|rabbitmq_password|pulsar_token|message_payload)" src/messaging src/features/streams/MessagingOverview.tsx'

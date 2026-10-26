@@ -11,3 +11,7 @@ No Team 4 collection code is changed. Team 1 consumes bounded observation envelo
 | Pulsar | no authoritative collector | none | none | Team 4 | Team 1 contract only | none | truthful not-implemented status |
 
 Team 4 now emits adapter-compatible resource envelopes and native metric evidence. The current Team 1 runtime persists only resource families; metric/backlog/retention/DLQ projection remains a Team 1 handoff gap.
+
+Google Pub/Sub collection is implemented as Team 4 `gcp` v1 with explicit projects, read-only admin APIs, fixed
+Monitoring allowlists, privacy-safe delivery configuration and visible DLQ topology. Team 1 remains authoritative for
+canonical IDs and all projections; metric/backlog/retention/DLQ projection gaps are deliberately unchanged.

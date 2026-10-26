@@ -6,6 +6,10 @@ Minimal tenant-aware control plane for source, integration, collector, scanner, 
 
 The explicit registry includes BigQuery warehouse collector v1. Its official Google dependencies are optional and lazy; configuration requires explicit projects/locations. See `docs/integrations/bigquery.md`.
 
+The independent `gcp` v1 provider adds read-only Google Pub/Sub topic/subscription inventory and allowlisted Cloud
+Monitoring evidence for explicit projects. Optional dependencies are in `requirements-gcp-pubsub.txt`; no payload or
+message operation is exposed. See `docs/operations/team-4-google-pubsub-messaging-collector.md`.
+
 Azure data platform collector v1 is also registered explicitly. Azure SDK dependencies are optional and lazy, and only configured ADF factories, Synapse workspaces, and ADLS Gen2 accounts are accessed. See `docs/architecture/azure-data-platform-collector.md`.
 # Provider composition
 

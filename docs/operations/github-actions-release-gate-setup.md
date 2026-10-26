@@ -14,10 +14,8 @@ push the repair or trigger exact-recovery-SHA canaries. Do not confuse that loca
    `main`; require a pull request and require branches to be up to date before merging.
 3. Run the bounded hosted canary set, beginning with **Team delivery foundation**. Select emitted checks rather than
    typing speculative names; make checks required only after their final stable names and behavior are confirmed.
-4. After the renamed jobs execute once, select the emitted contexts for `Team delivery foundation` jobs
-   `foundation-backend / validate` and `foundation-console / validate` in the GitHub UI. Confirm both are emitted by
-   `.github/workflows/team-delivery-foundation.yml`; do not type speculative names or retain ambiguous generic
-   `backend / validate` / `console / validate` contexts.
+4. Require exactly `Team delivery foundation / backend` and `Team delivery foundation / console`. Confirm both are
+   emitted by `.github/workflows/team-delivery-foundation.yml` before enforcing the rule.
 5. Do not require Playwright from this lightweight integration gate. Browser and accessibility certification belongs
    to workflows that genuinely execute those suites. Never label an executed failure as `not_run`.
 6. Keep workflow permissions read-only by default, prevent bypass except for documented emergency administrators, and

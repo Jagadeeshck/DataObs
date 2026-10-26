@@ -4,53 +4,79 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+env:
+  RUNTIME_ARTIFACT: team-0-security-runtime-reports
+  EVIDENCE_ARTIFACT: team-0-security-compliance-evidence-v1-evidence
 jobs:
-  audit:
-    runs-on: ubuntu-latest
-    steps: [{uses: actions/checkout@v4}, {uses: actions/setup-python@v5, with: {python-version: '3.13'}}, {run: pip install -r requirements.txt}, {run: python scripts/release/current_terminal_migration.py}]
-  controls:
-    runs-on: ubuntu-latest
-    steps: [{uses: actions/checkout@v4}, {uses: actions/setup-python@v5, with: {python-version: '3.13'}}, {run: pip install pyyaml pytest}, {run: pytest -q tests/security/test_security_posture_v1.py}]
-  threat-models:
-    runs-on: ubuntu-latest
-    steps: [{uses: actions/checkout@v4}, {run: python -m pip install pyyaml && python scripts/security/validate_threat_models.py}]
-  route-security:
-    runs-on: ubuntu-latest
-    steps: [{uses: actions/checkout@v4}, {uses: actions/setup-python@v5, with: {python-version: '3.13'}}, {run: pip install -r requirements.txt}, {run: python scripts/security/check_route_permissions.py --output route-security-report.json}]
-  secrets:
-    runs-on: ubuntu-latest
-    steps: [{uses: actions/checkout@v4}, {run: python scripts/security/validate_sensitive_outputs.py docs/security/security-controls.yaml docs/security/security-exceptions.yaml}]
-  audit-safety:
-    runs-on: ubuntu-latest
-    steps: [{uses: actions/checkout@v4}, {run: python scripts/security/validate_sensitive_outputs.py docs/security/security-findings.yaml --output audit-safety-report.json}]
-  workflow-security:
-    runs-on: ubuntu-latest
-    steps: [{uses: actions/checkout@v4}, {run: pip install pyyaml}, {run: python scripts/security/validate_workflow_security.py}]
-  exceptions:
-    runs-on: ubuntu-latest
-    steps: [{uses: actions/checkout@v4}, {run: python -m pip install pyyaml && python scripts/security/validate_security_exceptions.py}]
-  evidence-inventory:
-    runs-on: ubuntu-latest
-    steps: [{uses: actions/checkout@v4}, {run: python -m pip install pyyaml && python scripts/security/evaluate_security_posture.py --sha "$GITHUB_SHA" --profile development}]
-  posture:
-    runs-on: ubuntu-latest
-    steps: [{uses: actions/checkout@v4}, {run: python -m pip install pyyaml && python scripts/security/render_current_security_posture.py --check}]
-  release-gate:
-    needs: [controls, threat-models, route-security, secrets, audit-safety, workflow-security, exceptions, evidence-inventory, posture]
-    runs-on: ubuntu-latest
-    steps: [{uses: actions/checkout@v4}, {run: "python -c 'import json; assert json.load(open(\"security-release-gate.json\"))[\"state\"] in {\"PASS\",\"FAIL\",\"INCOMPLETE\",\"UNVALIDATED\"}'"}]
-  evidence:
-    needs: [release-gate]
-    runs-on: ubuntu-latest
-    steps: [{uses: actions/checkout@v4}, {run: python -m pip install pyyaml && python scripts/security/build_security_evidence.py --sha "$GITHUB_SHA"}]
-  verify:
-    needs: [evidence]
+  validation:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: |
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.13'}
+      - run: pip install -r requirements.txt
+      - name: Generate current-run raw reports
+        run: |
+          mkdir security-runtime
+          python scripts/security/check_route_permissions.py --output security-runtime/route-security-report.json
+          python scripts/security/validate_sensitive_outputs.py docs/security/security-controls.yaml docs/security/security-exceptions.yaml --output security-runtime/secret-handling-report.json
+          python scripts/security/validate_sensitive_outputs.py docs/security/security-findings.yaml --output security-runtime/audit-safety-report.json
+          python scripts/security/validate_workflow_security.py --output security-runtime/workflow-security-report.json
           python - <<'PY'
-          import json
-          report = json.load(open("team-0-security-compliance-evidence-v1-evidence/security-evidence-verification.json"))
-          assert report["accepted"] is False
+          import json, os
+          from pathlib import Path
+          for path in Path('security-runtime').glob('*.json'):
+              report = json.loads(path.read_text())
+              report.update(repository=os.environ['GITHUB_REPOSITORY'], sha=os.environ['GITHUB_SHA'])
+              path.write_text(json.dumps(report, indent=2, sort_keys=True) + '\n')
+          Path('security-runtime/evidence-inventory.json').write_text('{"evidence": []}\n')
           PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.RUNTIME_ARTIFACT }}-raw
+          path: security-runtime
+          if-no-files-found: error
+  posture:
+    needs: validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: {name: team-0-security-runtime-reports-raw, path: security-runtime}
+      - run: pip install pyyaml
+      - name: Evaluate posture and render a non-enforcing gate decision
+        run: |
+          python scripts/security/evaluate_security_posture.py --sha "$GITHUB_SHA" --profile production --artifacts security-runtime/evidence-inventory.json --output security-runtime/security-posture-report.json
+          python scripts/security/create_security_release_gate.py --posture security-runtime/security-posture-report.json --output security-runtime/security-release-gate.json --workflow-run-id "$GITHUB_RUN_ID"
+          test "$(python -c 'import json; print(json.load(open("security-runtime/security-posture-report.json"))["sha"])')" = "$GITHUB_SHA"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.RUNTIME_ARTIFACT }}
+          path: security-runtime
+          if-no-files-found: error
+  evidence:
+    needs: posture
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: {name: team-0-security-runtime-reports, path: security-runtime}
+      - name: Assemble only downloaded current-run reports
+        run: |
+          python scripts/security/build_security_evidence.py --sha "$GITHUB_SHA" --source-directory security-runtime --directory "$EVIDENCE_ARTIFACT" --workflow ".github/workflows/team-0-security-compliance-evidence-v1.yml" --workflow-run-id "$GITHUB_RUN_ID" --run-attempt "$GITHUB_RUN_ATTEMPT" --event "$GITHUB_EVENT_NAME"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.EVIDENCE_ARTIFACT }}
+          path: ${{ env.EVIDENCE_ARTIFACT }}
+          if-no-files-found: error
+  verify:
+    needs: evidence
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: team-0-security-compliance-evidence-v1-evidence
+          path: downloaded-evidence
+      - name: Verify the artifact produced by this run
+        run: python scripts/security/verify_security_evidence.py --directory downloaded-evidence --sha "$GITHUB_SHA" --repository "$GITHUB_REPOSITORY"

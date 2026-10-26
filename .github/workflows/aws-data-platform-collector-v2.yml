@@ -11,15 +11,18 @@ jobs:
         ports: ['9200:9200']
     steps:
       - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
       - uses: actions/setup-python@v5
         with: {python-version: '3.11'}
       - run: pip install -r requirements.txt pytest ruff black mypy types-PyYAML
+      - name: Wait for Elasticsearch readiness
+        run: python scripts/ci/wait_for_elasticsearch.py --url http://localhost:9200 --timeout 120
       - run: python -m compileall packages/collectors services/collection_manager integrations/aws
       - run: ruff check packages/collectors services/collection_manager integrations/aws tests/integrations
       - run: black --check packages/collectors services/collection_manager integrations/aws tests/integrations
       - run: mypy packages/collectors services/collection_manager integrations/aws
       - run: pytest -q tests/integrations
-      - run: python scripts/check_migration_immutability.py --base-ref ${{ github.event.pull_request.base.sha || github.event.before }}
+      - run: python scripts/check_migration_immutability.py --base-ref "$(python scripts/resolve_ci_base.py)"
       - run: python scripts/validate_capability_ledger.py
       - run: python scripts/check_docs_links.py
       - run: python scripts/check_generated_artifacts.py

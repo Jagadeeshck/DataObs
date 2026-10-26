@@ -157,8 +157,10 @@ def canonical_event_id(payload: Mapping[str, Any]) -> str:
         if not isinstance(supplied, str) or not supplied.strip():
             raise OpenLineageValidationError("eventId must be a non-empty string")
         return stable_id("ol_evt", supplied.strip())
-    run: Mapping[str, Any] = payload.get("run") if isinstance(payload.get("run"), Mapping) else {}
-    job: Mapping[str, Any] = payload.get("job") if isinstance(payload.get("job"), Mapping) else {}
+    raw_run = payload.get("run")
+    raw_job = payload.get("job")
+    run: Mapping[str, Any] = raw_run if isinstance(raw_run, Mapping) else {}
+    job: Mapping[str, Any] = raw_job if isinstance(raw_job, Mapping) else {}
     return stable_id(
         "ol_evt",
         payload.get("eventType"),

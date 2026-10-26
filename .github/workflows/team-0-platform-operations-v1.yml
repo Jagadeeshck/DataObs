@@ -12,13 +12,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with: {ref: "${{ inputs.target_sha }}"}
+        with: {ref: "${{ inputs.target_sha }}", fetch-depth: 0}
       - uses: actions/setup-python@v5
         with: {python-version: '3.12'}
       - run: pip install -r requirements.txt
       - run: python scripts/operations/validate_platform_contracts.py
       - run: pytest -q tests/platform_operations
-      - run: python scripts/check_migration_immutability.py
+      - run: python scripts/check_migration_immutability.py --base-ref "$(python scripts/resolve_ci_base.py)"
       - run: python scripts/check_team_boundaries.py
       - run: python scripts/check_merge_conflict_markers.py
       - run: helm lint helm/dataobs

@@ -21,6 +21,7 @@ jobs:
         options: --health-cmd="curl -f http://localhost:9200/_cluster/health" --health-interval=10s --health-timeout=5s --health-retries=20
     steps:
       - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
       - uses: actions/setup-python@v5
         with: {python-version: "3.12"}
       - uses: pnpm/action-setup@v4
@@ -28,6 +29,8 @@ jobs:
       - uses: actions/setup-node@v4
         with: {node-version: "22", cache: pnpm, cache-dependency-path: ui/dataobs-console/pnpm-lock.yaml}
       - run: pip install -r requirements.txt
+      - name: Wait for Elasticsearch readiness
+        run: python scripts/ci/wait_for_elasticsearch.py --url http://localhost:9200 --timeout 120
       - name: Repository guards
         run: |
           python scripts/check_merge_conflict_markers.py
@@ -35,7 +38,7 @@ jobs:
           python scripts/check_generated_artifacts.py
           python scripts/check_docs_links.py
           python scripts/validate_capability_ledger.py
-          python scripts/check_migration_immutability.py
+          python scripts/check_migration_immutability.py --base-ref "$(python scripts/resolve_ci_base.py)"
       - name: Safe artifact, schema, tenant, restart and Team 2 tests
         run: python -m pytest tests/test_dbt_intelligence_v1.py --junitxml=dbt-junit.xml
       - name: Elasticsearch 9.4.2 migration repeat apply

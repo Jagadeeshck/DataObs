@@ -23,7 +23,7 @@ jobs:
       - uses: actions/setup-python@v5
         with: {python-version: '3.11'}
       - run: pip install -r requirements.txt
-      - run: python scripts/check_migration_immutability.py --base-ref origin/main
+      - run: python scripts/check_migration_immutability.py --base-ref "$(python scripts/resolve_ci_base.py)"
       - run: pip install pytest ruff black mypy
       - run: python scripts/check_generated_artifacts.py
       - run: python scripts/check_docs_links.py
@@ -75,6 +75,8 @@ jobs:
         with: {python-version: '3.11'}
       - run: pip install -r requirements.txt
       - run: pip install pytest
+      - name: Wait for Elasticsearch readiness
+        run: python scripts/ci/wait_for_elasticsearch.py --url http://localhost:9200 --timeout 120
       - run: ./bin/dataobs elastic apply
         env: {ELASTICSEARCH_URL: 'http://127.0.0.1:9200'}
       - run: mkdir -p artifacts/data-product-reconciliation/elasticsearch
@@ -107,6 +109,8 @@ jobs:
         with: {python-version: '3.11'}
       - run: pip install pytest
       - run: pip install -r requirements.txt
+      - name: Wait for Elasticsearch readiness
+        run: python scripts/ci/wait_for_elasticsearch.py --url http://localhost:9200 --timeout 120
       - run: ./bin/dataobs elastic apply
         env: {ELASTICSEARCH_URL: 'http://127.0.0.1:9200'}
       - run: mkdir -p artifacts/data-product-reconciliation/security

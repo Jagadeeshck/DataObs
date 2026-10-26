@@ -5,7 +5,7 @@ import logging
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, cast
 from urllib.parse import urlsplit
 
 import yaml
@@ -208,7 +208,7 @@ def load_settings() -> AppSettings:
 
     settings = AppSettings(
         runtime=RuntimeSettings(
-            env=env,
+            env=cast(EnvironmentMode, env),
             config_path=str(config_path) if config_path.exists() else None,
             allow_memory_store_in_production=_to_bool(os.getenv("DATAOBS_ALLOW_MEMORY_STORE_IN_PRODUCTION", False)),
         ),
@@ -243,7 +243,7 @@ def load_settings() -> AppSettings:
                 default=False,
             ),
             provider=str(os.getenv("DATAOBS_AUTH_PROVIDER", _deep_get(config, "auth", "provider", default="local"))),
-            authorization_source=str(os.getenv("DATAOBS_AUTHORIZATION_SOURCE", "claims")),
+            authorization_source=cast(AuthorizationSource, str(os.getenv("DATAOBS_AUTHORIZATION_SOURCE", "claims"))),
             bootstrap_enabled=_to_bool(os.getenv("DATAOBS_SECURITY_BOOTSTRAP_ENABLED", "true"), True),
             oidc=OIDCSettings(
                 issuer=str(

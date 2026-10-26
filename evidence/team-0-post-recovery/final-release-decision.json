@@ -1,0 +1,20 @@
+{
+  "candidate_version": "0.2.0",
+  "failed_checks": [
+    "capability_artifact_inventory",
+    "deployment_certification_result",
+    "independent_verification_result",
+    "recovery_result",
+    "security_certification_result",
+    "security_release_gate",
+    "tenant_isolation_result",
+    "upgrade_rollback_result",
+    "vulnerability_policy_result"
+  ],
+  "generated_at": "2026-10-12T18:24:34.968492+00:00",
+  "go": false,
+  "schema_version": "1.0",
+  "source": "machine-evidence",
+  "state": "NO_GO",
+  "target_sha": "2281a64034b915f4f7dd556cd582f27e30660a1c"
+}

@@ -9,6 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
       - uses: actions/setup-python@v5
         with: {python-version: '3.12'}
       - run: pip install -r requirements.txt
@@ -19,7 +20,7 @@ jobs:
           python scripts/check_generated_artifacts.py
           python scripts/check_docs_links.py
           python scripts/validate_capability_ledger.py
-          python scripts/check_migration_immutability.py --base-ref HEAD^ || python scripts/check_migration_immutability.py
+          python scripts/check_migration_immutability.py --base-ref "$(python scripts/resolve_ci_base.py)"
           pytest -q tests/test_team2_migration_reconciliation.py tests/lineage_intelligence tests/data_contracts tests/monitoring/test_adaptive_anomaly_v1.py
       - name: Exact-commit evidence manifest
         run: |

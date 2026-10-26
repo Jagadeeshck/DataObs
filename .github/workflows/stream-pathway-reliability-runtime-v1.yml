@@ -21,13 +21,15 @@ jobs:
       - uses: actions/setup-node@v4
         with: {node-version: "22"}
       - run: pip install -r requirements.txt
+      - name: Wait for Elasticsearch readiness
+        run: python scripts/ci/wait_for_elasticsearch.py --url http://localhost:9200 --timeout 120
       - name: Boundaries, generated files, docs, ledger, migrations
         run: |
           python scripts/check_team_boundaries.py
           python scripts/check_generated_artifacts.py
           python scripts/check_docs_links.py
           python scripts/validate_capability_ledger.py
-          python scripts/check_migration_immutability.py --base-ref origin/main
+          python scripts/check_migration_immutability.py --base-ref "$(python scripts/resolve_ci_base.py)"
       - name: Elasticsearch migration and deterministic runtime tests
         env: {ELASTICSEARCH_URL: http://localhost:9200}
         run: |

@@ -1,5 +1,7 @@
-"""Verify that required hosted workflows certified one exact commit.
+"""Legacy, non-authoritative hosted-workflow compatibility verifier.
 
+Production publication MUST use ``verify_release_authorization.py`` and the
+Beta manifest; this older three-workflow query is retained for tooling only.
 The verifier deliberately treats reruns as ambiguous.  A release operator must
 resolve multiple successful candidates rather than allowing list ordering to
 silently select evidence.

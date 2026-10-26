@@ -14,9 +14,12 @@ jobs:
         ports: ['9200:9200']
     steps:
       - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
       - uses: actions/setup-python@v5
         with: {python-version: '3.11'}
       - run: pip install -r requirements.txt pytest ruff black mypy pip-audit types-PyYAML
+      - name: Wait for Elasticsearch readiness
+        run: python scripts/ci/wait_for_elasticsearch.py --url http://localhost:9200 --timeout 120
       - name: Compile, lint, format, and type check
         run: |
           python -m compileall integrations/aws packages/streaming services/collection_manager services/stream_observer
@@ -36,7 +39,7 @@ jobs:
         run: |
           python scripts/release/current_terminal_migration.py
           python -m packages.elastic_store.cli doctor
-          python scripts/check_migration_immutability.py --base-ref "${{ github.event.pull_request.base.sha || github.event.before || 'HEAD^' }}"
+          python scripts/check_migration_immutability.py --base-ref "$(python scripts/resolve_ci_base.py)"
           python scripts/release/check_release_metadata.py
       - name: Ledgers, generated artifacts, docs, and dependencies
         run: |

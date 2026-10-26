@@ -18,13 +18,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
       - run: pip install -r requirements.txt
       - name: Repository guards and domain tests
         run: |
-          python scripts/check_migration_immutability.py --base-ref "${{ github.event.pull_request.base.sha || github.event.before }}"
+          python scripts/check_migration_immutability.py --base-ref "$(python scripts/resolve_ci_base.py)"
           ruff check packages/domain_model/asset_trust.py services/asset_trust tests/asset_trust
           pytest --junitxml=asset-trust-junit.xml tests/asset_trust
       - name: Retain unvalidated evidence

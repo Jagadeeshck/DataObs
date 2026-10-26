@@ -21,8 +21,9 @@ def test_stable_integration_gate_contract():
     gate = yaml.safe_load(gate_path.read_text())
     triggers = gate.get("on", gate.get(True, {}))
     assert "pull_request" in triggers
-    assert gate["jobs"]["backend"]["uses"].endswith("reusable-backend-validation.yml")
-    assert gate["jobs"]["console"]["uses"].endswith("reusable-console-validation.yml")
+    assert gate["jobs"]["foundation-backend"]["uses"].endswith("reusable-backend-validation.yml")
+    assert gate["jobs"]["foundation-console"]["uses"].endswith("reusable-console-validation.yml")
+    assert "backend" not in gate["jobs"] and "console" not in gate["jobs"]
 
     backend = (ROOT / ".github/workflows/reusable-backend-validation.yml").read_text()
     for check in (

@@ -1,0 +1,13 @@
+{
+  "chart_version": "0.2.0",
+  "dataobs_version": "0.2.0",
+  "parents": [
+    "1ac6f84b654b31161c5f90fa9840f369e14152a9",
+    "109732e2ceb0ea8dd71b268ca0b14c171b5ccd11"
+  ],
+  "repository": "Jagadeeshck/DataObs",
+  "selected_at": "2026-10-12T18:24:34.000890+00:00",
+  "sha": "2281a64034b915f4f7dd556cd582f27e30660a1c",
+  "terminal_migration": "0033_team1_stream_schema_intelligence_runtime",
+  "tree": "a54609a7e449ae7c03341630f2445a94c008aa1c"
+}

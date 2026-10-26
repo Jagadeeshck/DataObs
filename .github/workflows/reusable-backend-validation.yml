@@ -12,6 +12,7 @@ on:
       evidence-profile: {type: string, default: foundation}
       tenant-isolation-test-path: {type: string, default: ''}
       timeout-minutes: {type: number, default: 30}
+      checkout-ref: {type: string, default: ''}
 permissions: {contents: read}
 jobs:
   validate:
@@ -31,7 +32,7 @@ jobs:
         ports: ['9092:9092']
     steps:
       - uses: actions/checkout@v4
-        with: {fetch-depth: 0}
+        with: {fetch-depth: 0, ref: '${{ inputs.checkout-ref }}'}
       - uses: actions/setup-python@v5
         with: {python-version: '${{ inputs.python-version }}', cache: pip}
       - name: Install canonical backend CI dependencies

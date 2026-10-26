@@ -8,6 +8,7 @@ on:
       artifact-name: {type: string, default: console-validation-evidence}
       workflow-file: {type: string, default: reusable-console-validation.yml}
       timeout-minutes: {type: number, default: 30}
+      checkout-ref: {type: string, default: ''}
 permissions: {contents: read}
 jobs:
   validate:
@@ -16,6 +17,7 @@ jobs:
     defaults: {run: {working-directory: '${{ inputs.working-directory }}'}}
     steps:
       - uses: actions/checkout@v4
+        with: {ref: '${{ inputs.checkout-ref }}'}
       - uses: pnpm/action-setup@v4
         with: {version: 10.28.1}
       - uses: actions/setup-node@v4
@@ -37,7 +39,7 @@ jobs:
           printf '{"commit_sha":"%s","playwright_executed":%s,"accessibility_executed":%s}\n' "$(git rev-parse HEAD)" '${{ inputs.run-playwright }}' '${{ inputs.run-accessibility }}' > ../../evidence/console.json
           cd ../..
           python scripts/certification/write_evidence_envelope.py --output evidence/evidence.json \
-            --repository "$GITHUB_REPOSITORY" --producer-sha "$GITHUB_SHA" --workflow-file '${{ inputs.workflow-file }}' \
+            --repository "$GITHUB_REPOSITORY" --producer-sha "$(git rev-parse HEAD)" --workflow-file '${{ inputs.workflow-file }}' \
             --workflow-run-id "$GITHUB_RUN_ID" --workflow-run-attempt "$GITHUB_RUN_ATTEMPT" --event "$GITHUB_EVENT_NAME" \
             --status pass --test-result typecheck=pass --test-result build=pass \
             --test-result browser=${{ inputs.run-playwright && 'pass' || 'not_run' }} \

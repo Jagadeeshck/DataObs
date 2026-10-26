@@ -1,0 +1,63 @@
+{
+  "artifact": "team-0-post-recovery-release-rebaseline-v1-evidence",
+  "candidate_sha": "2281a64034b915f4f7dd556cd582f27e30660a1c",
+  "files": [
+    {
+      "path": "README.md",
+      "sha256": "6f8a34028ad123bde8f553659ce323f8ba159b429eed28dd89791d569da24cc3"
+    },
+    {
+      "path": "audit.md",
+      "sha256": "6a3c77cd1bff30c53109385628022d881f66c7cc703ccfac4e92fb847c709989"
+    },
+    {
+      "path": "blockers.json",
+      "sha256": "f0346e2bee8cb6ddfa656e8173b3f01a1af572e1715c4713adc20a5fba439ece"
+    },
+    {
+      "path": "candidate.json",
+      "sha256": "4cfb3a8db840f24b9ef882ae40ba270001530e3e4625d96ac16e3868ab5b3b2d"
+    },
+    {
+      "path": "evidence-index.json",
+      "sha256": "08468ec600c00c88ca85a1ea21163c1ec33f26220dfca001fd80a3a1f0f0cf66"
+    },
+    {
+      "path": "evidence-verification.json",
+      "sha256": "4960ea2954560cf7fd5c8daf87a4f07a7683c73618dda91eeeba47acdcf74101"
+    },
+    {
+      "path": "final-release-decision.json",
+      "sha256": "3d0eb5ab621242926e7d5ef41d38f465a9c8e05b8bfc54421bbbd2d220b55878"
+    },
+    {
+      "path": "migration-report.json",
+      "sha256": "5baacad1bde1de9e89c5881de85b3609576fa0d723d50ea7cc07449f8742f7d8"
+    },
+    {
+      "path": "release-authority-input.json",
+      "sha256": "bcbd9ba35802a6749833ffb77d5137a58cdc393c0a071c92a4ddf60b6d6e09c9"
+    },
+    {
+      "path": "release-gates.json",
+      "sha256": "0cfb291df4c03dfe72ce4b4f1de3f9849958c8a0005b982953f43d1e1b4c354f"
+    },
+    {
+      "path": "security-posture-report.json",
+      "sha256": "3db71cb6973576bd5a8f6cbd7270e0df2bcb4ace0251e886841254ec7b5534b6"
+    },
+    {
+      "path": "security-release-gate.json",
+      "sha256": "8e0b9970c03ba517439c2dce07e5823fd08c0a4fbf684975ff81e60d1b3e8286"
+    },
+    {
+      "path": "supported-platform-evaluation.json",
+      "sha256": "51a432b7556b8f0903cd9bfdf7ac38b40bb48a8da644e2349fc2d549fc998d27"
+    }
+  ],
+  "hosted_product_certified": false,
+  "independently_verified": false,
+  "release_decision": "NO_GO",
+  "repository": "Jagadeeshck/DataObs",
+  "schema_version": "1.0"
+}

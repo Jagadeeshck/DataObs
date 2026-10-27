@@ -22,7 +22,7 @@ jobs:
       - run: black --check packages/collectors services/collection_manager integrations/aws tests/integrations
       - run: mypy packages/collectors services/collection_manager integrations/aws
       - run: pytest -q tests/integrations
-      - run: python scripts/check_migration_immutability.py --base-ref ${{ github.event.pull_request.base.sha || github.event.before }}
+      - run: python scripts/check_migration_immutability.py --base-ref "$(python scripts/resolve_ci_base.py)"
       - run: python scripts/validate_capability_ledger.py
       - run: python scripts/check_docs_links.py
       - run: python scripts/check_generated_artifacts.py

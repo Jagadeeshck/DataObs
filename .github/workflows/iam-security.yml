@@ -17,7 +17,7 @@ jobs:
       - run: pip install -r requirements.txt -r requirements-ci.txt
       - run: python -m compileall -q src packages services integrations tests
       - run: mkdir -p artifacts && python -m pytest tests/security -q --junitxml=artifacts/iam-security.xml
-      - run: python scripts/check_migration_immutability.py --base-ref HEAD^
+      - run: python scripts/check_migration_immutability.py --base-ref "$(python scripts/resolve_ci_base.py)"
       - run: docker compose -f tests/security/docker-compose.iam.yml config > artifacts/iam-compose.txt
       - name: Record redaction-safe evidence metadata
         run: |

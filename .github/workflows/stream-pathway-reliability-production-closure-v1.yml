@@ -18,7 +18,7 @@ jobs:
       - run: python scripts/check_docs_links.py
       - run: python scripts/validate_capability_ledger.py
       - run: python scripts/release/check_release_metadata.py
-      - run: python scripts/check_migration_immutability.py --base-ref origin/main
+      - run: python scripts/check_migration_immutability.py --base-ref "$(python scripts/resolve_ci_base.py)"
       - run: python scripts/security/check_route_permissions.py
       - run: ruff check . && black --check .
       - run: python -m pytest tests/stream_360 tests/pathways tests/security -q

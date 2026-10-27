@@ -34,7 +34,7 @@ jobs:
       - name: Team 1 privacy and repository checks
         run: |
           python scripts/check_merge_conflict_markers.py
-          python scripts/check_migration_immutability.py
+          python scripts/check_migration_immutability.py --base-ref "$(python scripts/resolve_ci_base.py)"
           python scripts/check_docs_links.py
       - name: Team 1 evidence manifest
         if: always()

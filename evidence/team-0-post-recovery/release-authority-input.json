@@ -1,0 +1,100 @@
+{
+  "candidate_version": "0.2.0",
+  "capability_artifact_inventory": [
+    {
+      "capability": "accessibility",
+      "mandatory": true,
+      "status": "pending"
+    },
+    {
+      "capability": "backup",
+      "mandatory": true,
+      "status": "pending"
+    },
+    {
+      "capability": "browser",
+      "mandatory": true,
+      "status": "pending"
+    },
+    {
+      "capability": "dr",
+      "mandatory": true,
+      "status": "pending"
+    },
+    {
+      "capability": "elasticsearch",
+      "mandatory": true,
+      "status": "pending"
+    },
+    {
+      "capability": "foundation-backend",
+      "mandatory": true,
+      "status": "pending"
+    },
+    {
+      "capability": "foundation-console",
+      "mandatory": true,
+      "status": "pending"
+    },
+    {
+      "capability": "hosted-oidc",
+      "mandatory": true,
+      "status": "pending"
+    },
+    {
+      "capability": "hosted-tenant-isolation",
+      "mandatory": true,
+      "status": "pending"
+    },
+    {
+      "capability": "kafka-stream-runtime",
+      "mandatory": true,
+      "status": "pending"
+    },
+    {
+      "capability": "kubernetes",
+      "mandatory": true,
+      "status": "pending"
+    },
+    {
+      "capability": "licensing",
+      "mandatory": true,
+      "status": "pending"
+    },
+    {
+      "capability": "provenance",
+      "mandatory": true,
+      "status": "pending"
+    },
+    {
+      "capability": "restore",
+      "mandatory": true,
+      "status": "pending"
+    },
+    {
+      "capability": "sbom",
+      "mandatory": true,
+      "status": "pending"
+    },
+    {
+      "capability": "signature",
+      "mandatory": true,
+      "status": "pending"
+    },
+    {
+      "capability": "vulnerability",
+      "mandatory": true,
+      "status": "pending"
+    }
+  ],
+  "deployment_certification_result": "pending",
+  "independent_verification_result": "pending",
+  "publication_status": "not_published",
+  "recovery_result": "pending",
+  "redaction_status": "pass",
+  "security_certification_result": "pending",
+  "target_sha": "2281a64034b915f4f7dd556cd582f27e30660a1c",
+  "tenant_isolation_result": "pending",
+  "upgrade_rollback_result": "pending",
+  "vulnerability_policy_result": "pending"
+}

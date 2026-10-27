@@ -33,6 +33,7 @@ spec:
         resources: {{ toYaml .Values.otelCollector.resources | nindent 10 }}
         volumeMounts: [{name: config, mountPath: /etc/otel, readOnly: true}]
         readinessProbe: {httpGet: {path: /, port: health}, periodSeconds: 10}
+        startupProbe: {httpGet: {path: /, port: health}, periodSeconds: 5, failureThreshold: 30}
         livenessProbe: {httpGet: {path: /, port: health}, periodSeconds: 20}
       volumes: [{name: config, configMap: {name: {{ include "dataobs.fullname" . }}-otel-config}}]
 ---

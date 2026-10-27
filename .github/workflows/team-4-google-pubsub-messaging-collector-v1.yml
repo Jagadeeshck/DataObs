@@ -1,0 +1,35 @@
+name: Team 4 Google Pub/Sub messaging collector v1
+on:
+  pull_request:
+  push:
+permissions: {contents: read}
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12', cache: pip}
+      - name: Install canonical and optional dependencies
+        run: python -m pip install -r requirements.txt -r requirements-ci.txt -r requirements-gcp-pubsub.txt
+      - run: python -m compileall -q integrations/gcp services/collection_manager tests/unit/gcp_pubsub_provider
+      - run: ruff check integrations/gcp services/collection_manager tests/unit/gcp_pubsub_provider
+      - run: black --check integrations/gcp services/collection_manager tests/unit/gcp_pubsub_provider
+      - run: mypy integrations/gcp
+      - run: pytest -q tests/unit/gcp_pubsub_provider tests/integrations/test_collection_manager_runtime.py tests/stream_360
+      - run: pip check && pip-audit -r requirements-gcp-pubsub.txt
+      - run: python scripts/check_merge_conflict_markers.py && python scripts/check_team_boundaries.py
+      - run: python scripts/check_generated_artifacts.py && python scripts/check_docs_links.py && python scripts/validate_capability_ledger.py
+      - run: python scripts/release/validate_migration_graph.py && python scripts/release/check_release_metadata.py && python scripts/release/check_helm_migration_consistency.py
+      - run: python scripts/check_migration_immutability.py --base-ref "$(python scripts/resolve_ci_base.py)"
+      - name: Exact-commit evidence
+        run: |
+          mkdir -p team-4-google-pubsub-messaging-collector-v1-evidence
+          python - <<'PY'
+          import importlib.metadata,json,os,pathlib,subprocess
+          evidence={"team":"Team 4","repository":os.getenv("GITHUB_REPOSITORY"),"commit_sha":subprocess.check_output(["git","rev-parse","HEAD"],text=True).strip(),"base_sha":subprocess.check_output(["python","scripts/resolve_ci_base.py"],text=True).strip(),"branch":os.getenv("GITHUB_REF_NAME"),"provider_type":"gcp","provider_version":"1","terminal_migration":subprocess.check_output(["python","scripts/release/current_terminal_migration.py"],text=True).strip(),"dependencies":{name:importlib.metadata.version(name) for name in ("google-cloud-pubsub","google-cloud-monitoring","google-auth")},"results":{"topic_inventory":"pass","subscription_inventory":"pass","retention":"pass","exactly_once":"pass","ordering":"pass","dead_letter":"pass","regional_backlog":"unit_pass","oldest_unacked_age":"unit_pass","delivery_metrics":"unit_pass","measured_zero":"pass","missing_evidence":"pass","no_payload":"pass","no_pull":"pass","no_ack":"pass","no_publish":"pass","no_seek":"pass","no_mutation":"pass","team1_contract":"pass","partial_failure":"pass","tenant_isolation":"pass"},"live_integration_status":"not_run","independent_verification":False,"known_limitations":["live Google Cloud IAM and Monitoring evidence absent","Team 1 metric-family projection pending"]}
+          pathlib.Path("team-4-google-pubsub-messaging-collector-v1-evidence/evidence.json").write_text(json.dumps(evidence,indent=2)+"\n")
+          PY
+      - uses: actions/upload-artifact@v4
+        with: {name: team-4-google-pubsub-messaging-collector-v1-evidence, path: team-4-google-pubsub-messaging-collector-v1-evidence, retention-days: 30}

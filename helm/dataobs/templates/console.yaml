@@ -15,7 +15,9 @@ spec:
       labels: {{- include "dataobs.selector" (dict "Release" .Release "Chart" .Chart "Values" .Values "component" "console") | nindent 8 }}
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/shared-config.yaml") . | sha256sum }}
-{{ toYaml .Values.console.podAnnotations | indent 8 }}
+{{- with .Values.console.podAnnotations }}
+{{ toYaml . | indent 8 }}
+{{- end }}
     spec:
       serviceAccountName: {{ include "dataobs.fullname" . }}-console
       automountServiceAccountToken: false
@@ -30,11 +32,15 @@ spec:
             - {name: http, containerPort: 8080, protocol: TCP}
           readinessProbe:
 {{ toYaml .Values.console.readinessProbe | indent 12 }}
+          startupProbe:
+{{ toYaml .Values.console.readinessProbe | indent 12 }}
           livenessProbe:
 {{ toYaml .Values.console.livenessProbe | indent 12 }}
           env:
 {{ include "dataobs.commonEnv" . | indent 12 }}
-{{ toYaml .Values.console.env | indent 12 }}
+{{- with .Values.console.env }}
+{{ toYaml . | indent 12 }}
+{{- end }}
           envFrom: {{ toYaml .Values.console.envFrom | nindent 12 }}
           securityContext: {{ toYaml .Values.global.securityContext | nindent 12 }}
           resources: {{ toYaml .Values.console.resources | nindent 12 }}

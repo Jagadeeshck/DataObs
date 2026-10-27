@@ -16,9 +16,9 @@ rollback_policy: rollback_not_applicable_first_release
 backup_restore_profile: "manifest-scoped Elasticsearch snapshot/restore; hosted evidence pending"
 dr_evidence_class: unsupported
 security_profile: "TLS, external OIDC, RBAC and tenant enforcement; hosted evidence pending"
-exact_evidence_sha: null
-candidate_source_sha: d4f511ebb331b74528426b91ce69bd24f8993eac
-certification_workflow_run_ids: []
+exact_evidence_sha: 2281a64034b915f4f7dd556cd582f27e30660a1c
+candidate_source_sha: 2281a64034b915f4f7dd556cd582f27e30660a1c
+certification_workflow_run_ids: [38270882312, 38270882222, 38270882323, 38270882262]
 evidence_freshness: PENDING
 decision: incomplete
-reason: No retained exact-SHA hosted or candidate-artifact evidence exists.
+reason: Exact-SHA workflow passes were discovered, but archives were not independently downloaded and mandatory hosted certification remains incomplete.

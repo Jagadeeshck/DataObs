@@ -2727,6 +2727,22 @@ def migrations() -> List[Migration]:
     ]
 
 
+def migration_plan() -> List[Dict[str, Any]]:
+    """Return migration metadata without importing the Elasticsearch client."""
+    return [
+        {
+            "migration_id": migration.migration_id,
+            "description": migration.description,
+            "schema_version": migration.schema_version,
+            "dependencies": migration.dependencies,
+            "checksum": migration.checksum,
+            "rollback_strategy": migration.rollback_strategy,
+            "operations": migration.operations,
+        }
+        for migration in migrations()
+    ]
+
+
 def registered_mutable_resources() -> tuple[str, ...]:
     """Exact concrete indices a guarded certification reset may remove."""
     resources = {MIGRATION_STATE_INDEX}

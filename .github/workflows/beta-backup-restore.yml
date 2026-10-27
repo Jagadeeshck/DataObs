@@ -6,6 +6,10 @@ permissions: {contents: read}
 jobs:
   certify:
     runs-on: ubuntu-latest
+    env:
+      RUN_BETA_BACKUP_RESTORE: '1'
+      ELASTICSEARCH_URL: http://localhost:9200
+      BETA_RESTORE_REPORT: evidence/results/backup-restore.json
     services:
       elasticsearch:
         image: docker.elastic.co/elasticsearch/elasticsearch:9.4.2
@@ -24,14 +28,21 @@ jobs:
       - name: Wait for Elasticsearch readiness
         run: python scripts/ci/wait_for_elasticsearch.py --url http://localhost:9200 --timeout 120
       - name: Real Elasticsearch snapshot and destructive restore proof
-        env: {RUN_BETA_BACKUP_RESTORE: '1', ELASTICSEARCH_URL: 'http://localhost:9200', BETA_RESTORE_REPORT: evidence/results/backup-restore.json}
-        run: mkdir -p evidence/results && python -m pytest tests/integration/test_beta_backup_restore.py -q --junitxml=evidence/results/backup-restore.xml
-      - run: |
+        run: mkdir -p evidence/results && python -m pytest tests/integration/test_beta_backup_restore.py -q -rA --junitxml=evidence/results/backup-restore.xml
+      - name: Generate exact-commit backup and restore evidence
+        run: |
+          set -o pipefail
+          find evidence/results -maxdepth 1 -type f -printf '%f %s bytes\n' | sort | tee evidence/results/inventory.txt
+          python scripts/certification/validate_backup_restore_evidence.py \
+            --junit evidence/results/backup-restore.xml \
+            --report evidence/results/backup-restore.json
           python scripts/certification/write_evidence_envelope.py --output evidence/evidence.json \
             --repository "$GITHUB_REPOSITORY" --producer-sha "$GITHUB_SHA" --workflow-file beta-backup-restore.yml \
             --workflow-run-id "$GITHUB_RUN_ID" --workflow-run-attempt "$GITHUB_RUN_ATTEMPT" \
             --event "$GITHUB_EVENT_NAME" --status pass --test-category backup --test-category restore \
             --test-category tenant-isolation --supporting-file evidence/results/backup-restore.xml \
-            --supporting-file evidence/results/backup-restore.json --tool-version "python=$(python --version | cut -d' ' -f2)"
+            --supporting-file evidence/results/backup-restore.json --tool-version "python=$(python --version | cut -d' ' -f2)" \
+            2>&1 | tee evidence/results/envelope-generation.log
       - uses: actions/upload-artifact@v4
+        if: always()
         with: {name: team-0-backup-restore-v1-evidence, path: evidence, retention-days: 30}

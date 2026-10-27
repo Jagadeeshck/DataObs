@@ -22,7 +22,7 @@ jobs:
       - run: black --check integrations/database integrations/databases/postgres tests/unit/database_foundation tests/unit/postgres_provider
       - run: pytest -q tests/unit/database_foundation tests/unit/postgres_provider tests/test_agent_sdk_scanner.py tests/integration/postgres_vertical_slice tests/test_collection_manager.py tests/integrations/test_collection_manager_runtime.py
       - run: python scripts/release/current_terminal_migration.py
-      - run: python scripts/check_migration_immutability.py --base-ref "origin/${{ github.base_ref || 'main' }}"
+      - run: python scripts/check_migration_immutability.py --base-ref "$(python scripts/resolve_ci_base.py)"
       - run: python scripts/release/check_release_metadata.py
       - run: python scripts/validate_capability_ledger.py
       - run: python scripts/check_generated_artifacts.py

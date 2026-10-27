@@ -67,7 +67,7 @@ jobs:
       - uses: azure/setup-helm@v4
       - name: Build immutable candidate and invoke existing supply-chain contracts
         run: |
-          helm lint helm/dataobs
+          helm lint helm/dataobs --kube-version 1.30.0
           helm template dataobs helm/dataobs -f helm/dataobs/values-production.yaml >/tmp/rendered.yaml
           bash scripts/deployment/chart_assertions.sh
           helm package helm/dataobs --version '${{ inputs.candidate_version }}' --destination /tmp

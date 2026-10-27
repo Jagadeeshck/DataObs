@@ -144,3 +144,16 @@ def test_strict_mapping_covers_every_serialized_incident_field():
     assert set(Incident.model_fields) - {"seq_no", "primary_term"} <= set(properties)
     assert "seq_no" not in properties
     assert "primary_term" not in properties
+
+
+def test_incident_index_creation_preserves_released_field_types():
+    """Future provider fields must not preempt the owning incident contract."""
+    from packages.elastic_store.registry import _mapping
+
+    incident = _mapping("dataobs-findings-v1")["properties"]
+    provider = _mapping("dataobs-provider-observations-v1")["properties"]
+
+    assert incident["retry_count"] == {"type": "integer"}
+    assert incident["tags"] == {"type": "keyword"}
+    assert provider["retry_count"] == {"type": "long"}
+    assert provider["tags"] == {"type": "flattened"}

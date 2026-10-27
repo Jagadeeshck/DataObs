@@ -3,7 +3,7 @@ from dataclasses import replace
 import pytest
 
 from src.config.settings import AuthSettings, OIDCSettings
-from src.security.authentication import principal_from_claims
+from src.security.authentication import Authenticator, principal_from_claims
 from src.security.errors import SecurityError
 from src.security.permissions import Permission
 from src.security.roles import ROLE_PERMISSIONS, permissions_for_roles
@@ -67,6 +67,21 @@ def test_tenant_and_environment_selectors_only_narrow_authorised_access():
     assert denied.value.status_code == 403
     with pytest.raises(SecurityError, match="Environment access is denied"):
         resolve_tenant_context(principal, "tenant-a", "staging", "request-3", None)
+
+
+def test_local_demo_principal_is_bounded_to_configured_context():
+    settings = AuthSettings(
+        provider="local",
+        allow_unauthenticated_dev=True,
+        development_tenant_id="acme-retail",
+        development_environment="production",
+    )
+    principal = Authenticator(settings).authenticate(None)
+    active, context = resolve_tenant_context(principal, None, None, "demo-request", None)
+    assert (context.tenant_id, context.environment) == ("acme-retail", "production")
+    assert active.active_tenant == "acme-retail"
+    with pytest.raises(SecurityError, match="Tenant access is denied"):
+        resolve_tenant_context(principal, "northstar", "staging", "demo-request", None)
 
 
 def test_multi_tenant_and_multi_environment_require_explicit_selection():

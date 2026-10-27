@@ -5,6 +5,7 @@ global:
   imagePullSecrets: []
   imagePullPolicy: IfNotPresent
   securityContext:
+    runAsNonRoot: true
     allowPrivilegeEscalation: false
     readOnlyRootFilesystem: true
     capabilities:
@@ -499,7 +500,6 @@ migrationJob:
   - packages.elastic_store.cli
   - apply
   # Kept in sync with packages.elastic_store.registry by render_helm_values.py/CI.
-  terminalMigration: 0033_team1_stream_schema_intelligence_runtime
   terminalMigration: 0033_team1_stream_schema_intelligence_runtime
   activeDeadlineSeconds: 900
   backoffLimit: 2

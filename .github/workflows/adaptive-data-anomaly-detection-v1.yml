@@ -26,7 +26,7 @@ jobs:
           python scripts/check_generated_artifacts.py
           python scripts/check_docs_links.py
           python scripts/validate_capability_ledger.py
-          python scripts/check_migration_immutability.py --base-ref origin/main
+          python scripts/check_migration_immutability.py --base-ref "$(python scripts/resolve_ci_base.py)"
           python scripts/security/check_route_permissions.py
       - name: Adaptive deterministic scenarios
         run: python -m pytest -q tests/monitoring/test_adaptive_anomaly_v1.py tests/monitoring/test_runtime_services.py --junitxml=adaptive-junit.xml

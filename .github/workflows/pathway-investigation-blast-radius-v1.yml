@@ -22,7 +22,7 @@ jobs:
       - run: python scripts/check_merge_conflict_markers.py
       - run: python scripts/check_team_boundaries.py && python scripts/check_generated_artifacts.py && python scripts/check_docs_links.py
       - run: python scripts/validate_capability_ledger.py && python scripts/release/check_release_metadata.py
-      - run: python scripts/check_migration_immutability.py --base-ref origin/main && python scripts/security/check_route_permissions.py
+      - run: python scripts/check_migration_immutability.py --base-ref "$(python scripts/resolve_ci_base.py)" && python scripts/security/check_route_permissions.py
       - run: python scripts/migrate_to_es.py
         env: {ELASTICSEARCH_URL: "http://localhost:9200"}
       - run: python -m pytest tests/pathways tests/stream_360 tests/security -q

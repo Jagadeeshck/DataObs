@@ -73,6 +73,14 @@ class StoreProtocol(Protocol):
 
 
 class InMemoryStore:
+    # Populated lazily by _ensure_dataobs for the legacy dynamically attached methods.
+    _dataobs_assets: Dict[str, Dict[str, Any]]
+    _dataobs_columns: Dict[str, Dict[str, Any]]
+    _dataobs_checks: Dict[str, Dict[str, Any]]
+    _dataobs_quality_runs: Dict[str, Dict[str, Any]]
+    _dataobs_job_runs: Dict[str, Dict[str, Any]]
+    _dataobs_edges: Dict[str, Dict[str, Any]]
+
     def __init__(self) -> None:
         self._quality: Dict[str, Dict[str, Any]] = {}
         self._rules: Dict[str, Dict[str, Any]] = {}

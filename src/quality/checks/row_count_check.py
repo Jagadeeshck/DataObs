@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import logging
 import statistics
-from typing import Any, List, Optional
+from typing import Any, List, Optional, cast
 
 import sqlalchemy
 from elasticsearch import Elasticsearch
@@ -106,7 +106,7 @@ class RowCountCheck(BaseCheck):
         return 0 historical data points.
         """
         try:
-            response = self.es.search(
+            response = cast(Elasticsearch, self.es).search(
                 index="dataobs-quality-results",
                 query={
                     "bool": {

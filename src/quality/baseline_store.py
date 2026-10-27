@@ -6,7 +6,7 @@ Resolves: https://github.com/Jagadeeshck/DataObs/issues/24
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Any, Optional
 
 from src.quality.checks.distribution_drift_check import DriftBaseline
 
@@ -22,6 +22,9 @@ class ElasticsearchBaselineStore:
         tenant_id: Tenant identifier (used in index name).
     """
 
+    _es: Any
+    _index: str
+
     def __init__(self, es_client: object, tenant_id: str = "default") -> None:
         raise RuntimeError(
             "ElasticsearchBaselineStore is deprecated: use the migration-managed canonical monitor repository"
@@ -36,7 +39,7 @@ class ElasticsearchBaselineStore:
 
     def get(self, table: str, column: str) -> Optional[DriftBaseline]:
         try:
-            resp = self._es.get(index=self._index, id=self._doc_id(table, column))  # type: ignore[attr-defined]
+            resp = self._es.get(index=self._index, id=self._doc_id(table, column))
             src = resp["_source"]
             return DriftBaseline(
                 column=src["column"],
@@ -52,7 +55,7 @@ class ElasticsearchBaselineStore:
     def put(self, baseline: DriftBaseline) -> None:
         from datetime import datetime, timezone
 
-        self._es.index(  # type: ignore[attr-defined]
+        self._es.index(
             index=self._index,
             id=self._doc_id(baseline.table, baseline.column),
             body={

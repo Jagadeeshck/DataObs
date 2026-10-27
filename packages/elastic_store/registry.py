@@ -12,6 +12,7 @@ from .manifest import (
     KAFKA_PROPERTIES,
     MIGRATION_STATE_INDEX,
     SECURITY_PROPERTIES,
+    migration_plan,
     migrations,
 )
 
@@ -77,18 +78,7 @@ PROVIDER_PROPERTIES: Dict[str, Any] = {
 
 
 def plan() -> List[Dict[str, Any]]:
-    return [
-        {
-            "migration_id": m.migration_id,
-            "description": m.description,
-            "schema_version": m.schema_version,
-            "dependencies": m.dependencies,
-            "checksum": m.checksum,
-            "rollback_strategy": m.rollback_strategy,
-            "operations": m.operations,
-        }
-        for m in migrations()
-    ]
+    return migration_plan()
 
 
 def _mapping(index: str | None = None) -> Dict[str, Any]:

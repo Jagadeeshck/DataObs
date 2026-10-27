@@ -1,8 +1,8 @@
 schema_version: "1.0"
 release_version: "0.2.0"
 assessment_date: "2026-10-27"
-audited_main_sha: "b44e2db9c563b2910a96e74d044f9324b08ee5e3"
-observed_workflow_sha: "b44e2db9c563b2910a96e74d044f9324b08ee5e3"
+audited_main_sha: "0248209cb436f73ed993e93e09b9d71edcd32043"
+observed_workflow_sha: "0248209cb436f73ed993e93e09b9d71edcd32043"
 release_decision: NO_GO
 security_state: INCOMPLETE
 supported_platforms: []
@@ -13,68 +13,67 @@ blockers:
   - id: T0-RC-HELM-PROFILES
     owner: Team 0
     workflow: beta-deployment-packaging.yml
-    workflow_run_id: 40488946701
-    workflow_url: https://github.com/Jagadeeshck/DataObs/actions/runs/40488946701
+    workflow_run_id: 40524617885
+    workflow_url: https://github.com/Jagadeeshck/DataObs/actions/runs/40524617885
     first_meaningful_error: >-
-      The values-profile loop invoked helm template without --kube-version, so
-      Helm evaluated the chart as Kubernetes v1.20.0 and rejected the declared
-      >=1.30.0-0 <1.31.0-0 range. Exact local reproduction then exposed two
-      latent profile defects: the image-tag schema used unsupported RE2 negative
-      lookahead and empty podAnnotations/env maps rendered invalid YAML.
+      The repaired Helm renders passed and the job advanced to migration
+      immutability, which exited 2. The workflow intentionally installs only
+      release-tooling dependencies; packages.elastic_store.cli imported the
+      Elasticsearch runtime client before dispatching its dependency-free plan
+      command, so the check could not construct the current migration plan.
     evidence_artifact: team-0-deployment-packaging-evidence
-    artifact_id: 12725624998
+    artifact_id: 12742928466
     resolution: >-
-      Pass Kubernetes 1.30.0 to every render, use production values plus
-      deterministic non-publishable digest overrides for structural profiles,
-      replace the redundant lookahead with an RE2-compatible pattern, and omit
-      empty annotation/env fragments. Chart assertions now use the same inputs.
+      Dispatch the plan command through the dependency-free migration manifest
+      before importing runtime client/registry modules. Keep runtime imports for
+      apply, status, doctor and rollback only. Add a guarded-import regression.
     hosted_state: fixed_locally_pending_rerun
 
   - id: T0-RC-BACKUP-EVIDENCE
     owner: Team 0
     workflow: beta-backup-restore.yml
-    workflow_run_id: 40488946651
-    workflow_url: https://github.com/Jagadeeshck/DataObs/actions/runs/40488946651
+    workflow_run_id: 40524618318
+    workflow_url: https://github.com/Jagadeeshck/DataObs/actions/runs/40524618318
     first_meaningful_error: >-
-      The destructive pytest step returned success, but the following evidence
-      step exited before evidence/evidence.json was written. The standard writer
-      succeeds when both inputs exist, isolating the failure to an absent or
-      empty destructive-restore report rather than envelope signing or redaction.
+      Generate exact-commit backup and restore evidence exited immediately when
+      the directly executed validator raised ModuleNotFoundError for scripts.
+      Python placed scripts/certification, rather than the repository root, at
+      sys.path[0], so validation never reached the retained restore report.
     evidence_artifact: team-0-backup-restore-v1-evidence
-    artifact_id: 12726571790
+    artifact_id: 12743391794
     resolution: >-
-      Set the destructive-test opt-in and output path at job scope, report all
-      pytest outcomes, inventory retained inputs, validate report semantics and
-      nonempty resources with a dedicated fail-closed validator, and retain the
-      envelope writer output. No missing report can be represented as passing.
+      Insert the repository root before importing release metadata and add a
+      direct-execution regression. Semantic validation, input inventory and
+      fail-closed evidence checks remain unchanged.
     hosted_state: fixed_locally_pending_rerun
 
   - id: T0-RC-SECURITY-SUITES
     owner: Team 0
     workflow: beta-security-hardening.yml
-    workflow_run_id: 40488946578
-    workflow_url: https://github.com/Jagadeeshck/DataObs/actions/runs/40488946578
-    first_meaningful_error: Security and certification suites failed after clean migration application passed.
+    workflow_run_id: 40524618199
+    workflow_url: https://github.com/Jagadeeshck/DataObs/actions/runs/40524618199
+    first_meaningful_error: The runtime contract still expected nginx to strip /api even though the Console and FastAPI contract requires the prefix to be preserved.
     evidence_artifact: team-0-security-hardening-evidence
-    artifact_id: 12727585091
+    artifact_id: 12743491207
     resolution: >-
-      Not changed in this infrastructure patch. Inspect the retained JUnit/log
-      artifact and create a focused security follow-up if the same suite fails
-      after the Gate 0 infrastructure rerun.
-    hosted_state: domain_failure_requires_triage
+      Correct the stale contract assertion, retain the prefix-preserving proxy,
+      and align the later Helm security render with the already repaired 1.30
+      structural validation inputs.
+    hosted_state: fixed_locally_pending_rerun
 
   - id: T1-RC-PATHWAY-FIXTURES
     owner: Team 1
     workflow: pathway-intelligence-backend.yml
-    workflow_run_id: 40488946586
-    workflow_url: https://github.com/Jagadeeshck/DataObs/actions/runs/40488946586
+    workflow_run_id: 40524617849
+    workflow_url: https://github.com/Jagadeeshck/DataObs/actions/runs/40524617849
     first_meaningful_error: Verify deterministic pathway intelligence fixtures failed after migration application passed.
     evidence_artifact: pathway-intelligence-backend-v1-evidence
-    artifact_id: 12726191982
+    artifact_id: 12744250683
     resolution: >-
-      Kept out of this shared-infrastructure patch. Team 1 must use the retained
-      fixture output for a focused domain correction; migration checks must not
-      be weakened and indices must not be deleted.
+      Keep domain behavior out of this shared-infrastructure patch. Persist a
+      skip/failure-detailed JUnit report inside the always-uploaded evidence
+      directory so Team 1 can identify and own the exact failing assertion on
+      the next run; migrations and indices remain untouched.
     hosted_state: domain_failure_requires_triage
 
   - id: T0-RC-MVP-SMOKE
@@ -82,23 +81,23 @@ blockers:
     workflow: first-mvp-demo-smoke.yml
     workflow_run_id: null
     workflow_url: null
-    first_meaningful_error: No run was triggered for merge SHA b44e2db9c563b2910a96e74d044f9324b08ee5e3.
-    evidence_artifact: first-mvp-demo-smoke-b44e2db9c563b2910a96e74d044f9324b08ee5e3
+    first_meaningful_error: No run was triggered for merge SHA 0248209cb436f73ed993e93e09b9d71edcd32043.
+    evidence_artifact: first-mvp-demo-smoke-0248209cb436f73ed993e93e09b9d71edcd32043
     resolution: >-
       Dispatch the workflow explicitly on the next exact Gate 0 SHA because the
-      PR #305 path set did not trigger the smoke workflow.
+      infrastructure-only merge path did not trigger the smoke workflow.
     hosted_state: not_run
 
   - id: T0-RC-FOUNDATION
     owner: Team 0
     workflow: team-delivery-foundation.yml
-    workflow_run_id: 40488946784
-    workflow_url: https://github.com/Jagadeeshck/DataObs/actions/runs/40488946784
+    workflow_run_id: 40524618636
+    workflow_url: https://github.com/Jagadeeshck/DataObs/actions/runs/40524618636
     first_meaningful_error: null
     evidence_artifacts:
       - team-delivery-foundation-evidence
       - team-delivery-foundation-console-evidence
-    artifact_ids: [12726831476, 12728030063]
+    artifact_ids: [12744350694, 12744050786]
     resolution: No change required; backend and Console validation both passed.
     hosted_state: passed
 

@@ -20,15 +20,25 @@ def test_gate_0_inventory_preserves_release_truth_and_defers_freeze():
     assert inventory["supported_platforms"] == []
     assert inventory["candidate_frozen"] is False
     assert inventory["gate_0_state"] == "pending_hosted_verification"
+    assert inventory["audited_main_sha"] == "0248209cb436f73ed993e93e09b9d71edcd32043"
+    assert inventory["observed_workflow_sha"] == inventory["audited_main_sha"]
     assert all(item["owner"] and item["workflow"] and item["hosted_state"] for item in inventory["blockers"])
     assert all(item["first_meaningful_error"] or item["hosted_state"] == "passed" for item in inventory["blockers"])
     assert {item["id"]: item["hosted_state"] for item in inventory["blockers"]} == {
         "T0-RC-HELM-PROFILES": "fixed_locally_pending_rerun",
         "T0-RC-BACKUP-EVIDENCE": "fixed_locally_pending_rerun",
-        "T0-RC-SECURITY-SUITES": "domain_failure_requires_triage",
+        "T0-RC-SECURITY-SUITES": "fixed_locally_pending_rerun",
         "T1-RC-PATHWAY-FIXTURES": "domain_failure_requires_triage",
         "T0-RC-MVP-SMOKE": "not_run",
         "T0-RC-FOUNDATION": "passed",
+    }
+    assert {item["id"]: item["workflow_run_id"] for item in inventory["blockers"]} == {
+        "T0-RC-HELM-PROFILES": 40524617885,
+        "T0-RC-BACKUP-EVIDENCE": 40524618318,
+        "T0-RC-SECURITY-SUITES": 40524618199,
+        "T1-RC-PATHWAY-FIXTURES": 40524617849,
+        "T0-RC-MVP-SMOKE": None,
+        "T0-RC-FOUNDATION": 40524618636,
     }
     assert inventory["gate_0_exit_criteria"]["freeze_after_gate_0_only"] is True
 
@@ -46,11 +56,22 @@ def test_failed_release_infrastructure_retains_diagnostics():
     }
 
     assert "evidence/helm-lint.log" in workflows["beta-deployment-packaging.yml"]
+    assert "evidence/migration-base-error.log" in workflows["beta-deployment-packaging.yml"]
+    assert "evidence/migration-immutability.log" in workflows["beta-deployment-packaging.yml"]
     assert "migration-apply.log" in workflows["beta-security-hardening.yml"]
+    assert "team-0-security-hardening-evidence/security-junit.xml" in workflows["beta-security-hardening.yml"]
     assert "migration-apply.log" in workflows["pathway-intelligence-backend.yml"]
+    assert "evidence/pathway-intelligence-junit.xml" in workflows["pathway-intelligence-backend.yml"]
     assert "first-mvp-demo-diagnostics-${{ github.sha }}" in workflows["first-mvp-demo-smoke.yml"]
     assert "validate_backup_restore_evidence.py" in workflows["beta-backup-restore.yml"]
     assert "envelope-generation.log" in workflows["beta-backup-restore.yml"]
+    for name in (
+        "beta-deployment-packaging.yml",
+        "beta-security-hardening.yml",
+        "pathway-intelligence-backend.yml",
+        "beta-backup-restore.yml",
+    ):
+        assert "set -o pipefail" in workflows[name]
     for name in (
         "beta-security-hardening.yml",
         "pathway-intelligence-backend.yml",

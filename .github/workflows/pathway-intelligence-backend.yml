@@ -30,10 +30,10 @@ jobs:
         run: python scripts/ci/wait_for_elasticsearch.py --url http://localhost:9200 --timeout 120
       - run: python scripts/check_migration_immutability.py --base-ref "$(python scripts/resolve_ci_base.py)"
       - name: Apply released migrations
-        run: mkdir -p evidence && python -m packages.elastic_store.cli apply 2>&1 | tee evidence/migration-apply.log
+        run: set -o pipefail; mkdir -p evidence && python -m packages.elastic_store.cli apply 2>&1 | tee evidence/migration-apply.log
         env: {ELASTICSEARCH_URL: "http://localhost:9200"}
       - name: Verify deterministic pathway intelligence fixtures
-        run: python -m pytest tests/stream_360/test_pathway_intelligence_backend.py -q
+        run: python -m pytest tests/stream_360/test_pathway_intelligence_backend.py -q -rA --junitxml=evidence/pathway-intelligence-junit.xml
         env: {ELASTICSEARCH_URL: "http://localhost:9200"}
       - name: Produce exact-commit evidence
         run: |

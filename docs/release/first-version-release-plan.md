@@ -1,7 +1,7 @@
 # DataObs 0.2.0 first-version release plan
 
 **Assessment date:** 2026-10-27  
-**Audited main SHA:** `55e628bd20604184f3927faa8643b424fe4f00f9`  
+**Audited main SHA:** `0248209cb436f73ed993e93e09b9d71edcd32043`
 **Decision:** `NO_GO` — this is a plan, not release authorization.
 
 The current machine-readable Gate 0 inventory is
@@ -50,20 +50,20 @@ The authoritative product truth remains:
 
 1. **The candidate is not frozen.** The active readiness document and
    first-platform candidate still reference an older SHA, while current main is
-   `55e628bd20604184f3927faa8643b424fe4f00f9`. Evidence from different commits
+   `0248209cb436f73ed993e93e09b9d71edcd32043`. Evidence from different commits
    must not be combined.
-2. **Packaging is red.** Main run `40473063349` fails at Helm lint. A chart that
-   does not lint against the claimed Kubernetes target cannot be published.
-3. **Secured migration execution is red.** Security run `40473063423` and
-   Pathway Intelligence run `40473063446` fail while applying existing
-   migrations. This must be diagnosed without editing released migrations or
-   deleting incompatible data.
-4. **The hosted demo proof is red.** First MVP demo smoke run `40473063449`
-   fails in its build/start/seed/verify step. Local Compose design alone is not
-   sufficient evidence that the evaluation path works on a clean hosted runner.
-5. **Recovery evidence is red.** Backup/restore run `40473063372` fails while
-   writing its exact-commit evidence envelope. A first supported version needs
-   a successful destructive recovery rehearsal and retained timings/manifests.
+2. **Packaging is red.** Main run `40524617885` passes the repaired Helm
+   profiles, then fails while loading the dependency-free migration plan.
+3. **Security and Pathway are red.** Security run `40524618199` reaches a stale
+   Console proxy contract assertion. Pathway run `40524617849` reaches its
+   deterministic fixture suite; its exact assertion remains a Team 1 follow-up.
+   Released migrations and incompatible indices remain untouched.
+4. **The hosted demo proof is absent.** The MVP workflow was not triggered for
+   the infrastructure-only merge and must be dispatched on the next Gate 0 SHA.
+5. **Recovery evidence is red.** Backup/restore run `40524618318` completes the
+   destructive proof, then fails because the directly executed validator cannot
+   resolve the repository-local `scripts` package. A first supported version
+   still needs a successful retained evidence envelope.
 6. **Security and platform authorization are incomplete.** Hosted OIDC/TLS,
    adversarial tenant isolation, Kubernetes runtime security, independent
    artifact signature verification, browser/accessibility acceptance, and one

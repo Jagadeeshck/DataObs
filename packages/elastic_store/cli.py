@@ -3,9 +3,6 @@ from __future__ import annotations
 import argparse
 import json
 
-from .client import make_client
-from .registry import apply, plan, rollback, status
-
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="dataobs elastic")
@@ -19,8 +16,13 @@ def main(argv: list[str] | None = None) -> int:
     rb.add_argument("migration_id", nargs="?", default="0001_product_foundation")
     args = parser.parse_args(argv)
     if args.cmd == "plan":
-        print(json.dumps({"migrations": plan()}, indent=2))
+        from .manifest import migration_plan
+
+        print(json.dumps({"migrations": migration_plan()}, indent=2))
         return 0
+    from .client import make_client
+    from .registry import apply, rollback, status
+
     es = make_client()
     if args.cmd == "apply":
         print(json.dumps({"applied": apply(es, through_migration_id=args.through_migration_id)}, indent=2))

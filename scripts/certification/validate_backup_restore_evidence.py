@@ -5,9 +5,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 
-from scripts.release.release_metadata import ELASTICSEARCH_VERSION, terminal_migration
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT))
+
+from scripts.release.release_metadata import ELASTICSEARCH_VERSION, terminal_migration  # noqa: E402
 
 
 def validate(report_path: Path, junit_path: Path) -> None:

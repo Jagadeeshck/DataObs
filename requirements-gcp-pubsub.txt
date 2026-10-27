@@ -1,0 +1,5 @@
+# Optional Team 4 Google Pub/Sub collector dependencies (GA releases, 2026-10-12).
+google-cloud-pubsub>=2.42,<2.43
+google-cloud-monitoring>=2.32,<2.33
+google-auth>=2.61,<2.62
+google-api-core>=2,<3

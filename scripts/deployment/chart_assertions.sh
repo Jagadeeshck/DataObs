@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 CHART=helm/dataobs; tmp=$(mktemp); trap 'rm -f "$tmp"' EXIT
-helm lint "$CHART"
+helm lint "$CHART" --kube-version 1.30.0
 helm template dataobs "$CHART" -f "$CHART/values-production.yaml" >"$tmp"
 for component in api console quality-worker scanner-worker monitor-runtime pathway-worker kafka-observer otel-collector; do grep -q "app.kubernetes.io/component: $component" "$tmp"; done
 [[ $(grep -c '^kind: Job$' "$tmp") -eq 1 ]]

@@ -1,0 +1,17 @@
+.git
+.github
+.pytest_cache
+.mypy_cache
+.ruff_cache
+**/__pycache__
+**/*.py[cod]
+evidence
+artifacts
+node_modules
+ui/dataobs-console/node_modules
+ui/dataobs-console/dist
+.env
+.env.*
+!.env.example
+!.env.mvp.example
+

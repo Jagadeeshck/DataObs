@@ -15,19 +15,23 @@ HEAD = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
 
 
 def test_resolve_pull_request_base():
-    assert resolve({"pull_request": {"base": {"sha": HEAD}}}, "pull_request", None, "HEAD") == HEAD
+    with pytest.raises(ValueError, match="vacuous"):
+        resolve({"pull_request": {"base": {"sha": HEAD}}}, "pull_request", None, "HEAD")
 
 
 def test_resolve_push_base():
-    assert resolve({"before": HEAD}, "push", None, "HEAD") == HEAD
+    with pytest.raises(ValueError, match="vacuous"):
+        resolve({"before": HEAD}, "push", None, "HEAD")
 
 
 def test_resolve_workflow_dispatch_explicit_input():
-    assert resolve({"inputs": {"base_ref": HEAD}}, "workflow_dispatch", None, "HEAD") == HEAD
+    with pytest.raises(ValueError, match="vacuous"):
+        resolve({"inputs": {"base_ref": HEAD}}, "workflow_dispatch", None, "HEAD")
 
 
 def test_resolve_all_zero_push_uses_merge_base():
-    assert resolve({"before": ZERO_SHA}, "push", None, "HEAD") == HEAD
+    parent = subprocess.check_output(["git", "rev-parse", "HEAD^1"], text=True).strip()
+    assert resolve({"before": ZERO_SHA}, "push", None, "HEAD") == parent
 
 
 def test_invalid_base_reference_is_named():

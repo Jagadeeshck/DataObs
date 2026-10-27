@@ -534,16 +534,20 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
     @app.get("/api/v1/auth/me", tags=["auth"], dependencies=[Depends(require_auth)])
     async def auth_me(request: Request) -> Dict[str, Any]:
         principal = request.state.principal
+        access = [
+            {"tenant_id": item.tenant_id, "environments": sorted(item.environments)}
+            for item in sorted(principal.tenant_access)
+        ]
         return {
             "subject": principal.subject,
             "display_name": principal.display_name,
             "principal_type": principal.principal_type,
             "roles": sorted(principal.roles),
             "permissions": sorted(permission.value for permission in principal.permissions),
-            "authorised_access": [
-                {"tenant_id": item.tenant_id, "environments": sorted(item.environments)}
-                for item in sorted(principal.tenant_access)
-            ],
+            "authorised_access": access,
+            # Console-compatible alias. The authoritative security contract remains
+            # authorised_access; this representation avoids inventing browser-only identity.
+            "tenants": [{"id": item["tenant_id"], "environments": item["environments"]} for item in access],
             "active_tenant": principal.active_tenant,
             "active_environment": principal.active_environment,
             "authentication_provider": resolved_settings.auth.provider,

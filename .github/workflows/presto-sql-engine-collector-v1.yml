@@ -18,7 +18,7 @@ jobs:
         run: pytest -q tests/integrations tests/elastic_store/test_migrations.py
       - name: Presto safety, privacy, protocol, checkpoint and client gates
         run: pytest -q tests/integrations/test_sql_engine_foundation.py tests/integrations/test_trino_provider.py tests/integrations/test_presto_provider.py tests/integrations/test_presto_client_compatibility.py tests/integrations/test_collection_manager_runtime.py
-      - run: python scripts/check_migration_immutability.py --base-ref "${{ github.event.pull_request.base.sha || github.event.before || 'HEAD^' }}"
+      - run: python scripts/check_migration_immutability.py --base-ref "$(python scripts/resolve_ci_base.py)"
       - run: python scripts/release/current_terminal_migration.py && python scripts/release/check_release_metadata.py
       - run: python scripts/validate_capability_ledger.py && python scripts/check_generated_artifacts.py && python scripts/check_docs_links.py
       - run: pip-audit -r requirements-presto.txt

@@ -3,7 +3,7 @@ from __future__ import annotations
 import csv
 import random
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, cast
 
 
 def _read_csv(path: Path) -> List[Dict[str, str]]:
@@ -35,7 +35,7 @@ def generate_scaled(
     acc_out = []
     veh_out = []
     cas_out = []
-    for i in range(mul):
+    for i in range(cast(int, mul)):
         a = dict(random.choice(accidents))
         a["accident_id"] = f"A{i+1}"
         if scale != "small":

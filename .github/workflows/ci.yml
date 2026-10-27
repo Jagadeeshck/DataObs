@@ -61,7 +61,7 @@ jobs:
       - name: Wait for Elasticsearch readiness
         run: python scripts/ci/wait_for_elasticsearch.py --url http://localhost:9200 --timeout 120
       - name: Migration immutability against main
-        run: python scripts/check_migration_immutability.py --base-ref HEAD
+        run: python scripts/check_migration_immutability.py --base-ref "$(python scripts/resolve_ci_base.py)"
       - name: Focused quality checks
         run: |
           python scripts/check_generated_artifacts.py
@@ -179,11 +179,13 @@ jobs:
       - name: Validate compose files
         env:
           ELASTIC_PASSWORD: ci-placeholder-password
+          DATAOBS_API_TOKEN: ci-placeholder-api-token
           OPENSEARCH_PASSWORD: ci-placeholder-password
           KIBANA_PASSWORD: ci-placeholder-password
           CERTIFICATION_POSTGRES_PASSWORD_FILE: /tmp/ci-placeholder-postgres-password
         run: |
           docker compose -f docker-compose.yml config
+          docker compose --env-file .env.mvp.example -f docker-compose.mvp.yml config
           docker compose -f docker-compose.certification.yml --profile full config
           docker compose -f docker-compose.poc.yml config
           docker compose -f tests/integration/docker-compose.test.yml config
@@ -354,7 +356,7 @@ jobs:
             terraform -chdir="$dir" validate
           done
       - name: Helm lint
-        run: helm lint helm/dataobs
+        run: helm lint helm/dataobs --kube-version 1.30.0
       - name: Helm template
         run: helm template dataobs helm/dataobs
 
@@ -505,7 +507,7 @@ jobs:
           GITHUB_EVENT_NAME: ${{ github.event_name }}
         run: echo "base=$(python scripts/resolve_ci_base.py --event-file "$GITHUB_EVENT_PATH")" >> "$GITHUB_OUTPUT"
       - name: Migration immutability
-        run: python scripts/check_migration_immutability.py --base-ref "${{ steps.docs-base.outputs.base }}"
+        run: python scripts/check_migration_immutability.py --base-ref "$(python scripts/resolve_ci_base.py)"
       - name: Capability diff
         run: python scripts/capability_diff.py --base-ref "${{ steps.docs-base.outputs.base }}" > capability-diff-report.txt
       - name: Upload documentation truth reports

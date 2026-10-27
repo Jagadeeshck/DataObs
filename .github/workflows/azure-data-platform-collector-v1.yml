@@ -18,7 +18,7 @@ jobs:
       - run: python -m pytest -q tests/integrations/test_sdk.py tests/integrations/test_collection_manager_runtime.py tests/integrations/test_azure_provider.py tests/integrations/test_azure_live.py
       - run: python -m pytest -q tests/integrations/test_aws_provider.py tests/integrations/test_snowflake_provider.py tests/integrations/test_databricks_provider.py tests/integrations/test_bigquery_provider.py tests/test_agent_sdk_scanner.py
       - run: python scripts/check_merge_conflict_markers.py
-      - run: python scripts/check_migration_immutability.py --base-ref origin/main
+      - run: python scripts/check_migration_immutability.py --base-ref "$(python scripts/resolve_ci_base.py)"
       - run: python scripts/release/current_terminal_migration.py
       - run: python scripts/release/check_release_metadata.py
       - run: python scripts/validate_capability_ledger.py

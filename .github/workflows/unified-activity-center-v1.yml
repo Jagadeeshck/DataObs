@@ -23,7 +23,7 @@ jobs:
       - run: python scripts/check_generated_artifacts.py
       - run: python scripts/check_docs_links.py
       - run: python scripts/validate_capability_ledger.py
-      - run: python scripts/check_migration_immutability.py --base-ref origin/main
+      - run: python scripts/check_migration_immutability.py --base-ref "$(python scripts/resolve_ci_base.py)"
       - uses: pnpm/action-setup@v4
         with: { version: 10.28.1 }
       - uses: actions/setup-node@v4

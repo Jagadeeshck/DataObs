@@ -38,7 +38,7 @@ jobs:
         with: {python-version: '3.12'}
       - run: pip install -r requirements.txt pytest black mypy ruff
       - run: mkdir -p artifacts/foundation
-      - run: python scripts/check_migration_immutability.py --base-ref origin/main
+      - run: python scripts/check_migration_immutability.py --base-ref "$(python scripts/resolve_ci_base.py)"
       - run: python scripts/check_docs_links.py
       - run: ruff check packages/elastic_store services/data_products scripts/certification tests/data_products tests/integration/data_products tests/security/data_products tests/certification
       - run: black --check packages/elastic_store services/data_products scripts/certification tests/data_products tests/integration/data_products tests/security/data_products tests/certification

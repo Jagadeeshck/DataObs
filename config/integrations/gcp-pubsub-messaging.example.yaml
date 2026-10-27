@@ -1,0 +1,32 @@
+integration_id: gcp-pubsub-production
+provider_type: gcp
+enabled: false
+allowed_capabilities: [resource_discovery, metadata_collection, metric_collection, health_check, incremental_collection]
+provider:
+  services: [pubsub]
+  authentication: {type: application_default}
+  projects:
+    - project_id: example-prod
+      include_topics: []
+      exclude_topics: []
+      include_subscriptions: []
+      exclude_subscriptions: []
+  pubsub:
+    include_topics: true
+    include_subscriptions: true
+    include_dead_letter_relationships: true
+    include_topic_retention: true
+    include_subscription_retention: true
+    include_delivery_configuration: true
+    include_metrics: true
+  monitoring: {lookback_seconds: 900, alignment_period_seconds: 60}
+  limits:
+    maximum_projects: 20
+    maximum_topics_per_project: 10000
+    maximum_subscriptions_per_project: 50000
+    maximum_pages: 1000
+    maximum_metric_series: 100000
+    maximum_metric_points: 500000
+    maximum_observations: 500000
+    request_timeout_seconds: 15
+    total_timeout_seconds: 300

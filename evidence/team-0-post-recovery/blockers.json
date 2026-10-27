@@ -1,0 +1,96 @@
+{
+  "blockers": [
+    {
+      "evidence": [],
+      "gate": "hosted-tenant-isolation",
+      "id": "T0-HOSTED-TENANCY",
+      "owner_team": "Team 0",
+      "reason_code": "EXACT_SHA_HOSTED_ADVERSARIAL_EVIDENCE_MISSING",
+      "required_action": "Run protected hosted cross-tenant CRUD, search, admin, integration, diagnostics, role-binding and lifecycle suite.",
+      "severity": "critical",
+      "state": "OPEN"
+    },
+    {
+      "evidence": [
+        "run:38270882222 proves repository tests only"
+      ],
+      "gate": "hosted-oidc",
+      "id": "T0-OIDC-TLS",
+      "owner_team": "Team 0",
+      "reason_code": "HOSTED_OIDC_CONFORMANCE_NOT_EXECUTED",
+      "required_action": "Run disposable hosted issuer/JWKS/PKCE/TLS conformance and retain exact-SHA evidence.",
+      "severity": "critical",
+      "state": "OPEN"
+    },
+    {
+      "evidence": [],
+      "gate": "kubernetes",
+      "id": "T0-KUBERNETES",
+      "owner_team": "Team 0",
+      "reason_code": "RUNNING_CLUSTER_EVIDENCE_MISSING",
+      "required_action": "Run the existing Kubernetes runtime-security workflow on the candidate.",
+      "severity": "high",
+      "state": "OPEN"
+    },
+    {
+      "evidence": [
+        "run:38270882084"
+      ],
+      "gate": "backup",
+      "id": "T0-RECOVERY",
+      "owner_team": "Team 0",
+      "reason_code": "BACKUP_WORKFLOW_FAILED",
+      "required_action": "Run disposable destructive backup/restore certification and retain manifests and timings.",
+      "severity": "critical",
+      "state": "OPEN"
+    },
+    {
+      "evidence": [],
+      "gate": "signature",
+      "id": "T0-INDEPENDENT-SIGNATURE",
+      "owner_team": "Team 0",
+      "reason_code": "SIGNATURE_CHAIN_MISSING",
+      "required_action": "Build, sign, and independently verify exact-candidate immutable artifacts.",
+      "severity": "critical",
+      "state": "OPEN"
+    },
+    {
+      "evidence": [
+        "dataobs-findings-v1 reports mention retry_count and tags; no passing exact-SHA Kafka artifact"
+      ],
+      "gate": "kafka-stream-runtime",
+      "id": "T1-KAFKA-FINDINGS-MAPPING",
+      "owner_team": "Team 1",
+      "reason_code": "STRICT_MAPPING_COMPATIBILITY_UNVERIFIED",
+      "required_action": "Owning team must reproduce and correct schema through a new migration; do not edit released migrations or delete indices.",
+      "severity": "high",
+      "state": "OPEN"
+    },
+    {
+      "evidence": [
+        "foundation run 38270882312 browser step skipped"
+      ],
+      "gate": "browser",
+      "id": "T5-BROWSER",
+      "owner_team": "Team 5",
+      "reason_code": "PLAYWRIGHT_NOT_EXECUTED",
+      "required_action": "Run the exact-candidate browser acceptance matrix without disabling failures.",
+      "severity": "high",
+      "state": "OPEN"
+    },
+    {
+      "evidence": [
+        "foundation run 38270882312 accessibility not requested"
+      ],
+      "gate": "accessibility",
+      "id": "T5-ACCESSIBILITY",
+      "owner_team": "Team 5",
+      "reason_code": "AXE_NOT_EXECUTED",
+      "required_action": "Run axe, keyboard, permission-denied and accessible-name assertions on the exact candidate.",
+      "severity": "high",
+      "state": "OPEN"
+    }
+  ],
+  "candidate_sha": "2281a64034b915f4f7dd556cd582f27e30660a1c",
+  "schema_version": "1.0"
+}

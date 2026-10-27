@@ -23,7 +23,7 @@ jobs:
           from jsonschema import Draft7Validator
           Draft7Validator(json.load(open('helm/dataobs/values.schema.json'))).validate(yaml.safe_load(open('helm/dataobs/values-production.yaml')))
           PY
-          helm lint helm/dataobs -f helm/dataobs/values-production.yaml || test $? = 1 # placeholders must fail closed
+          helm lint helm/dataobs --kube-version 1.30.0 -f helm/dataobs/values-production.yaml || test $? = 1 # placeholders must fail closed
       - name: Render with test artifact identities
         run: |
           D=sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef

@@ -130,7 +130,7 @@ jobs:
         run: pnpm api:generate && git diff --exit-code && pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm build && pnpm bundle:check
       - name: Helm security assertions
         run: |
-          helm lint helm/dataobs
+          helm lint helm/dataobs --kube-version 1.30.0
           helm template dataobs helm/dataobs -f helm/dataobs/values-production.yaml > "$EVIDENCE_DIR/helm-rendered-production.yaml"
           bash scripts/deployment/chart_assertions.sh
           python -c "import json; json.dump({'status':'pass','render':'helm-rendered-production.yaml','redaction_status':'pass'},open('$EVIDENCE_DIR/helm-render-report.json','w'),indent=2)"

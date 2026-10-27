@@ -29,7 +29,7 @@ jobs:
           python scripts/check_generated_artifacts.py
           python scripts/check_docs_links.py
           python scripts/validate_capability_ledger.py
-          python scripts/check_migration_immutability.py --base-ref origin/main
+          python scripts/check_migration_immutability.py --base-ref "$(python scripts/resolve_ci_base.py)"
       - name: Elasticsearch migration and deterministic runtime tests
         env: {ELASTICSEARCH_URL: http://localhost:9200}
         run: |

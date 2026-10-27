@@ -1,0 +1,80 @@
+name: dataobs-mvp
+
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:${ELASTICSEARCH_VERSION:-9.4.2}
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "true"
+      xpack.security.http.ssl.enabled: "false"
+      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:?set ELASTIC_PASSWORD in .env.mvp}
+      ES_JAVA_OPTS: -Xms1g -Xmx1g
+    volumes:
+      - mvp-elasticsearch:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS -u elastic:$$ELASTIC_PASSWORD http://localhost:9200/_cluster/health?wait_for_status=yellow"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+    restart: unless-stopped
+
+  migrations:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    command: ["python", "-m", "packages.elastic_store.cli", "apply"]
+    environment: &api-environment
+      DATAOBS_ENV: development
+      DATAOBS_STORE_BACKEND: elasticsearch
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      ELASTICSEARCH_USER: elastic
+      ELASTICSEARCH_PASSWORD: ${ELASTIC_PASSWORD:?set ELASTIC_PASSWORD in .env.mvp}
+      ELASTICSEARCH_VERIFY_TLS: "false"
+      API_TOKEN: ${DATAOBS_API_TOKEN:?set DATAOBS_API_TOKEN in .env.mvp}
+      DATAOBS_VERSION: ${DATAOBS_VERSION:-0.2.0}
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    environment: *api-environment
+    ports:
+      - "8080:8080"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      migrations:
+        condition: service_completed_successfully
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+
+  console:
+    build:
+      context: ui/dataobs-console
+      dockerfile: Dockerfile
+    ports:
+      - "3000:8080"
+    depends_on:
+      api:
+        condition: service_healthy
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/cache/nginx
+      - /var/run
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+
+volumes:
+  mvp-elasticsearch:
+

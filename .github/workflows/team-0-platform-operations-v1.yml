@@ -21,7 +21,7 @@ jobs:
       - run: python scripts/check_migration_immutability.py --base-ref "$(python scripts/resolve_ci_base.py)"
       - run: python scripts/check_team_boundaries.py
       - run: python scripts/check_merge_conflict_markers.py
-      - run: helm lint helm/dataobs
+      - run: helm lint helm/dataobs --kube-version 1.30.0
       - run: helm template dataobs helm/dataobs -f helm/dataobs/values-production.yaml > production.yaml
       - run: helm template dataobs helm/dataobs --set monitoring.serviceMonitor.enabled=true --set monitoring.prometheusRule.enabled=true > monitoring.yaml
       - name: Record hosted tests as pending

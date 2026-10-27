@@ -35,7 +35,7 @@ jobs:
       - name: Console OIDC checks
         run: corepack enable && pnpm --dir ui/dataobs-console install --frozen-lockfile && pnpm --dir ui/dataobs-console test
       - name: Helm security render
-        run: helm lint helm/dataobs && helm template dataobs helm/dataobs --values helm/dataobs/values-production.yaml > rendered.yaml
+        run: helm lint helm/dataobs --kube-version 1.30.0 && helm template dataobs helm/dataobs --values helm/dataobs/values-production.yaml > rendered.yaml
       - name: Secret scan
         run: '! grep -RInE "Bearer[[:space:]]+[A-Za-z0-9._-]+|client_secret:[[:space:]]+[^{$\"]|private_key:[[:space:]]+[^{$\"]" tests docs helm/dataobs --exclude-dir=node_modules'
       - name: Exact-commit evidence

@@ -206,11 +206,23 @@ def test_console_lockfile_has_only_patched_js_yaml_and_keeps_high_audit_gate():
     lock = (ROOT / "ui/dataobs-console/pnpm-lock.yaml").read_text()
     assert package["pnpm"]["overrides"]["@redocly/openapi-core>js-yaml"] == "4.3.2"
     assert package["pnpm"]["overrides"]["browserslist"] == "4.28.7"
+    assert package["pnpm"]["overrides"]["zod"] == ">=4.6.6"
     versions = {tuple(map(int, match)) for match in re.findall(r"js-yaml@(\d+)\.(\d+)\.(\d+)", lock)}
     assert versions and all(version >= (4, 1, 1) for version in versions)
     console_workflow = (WORKFLOWS / "reusable-console-validation.yml").read_text()
     assert "pnpm audit --audit-level high" in console_workflow
     assert "continue-on-error" not in console_workflow
+
+
+def test_shared_audit_and_helm_commands_are_reproducible():
+    ci_requirements = (ROOT / "requirements-ci.txt").read_text()
+    assert "black==26.10.1" in ci_requirements
+    rabbitmq = (WORKFLOWS / "team-4-rabbitmq-messaging-collector-v1.yml").read_text()
+    assert "pip-audit -r requirements.txt -r requirements-ci.txt" in rabbitmq
+    for path, text in workflow_texts():
+        for line in text.splitlines():
+            if "helm lint helm/dataobs" in line:
+                assert "--kube-version 1.30.0" in line, f"{path} lints against Helm's changing default"
 
 
 def test_elasticsearch_readiness_retries_transient_disconnect_and_checks_indices():

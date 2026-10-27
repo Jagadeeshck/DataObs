@@ -179,11 +179,13 @@ jobs:
       - name: Validate compose files
         env:
           ELASTIC_PASSWORD: ci-placeholder-password
+          DATAOBS_API_TOKEN: ci-placeholder-api-token
           OPENSEARCH_PASSWORD: ci-placeholder-password
           KIBANA_PASSWORD: ci-placeholder-password
           CERTIFICATION_POSTGRES_PASSWORD_FILE: /tmp/ci-placeholder-postgres-password
         run: |
           docker compose -f docker-compose.yml config
+          docker compose --env-file .env.mvp.example -f docker-compose.mvp.yml config
           docker compose -f docker-compose.certification.yml --profile full config
           docker compose -f docker-compose.poc.yml config
           docker compose -f tests/integration/docker-compose.test.yml config
@@ -354,7 +356,7 @@ jobs:
             terraform -chdir="$dir" validate
           done
       - name: Helm lint
-        run: helm lint helm/dataobs
+        run: helm lint helm/dataobs --kube-version 1.30.0
       - name: Helm template
         run: helm template dataobs helm/dataobs
 

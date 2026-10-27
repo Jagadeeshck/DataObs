@@ -60,7 +60,7 @@ jobs:
           ! git grep -nE '^(<<<<<<<|>>>>>>>)'
       - name: Validate production chart
         run: |
-          helm lint helm/dataobs
+          helm lint helm/dataobs --kube-version 1.30.0
           helm template dataobs helm/dataobs -f helm/dataobs/values-production.yaml >/tmp/dataobs-rendered.yaml
           bash scripts/deployment/chart_assertions.sh
 

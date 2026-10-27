@@ -7,6 +7,11 @@ Start with the [product status index](product/README.md).
 Use the [first-MVP demo runbook](demo/first-mvp-demo.md) for the bounded local
 product walkthrough.
 
+## Release planning
+See the [DataObs 0.2.0 first-version release plan](release/first-version-release-plan.md)
+for the current assessment, next delivery item, certification gates, and
+publication sequence.
+
 ## Architecture
 See the [architecture overview](architecture/overview.md).
 

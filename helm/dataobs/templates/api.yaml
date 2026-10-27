@@ -15,7 +15,9 @@ spec:
       labels: {{- include "dataobs.selector" (dict "Release" .Release "Chart" .Chart "Values" .Values "component" "api") | nindent 8 }}
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/shared-config.yaml") . | sha256sum }}
-{{ toYaml .Values.api.podAnnotations | indent 8 }}
+{{- with .Values.api.podAnnotations }}
+{{ toYaml . | indent 8 }}
+{{- end }}
     spec:
       serviceAccountName: {{ include "dataobs.fullname" . }}-api
       automountServiceAccountToken: false
@@ -68,7 +70,9 @@ spec:
             - {name: DATAOBS_OIDC_ALLOWED_TOKEN_TYPES, value: {{ .Values.api.oidc.allowedTokenTypes | toJson | quote }}}
             - {name: DATAOBS_OIDC_REQUIRE_JTI_FOR_SERVICE_TOKENS, value: {{ .Values.api.oidc.requireJtiForServiceTokens | quote }}}
             - {name: DATAOBS_CORS_ALLOWED_ORIGINS, value: {{ .Values.api.security.cors.allowedOrigins | toJson | quote }}}
-{{ toYaml .Values.api.env | indent 12 }}
+{{- with .Values.api.env }}
+{{ toYaml . | indent 12 }}
+{{- end }}
           envFrom: {{ toYaml .Values.api.envFrom | nindent 12 }}
           securityContext: {{ toYaml .Values.global.securityContext | nindent 12 }}
           resources: {{ toYaml .Values.api.resources | nindent 12 }}

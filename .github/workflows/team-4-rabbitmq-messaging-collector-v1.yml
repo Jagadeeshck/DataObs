@@ -18,10 +18,10 @@ jobs:
       - run: mypy integrations/rabbitmq
       - run: pytest -q tests/unit/rabbitmq_provider tests/integrations/test_collection_manager_runtime.py tests/stream_360
       - run: python scripts/release/validate_migration_graph.py
-      - run: python scripts/check_migration_immutability.py
+      - run: python scripts/check_migration_immutability.py --base-ref "$(python scripts/resolve_ci_base.py)"
       - run: python scripts/release/check_release_metadata.py
       - run: python scripts/validate_capability_ledger.py
       - run: python scripts/check_generated_artifacts.py
       - run: python scripts/check_docs_links.py
       - run: python scripts/release/current_terminal_migration.py
-      - run: pip-audit
+      - run: pip-audit -r requirements.txt -r requirements-ci.txt

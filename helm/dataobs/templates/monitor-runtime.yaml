@@ -15,7 +15,9 @@ spec:
       labels: {{- include "dataobs.selector" (dict "Release" .Release "Chart" .Chart "Values" .Values "component" "monitor-runtime") | nindent 8 }}
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/shared-config.yaml") . | sha256sum }}
-{{ toYaml .Values.monitorRuntime.podAnnotations | indent 8 }}
+{{- with .Values.monitorRuntime.podAnnotations }}
+{{ toYaml . | indent 8 }}
+{{- end }}
     spec:
       serviceAccountName: {{ include "dataobs.fullname" . }}-monitor-runtime
       automountServiceAccountToken: false
@@ -27,9 +29,14 @@ spec:
           image: {{ include "dataobs.image" (dict "root" . "image" .Values.monitorRuntime.image) | quote }}
           imagePullPolicy: {{ .Values.monitorRuntime.image.pullPolicy }}
           command: {{ toJson .Values.monitorRuntime.command }}
+          startupProbe: &processProbe {exec: {command: ["/bin/sh", "-c", "kill -0 1"]}, periodSeconds: 5, failureThreshold: 30}
+          readinessProbe: *processProbe
+          livenessProbe: *processProbe
           env:
 {{ include "dataobs.commonEnv" . | indent 12 }}
-{{ toYaml .Values.monitorRuntime.env | indent 12 }}
+{{- with .Values.monitorRuntime.env }}
+{{ toYaml . | indent 12 }}
+{{- end }}
           envFrom: {{ toYaml .Values.monitorRuntime.envFrom | nindent 12 }}
           securityContext: {{ toYaml .Values.global.securityContext | nindent 12 }}
           resources: {{ toYaml .Values.monitorRuntime.resources | nindent 12 }}

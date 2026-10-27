@@ -73,7 +73,7 @@ jobs:
       - uses: sigstore/cosign-installer@v3
       - uses: azure/setup-helm@v4
       - name: Revalidate chart before authentication
-        run: helm lint helm/dataobs && helm template dataobs helm/dataobs -f helm/dataobs/values-production.yaml >/tmp/rendered.yaml && bash scripts/deployment/chart_assertions.sh
+        run: helm lint helm/dataobs --kube-version 1.30.0 && helm template dataobs helm/dataobs -f helm/dataobs/values-production.yaml >/tmp/rendered.yaml && bash scripts/deployment/chart_assertions.sh
       - uses: docker/login-action@v3
         with: {registry: ghcr.io, username: '${{ github.actor }}', password: '${{ secrets.GITHUB_TOKEN }}'}
       - name: Publish immutable Helm OCI package, sign, and verify

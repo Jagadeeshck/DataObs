@@ -22,7 +22,7 @@ jobs:
       - run: black --check packages/collectors services/collection_manager integrations/aws tests/integrations
       - run: mypy packages/collectors services/collection_manager integrations/aws
       - run: pytest -q tests/integrations
-      - run: python scripts/check_migration_immutability.py
+      - run: python scripts/check_migration_immutability.py --base-ref "$(python scripts/resolve_ci_base.py)"
       - run: python -m pytest -q tests/documentation tests/elastic_store
       - name: Build evidence
         run: |

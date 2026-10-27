@@ -13,7 +13,8 @@ def test_console_api_ports_are_one_contract():
     console = compose["services"]["console"]
     assert api["ports"] == ["127.0.0.1:18000:8080"]
     assert console["ports"] == ["127.0.0.1:18080:8080"]
-    assert re.search(r"proxy_pass\s+http://api:8080/;", nginx)
+    # No trailing slash: nginx must preserve the /api prefix expected by FastAPI.
+    assert re.search(r"proxy_pass\s+http://api:8080;", nginx)
     assert "api:8000" not in nginx
 
 

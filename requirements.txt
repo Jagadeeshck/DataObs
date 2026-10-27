@@ -1,11 +1,11 @@
 # DataObs Python dependencies
 # Pin to minor versions; update deliberately.
 
-# Elasticsearch client — 9.x series (compatible with ES 9.4.2 POC cluster)
+# Elasticsearch client — latest published 9.4 client compatible with the ES 9.4.2 server target.
 # The 9.x client drops the deprecated body= parameter entirely.
 # All ES API calls in this codebase already use keyword arguments
 # (fixed in PR #20) so this upgrade is a straight pin bump.
-elasticsearch[async]>=9.3,<10.0
+elasticsearch[async]==9.4.1
 
 # FastAPI runtime for the DataObs API
 fastapi>=0.111,<1.0

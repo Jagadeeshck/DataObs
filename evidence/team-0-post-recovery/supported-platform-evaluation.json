@@ -1,0 +1,23 @@
+{
+  "blocking_gates": [
+    "accessibility",
+    "backup",
+    "browser",
+    "dr",
+    "elasticsearch",
+    "foundation-backend",
+    "foundation-console",
+    "hosted-oidc",
+    "hosted-tenant-isolation",
+    "kafka-stream-runtime",
+    "kubernetes",
+    "licensing",
+    "provenance",
+    "restore",
+    "sbom",
+    "signature",
+    "vulnerability"
+  ],
+  "decision": "INCOMPLETE",
+  "supported": []
+}

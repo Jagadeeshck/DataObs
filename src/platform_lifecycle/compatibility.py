@@ -125,10 +125,10 @@ def assess_upgrade(source: PlatformProfile, target: PlatformProfile, evidence: d
         ("kubernetes", target.kubernetes, "KUBERNETES_VERSION_INCOMPATIBLE"),
         ("helm", target.helm, "HELM_VERSION_INCOMPATIBLE"),
     ):
-        state = classify_version(dimension, value)
-        if state == SupportState.INCOMPATIBLE:
+        support_state = classify_version(dimension, value)
+        if support_state == SupportState.INCOMPATIBLE:
             reasons.append(code)
-        elif state != SupportState.SUPPORTED:
+        elif support_state != SupportState.SUPPORTED:
             reasons.append("CERTIFICATION_EVIDENCE_MISSING")
     if evidence.get("migration_graph") != "valid":
         reasons.append("MIGRATION_GRAPH_INVALID")

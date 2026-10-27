@@ -1,0 +1,107 @@
+{
+  "candidate_sha": "2281a64034b915f4f7dd556cd582f27e30660a1c",
+  "gates": [
+    {
+      "id": "accessibility",
+      "mandatory": true,
+      "reason_code": "ACTIVE_BLOCKER",
+      "result": "FAIL"
+    },
+    {
+      "id": "backup",
+      "mandatory": true,
+      "reason_code": "ACTIVE_BLOCKER",
+      "result": "FAIL"
+    },
+    {
+      "id": "browser",
+      "mandatory": true,
+      "reason_code": "ACTIVE_BLOCKER",
+      "result": "FAIL"
+    },
+    {
+      "id": "dr",
+      "mandatory": true,
+      "reason_code": "EXACT_SHA_VERIFIED_EVIDENCE_MISSING",
+      "result": "PENDING"
+    },
+    {
+      "id": "elasticsearch",
+      "mandatory": true,
+      "reason_code": "EXACT_SHA_VERIFIED_EVIDENCE_MISSING",
+      "result": "PENDING"
+    },
+    {
+      "id": "foundation-backend",
+      "mandatory": true,
+      "reason_code": "EXACT_SHA_VERIFIED_EVIDENCE_MISSING",
+      "result": "PENDING"
+    },
+    {
+      "id": "foundation-console",
+      "mandatory": true,
+      "reason_code": "EXACT_SHA_VERIFIED_EVIDENCE_MISSING",
+      "result": "PENDING"
+    },
+    {
+      "id": "hosted-oidc",
+      "mandatory": true,
+      "reason_code": "ACTIVE_BLOCKER",
+      "result": "FAIL"
+    },
+    {
+      "id": "hosted-tenant-isolation",
+      "mandatory": true,
+      "reason_code": "ACTIVE_BLOCKER",
+      "result": "FAIL"
+    },
+    {
+      "id": "kafka-stream-runtime",
+      "mandatory": true,
+      "reason_code": "ACTIVE_BLOCKER",
+      "result": "FAIL"
+    },
+    {
+      "id": "kubernetes",
+      "mandatory": true,
+      "reason_code": "ACTIVE_BLOCKER",
+      "result": "FAIL"
+    },
+    {
+      "id": "licensing",
+      "mandatory": true,
+      "reason_code": "EXACT_SHA_VERIFIED_EVIDENCE_MISSING",
+      "result": "PENDING"
+    },
+    {
+      "id": "provenance",
+      "mandatory": true,
+      "reason_code": "EXACT_SHA_VERIFIED_EVIDENCE_MISSING",
+      "result": "PENDING"
+    },
+    {
+      "id": "restore",
+      "mandatory": true,
+      "reason_code": "EXACT_SHA_VERIFIED_EVIDENCE_MISSING",
+      "result": "PENDING"
+    },
+    {
+      "id": "sbom",
+      "mandatory": true,
+      "reason_code": "EXACT_SHA_VERIFIED_EVIDENCE_MISSING",
+      "result": "PENDING"
+    },
+    {
+      "id": "signature",
+      "mandatory": true,
+      "reason_code": "ACTIVE_BLOCKER",
+      "result": "FAIL"
+    },
+    {
+      "id": "vulnerability",
+      "mandatory": true,
+      "reason_code": "EXACT_SHA_VERIFIED_EVIDENCE_MISSING",
+      "result": "PENDING"
+    }
+  ]
+}

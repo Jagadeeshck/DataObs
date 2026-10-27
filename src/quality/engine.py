@@ -131,7 +131,7 @@ def _run_checks_for_dataset(
         logger.info("Running %d checks for dataset: %s", len(checks_config), dataset)
 
         for check_cfg in checks_config:
-            check_type = check_cfg.get("type")
+            check_type: Any = check_cfg.get("type")
 
             try:
                 check = build_check(check_type, es_client=es_client, config={"dataset": dataset, **check_cfg})

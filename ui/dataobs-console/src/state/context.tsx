@@ -57,24 +57,16 @@ export function timeRangeBounds(range: TimeRange, now = new Date()) {
 }
 const ProductContext = createContext<ContextValue | null>(null);
 
-async function authenticatedContext(
-  signal: AbortSignal,
-): Promise<AuthenticatedContext> {
-  const token = await accessToken();
-  const response = await fetch("/api/v1/auth/me", {
-    signal,
-    credentials: "include",
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  });
-  if (response.status === 401 || response.status === 403)
-    throw Object.assign(new Error("unauthorised"), { status: response.status });
-  if (!response.ok) throw new Error("Authentication context unavailable");
-  const body = (await response.json()) as Record<string, unknown>;
+export function parseAuthenticatedContext(
+  body: Record<string, unknown>,
+): AuthenticatedContext {
   const rawTenants = Array.isArray(body.tenants)
     ? body.tenants
-    : body.tenant
-      ? [{ id: body.tenant, environments: body.environments }]
-      : [];
+    : Array.isArray(body.authorised_access)
+      ? body.authorised_access
+      : body.tenant
+        ? [{ id: body.tenant, environments: body.environments }]
+        : [];
   return {
     subject: String(body.subject ?? body.sub ?? "authenticated-user"),
     displayName:
@@ -98,7 +90,7 @@ async function authenticatedContext(
       .map((entry) => {
         const item = entry as Record<string, unknown>;
         return {
-          id: String(item.id),
+          id: String(item.id ?? item.tenant_id ?? ""),
           name: typeof item.name === "string" ? item.name : undefined,
           environments: Array.isArray(item.environments)
             ? item.environments.map(String)
@@ -111,6 +103,23 @@ async function authenticatedContext(
         ? (body.capabilities as AuthenticatedContext["capabilities"])
         : undefined,
   };
+}
+
+async function authenticatedContext(
+  signal: AbortSignal,
+): Promise<AuthenticatedContext> {
+  const token = await accessToken();
+  const response = await fetch("/api/v1/auth/me", {
+    signal,
+    credentials: "include",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (response.status === 401 || response.status === 403)
+    throw Object.assign(new Error("unauthorised"), { status: response.status });
+  if (!response.ok) throw new Error("Authentication context unavailable");
+  return parseAuthenticatedContext(
+    (await response.json()) as Record<string, unknown>,
+  );
 }
 
 export function ProductContextProvider({

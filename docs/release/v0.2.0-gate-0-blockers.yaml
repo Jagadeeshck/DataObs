@@ -1,0 +1,90 @@
+schema_version: "1.0"
+release_version: "0.2.0"
+assessment_date: "2026-10-27"
+audited_main_sha: "95be7cea2c6c7960da29eb0d701be3959446408a"
+observed_workflow_sha: "55e628bd20604184f3927faa8643b424fe4f00f9"
+release_decision: NO_GO
+security_state: INCOMPLETE
+supported_platforms: []
+candidate_frozen: false
+gate_0_state: pending_hosted_verification
+
+blockers:
+  - id: T0-RC-HELM-LINT
+    owner: Team 0
+    workflow: beta-deployment-packaging.yml
+    workflow_run_id: 40473063349
+    first_meaningful_error: >-
+      helm lint rejected helm/dataobs because values.schema.json still required
+      terminal migration 0021 while the default values declared executable
+      terminal migration 0033; values-production.yaml also contained the key
+      twice.
+    evidence_artifact: team-0-deployment-packaging-evidence
+    resolution: >-
+      Synchronize the Helm and release-manifest schema constants with the
+      executable registry, remove the duplicate YAML key, pin Helm 3.18.6, and
+      retain helm-lint.log on failure.
+    state: fixed_locally_pending_hosted
+
+  - id: T0-RC-MIGRATION-APPLY
+    owner: Team 0
+    workflow: beta-security-hardening.yml
+    related_workflows:
+      - pathway-intelligence-backend.yml
+      - first-mvp-demo-smoke.yml
+    workflow_run_ids: [40473063423, 40473063446, 40473063449]
+    first_meaningful_error: >-
+      Clean migration application stopped fail-closed when the generic initial
+      mapping installed provider retry_count/tags types on incident-owned
+      indices before the released incident mapping update.
+    evidence_artifacts:
+      - team-0-security-hardening-evidence
+      - pathway-intelligence-backend-v1-evidence
+      - first-mvp-demo-diagnostics-55e628bd20604184f3927faa8643b424fe4f00f9
+    resolution: >-
+      Select the incident-owned field definitions when creating incident
+      indices. Released migration declarations and checksums remain unchanged;
+      incompatible unknown mappings still fail closed. Retain migration output
+      in always-uploaded diagnostic artifacts.
+    state: fixed_locally_pending_hosted
+
+  - id: T0-RC-BACKUP-EVIDENCE
+    owner: Team 0
+    workflow: beta-backup-restore.yml
+    workflow_run_id: 40473063372
+    first_meaningful_error: >-
+      The run reached exact-commit evidence generation but exited before a
+      standard evidence envelope was retained, leaving no independently usable
+      backup/restore artifact for the candidate.
+    evidence_artifact: team-0-backup-restore-v1-evidence
+    resolution: >-
+      Require both the JUnit and destructive-restore JSON reports to be nonempty
+      before envelope generation and always upload the bounded evidence tree so
+      the first failing report is retained.
+    state: fixed_locally_pending_hosted
+
+follow_up_work:
+  - id: T1-EXISTING-KAFKA-MAPPING-RECONCILIATION
+    owner: Team 1
+    scope: domain_defect_not_gate_0_infrastructure
+    trigger: >-
+      An existing, non-clean environment reports retry_count or tags types that
+      differ from its released incident/Kafka contract after the clean-install
+      correction is verified.
+    required_action: >-
+      Reproduce against retained mapping evidence and, if required, add a new
+      forward-only migration and reindex/alias plan. Never edit a released
+      migration, delete an index, or relax compatibility validation.
+
+gate_0_exit_criteria:
+  exact_sha_required: true
+  required_workflows:
+    - beta-deployment-packaging.yml
+    - beta-security-hardening.yml
+    - pathway-intelligence-backend.yml
+    - first-mvp-demo-smoke.yml
+    - beta-backup-restore.yml
+    - team-delivery-foundation.yml
+  mandatory_result: success
+  skipped_mandatory_jobs_allowed: false
+  freeze_after_gate_0_only: true

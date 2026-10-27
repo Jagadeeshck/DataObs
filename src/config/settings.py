@@ -5,7 +5,7 @@ import logging
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, cast
 from urllib.parse import urlsplit
 
 import yaml
@@ -61,6 +61,8 @@ class AuthSettings:
     oidc: "OIDCSettings" = field(default_factory=lambda: OIDCSettings())
     authorization_source: AuthorizationSource = "claims"
     bootstrap_enabled: bool = True
+    development_tenant_id: str = "default"
+    development_environment: str = "development"
 
 
 @dataclass(frozen=True)
@@ -208,7 +210,7 @@ def load_settings() -> AppSettings:
 
     settings = AppSettings(
         runtime=RuntimeSettings(
-            env=env,
+            env=cast(EnvironmentMode, env),
             config_path=str(config_path) if config_path.exists() else None,
             allow_memory_store_in_production=_to_bool(os.getenv("DATAOBS_ALLOW_MEMORY_STORE_IN_PRODUCTION", False)),
         ),
@@ -243,8 +245,10 @@ def load_settings() -> AppSettings:
                 default=False,
             ),
             provider=str(os.getenv("DATAOBS_AUTH_PROVIDER", _deep_get(config, "auth", "provider", default="local"))),
-            authorization_source=str(os.getenv("DATAOBS_AUTHORIZATION_SOURCE", "claims")),
+            authorization_source=cast(AuthorizationSource, str(os.getenv("DATAOBS_AUTHORIZATION_SOURCE", "claims"))),
             bootstrap_enabled=_to_bool(os.getenv("DATAOBS_SECURITY_BOOTSTRAP_ENABLED", "true"), True),
+            development_tenant_id=str(os.getenv("DATAOBS_DEVELOPMENT_TENANT_ID", "default")),
+            development_environment=str(os.getenv("DATAOBS_DEVELOPMENT_ENVIRONMENT", "development")),
             oidc=OIDCSettings(
                 issuer=str(
                     os.getenv("DATAOBS_OIDC_ISSUER", _deep_get(config, "auth", "oidc", "issuer", default=""))

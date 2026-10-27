@@ -1201,7 +1201,7 @@
           }
         },
         "terminalMigration": {
-          "const": "0021_lineage_analysis_explorer"
+          "const": "0033_team1_stream_schema_intelligence_runtime"
         }
       }
     },

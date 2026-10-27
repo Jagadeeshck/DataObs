@@ -1,0 +1,86 @@
+name: First MVP demo smoke
+on:
+  pull_request:
+    paths:
+      - Dockerfile.api
+      - docker-compose.mvp.yml
+      - .env.mvp.example
+      - scripts/demo_mvp.sh
+      - scripts/seed_console_demo.py
+      - src/api/**
+      - src/config/**
+      - src/security/**
+      - ui/dataobs-console/**
+      - .github/workflows/first-mvp-demo-smoke.yml
+  push:
+    branches: [main]
+    paths:
+      - Dockerfile.api
+      - docker-compose.mvp.yml
+      - scripts/demo_mvp.sh
+      - scripts/seed_console_demo.py
+      - src/api/**
+      - src/config/**
+      - src/security/**
+      - ui/dataobs-console/**
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Create ephemeral local-demo credentials
+        run: |
+          umask 077
+          printf 'ELASTIC_PASSWORD=%s\nDATAOBS_API_TOKEN=%s\nELASTICSEARCH_VERSION=9.4.2\nDATAOBS_VERSION=0.2.0\n' \
+            "$(openssl rand -hex 24)" "$(openssl rand -hex 24)" > .env.mvp
+      - name: Validate Compose model
+        run: ./scripts/demo_mvp.sh config
+      - name: Build, start, seed, and verify demo
+        run: ./scripts/demo_mvp.sh up
+      - name: Replay verification
+        run: ./scripts/demo_mvp.sh verify
+      - name: Write non-certification smoke result
+        run: |
+          mkdir -p evidence
+          python - <<'PY'
+          import json, os, pathlib, subprocess
+          from packages.elastic_store.manifest import migrations
+          result = {
+              "repository": os.environ["GITHUB_REPOSITORY"],
+              "commit_sha": subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
+              "workflow_run_id": os.environ["GITHUB_RUN_ID"],
+              "status": "pass",
+              "scope": "local_demo_smoke",
+              "application_version": "0.2.0",
+              "elasticsearch_version": "9.4.2",
+              "terminal_migration": migrations()[-1].migration_id,
+              "independent_verification": False,
+              "release_authorization": False,
+          }
+          pathlib.Path("evidence/mvp-demo-smoke.json").write_text(json.dumps(result, indent=2) + "\n")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: first-mvp-demo-smoke-${{ github.sha }}
+          path: evidence/mvp-demo-smoke.json
+          retention-days: 14
+      - name: Container diagnostics
+        if: failure()
+        run: |
+          mkdir -p evidence
+          ./scripts/demo_mvp.sh status 2>&1 | tee evidence/container-status.log || true
+          ./scripts/demo_mvp.sh logs 2>&1 | tee evidence/container-diagnostics.log || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: first-mvp-demo-diagnostics-${{ github.sha }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 14
+      - name: Stop demo
+        if: always()
+        run: ./scripts/demo_mvp.sh down

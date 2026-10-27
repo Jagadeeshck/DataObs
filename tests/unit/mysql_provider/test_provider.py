@@ -40,6 +40,7 @@ def test_registration_capabilities_and_version():
         "azure",
         "bigquery",
         "databricks",
+        "gcp",
         "mariadb",
         "mysql",
         "oracle",

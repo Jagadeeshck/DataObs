@@ -5,7 +5,7 @@
 pyspark>=3.5.0
 requests>=2.31.0
 PyYAML>=6.0
-elasticsearch[async]>=9.3,<10.0
+elasticsearch[async]==9.4.1
 
 # Elastic APM Python agent — default telemetry path for the POC.
 # Ships traces/spans + custom metrics directly to the APM Server

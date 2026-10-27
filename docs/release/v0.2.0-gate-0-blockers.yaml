@@ -1,8 +1,8 @@
 schema_version: "1.0"
 release_version: "0.2.0"
 assessment_date: "2026-10-27"
-audited_main_sha: "0248209cb436f73ed993e93e09b9d71edcd32043"
-observed_workflow_sha: "0248209cb436f73ed993e93e09b9d71edcd32043"
+audited_main_sha: "b39a66d1546feba70de84aa6d8c9956e5892d16d"
+observed_workflow_sha: "b39a66d1546feba70de84aa6d8c9956e5892d16d"
 release_decision: NO_GO
 security_state: INCOMPLETE
 supported_platforms: []
@@ -13,93 +13,148 @@ blockers:
   - id: T0-RC-HELM-PROFILES
     owner: Team 0
     workflow: beta-deployment-packaging.yml
-    workflow_run_id: 40524617885
-    workflow_url: https://github.com/Jagadeeshck/DataObs/actions/runs/40524617885
+    workflow_run_id: 40578796841
+    workflow_url: https://github.com/Jagadeeshck/DataObs/actions/runs/40578796841
     first_meaningful_error: >-
-      The repaired Helm renders passed and the job advanced to migration
-      immutability, which exited 2. The workflow intentionally installs only
-      release-tooling dependencies; packages.elastic_store.cli imported the
-      Elasticsearch runtime client before dispatching its dependency-free plan
-      command, so the check could not construct the current migration plan.
+      The workflow passed Helm lint, all supported profile renders, chart
+      assertions and migration immutability, then failed the mandatory Kind
+      smoke. The retained evidence artifact is 12768123785; protected smoke and
+      upgrade values remain required and the smoke must not be represented as
+      passing when its cluster, images or external Elasticsearch are unavailable.
     evidence_artifact: team-0-deployment-packaging-evidence
-    artifact_id: 12742928466
+    artifact_id: 12768123785
     resolution: >-
-      Dispatch the plan command through the dependency-free migration manifest
-      before importing runtime client/registry modules. Keep runtime imports for
-      apply, status, doctor and rollback only. Add a guarded-import regression.
-    hosted_state: fixed_locally_pending_rerun
+      Preserve the mandatory failure and retain Kind cluster diagnostics in the
+      uploaded evidence directory. Team 0 must configure digest-pinned protected
+      smoke and upgrade values before the next exact-SHA run.
+    hosted_state: blocked_external_configuration
 
   - id: T0-RC-BACKUP-EVIDENCE
     owner: Team 0
     workflow: beta-backup-restore.yml
-    workflow_run_id: 40524618318
-    workflow_url: https://github.com/Jagadeeshck/DataObs/actions/runs/40524618318
+    workflow_run_id: 40578797192
+    workflow_url: https://github.com/Jagadeeshck/DataObs/actions/runs/40578797192
+    first_meaningful_error_detail: unavailable_without_authenticated_artifact_download
     first_meaningful_error: >-
-      Generate exact-commit backup and restore evidence exited immediately when
-      the directly executed validator raised ModuleNotFoundError for scripts.
-      Python placed scripts/certification, rather than the repository root, at
-      sys.path[0], so validation never reached the retained restore report.
+      The destructive Elasticsearch proof step passed, but Generate exact-commit
+      backup and restore evidence failed. Artifact 12768706830 was retained. The
+      public job metadata does not expose the authenticated artifact contents,
+      so the validator/envelope error must not be guessed and requires Team 0
+      artifact review before another code change.
     evidence_artifact: team-0-backup-restore-v1-evidence
-    artifact_id: 12743391794
+    artifact_id: 12768706830
     resolution: >-
-      Insert the repository root before importing release metadata and add a
-      direct-execution regression. Semantic validation, input inventory and
-      fail-closed evidence checks remain unchanged.
-    hosted_state: fixed_locally_pending_rerun
+      Review inventory.txt and envelope-generation.log from artifact 12768706830,
+      reproduce the exact first error, and retain all existing semantic,
+      checksum, exact-SHA and redaction validation.
+    hosted_state: requires_authenticated_artifact_triage
 
   - id: T0-RC-SECURITY-SUITES
     owner: Team 0
     workflow: beta-security-hardening.yml
-    workflow_run_id: 40524618199
-    workflow_url: https://github.com/Jagadeeshck/DataObs/actions/runs/40524618199
-    first_meaningful_error: The runtime contract still expected nginx to strip /api even though the Console and FastAPI contract requires the prefix to be preserved.
+    workflow_run_id: 40578796917
+    workflow_url: https://github.com/Jagadeeshck/DataObs/actions/runs/40578796917
+    first_meaningful_error_detail: unavailable_without_authenticated_artifact_download
+    first_meaningful_error: >-
+      Apply existing migrations failed after Elasticsearch readiness. The
+      retained migration-apply.log is in artifact 12769625480. Because the same
+      exact-SHA migration stage also failed in Pathway and multiple domain jobs,
+      Team 0 owns shared clean-install diagnosis before domain changes proceed.
     evidence_artifact: team-0-security-hardening-evidence
-    artifact_id: 12743491207
+    artifact_id: 12769625480
     resolution: >-
-      Correct the stale contract assertion, retain the prefix-preserving proxy,
-      and align the later Helm security render with the already repaired 1.30
-      structural validation inputs.
-    hosted_state: fixed_locally_pending_rerun
+      Download the retained migration log with authenticated workflow access and
+      reproduce against clean Elasticsearch 9.4.2. Do not edit released
+      migrations, relax mapping validation, or delete indices.
+    hosted_state: shared_migration_failure_requires_triage
 
   - id: T1-RC-PATHWAY-FIXTURES
     owner: Team 1
     workflow: pathway-intelligence-backend.yml
-    workflow_run_id: 40524617849
-    workflow_url: https://github.com/Jagadeeshck/DataObs/actions/runs/40524617849
-    first_meaningful_error: Verify deterministic pathway intelligence fixtures failed after migration application passed.
+    workflow_run_id: 40578796828
+    workflow_url: https://github.com/Jagadeeshck/DataObs/actions/runs/40578796828
+    first_meaningful_error: Apply released migrations failed before pathway fixtures ran; shared migration diagnosis belongs to Team 0.
     evidence_artifact: pathway-intelligence-backend-v1-evidence
-    artifact_id: 12744250683
+    artifact_id: 12769396466
     resolution: >-
-      Keep domain behavior out of this shared-infrastructure patch. Persist a
-      skip/failure-detailed JUnit report inside the always-uploaded evidence
-      directory so Team 1 can identify and own the exact failing assertion on
-      the next run; migrations and indices remain untouched.
-    hosted_state: domain_failure_requires_triage
+      Block Team 1 pathway changes until Team 0 resolves the common clean-install
+      migration failure. Retain artifact 12769396466 and rerun the unchanged
+      pathway fixtures after shared infrastructure is green.
+    hosted_state: blocked_by_team_0_migration
 
   - id: T0-RC-MVP-SMOKE
     owner: Team 0
     workflow: first-mvp-demo-smoke.yml
     workflow_run_id: null
     workflow_url: null
-    first_meaningful_error: No run was triggered for merge SHA 0248209cb436f73ed993e93e09b9d71edcd32043.
-    evidence_artifact: first-mvp-demo-smoke-0248209cb436f73ed993e93e09b9d71edcd32043
+    first_meaningful_error: No run was triggered for exact main SHA b39a66d1546feba70de84aa6d8c9956e5892d16d.
+    evidence_artifact: first-mvp-demo-smoke-b39a66d1546feba70de84aa6d8c9956e5892d16d
     resolution: >-
-      Dispatch the workflow explicitly on the next exact Gate 0 SHA because the
-      infrastructure-only merge path did not trigger the smoke workflow.
+      Run the MVP smoke on every main push, while retaining path filtering for
+      pull requests. A successful hosted run remains mandatory and local Compose
+      success is not release evidence.
     hosted_state: not_run
 
   - id: T0-RC-FOUNDATION
     owner: Team 0
     workflow: team-delivery-foundation.yml
-    workflow_run_id: 40524618636
-    workflow_url: https://github.com/Jagadeeshck/DataObs/actions/runs/40524618636
+    workflow_run_id: 40578797145
+    workflow_url: https://github.com/Jagadeeshck/DataObs/actions/runs/40578797145
     first_meaningful_error: null
     evidence_artifacts:
       - team-delivery-foundation-evidence
       - team-delivery-foundation-console-evidence
-    artifact_ids: [12744350694, 12744050786]
+    artifact_ids: [12769515458, 12768751882]
     resolution: No change required; backend and Console validation both passed.
     hosted_state: passed
+
+latest_head_workflow_summary:
+  exact_sha: "b39a66d1546feba70de84aa6d8c9956e5892d16d"
+  observed_total: 26
+  passed: 7
+  failed: 19
+  passed_runs:
+    - {owner: Team 0, workflow: team-delivery-foundation.yml, run_id: 40578797145}
+    - {owner: Team 0, workflow: iam-security.yml, run_id: 40578796968}
+    - {owner: Team 3, workflow: incident-workbench-certification.yml, run_id: 40578796675}
+    - {owner: Team 4, workflow: integration-sdk-certification.yml, run_id: 40578796644}
+    - {owner: Team 4, workflow: team-4-google-pubsub-messaging-collector-v1.yml, run_id: 40578796988}
+    - {owner: Team 4, workflow: team-4-rabbitmq-messaging-collector-v1.yml, run_id: 40578796967}
+    - {owner: Team 4, workflow: azure-data-platform-collector-v1.yml, run_id: 40578796955}
+  failed_runs_by_owner:
+    Team 0:
+      - {workflow: ci.yml, run_id: 40578796779, first_failed_job: Documentation truth gate}
+      - {workflow: beta-deployment-packaging.yml, run_id: 40578796841, first_failed_step: Kind smoke}
+      - {workflow: beta-security-hardening.yml, run_id: 40578796917, first_failed_step: Apply existing migrations}
+      - {workflow: beta-backup-restore.yml, run_id: 40578797192, first_failed_step: Generate exact-commit backup and restore evidence}
+      - {workflow: data-product-runtime.yml, run_id: 40578796883, first_failed_step: Apply migrations}
+      - {workflow: data-product-membership.yml, run_id: 40578796834, first_failed_step: Apply migrations}
+    Team 1:
+      - {workflow: pathway-intelligence-backend.yml, run_id: 40578796828, first_failed_step: Apply released migrations, blocked_by: Team 0}
+      - {workflow: stream-360-core-console.yml, run_id: 40578796956, first_failed_step: Apply migrations and seed deterministic stream projections, blocked_by: Team 0}
+      - {workflow: connector-schema-360-console.yml, run_id: 40578797070, first_failed_step: Migration immutability and Elasticsearch seed/persistence/API isolation}
+      - {workflow: stream-observer-backend.yml, run_id: 40578797316, first_failed_step: Record bounded certification results}
+      - {workflow: cluster-360-console.yml, run_id: 40578797071, first_failed_step: Apply migrations and seed deterministic projections, blocked_by: Team 0}
+    Team 2:
+      - {workflow: data-quality-monitoring.yml, run_id: 40578796880, first_failed_step: Validate provenance, service version, migration and test XML}
+      - {workflow: data-quality-console-v1.yml, run_id: 40578796855, first_failed_step: Browser and accessibility tests}
+      - {workflow: job-run-backend.yml, run_id: 40578797195, first_failed_step: Validate provenance, service version, migration and test XML}
+      - {workflow: lineage-analysis-console.yml, run_id: 40578796985, first_failed_step: Browser and accessibility tests}
+    Team 5:
+      - {workflow: pathway-explorer-console.yml, run_id: 40578796803, first_failed_step: Boundaries, migrations, seed, and backend tests}
+      - {workflow: console-product-experience.yml, run_id: 40578796949, first_failed_step: Playwright, axe, and cross-capability smoke}
+      - {workflow: administration-access-console-v1.yml, run_id: 40578796939, first_failed_step: Browser, accessibility, and mock OTLP journeys}
+      - {workflow: console-self-observability-v1.yml, run_id: 40578797325, first_failed_step: Browser, accessibility, and mock OTLP journeys}
+
+team_execution_order:
+  - {owner: Team 0, branch: codex/team0-v0-2-0-shared-stabilization, scope: shared_ci_migrations_helm_recovery, state: in_progress}
+  - {owner: Team 1, branch: pending_after_team_0, scope: streams_kafka_pathways, state: dependency_blocked}
+  - {owner: Team 2, branch: pending_after_team_0, scope: quality_jobs_lineage, state: dependency_blocked}
+  - {owner: Team 3, branch: pending_final_sha_verification, scope: incidents_notifications_workflows, state: latest_head_green}
+  - {owner: Team 4, branch: pending_final_sha_verification, scope: collectors_sdk_provider_matrix, state: latest_head_green}
+  - {owner: Team 5, branch: pending_after_backend_stabilization, scope: console_browser_accessibility, state: dependency_blocked}
+  # Domain branches must be created independently from updated main. They are
+  # deliberately not fabricated by this Team 0 infrastructure change.
 
 follow_up_work:
   - id: T1-EXISTING-KAFKA-MAPPING-RECONCILIATION

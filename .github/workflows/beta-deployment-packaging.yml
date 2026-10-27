@@ -38,7 +38,9 @@ jobs:
           python scripts/check_migration_immutability.py --base-ref "$(python scripts/resolve_ci_base.py 2> >(tee evidence/migration-base-error.log >&2))" 2>&1 | tee evidence/migration-immutability.log
       - name: Kind smoke (explicitly not passed when unavailable)
         run: bash scripts/deployment/kind_smoke_test.sh
-        env: {DATAOBS_SMOKE_VALUES: '${{ secrets.DATAOBS_SMOKE_VALUES }}'}
+        env:
+          DATAOBS_SMOKE_VALUES: '${{ secrets.DATAOBS_SMOKE_VALUES }}'
+          DATAOBS_KIND_DIAGNOSTICS: evidence/kind-diagnostics.txt
       - name: Upgrade and rollback
         run: bash scripts/deployment/helm_upgrade_test.sh
         env: {DATAOBS_UPGRADE_VALUES: '${{ secrets.DATAOBS_UPGRADE_VALUES }}'}

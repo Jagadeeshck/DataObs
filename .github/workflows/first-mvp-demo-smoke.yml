@@ -14,15 +14,6 @@ on:
       - .github/workflows/first-mvp-demo-smoke.yml
   push:
     branches: [main]
-    paths:
-      - Dockerfile.api
-      - docker-compose.mvp.yml
-      - scripts/demo_mvp.sh
-      - scripts/seed_console_demo.py
-      - src/api/**
-      - src/config/**
-      - src/security/**
-      - ui/dataobs-console/**
   workflow_dispatch:
 permissions: {contents: read}
 jobs:

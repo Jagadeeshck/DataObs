@@ -20,26 +20,36 @@ def test_gate_0_inventory_preserves_release_truth_and_defers_freeze():
     assert inventory["supported_platforms"] == []
     assert inventory["candidate_frozen"] is False
     assert inventory["gate_0_state"] == "pending_hosted_verification"
-    assert inventory["audited_main_sha"] == "0248209cb436f73ed993e93e09b9d71edcd32043"
+    assert inventory["audited_main_sha"] == "b39a66d1546feba70de84aa6d8c9956e5892d16d"
     assert inventory["observed_workflow_sha"] == inventory["audited_main_sha"]
     assert all(item["owner"] and item["workflow"] and item["hosted_state"] for item in inventory["blockers"])
     assert all(item["first_meaningful_error"] or item["hosted_state"] == "passed" for item in inventory["blockers"])
     assert {item["id"]: item["hosted_state"] for item in inventory["blockers"]} == {
-        "T0-RC-HELM-PROFILES": "fixed_locally_pending_rerun",
-        "T0-RC-BACKUP-EVIDENCE": "fixed_locally_pending_rerun",
-        "T0-RC-SECURITY-SUITES": "fixed_locally_pending_rerun",
-        "T1-RC-PATHWAY-FIXTURES": "domain_failure_requires_triage",
+        "T0-RC-HELM-PROFILES": "blocked_external_configuration",
+        "T0-RC-BACKUP-EVIDENCE": "requires_authenticated_artifact_triage",
+        "T0-RC-SECURITY-SUITES": "shared_migration_failure_requires_triage",
+        "T1-RC-PATHWAY-FIXTURES": "blocked_by_team_0_migration",
         "T0-RC-MVP-SMOKE": "not_run",
         "T0-RC-FOUNDATION": "passed",
     }
     assert {item["id"]: item["workflow_run_id"] for item in inventory["blockers"]} == {
-        "T0-RC-HELM-PROFILES": 40524617885,
-        "T0-RC-BACKUP-EVIDENCE": 40524618318,
-        "T0-RC-SECURITY-SUITES": 40524618199,
-        "T1-RC-PATHWAY-FIXTURES": 40524617849,
+        "T0-RC-HELM-PROFILES": 40578796841,
+        "T0-RC-BACKUP-EVIDENCE": 40578797192,
+        "T0-RC-SECURITY-SUITES": 40578796917,
+        "T1-RC-PATHWAY-FIXTURES": 40578796828,
         "T0-RC-MVP-SMOKE": None,
-        "T0-RC-FOUNDATION": 40524618636,
+        "T0-RC-FOUNDATION": 40578797145,
     }
+    summary = inventory["latest_head_workflow_summary"]
+    assert summary["exact_sha"] == inventory["audited_main_sha"]
+    assert (summary["observed_total"], summary["passed"], summary["failed"]) == (26, 7, 19)
+    assert (
+        len(summary["passed_runs"]) + sum(len(runs) for runs in summary["failed_runs_by_owner"].values())
+        == summary["observed_total"]
+    )
+    execution = {item["owner"]: item for item in inventory["team_execution_order"]}
+    assert execution["Team 0"]["branch"] == "codex/team0-v0-2-0-shared-stabilization"
+    assert all(execution[f"Team {team}"]["branch"].startswith("pending_") for team in range(1, 6))
     assert inventory["gate_0_exit_criteria"]["freeze_after_gate_0_only"] is True
 
 
@@ -58,6 +68,7 @@ def test_failed_release_infrastructure_retains_diagnostics():
     assert "evidence/helm-lint.log" in workflows["beta-deployment-packaging.yml"]
     assert "evidence/migration-base-error.log" in workflows["beta-deployment-packaging.yml"]
     assert "evidence/migration-immutability.log" in workflows["beta-deployment-packaging.yml"]
+    assert "DATAOBS_KIND_DIAGNOSTICS: evidence/kind-diagnostics.txt" in workflows["beta-deployment-packaging.yml"]
     assert "migration-apply.log" in workflows["beta-security-hardening.yml"]
     assert "team-0-security-hardening-evidence/security-junit.xml" in workflows["beta-security-hardening.yml"]
     assert "migration-apply.log" in workflows["pathway-intelligence-backend.yml"]
@@ -79,6 +90,14 @@ def test_failed_release_infrastructure_retains_diagnostics():
         "beta-backup-restore.yml",
     ):
         assert "if: always()" in workflows[name]
+
+
+def test_mvp_smoke_runs_on_every_main_sha_but_keeps_pr_scope():
+    workflow = yaml.safe_load((ROOT / ".github/workflows/first-mvp-demo-smoke.yml").read_text())
+    triggers = workflow.get("on", workflow.get(True))
+
+    assert triggers["push"] == {"branches": ["main"]}
+    assert "paths" in triggers["pull_request"]
 
 
 def test_helm_profiles_pin_kubernetes_and_use_re2_compatible_schema():

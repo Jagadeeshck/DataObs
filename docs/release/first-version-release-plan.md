@@ -1,7 +1,7 @@
 # DataObs 0.2.0 first-version release plan
 
 **Assessment date:** 2026-10-27  
-**Audited main SHA:** `0248209cb436f73ed993e93e09b9d71edcd32043`
+**Audited main SHA:** `b39a66d1546feba70de84aa6d8c9956e5892d16d`
 **Decision:** `NO_GO` — this is a plan, not release authorization.
 
 The current machine-readable Gate 0 inventory is
@@ -50,20 +50,25 @@ The authoritative product truth remains:
 
 1. **The candidate is not frozen.** The active readiness document and
    first-platform candidate still reference an older SHA, while current main is
-   `0248209cb436f73ed993e93e09b9d71edcd32043`. Evidence from different commits
+   `b39a66d1546feba70de84aa6d8c9956e5892d16d`. Evidence from different commits
    must not be combined.
-2. **Packaging is red.** Main run `40524617885` passes the repaired Helm
-   profiles, then fails while loading the dependency-free migration plan.
-3. **Security and Pathway are red.** Security run `40524618199` reaches a stale
-   Console proxy contract assertion. Pathway run `40524617849` reaches its
-   deterministic fixture suite; its exact assertion remains a Team 1 follow-up.
-   Released migrations and incompatible indices remain untouched.
+2. **Packaging is red.** Main run `40578796841` passes Helm lint, every supported
+   profile render, chart assertions, and migration immutability, then fails at
+   the mandatory Kind smoke. Its retained artifact is `12768123785`; the
+   protected, digest-pinned smoke configuration is still required.
+3. **Security and Pathway are red.** Security run `40578796917` and Pathway run
+   `40578796828` both fail while applying released migrations. The retained
+   artifacts are `12769625480` and `12769396466`. Team 0 must inspect the
+   authenticated migration log and reproduce the shared clean-install failure
+   before Team 1 changes domain code. Released migrations and incompatible
+   indices remain untouched.
 4. **The hosted demo proof is absent.** The MVP workflow was not triggered for
    the infrastructure-only merge and must be dispatched on the next Gate 0 SHA.
-5. **Recovery evidence is red.** Backup/restore run `40524618318` completes the
-   destructive proof, then fails because the directly executed validator cannot
-   resolve the repository-local `scripts` package. A first supported version
-   still needs a successful retained evidence envelope.
+5. **Recovery evidence is red.** Backup/restore run `40578797192` completes the
+   destructive proof, then fails while generating exact-commit evidence. Its
+   retained artifact is `12768706830`. Public job metadata does not expose the
+   authenticated artifact contents, so Team 0 must inspect the retained
+   inventory and envelope log rather than guess the underlying error.
 6. **Security and platform authorization are incomplete.** Hosted OIDC/TLS,
    adversarial tenant isolation, Kubernetes runtime security, independent
    artifact signature verification, browser/accessibility acceptance, and one
@@ -153,12 +158,19 @@ post-publication smoke mismatch stops the release.
 
 Dates are exit-criteria targets, not promises:
 
+The requested Friday 30 October 2026 target is feasible only as a conditional
+release-candidate target: Team 0 shared infrastructure must merge first, each
+domain team must then use an independent branch from updated main, and every
+mandatory workflow must be rerun on the final integrated SHA. If those
+conditions are not met by the Friday review, the release moves; the gates do
+not.
+
 | Target | Scope | Exit condition |
 | --- | --- | --- |
-| **Day 0–1** | Shared blocker closure | Gate 0 green on one main SHA |
-| **Day 2** | Candidate freeze | `0.2.0-rc.1` dry-run authority bundle is complete and internally consistent |
-| **Day 3–4** | Hosted certification | One bounded platform passes security, recovery, browser, tenancy, and supply-chain gates |
-| **Day 5** | Release review | Independent verifier returns `GO`; supported-platform entry is authorized |
+| **27 Oct** | Team 0 shared triage | Authenticated artifacts reviewed; shared first errors reproduced |
+| **28 Oct** | Shared fixes, then domain branches | Team 0 merges first; Teams 1, 2, and 5 submit focused fixes from updated main |
+| **29 Oct** | Final-SHA Gate 0 rerun | All mandatory workflows pass without skips on one integrated SHA |
+| **30 Oct** | Conditional candidate review | Freeze `0.2.0-rc.1` only if Gate 0 and independent evidence verification are green |
 | **After GO** | Publication | `v0.2.0` artifacts, tag, release notes, signatures, and clean-install verification are complete |
 
 If Gate 0 is not green by Day 1, keep the demo available as an evaluation MVP

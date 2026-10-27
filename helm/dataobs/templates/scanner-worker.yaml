@@ -15,7 +15,9 @@ spec:
       labels: {{- include "dataobs.selector" (dict "Release" .Release "Chart" .Chart "Values" .Values "component" "scanner-worker") | nindent 8 }}
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/shared-config.yaml") . | sha256sum }}
-{{ toYaml .Values.scannerWorker.podAnnotations | indent 8 }}
+{{- with .Values.scannerWorker.podAnnotations }}
+{{ toYaml . | indent 8 }}
+{{- end }}
     spec:
       serviceAccountName: {{ include "dataobs.fullname" . }}-scanner-worker
       automountServiceAccountToken: false
@@ -27,9 +29,14 @@ spec:
           image: {{ include "dataobs.image" (dict "root" . "image" .Values.scannerWorker.image) | quote }}
           imagePullPolicy: {{ .Values.scannerWorker.image.pullPolicy }}
           command: {{ toJson .Values.scannerWorker.command }}
+          startupProbe: &processProbe {exec: {command: ["/bin/sh", "-c", "kill -0 1"]}, periodSeconds: 5, failureThreshold: 30}
+          readinessProbe: *processProbe
+          livenessProbe: *processProbe
           env:
 {{ include "dataobs.commonEnv" . | indent 12 }}
-{{ toYaml .Values.scannerWorker.env | indent 12 }}
+{{- with .Values.scannerWorker.env }}
+{{ toYaml . | indent 12 }}
+{{- end }}
           envFrom: {{ toYaml .Values.scannerWorker.envFrom | nindent 12 }}
           securityContext: {{ toYaml .Values.global.securityContext | nindent 12 }}
           resources: {{ toYaml .Values.scannerWorker.resources | nindent 12 }}

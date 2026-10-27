@@ -1,8 +1,8 @@
 schema_version: "1.0"
 release_version: "0.2.0"
 assessment_date: "2026-10-27"
-audited_main_sha: "95be7cea2c6c7960da29eb0d701be3959446408a"
-observed_workflow_sha: "55e628bd20604184f3927faa8643b424fe4f00f9"
+audited_main_sha: "b44e2db9c563b2910a96e74d044f9324b08ee5e3"
+observed_workflow_sha: "b44e2db9c563b2910a96e74d044f9324b08ee5e3"
 release_decision: NO_GO
 security_state: INCOMPLETE
 supported_platforms: []
@@ -10,58 +10,97 @@ candidate_frozen: false
 gate_0_state: pending_hosted_verification
 
 blockers:
-  - id: T0-RC-HELM-LINT
+  - id: T0-RC-HELM-PROFILES
     owner: Team 0
     workflow: beta-deployment-packaging.yml
-    workflow_run_id: 40473063349
+    workflow_run_id: 40488946701
+    workflow_url: https://github.com/Jagadeeshck/DataObs/actions/runs/40488946701
     first_meaningful_error: >-
-      helm lint rejected helm/dataobs because values.schema.json still required
-      terminal migration 0021 while the default values declared executable
-      terminal migration 0033; values-production.yaml also contained the key
-      twice.
+      The values-profile loop invoked helm template without --kube-version, so
+      Helm evaluated the chart as Kubernetes v1.20.0 and rejected the declared
+      >=1.30.0-0 <1.31.0-0 range. Exact local reproduction then exposed two
+      latent profile defects: the image-tag schema used unsupported RE2 negative
+      lookahead and empty podAnnotations/env maps rendered invalid YAML.
     evidence_artifact: team-0-deployment-packaging-evidence
+    artifact_id: 12725624998
     resolution: >-
-      Synchronize the Helm and release-manifest schema constants with the
-      executable registry, remove the duplicate YAML key, pin Helm 3.18.6, and
-      retain helm-lint.log on failure.
-    state: fixed_locally_pending_hosted
-
-  - id: T0-RC-MIGRATION-APPLY
-    owner: Team 0
-    workflow: beta-security-hardening.yml
-    related_workflows:
-      - pathway-intelligence-backend.yml
-      - first-mvp-demo-smoke.yml
-    workflow_run_ids: [40473063423, 40473063446, 40473063449]
-    first_meaningful_error: >-
-      Clean migration application stopped fail-closed when the generic initial
-      mapping installed provider retry_count/tags types on incident-owned
-      indices before the released incident mapping update.
-    evidence_artifacts:
-      - team-0-security-hardening-evidence
-      - pathway-intelligence-backend-v1-evidence
-      - first-mvp-demo-diagnostics-55e628bd20604184f3927faa8643b424fe4f00f9
-    resolution: >-
-      Select the incident-owned field definitions when creating incident
-      indices. Released migration declarations and checksums remain unchanged;
-      incompatible unknown mappings still fail closed. Retain migration output
-      in always-uploaded diagnostic artifacts.
-    state: fixed_locally_pending_hosted
+      Pass Kubernetes 1.30.0 to every render, use production values plus
+      deterministic non-publishable digest overrides for structural profiles,
+      replace the redundant lookahead with an RE2-compatible pattern, and omit
+      empty annotation/env fragments. Chart assertions now use the same inputs.
+    hosted_state: fixed_locally_pending_rerun
 
   - id: T0-RC-BACKUP-EVIDENCE
     owner: Team 0
     workflow: beta-backup-restore.yml
-    workflow_run_id: 40473063372
+    workflow_run_id: 40488946651
+    workflow_url: https://github.com/Jagadeeshck/DataObs/actions/runs/40488946651
     first_meaningful_error: >-
-      The run reached exact-commit evidence generation but exited before a
-      standard evidence envelope was retained, leaving no independently usable
-      backup/restore artifact for the candidate.
+      The destructive pytest step returned success, but the following evidence
+      step exited before evidence/evidence.json was written. The standard writer
+      succeeds when both inputs exist, isolating the failure to an absent or
+      empty destructive-restore report rather than envelope signing or redaction.
     evidence_artifact: team-0-backup-restore-v1-evidence
+    artifact_id: 12726571790
     resolution: >-
-      Require both the JUnit and destructive-restore JSON reports to be nonempty
-      before envelope generation and always upload the bounded evidence tree so
-      the first failing report is retained.
-    state: fixed_locally_pending_hosted
+      Set the destructive-test opt-in and output path at job scope, report all
+      pytest outcomes, inventory retained inputs, validate report semantics and
+      nonempty resources with a dedicated fail-closed validator, and retain the
+      envelope writer output. No missing report can be represented as passing.
+    hosted_state: fixed_locally_pending_rerun
+
+  - id: T0-RC-SECURITY-SUITES
+    owner: Team 0
+    workflow: beta-security-hardening.yml
+    workflow_run_id: 40488946578
+    workflow_url: https://github.com/Jagadeeshck/DataObs/actions/runs/40488946578
+    first_meaningful_error: Security and certification suites failed after clean migration application passed.
+    evidence_artifact: team-0-security-hardening-evidence
+    artifact_id: 12727585091
+    resolution: >-
+      Not changed in this infrastructure patch. Inspect the retained JUnit/log
+      artifact and create a focused security follow-up if the same suite fails
+      after the Gate 0 infrastructure rerun.
+    hosted_state: domain_failure_requires_triage
+
+  - id: T1-RC-PATHWAY-FIXTURES
+    owner: Team 1
+    workflow: pathway-intelligence-backend.yml
+    workflow_run_id: 40488946586
+    workflow_url: https://github.com/Jagadeeshck/DataObs/actions/runs/40488946586
+    first_meaningful_error: Verify deterministic pathway intelligence fixtures failed after migration application passed.
+    evidence_artifact: pathway-intelligence-backend-v1-evidence
+    artifact_id: 12726191982
+    resolution: >-
+      Kept out of this shared-infrastructure patch. Team 1 must use the retained
+      fixture output for a focused domain correction; migration checks must not
+      be weakened and indices must not be deleted.
+    hosted_state: domain_failure_requires_triage
+
+  - id: T0-RC-MVP-SMOKE
+    owner: Team 0
+    workflow: first-mvp-demo-smoke.yml
+    workflow_run_id: null
+    workflow_url: null
+    first_meaningful_error: No run was triggered for merge SHA b44e2db9c563b2910a96e74d044f9324b08ee5e3.
+    evidence_artifact: first-mvp-demo-smoke-b44e2db9c563b2910a96e74d044f9324b08ee5e3
+    resolution: >-
+      Dispatch the workflow explicitly on the next exact Gate 0 SHA because the
+      PR #305 path set did not trigger the smoke workflow.
+    hosted_state: not_run
+
+  - id: T0-RC-FOUNDATION
+    owner: Team 0
+    workflow: team-delivery-foundation.yml
+    workflow_run_id: 40488946784
+    workflow_url: https://github.com/Jagadeeshck/DataObs/actions/runs/40488946784
+    first_meaningful_error: null
+    evidence_artifacts:
+      - team-delivery-foundation-evidence
+      - team-delivery-foundation-console-evidence
+    artifact_ids: [12726831476, 12728030063]
+    resolution: No change required; backend and Console validation both passed.
+    hosted_state: passed
 
 follow_up_work:
   - id: T1-EXISTING-KAFKA-MAPPING-RECONCILIATION

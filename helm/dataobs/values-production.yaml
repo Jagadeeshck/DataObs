@@ -5,6 +5,7 @@ global:
   imagePullSecrets: []
   imagePullPolicy: IfNotPresent
   securityContext:
+    runAsNonRoot: true
     allowPrivilegeEscalation: false
     readOnlyRootFilesystem: true
     capabilities:

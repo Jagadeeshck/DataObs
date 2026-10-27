@@ -16,11 +16,21 @@ jobs:
         with: {python-version: '3.11'}
       - run: pip install pyyaml jsonschema
       - run: python -m compileall -q scripts && python -m json.tool helm/dataobs/values.schema.json >/dev/null && python -m json.tool docs/release/dataobs-release-manifest.schema.json >/dev/null
+      - name: Create non-publishable structural digest overrides
+        run: python scripts/deployment/write_structural_digest_values.py --output /tmp/structural-digests.yaml
       - name: Helm lint against the certified Kubernetes target
-        run: mkdir -p evidence && helm lint helm/dataobs --kube-version 1.30.0 2>&1 | tee evidence/helm-lint.log
-      - run: for f in values.yaml values-minimal.yaml values-production.yaml values-external-otel.yaml values-development.yaml; do helm template dataobs helm/dataobs -f helm/dataobs/$f >/tmp/$f.rendered; done
+        run: mkdir -p evidence && helm lint helm/dataobs --kube-version 1.30.0 -f helm/dataobs/values-production.yaml -f /tmp/structural-digests.yaml 2>&1 | tee evidence/helm-lint.log
+      - name: Render every supported values profile
+        run: |
+          helm template dataobs helm/dataobs --kube-version 1.30.0 -f helm/dataobs/values-production.yaml -f /tmp/structural-digests.yaml >/tmp/values-production.yaml.rendered
+          helm template dataobs helm/dataobs --kube-version 1.30.0 -f helm/dataobs/values-production.yaml -f /tmp/structural-digests.yaml -f helm/dataobs/values-minimal.yaml >/tmp/values-minimal.yaml.rendered
+          helm template dataobs helm/dataobs --kube-version 1.30.0 -f helm/dataobs/values-production.yaml -f /tmp/structural-digests.yaml -f helm/dataobs/values-external-otel.yaml >/tmp/values-external-otel.yaml.rendered
+          helm template dataobs helm/dataobs --kube-version 1.30.0 -f helm/dataobs/values-development.yaml >/tmp/values-development.yaml.rendered
       - run: bash scripts/deployment/chart_assertions.sh
-      - run: python scripts/release/render_helm_values.py --manifest docs/release/dataobs-release-manifest.example.json --output /tmp/release-values.yaml && grep -q '@' <(helm template dataobs helm/dataobs -f /tmp/release-values.yaml)
+      - name: Validate release-manifest Helm values shape
+        run: |
+          python scripts/release/render_helm_values.py --manifest docs/release/dataobs-release-manifest.example.json --output /tmp/release-values.yaml
+          grep -q '@' <(helm template dataobs helm/dataobs --kube-version 1.30.0 -f /tmp/release-values.yaml -f /tmp/structural-digests.yaml)
       - run: python scripts/check_migration_immutability.py --base-ref "$(python scripts/resolve_ci_base.py)"
       - name: Kind smoke (explicitly not passed when unavailable)
         run: bash scripts/deployment/kind_smoke_test.sh

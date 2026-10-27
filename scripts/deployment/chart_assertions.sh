@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
-CHART=helm/dataobs; tmp=$(mktemp); trap 'rm -f "$tmp"' EXIT
-helm lint "$CHART" --kube-version 1.30.0
-helm template dataobs "$CHART" -f "$CHART/values-production.yaml" >"$tmp"
+CHART=helm/dataobs; tmp=$(mktemp); digest_values=$(mktemp); trap 'rm -f "$tmp" "$digest_values"' EXIT
+python scripts/deployment/write_structural_digest_values.py --output "$digest_values"
+helm lint "$CHART" --kube-version 1.30.0 -f "$CHART/values-production.yaml" -f "$digest_values"
+helm template dataobs "$CHART" --kube-version 1.30.0 -f "$CHART/values-production.yaml" -f "$digest_values" >"$tmp"
 for component in api console quality-worker scanner-worker monitor-runtime pathway-worker kafka-observer otel-collector; do grep -q "app.kubernetes.io/component: $component" "$tmp"; done
 [[ $(grep -c '^kind: Job$' "$tmp") -eq 1 ]]
 ! grep -E 'image: .*:latest([[:space:]]|$)' "$tmp"
@@ -55,7 +56,7 @@ if any(d.get("kind") in {"Elasticsearch","Keycloak"} or "elasticsearch" in d.get
   errors.append("chart must not deploy Elasticsearch or an identity provider")
 if errors: raise SystemExit("\n".join(sorted(errors)))
 PY
-helm template dataobs "$CHART" -f "$CHART/values-minimal.yaml" >"$tmp"
+helm template dataobs "$CHART" --kube-version 1.30.0 -f "$CHART/values-production.yaml" -f "$digest_values" -f "$CHART/values-minimal.yaml" >"$tmp"
 ! grep -q 'app.kubernetes.io/component: scanner-worker' "$tmp"
 ! grep -qE '(plaintext-test-secret|password: [^$])' "$tmp"
 ! grep -q 'app.kubernetes.io/component: elasticsearch' "$tmp"

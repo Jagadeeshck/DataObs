@@ -16,13 +16,53 @@ def test_workflow_yaml():
         assert yaml.safe_load(path.read_text())
 
 
+def test_mvp_compose_has_ordered_migrations_and_no_secret_defaults():
+    text = (ROOT / "docker-compose.mvp.yml").read_text()
+    compose = yaml.safe_load(text)
+    assert set(compose["services"]) == {"elasticsearch", "migrations", "demo-seed", "api", "console"}
+    api_dependencies = compose["services"]["api"]["depends_on"]
+    assert api_dependencies["migrations"]["condition"] == "service_completed_successfully"
+    assert api_dependencies["demo-seed"]["condition"] == "service_completed_successfully"
+    assert "ELASTIC_PASSWORD:?" in text
+    assert "DATAOBS_API_TOKEN:?" in text
+    assert compose["services"]["api"]["read_only"] is True
+    assert compose["services"]["console"]["read_only"] is True
+    assert compose["services"]["demo-seed"]["read_only"] is True
+
+
+def test_console_container_preserves_api_route_prefix():
+    nginx = (ROOT / "ui/dataobs-console/nginx.conf").read_text()
+    assert "proxy_pass http://api:8080;" in nginx
+    assert "proxy_pass http://api:8080/;" not in nginx
+
+
+def test_mvp_demo_script_is_bounded_and_verifies_tenant_isolation():
+    script = (ROOT / "scripts/demo_mvp.sh").read_text()
+    assert "deadline=$((SECONDS + 300))" in script
+    assert "http://127.0.0.1:3000/api/v1/auth/me" in script
+    assert "command-center?environment=production" in script
+    assert 'assert "northstar" not in serialized' in script
+    assert "docker compose" in script
+    assert "--volumes" not in script
+
+
+def test_mvp_demo_workflow_is_non_certifying_and_replays_verification():
+    workflow = (ROOT / ".github/workflows/first-mvp-demo-smoke.yml").read_text()
+    assert "./scripts/demo_mvp.sh up" in workflow
+    assert "./scripts/demo_mvp.sh verify" in workflow
+    assert '"independent_verification": False' in workflow
+    assert '"release_authorization": False' in workflow
+    assert "openssl rand -hex 24" in workflow
+
+
 def test_stable_integration_gate_contract():
     gate_path = ROOT / ".github/workflows/team-delivery-foundation.yml"
     gate = yaml.safe_load(gate_path.read_text())
     triggers = gate.get("on", gate.get(True, {}))
     assert "pull_request" in triggers
-    assert gate["jobs"]["backend"]["uses"].endswith("reusable-backend-validation.yml")
-    assert gate["jobs"]["console"]["uses"].endswith("reusable-console-validation.yml")
+    assert gate["jobs"]["foundation-backend"]["uses"].endswith("reusable-backend-validation.yml")
+    assert gate["jobs"]["foundation-console"]["uses"].endswith("reusable-console-validation.yml")
+    assert "backend" not in gate["jobs"] and "console" not in gate["jobs"]
 
     backend = (ROOT / ".github/workflows/reusable-backend-validation.yml").read_text()
     for check in (

@@ -159,8 +159,8 @@ def _parse_csv(raw: bytes, max_rows: int = 50_000) -> Tuple[List[str], List[Dict
     original_headers = list(reader.fieldnames)
     headers = _dedupe_headers(original_headers)
     header_map: Dict[Any, List[str]] = {}
-    for idx, raw in enumerate(original_headers):
-        header_map.setdefault(raw, []).append(headers[idx])
+    for idx, raw_header in enumerate(original_headers):
+        header_map.setdefault(raw_header, []).append(headers[idx])
     rows: List[Dict[str, Any]] = []
     malformed_count = 0
 

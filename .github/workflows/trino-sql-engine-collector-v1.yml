@@ -16,7 +16,7 @@ jobs:
       - run: mypy --ignore-missing-imports integrations/sql_engine integrations/trino
       - run: pytest -q tests/integrations tests/elastic_store/test_migrations.py
       - run: pytest -q tests/integrations/test_sql_engine_foundation.py tests/integrations/test_trino_provider.py
-      - run: python scripts/check_migration_immutability.py --base-ref "${{ github.event.pull_request.base.sha || github.event.before || 'HEAD^' }}"
+      - run: python scripts/check_migration_immutability.py --base-ref "$(python scripts/resolve_ci_base.py)"
       - run: python scripts/release/current_terminal_migration.py && python scripts/release/check_release_metadata.py
       - run: python scripts/validate_capability_ledger.py && pip-audit -r requirements-trino.txt
       - run: python scripts/check_docs_links.py

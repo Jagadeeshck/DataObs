@@ -116,6 +116,30 @@ def _auth() -> Dict[str, str]:
     return {"Authorization": "Bearer t"}
 
 
+def test_local_demo_identity_exposes_console_compatible_tenants():
+    app = create_app(
+        settings=AppSettings(
+            runtime=RuntimeSettings(env="development"),
+            api=APISettings(),
+            elasticsearch=ElasticsearchSettings(),
+            auth=AuthSettings(
+                allow_unauthenticated_dev=True,
+                development_tenant_id="acme-retail",
+                development_environment="production",
+            ),
+            tenant=TenantSettings(),
+            observability=ObservabilitySettings(),
+            store_backend="memory",
+        ),
+        store_bundle=StoreBundle(store=_FakeStore()),
+    )
+    response = TestClient(app).get("/api/v1/auth/me")
+    assert response.status_code == 200
+    expected_access = [{"tenant_id": "acme-retail", "environments": ["production"]}]
+    assert response.json()["authorised_access"] == expected_access
+    assert response.json()["tenants"] == [{"id": "acme-retail", "environments": ["production"]}]
+
+
 def test_request_id_round_trip(client: TestClient):
     r = client.get("/rules", headers={**_auth(), "X-Request-ID": "abc-123"})
     assert r.headers["X-Request-ID"] == "abc-123"

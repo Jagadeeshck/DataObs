@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from typing import Optional
+from typing import Any, Optional
 from urllib import request
 
 
@@ -46,7 +46,7 @@ class SlackClient:
         }.get(event.severity.lower(), "#2E86AB")
 
         # Header block
-        blocks = [
+        blocks: list[dict[str, Any]] = [
             {
                 "type": "header",
                 "text": {"type": "plain_text", "text": event.title, "emoji": True},

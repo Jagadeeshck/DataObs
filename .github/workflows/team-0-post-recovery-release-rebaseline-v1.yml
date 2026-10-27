@@ -1,0 +1,77 @@
+name: Team 0 post-recovery release rebaseline v1
+on:
+  workflow_dispatch:
+    inputs:
+      candidate_sha:
+        description: Exact 40-character main SHA to evaluate
+        required: true
+        type: string
+permissions: {contents: read, actions: read}
+jobs:
+  freeze-candidate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0, ref: '${{ inputs.candidate_sha }}'}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install pyyaml
+      - name: Validate exact main candidate
+        run: |
+          git fetch origin main
+          test "$(git rev-parse HEAD)" = "${{ inputs.candidate_sha }}"
+          python scripts/release/post_recovery_rebaseline.py \
+            --candidate-sha "${{ inputs.candidate_sha }}" --main-ref origin/main \
+            --expected-terminal 0033_team1_stream_schema_intelligence_runtime \
+            --evidence-index evidence/team-0-post-recovery/evidence-index.json \
+            --blockers evidence/team-0-post-recovery/blockers.json \
+            --output-directory runtime-rebaseline
+          printf '{"evidence":[]}\n' > runtime-rebaseline/security-input.json
+          python scripts/security/evaluate_security_posture.py --sha "${{ inputs.candidate_sha }}" --profile production --artifacts runtime-rebaseline/security-input.json --output runtime-rebaseline/security-posture-report.json
+          python scripts/security/create_security_release_gate.py --posture runtime-rebaseline/security-posture-report.json --output runtime-rebaseline/security-release-gate.json --workflow-run-id "$GITHUB_RUN_ID"
+          python scripts/release/release_decision.py --manifest evidence/team-0-post-recovery/release-authority-input.json --security-gate runtime-rebaseline/security-release-gate.json --output runtime-rebaseline/final-release-decision.json --dry-run
+      - uses: actions/upload-artifact@v4
+        with: {name: post-recovery-frozen-candidate, path: runtime-rebaseline, if-no-files-found: error}
+  foundation-backend:
+    uses: ./.github/workflows/reusable-backend-validation.yml
+    with:
+      checkout-ref: '${{ inputs.candidate_sha }}'
+      test-path: tests/test_team_delivery_foundation.py
+      artifact-name: post-recovery-foundation-backend
+      evidence-profile: post-recovery-foundation
+  foundation-console:
+    uses: ./.github/workflows/reusable-console-validation.yml
+    with:
+      checkout-ref: '${{ inputs.candidate_sha }}'
+      artifact-name: post-recovery-foundation-console
+      run-playwright: false
+      run-accessibility: false
+      workflow-file: team-0-post-recovery-release-rebaseline-v1.yml
+  assemble-and-verify:
+    needs: [freeze-candidate, foundation-backend, foundation-console]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: '${{ inputs.candidate_sha }}'}
+      - uses: actions/download-artifact@v4
+        with: {name: post-recovery-frozen-candidate, path: bundle}
+      - uses: actions/download-artifact@v4
+        with: {name: post-recovery-foundation-backend, path: bundle/foundation-backend}
+      - uses: actions/download-artifact@v4
+        with: {name: post-recovery-foundation-console, path: bundle/foundation-console}
+      - name: Verify exact candidate identity and preserve NO_GO
+        env: {CANDIDATE_SHA: '${{ inputs.candidate_sha }}'}
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          sha=os.environ['CANDIDATE_SHA']
+          assert json.loads(Path('bundle/candidate.json').read_text())['sha'] == sha
+          assert json.loads(Path('bundle/final-release-decision.json').read_text())['state'] == 'NO_GO'
+          assert json.loads(Path('bundle/supported-platform-evaluation.json').read_text())['supported'] == []
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: team-0-post-recovery-release-rebaseline-v1-evidence
+          path: bundle
+          if-no-files-found: error

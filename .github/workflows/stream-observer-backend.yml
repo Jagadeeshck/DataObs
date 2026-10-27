@@ -40,7 +40,7 @@ jobs:
       - name: Wait for Elasticsearch readiness
         run: python scripts/ci/wait_for_elasticsearch.py --url http://localhost:9200 --timeout 120
       - name: Migration immutability
-        run: python scripts/check_migration_immutability.py --base-ref "${{ github.event.pull_request.base.sha || github.event.before || 'HEAD^' }}"
+        run: python scripts/check_migration_immutability.py --base-ref "$(python scripts/resolve_ci_base.py)"
       - name: Prepare exact-version services and Kafka lag
         run: |
           mkdir -p stream-observer-backend-v1-evidence/results

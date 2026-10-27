@@ -22,6 +22,14 @@ def test_env_var_override(monkeypatch):
     assert settings.port == 9999
 
 
+def test_local_demo_context_is_explicitly_configurable(monkeypatch):
+    monkeypatch.setenv("DATAOBS_DEVELOPMENT_TENANT_ID", "acme-retail")
+    monkeypatch.setenv("DATAOBS_DEVELOPMENT_ENVIRONMENT", "production")
+    settings = load_settings()
+    assert settings.auth.development_tenant_id == "acme-retail"
+    assert settings.auth.development_environment == "production"
+
+
 def test_dataobs_config_yaml_loading(monkeypatch, tmp_path):
     cfg = tmp_path / "cfg.yaml"
     cfg.write_text(textwrap.dedent("""

@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 import {
   parseTimeRange,
+  parseAuthenticatedContext,
   ProductContextProvider,
   timeRangeBounds,
   useProductContext,
@@ -24,6 +25,18 @@ describe("product context", () => {
       start: "2026-01-01T00:00:00.000Z",
       end: "2026-01-01T01:00:00.000Z",
     });
+  });
+  it("accepts the API authorised-access contract for demo startup", () => {
+    const parsed = parseAuthenticatedContext({
+      subject: "local-development",
+      authorised_access: [
+        { tenant_id: "acme-retail", environments: ["production"] },
+      ],
+      permissions: ["assets:read"],
+    });
+    expect(parsed.tenants).toEqual([
+      { id: "acme-retail", name: undefined, environments: ["production"] },
+    ]);
   });
   it("accepts only trusted tenant environments and invalidates on context or refresh changes", async () => {
     const wrapper = ({ children }: { children: ReactNode }) => (

@@ -28,7 +28,7 @@ jobs:
           python scripts/check_docs_links.py
           python scripts/validate_capability_ledger.py
           python scripts/release/check_release_metadata.py
-          python scripts/check_migration_immutability.py --base-ref origin/main
+          python scripts/check_migration_immutability.py --base-ref "$(python scripts/resolve_ci_base.py)"
           python scripts/security/check_route_permissions.py
       - name: Product impact tests
         run: python -m pytest tests/pathways/test_product_impact.py -q

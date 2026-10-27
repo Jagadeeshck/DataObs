@@ -61,6 +61,8 @@ class AuthSettings:
     oidc: "OIDCSettings" = field(default_factory=lambda: OIDCSettings())
     authorization_source: AuthorizationSource = "claims"
     bootstrap_enabled: bool = True
+    development_tenant_id: str = "default"
+    development_environment: str = "development"
 
 
 @dataclass(frozen=True)
@@ -245,6 +247,8 @@ def load_settings() -> AppSettings:
             provider=str(os.getenv("DATAOBS_AUTH_PROVIDER", _deep_get(config, "auth", "provider", default="local"))),
             authorization_source=cast(AuthorizationSource, str(os.getenv("DATAOBS_AUTHORIZATION_SOURCE", "claims"))),
             bootstrap_enabled=_to_bool(os.getenv("DATAOBS_SECURITY_BOOTSTRAP_ENABLED", "true"), True),
+            development_tenant_id=str(os.getenv("DATAOBS_DEVELOPMENT_TENANT_ID", "default")),
+            development_environment=str(os.getenv("DATAOBS_DEVELOPMENT_ENVIRONMENT", "development")),
             oidc=OIDCSettings(
                 issuer=str(
                     os.getenv("DATAOBS_OIDC_ISSUER", _deep_get(config, "auth", "oidc", "issuer", default=""))

@@ -83,8 +83,7 @@ class Authenticator:
             return self._development_principal()
         raise SecurityError("token_missing" if not token else "signature_invalid", "Valid authentication is required")
 
-    @staticmethod
-    def _development_principal() -> Principal:
+    def _development_principal(self) -> Principal:
         roles = frozenset({"platform_admin"})
         return Principal(
             "local-development",
@@ -92,5 +91,12 @@ class Authenticator:
             "user",
             roles=roles,
             permissions=permissions_for_roles(roles),
-            tenant_access=frozenset({TenantAccess("default", frozenset()), TenantAccess("*", frozenset())}),
+            tenant_access=frozenset(
+                {
+                    TenantAccess(
+                        self.settings.development_tenant_id,
+                        frozenset({self.settings.development_environment}),
+                    )
+                }
+            ),
         )

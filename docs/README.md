@@ -3,6 +3,10 @@
 ## Product status
 Start with the [product status index](product/README.md).
 
+## Demo
+Use the [first-MVP demo runbook](demo/first-mvp-demo.md) for the bounded local
+product walkthrough.
+
 ## Architecture
 See the [architecture overview](architecture/overview.md).
 

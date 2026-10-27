@@ -32,10 +32,31 @@ services:
       ELASTICSEARCH_PASSWORD: ${ELASTIC_PASSWORD:?set ELASTIC_PASSWORD in .env.mvp}
       ELASTICSEARCH_VERIFY_TLS: "false"
       API_TOKEN: ${DATAOBS_API_TOKEN:?set DATAOBS_API_TOKEN in .env.mvp}
+      DATAOBS_ALLOW_UNAUTHENTICATED_DEV: "true"
+      DATAOBS_DEVELOPMENT_TENANT_ID: acme-retail
+      DATAOBS_DEVELOPMENT_ENVIRONMENT: production
       DATAOBS_VERSION: ${DATAOBS_VERSION:-0.2.0}
     depends_on:
       elasticsearch:
         condition: service_healthy
+    restart: "no"
+
+  demo-seed:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    command: ["python", "/app/seed_console_demo.py"]
+    environment: *api-environment
+    volumes:
+      - ./scripts/seed_console_demo.py:/app/seed_console_demo.py:ro
+    depends_on:
+      migrations:
+        condition: service_completed_successfully
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
     restart: "no"
 
   api:
@@ -49,6 +70,8 @@ services:
       elasticsearch:
         condition: service_healthy
       migrations:
+        condition: service_completed_successfully
+      demo-seed:
         condition: service_completed_successfully
     read_only: true
     tmpfs:

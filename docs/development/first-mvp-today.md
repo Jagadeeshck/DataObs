@@ -20,15 +20,18 @@ Start it with:
 ```bash
 cp .env.mvp.example .env.mvp
 # Replace both placeholder secrets in .env.mvp.
-docker compose --env-file .env.mvp -f docker-compose.mvp.yml config
-docker compose --env-file .env.mvp -f docker-compose.mvp.yml up --build -d
-docker compose --env-file .env.mvp -f docker-compose.mvp.yml ps
+./scripts/demo_mvp.sh config
+./scripts/demo_mvp.sh up
+./scripts/demo_mvp.sh status
 ```
 
 The Console is at <http://localhost:3000>; the API health endpoint is at
 <http://localhost:8080/health>. Tear down with `docker compose --env-file
 .env.mvp -f docker-compose.mvp.yml down`. Add `--volumes` only when intentionally
 discarding evaluation data.
+
+The presenter checklist and ten-minute narrative are in the
+[first-MVP demo runbook](../demo/first-mvp-demo.md).
 
 ## Exit criteria for today
 

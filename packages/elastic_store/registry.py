@@ -7,6 +7,7 @@ from elasticsearch import Elasticsearch
 
 from .manifest import (
     BASE_PROPERTIES,
+    INCIDENT_AUTOMATION_MUTABLE_INDICES,
     INCIDENT_AUTOMATION_PROPERTIES,
     KAFKA_PROPERTIES,
     MIGRATION_STATE_INDEX,
@@ -90,10 +91,18 @@ def plan() -> List[Dict[str, Any]]:
     ]
 
 
-def _mapping() -> Dict[str, Any]:
-    return {
-        "dynamic": "strict",
-        "properties": BASE_PROPERTIES
+def _mapping(index: str | None = None) -> Dict[str, Any]:
+    """Build the shared strict mapping without changing released migrations.
+
+    Provider observations added two fields whose names already belonged to the
+    incident contract with different Elasticsearch types.  The old global
+    union let the provider definitions silently win while initially creating
+    incident indices; migration 0003 then correctly rejected that incompatible
+    mapping.  Select the owning contract for incident indices instead of
+    weakening migration validation or rewriting a released migration.
+    """
+    properties = (
+        BASE_PROPERTIES
         | {
             "id": {"type": "keyword"},
             "name": {"type": "keyword"},
@@ -108,7 +117,13 @@ def _mapping() -> Dict[str, Any]:
         | MONITORING_PROPERTIES
         | JOB_RUN_PROPERTIES
         | SECURITY_PROPERTIES
-        | PROVIDER_PROPERTIES,
+        | PROVIDER_PROPERTIES
+    )
+    if index in INCIDENT_AUTOMATION_MUTABLE_INDICES:
+        properties |= INCIDENT_AUTOMATION_PROPERTIES
+    return {
+        "dynamic": "strict",
+        "properties": properties,
     }
 
 
@@ -234,7 +249,7 @@ JOB_RUN_PROPERTIES: Dict[str, Any] = {
 
 def _ensure_mutable_index(es: Elasticsearch, index: str) -> None:
     if not es.indices.exists(index=index):
-        es.indices.create(index=index, mappings=_mapping())
+        es.indices.create(index=index, mappings=_mapping(index))
     es.indices.put_alias(index=index, name=f"{index}-read")
     es.indices.put_alias(index=index, name=f"{index}-write", is_write_index=True)
 

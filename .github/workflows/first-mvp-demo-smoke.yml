@@ -70,7 +70,17 @@ jobs:
           retention-days: 14
       - name: Container diagnostics
         if: failure()
-        run: ./scripts/demo_mvp.sh logs
+        run: |
+          mkdir -p evidence
+          ./scripts/demo_mvp.sh status 2>&1 | tee evidence/container-status.log || true
+          ./scripts/demo_mvp.sh logs 2>&1 | tee evidence/container-diagnostics.log || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: first-mvp-demo-diagnostics-${{ github.sha }}
+          path: evidence
+          if-no-files-found: error
+          retention-days: 14
       - name: Stop demo
         if: always()
         run: ./scripts/demo_mvp.sh down

@@ -26,7 +26,7 @@ jobs:
       - name: Wait for Elasticsearch readiness
         run: python scripts/ci/wait_for_elasticsearch.py --url http://localhost:9200 --timeout 120
       - name: Apply existing migrations
-        run: python -m packages.elastic_store.cli apply
+        run: mkdir -p team-0-security-hardening-evidence && python -m packages.elastic_store.cli apply 2>&1 | tee team-0-security-hardening-evidence/migration-apply.log
         env: {ELASTICSEARCH_URL: 'http://localhost:9200'}
       - name: Security and certification suites
         run: python -m pytest tests/security tests/certification -q --junitxml=security-junit.xml
@@ -53,6 +53,7 @@ jobs:
       - name: Evidence checksum verification
         run: cd team-0-security-hardening-evidence && sha256sum -c SHA256SUMS
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: team-0-security-hardening-evidence
           path: team-0-security-hardening-evidence

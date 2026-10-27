@@ -4,6 +4,11 @@
 **Audited main SHA:** `55e628bd20604184f3927faa8643b424fe4f00f9`  
 **Decision:** `NO_GO` — this is a plan, not release authorization.
 
+The current machine-readable Gate 0 inventory is
+[`v0.2.0-gate-0-blockers.yaml`](v0.2.0-gate-0-blockers.yaml). It records the
+first meaningful error, owner, workflow run, expected evidence artifact, local
+resolution, and hosted-verification state without freezing a candidate.
+
 ## Executive assessment
 
 DataObs has a credible **local evaluation MVP** and a substantial automated

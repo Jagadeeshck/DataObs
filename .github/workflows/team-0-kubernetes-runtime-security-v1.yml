@@ -26,15 +26,9 @@ jobs:
           helm lint helm/dataobs --kube-version 1.30.0 -f helm/dataobs/values-production.yaml || test $? = 1 # placeholders must fail closed
       - name: Render with test artifact identities
         run: |
-          D=sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
-          ARGS=$(python - <<'PY'
-          import yaml
-          v=yaml.safe_load(open('helm/dataobs/values-production.yaml'))
-          print(' '.join(f'--set {k}.image.digest=$D' for k,x in v.items() if isinstance(x,dict) and isinstance(x.get('image'),dict)))
-          PY
-          )
+          python scripts/deployment/write_structural_digest_values.py --output /tmp/structural-digests.yaml
           TERMINAL=$(python scripts/release/current_terminal_migration.py)
-          eval helm template dataobs helm/dataobs -f helm/dataobs/values-production.yaml --set migrationJob.terminalMigration="$TERMINAL" $ARGS > rendered.yaml
+          helm template dataobs helm/dataobs -f helm/dataobs/values-production.yaml -f /tmp/structural-digests.yaml --set migrationJob.terminalMigration="$TERMINAL" > rendered.yaml
       - name: Native policy, RBAC, secrets, image, network and ingress checks
         run: |
           python scripts/security/validate_kubernetes_runtime.py rendered --manifest rendered.yaml --allowed-registry 'ghcr[.]io' --output kubernetes-security-report.json
@@ -48,7 +42,7 @@ jobs:
       - name: Exact-SHA evidence, redaction and independent verification
         run: |
           python scripts/security/build_kubernetes_security_evidence.py --sha "$GITHUB_SHA" --input kubernetes-security-report.json --input image-policy-report.json --input contract-report.json --input kind-functional-report.json
-          ! rg -i '(password|token|secret)[=:][^ ]+' team-0-kubernetes-runtime-security-v1-evidence
+          if rg -i '(password|token|secret)[=:][^ ]+' team-0-kubernetes-runtime-security-v1-evidence; then exit 1; else result=$?; test "$result" -eq 1; fi
           python scripts/security/validate_kubernetes_contracts.py evidence team-0-kubernetes-runtime-security-v1-evidence --sha "$GITHUB_SHA"
       - uses: actions/upload-artifact@v4
         with: {name: team-0-kubernetes-runtime-security-v1-evidence, path: team-0-kubernetes-runtime-security-v1-evidence}

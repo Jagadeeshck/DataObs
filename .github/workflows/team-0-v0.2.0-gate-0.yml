@@ -1,0 +1,57 @@
+name: Team 0 v0.2.0 Gate 0
+on:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      phase:
+        type: choice
+        options: [verify, dispatch]
+        default: verify
+        description: Dispatch existing producers or independently verify retained evidence
+        required: true
+      target_sha:
+        type: string
+        description: Exact source SHA; must remain fixed across all producers
+        required: true
+      target_ref:
+        type: string
+        description: Branch resolving to target_sha (dispatch phase only)
+        required: false
+permissions: {contents: read}
+jobs:
+  dispatch:
+    if: inputs.phase == 'dispatch'
+    runs-on: ubuntu-latest
+    permissions: {contents: read, actions: write}
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: '${{ github.event.pull_request.head.sha || inputs.target_sha }}'}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install pyyaml
+      - name: Dispatch existing producers at one exact source SHA
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET_SHA: ${{ github.event.pull_request.head.sha || inputs.target_sha }}
+          TARGET_REF: ${{ inputs.target_ref }}
+        run: python scripts/release/gate0.py dispatch --sha "$TARGET_SHA" --ref "$TARGET_REF" --output gate0-evidence/dispatch.json
+      - uses: actions/upload-artifact@v4
+        with: {name: team-0-gate0-dispatch, path: gate0-evidence}
+  verify:
+    if: github.event_name == 'pull_request' || inputs.phase == 'verify'
+    runs-on: ubuntu-latest
+    permissions: {contents: read, actions: read}
+    steps:
+      - uses: actions/checkout@v4
+        with: {ref: '${{ github.event.pull_request.head.sha || inputs.target_sha }}'}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install pyyaml
+      - name: Independently verify all mandatory jobs and canonical producer evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET_SHA: ${{ github.event.pull_request.head.sha || inputs.target_sha }}
+        run: python scripts/release/gate0.py verify --sha "$TARGET_SHA" --output gate0-evidence/verification.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: team-0-v0.2.0-gate-0-evidence, path: gate0-evidence, if-no-files-found: error}

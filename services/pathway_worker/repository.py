@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import re
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -29,6 +30,22 @@ class ElasticsearchPathwayRepository:
         *,
         max_documents: int = 2000,
     ):
+        allowed_patterns = {"traces-apm-*", "metrics-dataobs.kafka_*"}
+        if (
+            not source_streams
+            or len(source_streams) > 10
+            or any(
+                name not in allowed_patterns
+                and not (
+                    name.startswith(("traces-apm-", "metrics-dataobs.kafka_"))
+                    and re.fullmatch(r"[A-Za-z0-9._-]+", name)
+                )
+                for name in source_streams
+            )
+        ):
+            raise ValueError("unsupported pathway source stream")
+        if not 1 <= max_documents <= 2000:
+            raise ValueError("pathway document bound must be between 1 and 2000")
         self.es, self.tenant_id, self.environment = es, tenant_id, environment
         self.source_streams, self.max_documents = source_streams, max_documents
 
@@ -92,6 +109,8 @@ class ElasticsearchPathwayRepository:
         lease = document.get("lease", {})
         if lease.get("owner_id") != worker_id or lease.get("fencing_token") != fencing_token:
             raise StaleWriter("lease fencing token is stale")
+        if not lease.get("expires_at") or datetime.fromisoformat(lease["expires_at"]) <= datetime.now(timezone.utc):
+            raise StaleWriter("expired lease cannot be renewed")
         lease["expires_at"] = (datetime.now(timezone.utc) + timedelta(seconds=ttl_seconds)).isoformat()
         self._replace(document, seq, term)
 
@@ -123,6 +142,8 @@ class ElasticsearchPathwayRepository:
     def read_spans(
         self, *, after: list[Any] | None, since: str, size: int = 500
     ) -> tuple[list[dict[str, Any]], list[Any] | None]:
+        if not 1 <= size <= 2000:
+            raise ValueError("invalid pathway page size")
         page_size = min(size, self.max_documents)
         pit = self.es.open_point_in_time(index=",".join(self.source_streams), keep_alive="1m")["id"]
         try:
@@ -160,6 +181,7 @@ class ElasticsearchPathwayRepository:
         *,
         nodes: list[dict[str, Any]] | None = None,
         pathways: list[dict[str, Any]] | None = None,
+        scan_position: list[str] | None = None,
     ) -> None:
         document, seq, term = self._get()
         lease = document.get("lease", {})
@@ -217,6 +239,7 @@ class ElasticsearchPathwayRepository:
             watermark = watermark.committed(
                 str(position[0]), str(position[1]), documents_processed, worker_id, fencing_token
             )
+        watermark.scan_position = scan_position
         document["watermark"] = watermark.document() | {"tenant_id": None, "environment": None}
         document["watermark"].pop("tenant_id")
         document["watermark"].pop("environment")

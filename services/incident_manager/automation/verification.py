@@ -26,7 +26,8 @@ class VerificationEvidence(BaseModel):
 def verify(repository: AutomationRepository, execution: Execution, evidence: VerificationEvidence) -> Execution:
     if execution.state != ExecutionState.VERIFICATION_PENDING:
         return execution
-    valid = bool(execution.execution_started_at) and evidence.observed_at >= execution.execution_started_at
+    execution_started_at = execution.execution_started_at
+    valid = execution_started_at is not None and evidence.observed_at >= execution_started_at
     valid = valid and evidence.target_id == execution.target["id"]
     valid = valid and evidence.tenant_id in {None, execution.tenant_id}
     valid = valid and evidence.environment in {None, execution.environment}

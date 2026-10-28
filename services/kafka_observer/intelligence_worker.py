@@ -7,6 +7,7 @@ import random
 import time
 from datetime import datetime, timedelta, timezone
 
+from services.kafka_observer.intelligence_runtime import IntelligenceRuntime
 from services.kafka_observer.reliability_runtime import StaleWriter
 
 log = logging.getLogger(__name__)
@@ -15,7 +16,7 @@ log = logging.getLogger(__name__)
 class IntelligenceWorker:
     def __init__(
         self,
-        runtime: object,
+        runtime: IntelligenceRuntime,
         tenant: str,
         environment: str,
         *,

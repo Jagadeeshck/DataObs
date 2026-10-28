@@ -410,18 +410,45 @@ class StreamRepository:
     def cluster_health(self, cluster: dict[str, Any], tenant: str, environment: str) -> dict[str, Any]:
         """Summarise only observed projections; absent partition evidence stays unknown."""
         cluster_id = str(cluster["cluster_id"])
+        resource_names: tuple[Literal["brokers", "streams", "consumer_groups", "connectors", "partitions"], ...] = (
+            "brokers",
+            "streams",
+            "consumer_groups",
+            "connectors",
+            "partitions",
+        )
         resources = {
             name: [hit["document"] for hit in self.related(name, cluster_id, tenant, environment, size=200)]
-            for name in ("brokers", "streams", "consumer_groups", "connectors", "partitions")
+            for name in resource_names
         }
         brokers, topics, groups, connectors, partitions = (resources[name] for name in resources)
         missing = [name for name, values in resources.items() if not values]
-        under_replicated = sum(item.get("under_replicated") is True for item in partitions) if partitions else None
-        leaderless = sum(item.get("leader_available") is False for item in partitions) if partitions else None
-        offline = sum(len(item.get("offline_replicas") or []) for item in partitions) if partitions else None
+
+        def observed_count(field: str, predicate: Any) -> int | None:
+            if not partitions or any(item.get(field) is None for item in partitions):
+                return None
+            return sum(predicate(item[field]) for item in partitions)
+
+        under_replicated = observed_count("under_replicated", lambda value: value is True)
+        leaderless = observed_count("leader_available", lambda value: value is False)
+        offline = observed_count("offline_replicas", len)
+        connector_failures = [
+            (
+                1
+                if str(item.get("state", "")).lower() == "failed"
+                or (isinstance(item.get("failed_task_count"), int) and item["failed_task_count"] > 0)
+                else (
+                    0
+                    if str(item.get("state", "")).lower() in {"running", "paused"}
+                    and item.get("failed_task_count") == 0
+                    else None
+                )
+            )
+            for item in connectors
+        ]
         failed_connectors = (
-            sum((item.get("state") == "failed") or bool(item.get("failed_task_count")) for item in connectors)
-            if connectors
+            sum(value for value in connector_failures if value is not None)
+            if connector_failures and all(value is not None for value in connector_failures)
             else None
         )
         healthy_brokers = sum(item.get("health") == "healthy" for item in brokers) if brokers else None
@@ -432,17 +459,26 @@ class StreamRepository:
         )
         reasons: list[str] = []
         health = "healthy"
-        if leaderless and leaderless > 0:
+        if any(item.get("leader_available") is False for item in partitions):
             health, reasons = "critical", ["leaderless_partitions"]
-        if (offline and offline > 0) or (failed_connectors and failed_connectors > 0):
+        observed_offline = any(item.get("offline_replicas") for item in partitions)
+        observed_connector_failure = any(
+            str(item.get("state", "")).lower() == "failed"
+            or (isinstance(item.get("failed_task_count"), int) and item["failed_task_count"] > 0)
+            for item in connectors
+        )
+        if observed_offline or observed_connector_failure:
             if health != "critical":
                 health = "critical"
             reasons.extend(
                 code
-                for code, value in (("offline_replicas", offline), ("failed_connectors", failed_connectors))
+                for code, value in (
+                    ("offline_replicas", observed_offline),
+                    ("failed_connectors", observed_connector_failure),
+                )
                 if value
             )
-        if under_replicated and under_replicated > 0 and health == "healthy":
+        if any(item.get("under_replicated") is True for item in partitions) and health == "healthy":
             health = "degraded"
             reasons.append("under_replicated_partitions")
         if brokers and not any(item.get("controller") is True for item in brokers) and health == "healthy":
@@ -464,6 +500,21 @@ class StreamRepository:
         if not partitions:
             health = "unknown" if health == "healthy" else health
             reasons.append("partition_evidence_missing")
+        missing_fields = [
+            field
+            for field, value in (
+                ("under_replicated", under_replicated),
+                ("leader_available", leaderless),
+                ("offline_replicas", offline),
+            )
+            if partitions and value is None
+        ]
+        if missing_fields:
+            if health == "healthy":
+                health = "unknown"
+            reasons.append("partition_health_evidence_missing")
+        if connectors and failed_connectors is None:
+            missing_fields.append("connector_failures")
         if stale:
             reasons.append("stale_observations")
         if not reasons and health == "healthy":
@@ -475,7 +526,7 @@ class StreamRepository:
             "health": health,
             "reason_codes": reasons,
             "confidence": confidence,
-            "data_status": "partial" if missing else "stale" if stale else "complete",
+            "data_status": "stale" if stale else "partial" if missing or missing_fields else "complete",
             "observed_at": max(observed_values, default=cluster.get("observed_at")),
             "source_coverage": sorted(
                 {
@@ -486,7 +537,7 @@ class StreamRepository:
                 }
                 | {"kafka_observer"}
             ),
-            "missing_inputs": [f"{name}_projection" for name in missing],
+            "missing_inputs": [f"{name}_projection" for name in missing] + missing_fields,
             "broker_count": counts["brokers"],
             "topic_count": counts["streams"],
             "partition_count": counts["partitions"],
@@ -524,7 +575,7 @@ class StreamRepository:
                     ]
                 }
             },
-            sort=[{"@timestamp": "asc"}],
+            sort=[{"@timestamp": "asc"}, {"_id": "asc"}],
             request_timeout=self.timeout,
         )
         return [hit.get("_source", {}) for hit in response["hits"]["hits"]]

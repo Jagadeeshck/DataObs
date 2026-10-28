@@ -37,7 +37,7 @@ def test_old_and_new_span_conventions_and_key_protection():
 
 
 def test_lag_methods_and_negative_anomaly():
-    assert estimate_lag(10, 20, consume_rate=1)["lag_messages"] == 0
+    assert estimate_lag(10, 20, consume_rate=1)["lag_messages"] is None
     assert estimate_lag(100, 50, consume_rate=10) == {
         "lag_messages": 50,
         "lag_seconds": 5.0,

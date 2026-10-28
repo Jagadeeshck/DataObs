@@ -8,6 +8,11 @@ spec:
   ingress:
   - from: [{namespaceSelector: {{ toYaml .Values.networkPolicy.ingressNamespaceSelector | nindent 8 }}}]
   egress:
+  - to:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/instance: {{ .Release.Name }}
+    ports: [{protocol: TCP, port: 8080}]
   - to: [{namespaceSelector: {}}]
     ports: [{protocol: UDP, port: 53}, {protocol: TCP, port: 53}]
   {{- range .Values.networkPolicy.additionalEgressCIDRs }}

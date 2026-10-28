@@ -32,8 +32,8 @@ jobs:
         run: pytest -q tests/integrations
       - name: No payload read, mutation, policies, KMS identities, or secrets
         run: |
-          ! rg -n '\.(get_records|get_shard_iterator|subscribe_to_shard|put_record|put_records|receive_message|send_message|delete_message|purge_queue|set_queue_attributes)\(' integrations/aws
-          ! rg -n 'AttributeNames=.*All|KmsMasterKeyId|RedriveAllowPolicy|"Policy"' integrations/aws/services
+          if rg -n '\.(get_records|get_shard_iterator|subscribe_to_shard|put_record|put_records|receive_message|send_message|delete_message|purge_queue|set_queue_attributes)\(' integrations/aws; then exit 1; else result=$?; test "$result" -eq 1; fi
+          if rg -n 'AttributeNames=.*All|KmsMasterKeyId|RedriveAllowPolicy|"Policy"' integrations/aws/services; then exit 1; else result=$?; test "$result" -eq 1; fi
           pytest -q tests/security/test_beta_security_hardening.py -k redaction
       - name: Migration discipline
         run: |

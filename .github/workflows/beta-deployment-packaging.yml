@@ -19,7 +19,7 @@ jobs:
       - name: Create non-publishable structural digest overrides
         run: python scripts/deployment/write_structural_digest_values.py --output /tmp/structural-digests.yaml
       - name: Helm lint against the certified Kubernetes target
-        run: set -o pipefail; mkdir -p evidence && helm lint helm/dataobs --kube-version 1.30.0 -f helm/dataobs/values-production.yaml -f /tmp/structural-digests.yaml 2>&1 | tee evidence/helm-lint.log
+        run: set -o pipefail; mkdir -p gate0-packaging-evidence && helm lint helm/dataobs --kube-version 1.30.0 -f helm/dataobs/values-production.yaml -f /tmp/structural-digests.yaml 2>&1 | tee gate0-packaging-evidence/helm-lint.log
       - name: Render every supported values profile
         run: |
           helm template dataobs helm/dataobs --kube-version 1.30.0 -f helm/dataobs/values-production.yaml -f /tmp/structural-digests.yaml >/tmp/values-production.yaml.rendered
@@ -34,32 +34,51 @@ jobs:
       - name: Verify released migration immutability
         run: |
           set -o pipefail
-          printf 'head_sha=%s\n' "$(git rev-parse HEAD)" | tee evidence/migration-base.txt
-          python scripts/check_migration_immutability.py --base-ref "$(python scripts/resolve_ci_base.py 2> >(tee evidence/migration-base-error.log >&2))" 2>&1 | tee evidence/migration-immutability.log
+          printf 'head_sha=%s\n' "$(git rev-parse HEAD)" | tee gate0-packaging-evidence/migration-base.txt
+          python scripts/check_migration_immutability.py --base-ref "$(python scripts/resolve_ci_base.py 2> >(tee gate0-packaging-evidence/migration-base-error.log >&2))" 2>&1 | tee gate0-packaging-evidence/migration-immutability.log
+      - uses: helm/kind-action@v1
+        with: {install_only: true, version: v0.27.0}
+      - name: Prepare disposable exact-SHA Kind images and Elasticsearch
+        run: bash scripts/deployment/prepare_gate0_kind.sh
       - name: Kind smoke (explicitly not passed when unavailable)
-        run: bash scripts/deployment/kind_smoke_test.sh
+        run: set -o pipefail; bash scripts/deployment/kind_smoke_test.sh 2>&1 | tee gate0-packaging-evidence/kind-smoke.log
         env:
-          DATAOBS_SMOKE_VALUES: '${{ secrets.DATAOBS_SMOKE_VALUES }}'
-          DATAOBS_KIND_DIAGNOSTICS: evidence/kind-diagnostics.txt
+          DATAOBS_KIND_DIAGNOSTICS: gate0-packaging-evidence/kind-diagnostics.txt
       - name: Upgrade and rollback
-        run: bash scripts/deployment/helm_upgrade_test.sh
-        env: {DATAOBS_UPGRADE_VALUES: '${{ secrets.DATAOBS_UPGRADE_VALUES }}'}
+        run: set -o pipefail; bash scripts/deployment/helm_upgrade_test.sh 2>&1 | tee gate0-packaging-evidence/upgrade-rollback.log
       - name: Generate exact-commit evidence
         run: |
-          mkdir -p evidence
-          python scripts/certification/write_evidence_envelope.py --output evidence/evidence.json \
+          mkdir -p gate0-packaging-evidence
+          python scripts/certification/write_evidence_envelope.py --output gate0-packaging-evidence/evidence.json \
             --repository "$GITHUB_REPOSITORY" --producer-sha "$GITHUB_SHA" --workflow-file beta-deployment-packaging.yml \
             --workflow-run-id "$GITHUB_RUN_ID" --workflow-run-attempt "$GITHUB_RUN_ATTEMPT" --event "$GITHUB_EVENT_NAME" \
             --status pass --test-category helm --test-category kind --test-category upgrade --test-category rollback \
+            --supporting-file gate0-packaging-evidence/kind-smoke.log --supporting-file gate0-packaging-evidence/upgrade-rollback.log --supporting-file gate0-packaging-evidence/kind-image-identities.json \
             --tool-version "python=$(python --version | cut -d' ' -f2)" --tool-version "helm=$(helm version --short)"
+      - name: Dispose smoke resources
+        if: always()
+        run: |
+          docker logs dataobs-gate0-es > gate0-packaging-evidence/elasticsearch-smoke.log 2>&1 || true
+          kind delete cluster --name dataobs-gate0
+          docker rm -f dataobs-gate0-es dataobs-gate0-registry || true
       - uses: actions/upload-artifact@v4
         if: always()
-        with: {name: team-0-deployment-packaging-evidence, path: evidence, retention-days: 30}
+        with: {name: team-0-deployment-packaging-evidence, path: gate0-packaging-evidence, retention-days: 30}
   independent-verification:
     needs: validate
     if: always()
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install pyyaml
       - uses: actions/download-artifact@v4
-        with: {name: team-0-deployment-packaging-evidence, path: evidence}
-      - run: python -c "import json; d=json.load(open('evidence/evidence.json')); assert d['producer_sha']=='${{ github.sha }}'; assert d['workflow_run_attempt']=='${{ github.run_attempt }}'; assert d['schema_version']=='1.0'; print('independently verified exact commit')"
+        with: {name: team-0-deployment-packaging-evidence, path: gate0-packaging-evidence}
+      - name: Verify downloaded artifacts with canonical verifiers
+        run: |
+          python scripts/certification/verify_artifacts.py gate0-packaging-evidence --sentinels-only
+          python scripts/certification/check_downloaded_envelope.py --directory gate0-packaging-evidence \
+            --sha "$GITHUB_SHA" --repository "$GITHUB_REPOSITORY" --workflow beta-deployment-packaging.yml \
+            --run "$GITHUB_RUN_ID" --attempt "$GITHUB_RUN_ATTEMPT" --event "$GITHUB_EVENT_NAME" \
+            --category helm --category kind --category upgrade --category rollback

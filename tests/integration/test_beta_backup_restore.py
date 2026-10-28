@@ -7,12 +7,15 @@ import json
 import os
 import subprocess
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
 from elasticsearch import Elasticsearch, NotFoundError
 
+from packages.elastic_store.client import make_client
 from packages.elastic_store.manifest import migrations
+from scripts.certification.provenance import certification_commit_sha
 from scripts.operations.backup_dataobs import backup
 from scripts.operations.restore_dataobs import restore
 from scripts.operations.snapshot_common import snapshot_resources
@@ -24,16 +27,18 @@ pytestmark = pytest.mark.skipif(
 
 
 def _fingerprint(es: Elasticsearch, resource: str) -> tuple[int, str]:
-    response = es.search(index=resource, query={"match_all": {}}, size=1000, sort=["_id"])
+    response = es.search(index=resource, query={"match_all": {}}, size=1000)
     rows = [{"id": hit["_id"], "source": hit["_source"]} for hit in response["hits"]["hits"]]
+    rows.sort(key=lambda row: row["id"])
     encoded = json.dumps(rows, sort_keys=True, separators=(",", ":")).encode()
     return len(rows), hashlib.sha256(encoded).hexdigest()
 
 
 def test_beta_backup_restore_exact_state_and_tenant_isolation() -> None:
+    started_at = datetime.now(timezone.utc).isoformat()
     started = time.monotonic()
     url = os.environ.get("ELASTICSEARCH_URL", "http://localhost:9200")
-    es = Elasticsearch(url, request_timeout=60)
+    es = make_client()
     assert es.info()["version"]["number"] == "9.4.2"
     subprocess.run(
         ["python", "-m", "packages.elastic_store.cli", "apply"],
@@ -62,13 +67,15 @@ def test_beta_backup_restore_exact_state_and_tenant_isolation() -> None:
     es.indices.refresh(index=f"{current},{stream}")
     before = {name: _fingerprint(es, name) for name in (current, stream)}
     snapshot = f"beta-{int(time.time())}"
-    backup(
+    backup_started = time.monotonic()
+    backup_report = backup(
         es,
         "dataobs-ci",
         snapshot,
         repository_location="/tmp/dataobs-snapshots",
         register_repository=True,
     )
+    backup_duration = time.monotonic() - backup_started
     # Delete only registered DataObs resources selected into the snapshot.
     for resource in snapshot_resources():
         if "*" in resource:
@@ -78,7 +85,10 @@ def test_beta_backup_restore_exact_state_and_tenant_isolation() -> None:
                 pass
         else:
             es.indices.delete(index=resource, ignore_unavailable=True)
-    restore(es, "dataobs-ci", snapshot)
+    assert not es.indices.exists(index=current)
+    assert not es.indices.exists(index=stream)
+    restore_started = time.monotonic()
+    restore_report = restore(es, "dataobs-ci", snapshot)
     for _ in range(60):
         health = es.cluster.health(wait_for_status="yellow", timeout="2s")
         if health["status"] in {"yellow", "green"}:
@@ -96,7 +106,20 @@ def test_beta_backup_restore_exact_state_and_tenant_isolation() -> None:
         )["count"]
         == 0
     )
+    restore_duration = time.monotonic() - restore_started
     report = {
+        "commit_sha": certification_commit_sha(),
+        "snapshot_repository": "dataobs-ci",
+        "snapshot": snapshot,
+        "snapshot_result": backup_report["status"],
+        "destructive_deletion_result": "pass",
+        "restore_result": restore_report["status"],
+        "integrity_verification": "pass",
+        "recovery_result": "pass",
+        "started_at": started_at,
+        "completed_at": datetime.now(timezone.utc).isoformat(),
+        "backup_duration_seconds": round(backup_duration, 6),
+        "restore_duration_seconds": round(restore_duration, 6),
         "schema_version": "1.0",
         "status": "pass",
         "elasticsearch_version": "9.4.2",

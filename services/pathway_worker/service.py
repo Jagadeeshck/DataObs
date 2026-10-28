@@ -37,7 +37,10 @@ class PathwayWorkerService:
                 since = (datetime.now(timezone.utc) - timedelta(seconds=self.late_arrival_seconds)).isoformat()
             # Overlap replay always starts at its timestamp boundary. Observation IDs
             # deduplicate previously committed events.
-            spans, position = self.repository.read_spans(after=None, since=since)
+            page_size = min(500, self.repository.max_documents)
+            spans, position = self.repository.read_spans(
+                after=None if replay_since else checkpoint.get("scan_position"), since=since, size=page_size
+            )
             edges: dict[str, dict[str, Any]] = {}
             nodes: dict[str, dict[str, Any]] = {}
             for source in spans:
@@ -58,6 +61,7 @@ class PathwayWorkerService:
                 len(spans),
                 nodes=list(nodes.values()),
                 pathways=pathways,
+                scan_position=position if len(spans) == page_size else None,
             )
             return {
                 "spans_read": len(spans),

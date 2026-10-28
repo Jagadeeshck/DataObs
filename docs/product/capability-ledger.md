@@ -351,9 +351,9 @@ Deterministic evidence-first incident fingerprints, bounded historical candidate
 - **Release readiness:** `blocked`
 - **Next gate:** Complete the production vertical slice and certify against Elasticsearch 9.4.2 and the Console.
 
-### `integration.cloud` — Cloud, warehouse, and RabbitMQ providers
+### `integration.cloud` — Cloud, warehouse, and messaging providers
 
-AWS v3, Snowflake v1, and RabbitMQ Management HTTP API v1 are bounded and functional_unvalidated; hosted RabbitMQ 4.3.x evidence is pending.
+AWS v3, Snowflake v1, RabbitMQ v1, and Google Pub/Sub v1 are bounded and functional_unvalidated; hosted provider evidence is pending.
 
 - **State:** `functional_unvalidated`
 - **Release readiness:** `blocked`

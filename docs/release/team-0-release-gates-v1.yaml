@@ -1,5 +1,5 @@
 schema_version: '1.0'
-candidate_sha: d4f511ebb331b74528426b91ce69bd24f8993eac
+candidate_sha: null
 profile: development
 gates:
 - id: T0-SOURCE-INTEGRITY
@@ -9,11 +9,12 @@ gates:
   - development
   - standard-ha
   - production-ha
-  evidence_source: local repository audit
-  result: PASS
-  reason_code: LOCAL_INTEGRITY_VERIFIED
-  remediation: none
-  blocker: false
+  evidence_source: retained exact-SHA hosted/candidate artifact
+  result: PENDING
+  reason_code: EXACT_SHA_VERIFIED_EVIDENCE_MISSING
+  remediation: Run current exact-SHA producers and the existing independent verifier
+    before candidate freeze.
+  blocker: true
 - id: T0-MIGRATION-INTEGRITY
   category: migration-integrity
   severity: mandatory
@@ -21,11 +22,12 @@ gates:
   - development
   - standard-ha
   - production-ha
-  evidence_source: local repository audit
-  result: PASS
-  reason_code: LOCAL_INTEGRITY_VERIFIED
-  remediation: none
-  blocker: false
+  evidence_source: retained exact-SHA hosted/candidate artifact
+  result: PENDING
+  reason_code: EXACT_SHA_VERIFIED_EVIDENCE_MISSING
+  remediation: Run current exact-SHA producers and the existing independent verifier
+    before candidate freeze.
+  blocker: true
 - id: T0-BUILD
   category: build
   severity: mandatory
@@ -35,9 +37,9 @@ gates:
   - production-ha
   evidence_source: retained exact-SHA hosted/candidate artifact
   result: PENDING
-  reason_code: EVIDENCE_NOT_AVAILABLE
-  remediation: Run protected exact-SHA workflow and retain independently verifiable
-    artifacts.
+  reason_code: EXACT_SHA_VERIFIED_EVIDENCE_MISSING
+  remediation: Run current exact-SHA producers and the existing independent verifier
+    before candidate freeze.
   blocker: true
 - id: T0-TESTS
   category: tests
@@ -48,9 +50,9 @@ gates:
   - production-ha
   evidence_source: retained exact-SHA hosted/candidate artifact
   result: PENDING
-  reason_code: EVIDENCE_NOT_AVAILABLE
-  remediation: Run protected exact-SHA workflow and retain independently verifiable
-    artifacts.
+  reason_code: EXACT_SHA_VERIFIED_EVIDENCE_MISSING
+  remediation: Run current exact-SHA producers and the existing independent verifier
+    before candidate freeze.
   blocker: true
 - id: T0-HELM
   category: helm
@@ -61,9 +63,9 @@ gates:
   - production-ha
   evidence_source: retained exact-SHA hosted/candidate artifact
   result: PENDING
-  reason_code: EVIDENCE_NOT_AVAILABLE
-  remediation: Run protected exact-SHA workflow and retain independently verifiable
-    artifacts.
+  reason_code: EXACT_SHA_VERIFIED_EVIDENCE_MISSING
+  remediation: Run current exact-SHA producers and the existing independent verifier
+    before candidate freeze.
   blocker: true
 - id: T0-KUBERNETES
   category: kubernetes
@@ -74,9 +76,9 @@ gates:
   - production-ha
   evidence_source: retained exact-SHA hosted/candidate artifact
   result: PENDING
-  reason_code: EVIDENCE_NOT_AVAILABLE
-  remediation: Run protected exact-SHA workflow and retain independently verifiable
-    artifacts.
+  reason_code: EXACT_SHA_VERIFIED_EVIDENCE_MISSING
+  remediation: Run current exact-SHA producers and the existing independent verifier
+    before candidate freeze.
   blocker: true
 - id: T0-ELASTICSEARCH
   category: elasticsearch
@@ -87,9 +89,9 @@ gates:
   - production-ha
   evidence_source: retained exact-SHA hosted/candidate artifact
   result: PENDING
-  reason_code: EVIDENCE_NOT_AVAILABLE
-  remediation: Run protected exact-SHA workflow and retain independently verifiable
-    artifacts.
+  reason_code: EXACT_SHA_VERIFIED_EVIDENCE_MISSING
+  remediation: Run current exact-SHA producers and the existing independent verifier
+    before candidate freeze.
   blocker: true
 - id: T0-AUTHENTICATION
   category: authentication
@@ -100,9 +102,9 @@ gates:
   - production-ha
   evidence_source: retained exact-SHA hosted/candidate artifact
   result: PENDING
-  reason_code: EVIDENCE_NOT_AVAILABLE
-  remediation: Run protected exact-SHA workflow and retain independently verifiable
-    artifacts.
+  reason_code: EXACT_SHA_VERIFIED_EVIDENCE_MISSING
+  remediation: Run current exact-SHA producers and the existing independent verifier
+    before candidate freeze.
   blocker: true
 - id: T0-AUTHORIZATION
   category: authorization
@@ -113,9 +115,9 @@ gates:
   - production-ha
   evidence_source: retained exact-SHA hosted/candidate artifact
   result: PENDING
-  reason_code: EVIDENCE_NOT_AVAILABLE
-  remediation: Run protected exact-SHA workflow and retain independently verifiable
-    artifacts.
+  reason_code: EXACT_SHA_VERIFIED_EVIDENCE_MISSING
+  remediation: Run current exact-SHA producers and the existing independent verifier
+    before candidate freeze.
   blocker: true
 - id: T0-TENANCY
   category: tenancy
@@ -126,9 +128,9 @@ gates:
   - production-ha
   evidence_source: retained exact-SHA hosted/candidate artifact
   result: PENDING
-  reason_code: EVIDENCE_NOT_AVAILABLE
-  remediation: Run protected exact-SHA workflow and retain independently verifiable
-    artifacts.
+  reason_code: EXACT_SHA_VERIFIED_EVIDENCE_MISSING
+  remediation: Run current exact-SHA producers and the existing independent verifier
+    before candidate freeze.
   blocker: true
 - id: T0-SCALE
   category: scale
@@ -139,9 +141,9 @@ gates:
   - production-ha
   evidence_source: retained exact-SHA hosted/candidate artifact
   result: PENDING
-  reason_code: EVIDENCE_NOT_AVAILABLE
-  remediation: Run protected exact-SHA workflow and retain independently verifiable
-    artifacts.
+  reason_code: EXACT_SHA_VERIFIED_EVIDENCE_MISSING
+  remediation: Run current exact-SHA producers and the existing independent verifier
+    before candidate freeze.
   blocker: true
 - id: T0-HA
   category: ha
@@ -152,9 +154,9 @@ gates:
   - production-ha
   evidence_source: retained exact-SHA hosted/candidate artifact
   result: PENDING
-  reason_code: EVIDENCE_NOT_AVAILABLE
-  remediation: Run protected exact-SHA workflow and retain independently verifiable
-    artifacts.
+  reason_code: EXACT_SHA_VERIFIED_EVIDENCE_MISSING
+  remediation: Run current exact-SHA producers and the existing independent verifier
+    before candidate freeze.
   blocker: true
 - id: T0-DEPENDENCY-RESILIENCE
   category: dependency-resilience
@@ -165,9 +167,9 @@ gates:
   - production-ha
   evidence_source: retained exact-SHA hosted/candidate artifact
   result: PENDING
-  reason_code: EVIDENCE_NOT_AVAILABLE
-  remediation: Run protected exact-SHA workflow and retain independently verifiable
-    artifacts.
+  reason_code: EXACT_SHA_VERIFIED_EVIDENCE_MISSING
+  remediation: Run current exact-SHA producers and the existing independent verifier
+    before candidate freeze.
   blocker: true
 - id: T0-BACKUP
   category: backup
@@ -178,9 +180,9 @@ gates:
   - production-ha
   evidence_source: retained exact-SHA hosted/candidate artifact
   result: PENDING
-  reason_code: EVIDENCE_NOT_AVAILABLE
-  remediation: Run protected exact-SHA workflow and retain independently verifiable
-    artifacts.
+  reason_code: EXACT_SHA_VERIFIED_EVIDENCE_MISSING
+  remediation: Run current exact-SHA producers and the existing independent verifier
+    before candidate freeze.
   blocker: true
 - id: T0-RESTORE
   category: restore
@@ -191,9 +193,9 @@ gates:
   - production-ha
   evidence_source: retained exact-SHA hosted/candidate artifact
   result: PENDING
-  reason_code: EVIDENCE_NOT_AVAILABLE
-  remediation: Run protected exact-SHA workflow and retain independently verifiable
-    artifacts.
+  reason_code: EXACT_SHA_VERIFIED_EVIDENCE_MISSING
+  remediation: Run current exact-SHA producers and the existing independent verifier
+    before candidate freeze.
   blocker: true
 - id: T0-UPGRADE
   category: upgrade
@@ -204,9 +206,9 @@ gates:
   - production-ha
   evidence_source: retained exact-SHA hosted/candidate artifact
   result: PENDING
-  reason_code: EVIDENCE_NOT_AVAILABLE
-  remediation: Run protected exact-SHA workflow and retain independently verifiable
-    artifacts.
+  reason_code: EXACT_SHA_VERIFIED_EVIDENCE_MISSING
+  remediation: Run current exact-SHA producers and the existing independent verifier
+    before candidate freeze.
   blocker: true
 - id: T0-ROLLBACK
   category: rollback
@@ -217,9 +219,9 @@ gates:
   - production-ha
   evidence_source: retained exact-SHA hosted/candidate artifact
   result: PENDING
-  reason_code: EVIDENCE_NOT_AVAILABLE
-  remediation: Run protected exact-SHA workflow and retain independently verifiable
-    artifacts.
+  reason_code: EXACT_SHA_VERIFIED_EVIDENCE_MISSING
+  remediation: Run current exact-SHA producers and the existing independent verifier
+    before candidate freeze.
   blocker: true
 - id: T0-DR
   category: dr
@@ -230,9 +232,9 @@ gates:
   - production-ha
   evidence_source: retained exact-SHA hosted/candidate artifact
   result: PENDING
-  reason_code: EVIDENCE_NOT_AVAILABLE
-  remediation: Run protected exact-SHA workflow and retain independently verifiable
-    artifacts.
+  reason_code: EXACT_SHA_VERIFIED_EVIDENCE_MISSING
+  remediation: Run current exact-SHA producers and the existing independent verifier
+    before candidate freeze.
   blocker: true
 - id: T0-BROWSER
   category: browser
@@ -243,9 +245,9 @@ gates:
   - production-ha
   evidence_source: retained exact-SHA hosted/candidate artifact
   result: PENDING
-  reason_code: EVIDENCE_NOT_AVAILABLE
-  remediation: Run protected exact-SHA workflow and retain independently verifiable
-    artifacts.
+  reason_code: EXACT_SHA_VERIFIED_EVIDENCE_MISSING
+  remediation: Run current exact-SHA producers and the existing independent verifier
+    before candidate freeze.
   blocker: true
 - id: T0-SECURITY
   category: security
@@ -256,9 +258,9 @@ gates:
   - production-ha
   evidence_source: retained exact-SHA hosted/candidate artifact
   result: PENDING
-  reason_code: EVIDENCE_NOT_AVAILABLE
-  remediation: Run protected exact-SHA workflow and retain independently verifiable
-    artifacts.
+  reason_code: EXACT_SHA_VERIFIED_EVIDENCE_MISSING
+  remediation: Run current exact-SHA producers and the existing independent verifier
+    before candidate freeze.
   blocker: true
 - id: T0-SBOM
   category: sbom
@@ -269,9 +271,9 @@ gates:
   - production-ha
   evidence_source: retained exact-SHA hosted/candidate artifact
   result: PENDING
-  reason_code: EVIDENCE_NOT_AVAILABLE
-  remediation: Run protected exact-SHA workflow and retain independently verifiable
-    artifacts.
+  reason_code: EXACT_SHA_VERIFIED_EVIDENCE_MISSING
+  remediation: Run current exact-SHA producers and the existing independent verifier
+    before candidate freeze.
   blocker: true
 - id: T0-VULNERABILITIES
   category: vulnerabilities
@@ -282,9 +284,9 @@ gates:
   - production-ha
   evidence_source: retained exact-SHA hosted/candidate artifact
   result: PENDING
-  reason_code: EVIDENCE_NOT_AVAILABLE
-  remediation: Run protected exact-SHA workflow and retain independently verifiable
-    artifacts.
+  reason_code: EXACT_SHA_VERIFIED_EVIDENCE_MISSING
+  remediation: Run current exact-SHA producers and the existing independent verifier
+    before candidate freeze.
   blocker: true
 - id: T0-LICENSING
   category: licensing
@@ -295,9 +297,9 @@ gates:
   - production-ha
   evidence_source: retained exact-SHA hosted/candidate artifact
   result: PENDING
-  reason_code: EVIDENCE_NOT_AVAILABLE
-  remediation: Run protected exact-SHA workflow and retain independently verifiable
-    artifacts.
+  reason_code: EXACT_SHA_VERIFIED_EVIDENCE_MISSING
+  remediation: Run current exact-SHA producers and the existing independent verifier
+    before candidate freeze.
   blocker: true
 - id: T0-PROVENANCE
   category: provenance
@@ -308,9 +310,9 @@ gates:
   - production-ha
   evidence_source: retained exact-SHA hosted/candidate artifact
   result: PENDING
-  reason_code: EVIDENCE_NOT_AVAILABLE
-  remediation: Run protected exact-SHA workflow and retain independently verifiable
-    artifacts.
+  reason_code: EXACT_SHA_VERIFIED_EVIDENCE_MISSING
+  remediation: Run current exact-SHA producers and the existing independent verifier
+    before candidate freeze.
   blocker: true
 - id: T0-SIGNING
   category: signing
@@ -321,9 +323,9 @@ gates:
   - production-ha
   evidence_source: retained exact-SHA hosted/candidate artifact
   result: PENDING
-  reason_code: EVIDENCE_NOT_AVAILABLE
-  remediation: Run protected exact-SHA workflow and retain independently verifiable
-    artifacts.
+  reason_code: EXACT_SHA_VERIFIED_EVIDENCE_MISSING
+  remediation: Run current exact-SHA producers and the existing independent verifier
+    before candidate freeze.
   blocker: true
 - id: T0-ARTIFACT-VERIFICATION
   category: artifact-verification
@@ -334,9 +336,9 @@ gates:
   - production-ha
   evidence_source: retained exact-SHA hosted/candidate artifact
   result: PENDING
-  reason_code: EVIDENCE_NOT_AVAILABLE
-  remediation: Run protected exact-SHA workflow and retain independently verifiable
-    artifacts.
+  reason_code: EXACT_SHA_VERIFIED_EVIDENCE_MISSING
+  remediation: Run current exact-SHA producers and the existing independent verifier
+    before candidate freeze.
   blocker: true
 - id: T0-CANDIDATE-INSTALLATION
   category: candidate-installation
@@ -347,25 +349,35 @@ gates:
   - production-ha
   evidence_source: retained exact-SHA hosted/candidate artifact
   result: PENDING
-  reason_code: EVIDENCE_NOT_AVAILABLE
-  remediation: Run protected exact-SHA workflow and retain independently verifiable
-    artifacts.
+  reason_code: EXACT_SHA_VERIFIED_EVIDENCE_MISSING
+  remediation: Run current exact-SHA producers and the existing independent verifier
+    before candidate freeze.
   blocker: true
 - id: T0-OPERATIONAL-SUPPORTABILITY
   category: operational-supportability
   severity: mandatory
-  mandatory_profiles: [development, standard-ha, production-ha]
-  evidence_source: team-0-platform-supportability-operations-v1-evidence
+  mandatory_profiles:
+  - development
+  - standard-ha
+  - production-ha
+  evidence_source: retained exact-SHA hosted/candidate artifact
   result: PENDING
-  reason_code: EXACT_SHA_SUPPORTABILITY_EVIDENCE_NOT_AVAILABLE
-  remediation: Validate diagnostics, support bundle redaction, ownership, critical runbooks, active readiness and absence of critical support-contract defects at the candidate SHA.
+  reason_code: EXACT_SHA_VERIFIED_EVIDENCE_MISSING
+  remediation: Run current exact-SHA producers and the existing independent verifier
+    before candidate freeze.
   blocker: true
 - id: T0-COMPATIBILITY-LIFECYCLE
   category: version-upgrade-compatibility
   severity: mandatory
-  mandatory_profiles: [development, standard-ha, production-ha]
-  evidence_source: team-0-version-upgrade-compatibility-v1-evidence/manifest.json
+  mandatory_profiles:
+  - development
+  - standard-ha
+  - production-ha
+  evidence_source: retained exact-SHA hosted/candidate artifact
   result: PENDING
-  reason_code: EXACT_SHA_COMPATIBILITY_EVIDENCE_NOT_AVAILABLE
-  remediation: Run the canonical compatibility workflow and retain exact-SHA evidence.
+  reason_code: EXACT_SHA_VERIFIED_EVIDENCE_MISSING
+  remediation: Run current exact-SHA producers and the existing independent verifier
+    before candidate freeze.
   blocker: true
+assessment_source_sha: 09fa1fe615c69f79a8056772a4b424b5c564fb86
+candidate_frozen: false

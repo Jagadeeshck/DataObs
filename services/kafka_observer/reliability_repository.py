@@ -63,6 +63,9 @@ class ElasticsearchReliabilityRepository:
 
     def _assert_fence(self, scope: str, token: int, worker: str | None = None) -> None:
         source = self.es.get(index=RUNTIME, id=f"lease:{scope}")["_source"]
+        expiry = source.get("expires_at")
+        if not expiry or datetime.fromisoformat(expiry) <= datetime.now(timezone.utc):
+            raise StaleWriter("lease has expired")
         if int(source.get("fencing_token", -1)) != token or (worker and source.get("worker_id") != worker):
             raise StaleWriter("lease fencing token is stale")
 
@@ -100,6 +103,38 @@ class ElasticsearchReliabilityRepository:
             int(source.get("consecutive_recoveries", 0)),
             datetime.fromisoformat(first) if first else None,
         )
+
+    def pending(self, definition: Definition) -> Evaluation | None:
+        current = self.es.get(index=DEFINITIONS_READ, id=definition.id)["_source"]
+        if current.get("tenant_id") != definition.tenant_id or current.get("environment") != definition.environment:
+            raise StaleWriter("definition scope mismatch")
+        response = self.es.search(
+            index=PATHWAY_EVALUATIONS if definition.resource_type == "pathway" else STREAM_EVALUATIONS,
+            size=1,
+            query={
+                "bool": {
+                    "filter": [
+                        {"term": {"tenant_id": definition.tenant_id}},
+                        {"term": {"environment": definition.environment}},
+                        {"term": {"definition_id": definition.id}},
+                    ]
+                }
+            },
+            sort=[{"evaluated_at": "desc"}, {"_id": "asc"}],
+            source=list(Evaluation.__dataclass_fields__),
+        )
+        hits = response["hits"]["hits"]
+        if not hits or hits[0]["_source"]["evaluation_id"] == current.get("latest_evaluation_id"):
+            return None
+        document = dict(hits[0]["_source"])
+        for key in ("status", "previous_status"):
+            document[key] = Status(document[key])
+        for key in ("first_breach_at", "last_breach_at", "observed_at", "evaluated_at"):
+            if isinstance(document.get(key), str):
+                document[key] = datetime.fromisoformat(document[key].replace("Z", "+00:00"))
+        for key in ("reason_codes", "missing_inputs", "evidence_refs", "warnings"):
+            document[key] = tuple(document.get(key, ()))
+        return Evaluation(**document)
 
     @staticmethod
     def status_id(definition: Definition) -> str:
@@ -159,6 +194,13 @@ class ElasticsearchReliabilityRepository:
                 self.es.index(index=STATUS, id=doc_id, document=document, op_type="create", refresh="wait_for")
             except ConflictError:
                 raise StaleWriter("status projection was concurrently created") from None
+            return
+        if (
+            current["_source"].get("tenant_id") != definition.tenant_id
+            or current["_source"].get("environment") != definition.environment
+        ):
+            raise StaleWriter("status projection scope mismatch")
+        if current["_source"].get("latest_evaluation_id") == evaluation.evaluation_id:
             return
         document["revision"] = int(current["_source"].get("revision", 0)) + 1
         try:

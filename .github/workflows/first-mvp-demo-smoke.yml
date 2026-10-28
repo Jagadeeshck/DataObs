@@ -54,10 +54,17 @@ jobs:
           }
           pathlib.Path("evidence/mvp-demo-smoke.json").write_text(json.dumps(result, indent=2) + "\n")
           PY
+      - name: Canonical non-certification smoke evidence
+        run: |
+          python scripts/certification/write_evidence_envelope.py --output evidence/gate0-mvp/evidence.json \
+            --repository "$GITHUB_REPOSITORY" --producer-sha "$GITHUB_SHA" --workflow-file first-mvp-demo-smoke.yml \
+            --workflow-run-id "$GITHUB_RUN_ID" --workflow-run-attempt "$GITHUB_RUN_ATTEMPT" --event "$GITHUB_EVENT_NAME" \
+            --status pass --test-category mvp-smoke --supporting-file evidence/mvp-demo-smoke.json --tool-version "docker=$(docker --version)"
+          cp evidence/mvp-demo-smoke.json evidence/gate0-mvp/
       - uses: actions/upload-artifact@v4
         with:
           name: first-mvp-demo-smoke-${{ github.sha }}
-          path: evidence/mvp-demo-smoke.json
+          path: evidence/gate0-mvp
           retention-days: 14
       - name: Container diagnostics
         if: failure()

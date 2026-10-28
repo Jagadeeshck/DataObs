@@ -82,6 +82,17 @@ def plan() -> List[Dict[str, Any]]:
     return migration_plan()
 
 
+def _mapping_properties(contract: Dict[str, Any]) -> Dict[str, Any]:
+    """Normalize both released explicit-mapping shapes, preserving strictness."""
+    if "dynamic" in contract:
+        if contract.get("dynamic") != "strict" or set(contract) != {"dynamic", "properties"}:
+            raise RuntimeError("Released mapping wrapper must be strict and contain only properties")
+        contract = contract["properties"]
+    if not isinstance(contract, dict) or any(not isinstance(value, dict) for value in contract.values()):
+        raise RuntimeError("Released mapping properties must be field definitions")
+    return contract
+
+
 def _mapping(index: str | None = None) -> Dict[str, Any]:
     """Build the shared strict mapping without changing released migrations.
 
@@ -322,6 +333,7 @@ def _mapping_update_type_matches(
 
 def _apply_mapping_update(es: Elasticsearch, index: str, properties: Dict[str, Any]) -> None:
     """Add and verify explicit fields on a trusted concrete product index."""
+    properties = _mapping_properties(properties)
     registered_targets = {
         name for migration in migrations() for name in migration.operations.get("mapping_updates", {})
     }

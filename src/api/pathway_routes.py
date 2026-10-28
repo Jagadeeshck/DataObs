@@ -77,6 +77,15 @@ SAFE_FIELDS = [
 
 
 class PathwayRepository:
+    READ_INDICES = frozenset(
+        {"dataobs-pathway-definitions-v1-read", "dataobs-pathway-nodes-v1-read", "dataobs-pathway-slos-v1-read"}
+    )
+
+    @classmethod
+    def _validate_index(cls, index: str) -> None:
+        if index not in cls.READ_INDICES:
+            raise ValueError("unsupported pathway index")
+
     def __init__(self, es: Any):
         self.es = getattr(es, "es", es)
 
@@ -90,18 +99,13 @@ class PathwayRepository:
         after: list[Any] | None = None,
         filters: dict[str, Any] | None = None,
     ) -> list[dict[str, Any]]:
+        self._validate_index(index)
+        if not 1 <= size <= 500:
+            raise ValueError("pathway query size must be between 1 and 500")
         clauses: list[dict[str, Any]] = [{"term": {"tenant_id": tenant}}, {"term": {"environment": environment}}]
         for field, value in (filters or {}).items():
             if field == "search":
-                clauses.append(
-                    {
-                        "simple_query_string": {
-                            "query": value,
-                            "fields": ["pathway_id", "name"],
-                            "default_operator": "and",
-                        }
-                    }
-                )
+                clauses.append({"multi_match": {"query": value, "fields": ["pathway_id", "name"], "operator": "and"}})
             else:
                 clauses.append({"term": {field: value}})
         sort_field = "pathway_id" if "definitions" in index else ("node_id" if "nodes" in index else "id")
@@ -118,6 +122,8 @@ class PathwayRepository:
         return [{"document": hit.get("_source", {}), "sort": hit.get("sort", [])} for hit in response["hits"]["hits"]]
 
     def get_many(self, index: str, ids: list[str], tenant: str, environment: str) -> list[dict[str, Any]]:
+        self._validate_index(index)
+        ids = ids[:200]
         if not ids:
             return []
         response = self.es.search(
@@ -143,6 +149,7 @@ class PathwayRepository:
         return [hit.get("_source", {}) for hit in response["hits"]["hits"]]
 
     def get(self, index: str, resource_id: str, tenant: str, environment: str) -> dict[str, Any] | None:
+        self._validate_index(index)
         response = self.es.search(
             index=index,
             size=1,
@@ -235,7 +242,14 @@ class PathwayRepository:
 
 
 def create_pathway_router(get_es: Callable[..., Any], require_auth: Callable[..., Any]) -> APIRouter:
-    router = APIRouter(prefix="/api/v1", tags=["pathways"], dependencies=[Depends(require_auth)])
+    def validate_environment(request: Request) -> None:
+        selected = request.query_params.get("environment")
+        if selected is not None and selected != request.state.environment:
+            raise HTTPException(403, detail={"code": "environment_access_denied"})
+
+    router = APIRouter(
+        prefix="/api/v1", tags=["pathways"], dependencies=[Depends(require_auth), Depends(validate_environment)]
+    )
     codec = CursorCodec(os.getenv("DATAOBS_CURSOR_SECRET", "development-cursor-secret-change-me"))
 
     def repository(es: Any = Depends(get_es)) -> PathwayRepository:
@@ -339,13 +353,23 @@ def create_pathway_router(get_es: Callable[..., Any], require_auth: Callable[...
     async def pathway_search(
         body: dict[str, Any], request: Request, repo: PathwayRepository = Depends(repository)
     ) -> dict[str, Any]:
-        environment = body.get("environment") or request.state.environment
+        environment = request.state.environment
+        if body.get("environment") is not None and body["environment"] != environment:
+            raise HTTPException(403, detail={"code": "environment_access_denied"})
+        if body.get("tenant_id") is not None and body["tenant_id"] != request.state.tenant_id:
+            raise HTTPException(403, detail={"code": "tenant_access_denied"})
+        try:
+            limit = int(body.get("limit", 50))
+        except (TypeError, ValueError):
+            raise HTTPException(422, detail="Invalid page limit") from None
+        if not 1 <= limit <= 200:
+            raise HTTPException(422, detail="Page limit must be between 1 and 200")
         return await list_resource(
             "dataobs-pathway-definitions-v1-read",
             "pathway-search",
             request,
             environment,
-            min(int(body.get("limit", 50)), 200),
+            limit,
             body.get("cursor"),
             repo,
         )

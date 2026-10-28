@@ -12,6 +12,12 @@ MAX_MEMBER_SAMPLE = 100
 MAX_PAGE_SIZE = 100
 
 
+def _metadata_string_set(value: object) -> set[str]:
+    if not isinstance(value, (list, tuple, set, frozenset)):
+        return set()
+    return {item for item in value if isinstance(item, str)}
+
+
 @dataclass(frozen=True)
 class StoredGroup:
     group: CorrelationGroup
@@ -91,7 +97,7 @@ class InMemoryCorrelationRepository:
             v
             for v in self.groups.values()
             if (v.group.tenant_id, v.group.environment) == (tenant_id, environment)
-            and assets.intersection(v.group.metadata.get("affected_assets", []))
+            and assets.intersection(_metadata_string_set(v.group.metadata.get("affected_assets")))
         ]
         return deepcopy(
             sorted(values, key=lambda v: (-v.group.last_observed_at.timestamp(), v.group.id))[

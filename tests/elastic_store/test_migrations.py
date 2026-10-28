@@ -157,3 +157,41 @@ def test_incident_index_creation_preserves_released_field_types():
     assert incident["tags"] == {"type": "keyword"}
     assert provider["retry_count"] == {"type": "long"}
     assert provider["tags"] == {"type": "flattened"}
+
+
+def test_concrete_index_creation_uses_first_released_mapping_contract():
+    from packages.elastic_store.registry import _mapping
+
+    # 0007 creates this index before 0015 installs the explicit owner contract.
+    product = _mapping("dataobs-data-products-v1")["properties"]
+    assert product["description"] == {"type": "text"}
+    assert product["revision"] == {"type": "integer"}
+    assert product["tags"] == {"type": "keyword"}
+    assert product["owner"]["properties"]["team"] == {"type": "keyword"}
+    # Selecting the owner contract must not rewrite unrelated provider fields.
+    assert _mapping("dataobs-provider-observations-v1")["properties"]["tags"] == {"type": "flattened"}
+    # Preserve the first released reason type; do not mask later incompatibility.
+    decisions = _mapping("dataobs-data-product-membership-decisions-v1")["properties"]
+    assert decisions["reason"] == {"type": "keyword"}
+
+
+def test_registry_normalizes_both_released_mapping_shapes_without_weakening_types():
+    import pytest
+
+    from packages.elastic_store.manifest import migrations
+    from packages.elastic_store.registry import _mapping, _mapping_properties, _mapping_update_type_matches
+
+    for migration in migrations():
+        for index, contract in migration.operations.get("mapping_updates", {}).items():
+            actual = _mapping(index)["properties"]
+            for name, definition in _mapping_properties(contract).items():
+                assert _mapping_update_type_matches(index, name, definition, actual[name]), (
+                    migration.migration_id,
+                    index,
+                    name,
+                )
+    with pytest.raises(RuntimeError, match="strict"):
+        _mapping_properties({"dynamic": True, "properties": {"name": {"type": "keyword"}}})
+    assert not _mapping_update_type_matches(
+        "dataobs-data-products-v1", "tags", {"type": "keyword"}, {"type": "flattened"}
+    )

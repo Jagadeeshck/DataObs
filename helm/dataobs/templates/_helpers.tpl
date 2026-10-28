@@ -19,7 +19,9 @@ app.kubernetes.io/component: {{ .component }}
   value: {{ .Values.global.tenantMode | quote }}
 - name: ELASTICSEARCH_URL
   value: {{ .Values.external.elasticsearch.url | quote }}
-- name: ELASTICSEARCH_USERNAME
+- name: DATAOBS_STORE_BACKEND
+  value: elasticsearch
+- name: ELASTICSEARCH_USER
   valueFrom: {secretKeyRef: {name: {{ .Values.external.elasticsearch.secretName | quote }}, key: {{ .Values.external.elasticsearch.usernameKey | quote }}}}
 - name: ELASTICSEARCH_PASSWORD
   valueFrom: {secretKeyRef: {name: {{ .Values.external.elasticsearch.secretName | quote }}, key: {{ .Values.external.elasticsearch.passwordKey | quote }}}}

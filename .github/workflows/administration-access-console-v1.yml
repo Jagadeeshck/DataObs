@@ -61,7 +61,7 @@ jobs:
             --workflow-run-id "$GITHUB_RUN_ID" --workflow-run-attempt "$GITHUB_RUN_ATTEMPT" --event "$GITHUB_EVENT_NAME" \
             --status pass --test-category typecheck --test-category browser --test-category accessibility --test-category build --test-category security \
             --supporting-file evidence/administration-unit.xml --supporting-file evidence/administration.json --supporting-file evidence/performance-budget.txt \
-            --tool-version "node=$(node --version)" --tool-version "pnpm=$(pnpm --version)" --tool-version "otel=$(node -p \"require('./ui/dataobs-console/node_modules/@opentelemetry/api/package.json').version\")"
+            --tool-version "node=$(node --version)" --tool-version "pnpm=$(pnpm --version)" --tool-version "otel=$(node -p "require('./ui/dataobs-console/node_modules/@opentelemetry/api/package.json').version")"
       - uses: actions/upload-artifact@v4
         with:
           {

@@ -13,6 +13,7 @@ on:
       tenant-isolation-test-path: {type: string, default: ''}
       timeout-minutes: {type: number, default: 30}
       checkout-ref: {type: string, default: ''}
+      workflow-file: {type: string, default: reusable-backend-validation.yml}
 permissions: {contents: read}
 jobs:
   validate:
@@ -82,5 +83,13 @@ jobs:
           PY
           test "$(jq -r .commit_sha evidence/team-delivery.json)" = "$(git rev-parse HEAD)"
           cp evidence/team-delivery.json evidence/unverified.json
+      - name: Canonical evidence envelope
+        if: inputs.evidence-profile == 'team-foundation'
+        run: |
+          python scripts/certification/check_executed_junit.py evidence/junit.xml
+          python scripts/certification/write_evidence_envelope.py --output evidence/evidence.json \
+            --repository "$GITHUB_REPOSITORY" --producer-sha "$(git rev-parse HEAD)" --workflow-file '${{ inputs.workflow-file }}' \
+            --workflow-run-id "$GITHUB_RUN_ID" --workflow-run-attempt "$GITHUB_RUN_ATTEMPT" --event "$GITHUB_EVENT_NAME" \
+            --status pass --test-category foundation-backend --supporting-file evidence/junit.xml --tool-version "python=$(python --version | cut -d' ' -f2)"
       - uses: actions/upload-artifact@v4
         with: {name: '${{ inputs.artifact-name }}', path: evidence/, retention-days: 30}

@@ -355,10 +355,14 @@ jobs:
             terraform -chdir="$dir" init -backend=false
             terraform -chdir="$dir" validate
           done
+      - name: Prepare non-publishable structural Helm inputs
+        run: |
+          python -m pip install pyyaml
+          python scripts/deployment/write_structural_digest_values.py --output /tmp/structural-digests.yaml
       - name: Helm lint
-        run: helm lint helm/dataobs --kube-version 1.30.0
+        run: helm lint helm/dataobs --kube-version 1.30.0 -f helm/dataobs/values-production.yaml -f /tmp/structural-digests.yaml
       - name: Helm template
-        run: helm template dataobs helm/dataobs
+        run: helm template dataobs helm/dataobs --kube-version 1.30.0 -f helm/dataobs/values-production.yaml -f /tmp/structural-digests.yaml
 
   image-security:
     name: Production image security and SBOM
@@ -796,3 +800,32 @@ jobs:
           python scripts/certification/verify_artifacts.py artifacts
       - uses: actions/upload-artifact@v4
         with: {name: certification-summary, path: artifacts, retention-days: 30}
+
+  team0-gate0-evidence:
+    name: Mandatory Team 0 Gate 0 evidence
+    needs: [python-quality, certification-contracts, terraform-helm, documentation-truth-gate, incident-migration-occ-gate]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Record mandatory shared results without treating skips as success
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          mkdir -p gate0-shared-evidence
+          python - <<'PYTHON'
+          import json, os, pathlib
+          results = json.loads(os.environ['RESULTS'])
+          pathlib.Path('gate0-shared-evidence/job-results.json').write_text(json.dumps(results, indent=2))
+          if not results or any(v.get('result') != 'success' for v in results.values()):
+              raise SystemExit('mandatory Team 0 checks failed or skipped')
+          PYTHON
+          python scripts/certification/write_evidence_envelope.py --output gate0-shared-evidence/evidence.json \
+            --repository "$GITHUB_REPOSITORY" --producer-sha "$GITHUB_SHA" --workflow-file ci.yml \
+            --workflow-run-id "$GITHUB_RUN_ID" --workflow-run-attempt "$GITHUB_RUN_ATTEMPT" --event "$GITHUB_EVENT_NAME" \
+            --status pass --test-category shared-ci --supporting-file gate0-shared-evidence/job-results.json --tool-version "python=$(python --version | cut -d' ' -f2)"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: team-0-gate0-shared-evidence, path: gate0-shared-evidence, if-no-files-found: error}

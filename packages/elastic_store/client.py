@@ -10,4 +10,5 @@ def make_client() -> Elasticsearch:
         [os.getenv("ELASTICSEARCH_URL", "http://localhost:9200")],
         basic_auth=(os.getenv("ELASTICSEARCH_USER", "elastic"), os.getenv("ELASTICSEARCH_PASSWORD", "")),
         request_timeout=30,
+        ca_certs=os.getenv("ELASTICSEARCH_CA_CERTS") or None,
     )

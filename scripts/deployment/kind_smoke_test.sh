@@ -9,6 +9,6 @@ helm upgrade --install "$RELEASE" helm/dataobs -n "$NS" --create-namespace -f "$
 kubectl -n "$NS" wait --for=condition=available deployment -l app.kubernetes.io/component=api --timeout=5m
 kubectl -n "$NS" wait --for=condition=available deployment -l app.kubernetes.io/component=console --timeout=5m
 old=$(kubectl -n "$NS" get pod -l app.kubernetes.io/component=api -o jsonpath='{.items[0].metadata.name}')
-helm upgrade "$RELEASE" helm/dataobs -n "$NS" -f "$DATAOBS_SMOKE_VALUES" --set-string global.annotations.smoke-revision="$(date +%s)" --wait --timeout 10m
-kubectl -n "$NS" get pod "$old" >/dev/null 2>&1 && echo 'rollout did not replace API pod' >&2 && exit 1 || true
+helm upgrade "$RELEASE" helm/dataobs -n "$NS" -f "$DATAOBS_SMOKE_VALUES" --set-string api.podAnnotations.smoke-revision="$(date +%s)" --wait --timeout 10m
+if kubectl -n "$NS" get pod "$old" >/dev/null 2>&1; then echo 'rollout did not replace API pod' >&2; exit 1; fi
 echo 'Local bounded smoke completed; this is not product certification.'

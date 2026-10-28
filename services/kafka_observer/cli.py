@@ -5,6 +5,7 @@ import json
 import os
 import signal
 import uuid
+from functools import partial
 from pathlib import Path
 from typing import Any
 
@@ -229,7 +230,7 @@ def main() -> int:
             }
             scheduler = CollectionScheduler(
                 [
-                    ScheduledCollection(name, seconds, lambda name=name: service.collect_capability(name))
+                    ScheduledCollection(name, seconds, partial(service.collect_capability, name))
                     for name, seconds in intervals.items()
                 ],
                 DurableLeases(repository),

@@ -1,0 +1,46 @@
+{
+  "scope": "local development validation; not hosted certification",
+  "status": "BLOCKED",
+  "source_commit": "d784d0103d09f0a7d17b446ee5f77a454325fb98",
+  "main_inspected": "09fa1fe615c69f79a8056772a4b424b5c564fb86",
+  "focused_python": {
+    "tests": 229,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 2
+  },
+  "real_kafka": {
+    "tests": 1,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "full_python": {
+    "tests": 1470,
+    "failures": 2,
+    "errors": 0,
+    "skipped": 28
+  },
+  "console": {
+    "test_files": 24,
+    "passed": 146
+  },
+  "static_checks": {
+    "ruff": "PASS",
+    "black": "PASS",
+    "mypy_source_files": 73,
+    "mypy": "PASS",
+    "compileall": "PASS",
+    "released_migrations_unchanged": 33
+  },
+  "kafka_image": "apache/kafka:3.9.1",
+  "kafka_brokers": 1,
+  "limitations": [
+    "Shared Data Product clean-install gate remains blocked pending Team 0/2 repair.",
+    "No live Elasticsearch persistence/restart or multi-broker Kafka certification.",
+    "No final-head accepted hosted artifact or global Playwright/axe certification.",
+    "Two opt-in security skips are not passes; the shared evidence verifier rejects them.",
+    "Full Python failures: generated capability documentation drift and tenant-t1 API fixture."
+  ],
+  "workflow_bootstrap_commit": "b71ca6de20ff4af4b842ab19bcf95432a3398810"
+}

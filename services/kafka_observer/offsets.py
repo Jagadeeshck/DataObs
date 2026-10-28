@@ -26,17 +26,25 @@ def calculate_lag(sample: OffsetSample) -> dict:
             "missing_inputs": missing,
         }
     assert sample.high_watermark is not None and sample.committed_offset is not None
-    if sample.committed_offset < 0:
+    if sample.committed_offset < 0 or sample.high_watermark < 0:
         return {
             "lag_messages": None,
             "data_status": "unknown",
             "method": "offset_difference",
-            "missing_inputs": ["valid_committed_offset"],
+            "missing_inputs": ["valid_offsets"],
+        }
+    if sample.committed_offset > sample.high_watermark:
+        return {
+            "lag_messages": None,
+            "data_status": "unknown",
+            "method": "offset_difference",
+            "missing_inputs": [],
+            "reason_code": "inconsistent_offset_window",
         }
     return {
-        "lag_messages": max(sample.high_watermark - sample.committed_offset, 0),
+        "lag_messages": sample.high_watermark - sample.committed_offset,
         "data_status": "complete",
-        "method": "max(high_watermark-committed_offset,0)",
+        "method": "high_watermark-committed_offset",
         "missing_inputs": [],
     }
 
@@ -67,6 +75,42 @@ def lag_velocity(samples: list[tuple[datetime, int]]) -> dict:
         "method": "median_pairwise_slope",
         "outlier_treatment": "median",
         "trend": "growing" if rate > 0 else "reducing" if rate < 0 else "stable",
+    }
+
+
+def lag_summary(rows: list[dict], *, partial: bool = False) -> dict:
+    """Only a complete set of measured partitions establishes a rollup."""
+    cells = []
+    for row in rows:
+        result = calculate_lag(
+            OffsetSample(
+                row.get("log_start_offset"),
+                row.get("high_watermark"),
+                row.get("committed_offset"),
+                datetime.fromisoformat(row["observed_at"]) if row.get("observed_at") else datetime.min,
+                stale=row.get("data_status") == "stale",
+            )
+        )
+        cells.append(
+            {
+                "topic": row["topic"],
+                "partition": row["partition"],
+                "group_id": row["group_id"],
+                "lag": result["lag_messages"],
+                "data_status": result["data_status"],
+                "reason_code": result.get("reason_code"),
+            }
+        )
+    measured = bool(cells) and not partial and all(cell["lag"] is not None for cell in cells)
+    return {
+        "total_lag": sum(cell["lag"] for cell in cells) if measured else None,
+        "maximum_lag": max(cell["lag"] for cell in cells) if measured else None,
+        "lag_heatmap": cells[:1000],
+        "data_status": (
+            "complete"
+            if measured
+            else "stale" if any(cell["data_status"] == "stale" for cell in cells) else "partial" if cells else "unknown"
+        ),
     }
 
 

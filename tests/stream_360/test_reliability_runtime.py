@@ -101,6 +101,9 @@ class MemoryStore:
     def previous(self, item):
         return PreviousState()
 
+    def pending(self, item):
+        return None
+
     def persist(self, result, item, token):
         assert token == 7
         self.saved.append(result.evaluation_id)
@@ -134,3 +137,62 @@ def test_graceful_stop_skips_due_work():
     runtime = ReliabilityRuntime(MemoryStore(), lambda *_: observation(), "worker")
     runtime.stop()
     assert runtime.run_once("t", "prod", NOW) == []
+
+
+def test_restart_between_projection_and_signal_reuses_immutable_breach():
+    class CrashStore(MemoryStore):
+        def __init__(self):
+            super().__init__()
+            self.anchor, self.projected, self.signals, self.events = None, None, set(), []
+            self.fail_signal = True
+
+        def due(self, *args):
+            return [definition(required_consecutive_breaches=1)]
+
+        def pending(self, item):
+            return self.anchor if not self.checkpoints else None
+
+        def previous(self, item):
+            return PreviousState(Status.BREACHING if self.projected else Status.HEALTHY)
+
+        def persist(self, result, item, token):
+            self.events.append("append")
+            if self.anchor is not None:
+                assert result == self.anchor
+                return False
+            self.anchor = result
+            return True
+
+        def project(self, result, item, token):
+            self.events.append("projection")
+            self.projected = result
+
+        def signal(self, result, item, token):
+            self.events.append("signal")
+            if self.fail_signal:
+                self.fail_signal = False
+                raise RuntimeError("crash before transition signal")
+            if result.status == Status.BREACHING and result.previous_status != Status.BREACHING:
+                self.signals.add(result.evaluation_id)
+
+        def checkpoint(self, item, evaluation_id, token, now):
+            self.events.append("checkpoint")
+            self.checkpoints.append(evaluation_id)
+
+        def persist_health(self, *args):
+            self.events.append("health")
+
+    store = CrashStore()
+    first = ReliabilityRuntime(store, lambda *_: observation(20), "old")
+    assert first.run_once("t", "prod", NOW) == []
+    assert not store.checkpoints and first.health.checkpoint_status == "not_advanced"
+    anchor = store.anchor
+    assert anchor.previous_status == Status.HEALTHY
+
+    def no_new_observation(*args):
+        raise AssertionError("pending immutable evidence must be reconciled before fresh observation")
+
+    restarted = ReliabilityRuntime(store, no_new_observation, "new")
+    assert restarted.run_once("t", "prod", NOW + timedelta(seconds=30)) == [anchor]
+    assert store.signals == {anchor.evaluation_id}
+    assert store.events[-5:] == ["append", "projection", "signal", "checkpoint", "health"]

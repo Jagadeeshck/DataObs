@@ -5,12 +5,15 @@ from typing import Any, Protocol
 
 from elasticsearch import Elasticsearch
 
+from .offsets import lag_summary
+
 
 class ObserverRepository(Protocol):
     def load_checkpoint(self, provider: str) -> dict[str, Any] | None: ...
     def save_checkpoint(self, provider: str, checkpoint: dict[str, Any]) -> None: ...
     def save_collection(self, provider: str, inventory: dict[str, Any], checkpoint: dict[str, Any]) -> None: ...
     def save_error(self, error: dict[str, Any]) -> None: ...
+    def save_offset_projection(self, payload: dict[str, Any]) -> None: ...
     def save_connector_projection(self, payload: dict[str, Any]) -> None: ...
     def save_schema_projection(self, payload: dict[str, Any]) -> None: ...
 
@@ -100,6 +103,12 @@ class ElasticsearchObserverRepository:
                 )
                 if key in connector
             }
+            if "task_states" in safe:
+                safe["task_states"] = [
+                    {key: task.get(key) for key in ("id", "state")}
+                    for task in safe["task_states"][:1000]
+                    if isinstance(task, dict)
+                ]
             safe.update(
                 {
                     "@timestamp": observed,
@@ -124,6 +133,11 @@ class ElasticsearchObserverRepository:
         grouped: dict[str, list[dict[str, Any]]] = {}
         for row in payload.get("schemas", [])[:100_000]:
             grouped.setdefault(str(row["subject_id"]), []).append(row)
+
+        def summary(row: dict[str, Any]) -> dict[str, Any]:
+            value = row.get("semantic_summary") or {}
+            return {key: value[key] for key in ("format", "field_count") if key in value}
+
         for subject_id, rows in grouped.items():
             rows = sorted(rows, key=lambda row: int(row.get("version", 0)), reverse=True)[:100]
             latest = rows[0]
@@ -136,7 +150,7 @@ class ElasticsearchObserverRepository:
                     key: row.get(key)
                     for key in ("version", "schema_id", "schema_type", "fingerprint", "semantic_summary", "observed_at")
                 }
-                | {"reference_count": len(row.get("references", []))}
+                | {"semantic_summary": summary(row), "reference_count": len(row.get("references", []))}
                 for row in rows
             ]
             document = self._base() | {
@@ -151,19 +165,65 @@ class ElasticsearchObserverRepository:
                 "latest_version": latest.get("version"),
                 "versions": versions,
                 "fingerprints": [row.get("fingerprint") for row in rows],
-                "references": latest.get("references", []),
-                "semantic_summary": latest.get("semantic_summary"),
-                "health": "unknown" if latest.get("compatibility_mode") == "UNKNOWN" else "healthy",
-                "reason_codes": (
-                    ["compatibility_unknown"]
-                    if latest.get("compatibility_mode") == "UNKNOWN"
-                    else ["registry_observed"]
-                ),
+                "references": [
+                    {key: ref.get(key) for key in ("name", "subject", "version")}
+                    for ref in latest.get("references", [])[:100]
+                    if isinstance(ref, dict)
+                ],
+                "semantic_summary": summary(latest),
+                # A registry compatibility mode is configuration, not a check result.
+                "health": "unknown",
+                "reason_codes": ["compatibility_not_evaluated"],
                 "source_coverage": ["schema_registry"],
                 "data_status": payload.get("data_status", "unknown"),
             }
             self.es.index(
                 index="dataobs-kafka-schemas-v1-write", id=self._id(cluster_id, subject_id), document=document
+            )
+
+    def save_offset_projection(self, payload: dict[str, Any]) -> None:
+        """Publish measured group/topic lag before the offset checkpoint advances."""
+        cluster = payload["cluster_id"]
+        rows = payload.get("offsets", [])[:100_000]
+        partial = bool(payload.get("continuation"))
+        by_group: dict[str, list[dict[str, Any]]] = {}
+        by_topic: dict[str, list[dict[str, Any]]] = {}
+        for row in rows:
+            by_group.setdefault(row["group_id"], []).append(row)
+            by_topic.setdefault(row["topic"], []).append(row)
+        groups = {item["group_id"] for item in payload.get("consumer_groups", [])} | {row["group_id"] for row in rows}
+        for group in sorted(groups):
+            selected = by_group.get(group, [])
+            self.es.update(
+                index="dataobs-kafka-consumer-groups-v1-write",
+                id=self._id(cluster, group),
+                doc_as_upsert=True,
+                doc=self._base()
+                | {
+                    "cluster_id": cluster,
+                    "group_id": group,
+                    "consumer_group_id": group,
+                    "name": group,
+                    **lag_summary(selected, partial=partial),
+                },
+            )
+        topics = set(by_topic) | set(payload.get("topic_ids", {}))
+        for topic in sorted(topics):
+            selected = by_topic.get(topic, [])
+            topic_id = payload.get("topic_ids", {}).get(topic, topic)
+            self.es.update(
+                index="dataobs-kafka-topics-v1-write",
+                id=self._id(cluster, topic_id),
+                doc_as_upsert=True,
+                doc=self._base()
+                | {
+                    "cluster_id": cluster,
+                    "topic_id": str(topic_id),
+                    "stream_id": str(topic_id),
+                    "topic": topic,
+                    "name": topic,
+                    **lag_summary(selected, partial=partial or payload.get("data_status") != "complete"),
+                },
             )
 
     def acquire_lease(self, name: str, owner: str, expires_at: str) -> bool:
@@ -202,8 +262,15 @@ class ElasticsearchObserverRepository:
             "cluster_id": cluster_id,
             "controller_id": inventory.get("controller_id"),
             "broker_count": len(inventory.get("brokers", [])),
-            "topic_count": len(topics),
-            "consumer_group_count": len(groups),
+            "topic_count": None if "topic_inventory_truncated" in inventory.get("warnings", []) else len(topics),
+            "consumer_group_count": (
+                None
+                if any(
+                    "consumer group" in warning or "consumer_group" in warning
+                    for warning in inventory.get("warnings", [])
+                )
+                else len(groups)
+            ),
             "health": "degraded" if inventory.get("warnings") else "healthy",
             "reason_codes": inventory.get("warnings", []),
             "source_coverage": inventory.get("source_coverage", ["kafka_admin"]),
@@ -333,6 +400,9 @@ class MemoryObserverRepository:
     def save_collection(self, provider: str, inventory: dict[str, Any], checkpoint: dict[str, Any]) -> None:
         self.collections.append(inventory)
         self.checkpoints[provider] = checkpoint
+
+    def save_offset_projection(self, payload: dict[str, Any]) -> None:
+        self.collections.append(payload)
 
     def save_error(self, error: dict[str, Any]) -> None:
         self.errors.append(dict(error))

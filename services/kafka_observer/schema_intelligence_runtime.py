@@ -23,6 +23,7 @@ from services.kafka_observer.schema_intelligence_repository import (
     SUBJECTS,
     VERSION_EVENTS,
     VERSIONS,
+    ElasticsearchSchemaIntelligenceRepository,
 )
 
 
@@ -51,7 +52,10 @@ class SchemaIntelligenceRuntime:
     MAX_BATCH = 200
 
     def __init__(
-        self, repository: object, collector: Callable[..., Iterable[SchemaVersionObservation]], worker_id: str
+        self,
+        repository: ElasticsearchSchemaIntelligenceRepository,
+        collector: Callable[..., Iterable[SchemaVersionObservation]],
+        worker_id: str,
     ):
         self.repository, self.collector, self.worker_id = repository, collector, worker_id
 

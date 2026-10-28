@@ -1,0 +1,198 @@
+{
+  "broker_count": 1,
+  "caught_up": {
+    "cluster_id": "5L6g3nShT-eMCtK--X86sw",
+    "consumer_groups": [
+      {
+        "data_status": "complete",
+        "group_id": "team1-consumer-9738a71b3ade",
+        "lag_heatmap": [
+          {
+            "data_status": "complete",
+            "group_id": "team1-consumer-9738a71b3ade",
+            "lag": 0,
+            "partition": 0,
+            "reason_code": null,
+            "topic": "team1-lag-9738a71b3ade"
+          },
+          {
+            "data_status": "complete",
+            "group_id": "team1-consumer-9738a71b3ade",
+            "lag": 0,
+            "partition": 1,
+            "reason_code": null,
+            "topic": "team1-lag-9738a71b3ade"
+          },
+          {
+            "data_status": "complete",
+            "group_id": "team1-consumer-9738a71b3ade",
+            "lag": 0,
+            "partition": 2,
+            "reason_code": null,
+            "topic": "team1-lag-9738a71b3ade"
+          }
+        ],
+        "maximum_lag": 0,
+        "total_lag": 0
+      }
+    ],
+    "continuation": false,
+    "count": 3,
+    "data_status": "complete",
+    "offsets": [
+      {
+        "commit_metadata": null,
+        "committed_offset": 10,
+        "data_status": "partial",
+        "group_id": "team1-consumer-9738a71b3ade",
+        "high_watermark": 10,
+        "last_stable_offset": null,
+        "log_start_offset": 0,
+        "member_id": null,
+        "missing_inputs": [
+          "last_stable_offset"
+        ],
+        "partition": 0,
+        "topic": "team1-lag-9738a71b3ade"
+      },
+      {
+        "commit_metadata": null,
+        "committed_offset": 20,
+        "data_status": "partial",
+        "group_id": "team1-consumer-9738a71b3ade",
+        "high_watermark": 20,
+        "last_stable_offset": null,
+        "log_start_offset": 0,
+        "member_id": null,
+        "missing_inputs": [
+          "last_stable_offset"
+        ],
+        "partition": 1,
+        "topic": "team1-lag-9738a71b3ade"
+      },
+      {
+        "commit_metadata": null,
+        "committed_offset": 30,
+        "data_status": "partial",
+        "group_id": "team1-consumer-9738a71b3ade",
+        "high_watermark": 30,
+        "last_stable_offset": null,
+        "log_start_offset": 0,
+        "member_id": null,
+        "missing_inputs": [
+          "last_stable_offset"
+        ],
+        "partition": 2,
+        "topic": "team1-lag-9738a71b3ade"
+      }
+    ],
+    "topic_ids": {
+      "__consumer_offsets": "__consumer_offsets",
+      "team1-lag-1154eb3703ce": "team1-lag-1154eb3703ce",
+      "team1-lag-95c7743a94cf": "team1-lag-95c7743a94cf",
+      "team1-lag-9738a71b3ade": "team1-lag-9738a71b3ade",
+      "team1-lag-a366cd3947a1": "team1-lag-a366cd3947a1",
+      "team1-lag-audit": "team1-lag-audit",
+      "team1-lag-fd46db8a6058": "team1-lag-fd46db8a6058"
+    }
+  },
+  "observer_restart_replay": "PASS",
+  "partial": {
+    "cluster_id": "5L6g3nShT-eMCtK--X86sw",
+    "consumer_groups": [
+      {
+        "data_status": "complete",
+        "group_id": "team1-consumer-9738a71b3ade",
+        "lag_heatmap": [
+          {
+            "data_status": "complete",
+            "group_id": "team1-consumer-9738a71b3ade",
+            "lag": 10,
+            "partition": 0,
+            "reason_code": null,
+            "topic": "team1-lag-9738a71b3ade"
+          },
+          {
+            "data_status": "complete",
+            "group_id": "team1-consumer-9738a71b3ade",
+            "lag": 15,
+            "partition": 1,
+            "reason_code": null,
+            "topic": "team1-lag-9738a71b3ade"
+          },
+          {
+            "data_status": "complete",
+            "group_id": "team1-consumer-9738a71b3ade",
+            "lag": 0,
+            "partition": 2,
+            "reason_code": null,
+            "topic": "team1-lag-9738a71b3ade"
+          }
+        ],
+        "maximum_lag": 15,
+        "total_lag": 25
+      }
+    ],
+    "continuation": false,
+    "count": 3,
+    "data_status": "complete",
+    "offsets": [
+      {
+        "commit_metadata": null,
+        "committed_offset": 0,
+        "data_status": "partial",
+        "group_id": "team1-consumer-9738a71b3ade",
+        "high_watermark": 10,
+        "last_stable_offset": null,
+        "log_start_offset": 0,
+        "member_id": null,
+        "missing_inputs": [
+          "last_stable_offset"
+        ],
+        "partition": 0,
+        "topic": "team1-lag-9738a71b3ade"
+      },
+      {
+        "commit_metadata": null,
+        "committed_offset": 5,
+        "data_status": "partial",
+        "group_id": "team1-consumer-9738a71b3ade",
+        "high_watermark": 20,
+        "last_stable_offset": null,
+        "log_start_offset": 0,
+        "member_id": null,
+        "missing_inputs": [
+          "last_stable_offset"
+        ],
+        "partition": 1,
+        "topic": "team1-lag-9738a71b3ade"
+      },
+      {
+        "commit_metadata": null,
+        "committed_offset": 30,
+        "data_status": "partial",
+        "group_id": "team1-consumer-9738a71b3ade",
+        "high_watermark": 30,
+        "last_stable_offset": null,
+        "log_start_offset": 0,
+        "member_id": null,
+        "missing_inputs": [
+          "last_stable_offset"
+        ],
+        "partition": 2,
+        "topic": "team1-lag-9738a71b3ade"
+      }
+    ],
+    "topic_ids": {
+      "__consumer_offsets": "__consumer_offsets",
+      "team1-lag-1154eb3703ce": "team1-lag-1154eb3703ce",
+      "team1-lag-95c7743a94cf": "team1-lag-95c7743a94cf",
+      "team1-lag-9738a71b3ade": "team1-lag-9738a71b3ade",
+      "team1-lag-a366cd3947a1": "team1-lag-a366cd3947a1",
+      "team1-lag-audit": "team1-lag-audit",
+      "team1-lag-fd46db8a6058": "team1-lag-fd46db8a6058"
+    }
+  },
+  "partitions": 3,
+  "produced": 60
+}

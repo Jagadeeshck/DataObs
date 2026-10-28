@@ -36,7 +36,7 @@ jobs:
         with: {fetch-depth: 0}
       - uses: actions/setup-python@v5
         with: {python-version: '3.12', cache: pip}
-      - run: pip install -r requirements.txt pytest ruff black
+      - run: python -m pip install -r requirements.txt -r requirements-ci.txt
       - name: Wait for Elasticsearch readiness
         run: python scripts/ci/wait_for_elasticsearch.py --url http://localhost:9200 --timeout 120
       - name: Migration immutability
@@ -46,22 +46,21 @@ jobs:
           mkdir -p stream-observer-backend-v1-evidence/results
           for _ in {1..30}; do curl -fsS localhost:9200 >/tmp/es.json && break; sleep 2; done
           python -c 'import json; d=json.load(open("/tmp/es.json")); assert d["version"]["number"] == "9.4.2"; print("9.4.2")' | tee stream-observer-backend-v1-evidence/elasticsearch-version.txt
-          docker exec "${{ job.services.kafka.id }}" /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --create --if-not-exists --topic observer-orders --partitions 3 --replication-factor 1
-          seq 1 100 | docker exec -i "${{ job.services.kafka.id }}" /opt/kafka/bin/kafka-console-producer.sh --bootstrap-server localhost:9092 --topic observer-orders
-          docker exec "${{ job.services.kafka.id }}" /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic observer-orders --group observer-certification --max-messages 10 --timeout-ms 10000
-          echo 3.9.1 | tee stream-observer-backend-v1-evidence/kafka-version.txt
+          KAFKA_VERSION=$(docker exec "${{ job.services.kafka.id }}" /opt/kafka/bin/kafka-topics.sh --version | awk '{print $1}')
+          test "$KAFKA_VERSION" = "3.9.1"
+          printf '%s\n' "$KAFKA_VERSION" > stream-observer-backend-v1-evidence/kafka-version.txt
       - name: Observer projections, intelligence, HTTP boundaries, leases and isolation
         env:
           ELASTICSEARCH_URL: http://localhost:9200
           KAFKA_BOOTSTRAP_SERVERS: localhost:9092
-        run: python -m pytest tests/stream_360 tests/security -q --junitxml=stream-observer-backend-v1-evidence/results/observer.xml
+          TEAM1_KAFKA_EVIDENCE_PATH: stream-observer-backend-v1-evidence/intelligence.json
+        run: |
+          python -m pytest tests/stream_360 tests/pathways tests/security -q --junitxml=stream-observer-backend-v1-evidence/results/observer.xml
+          RUN_INTEGRATION_TESTS=1 python -m pytest tests/integration/kafka_observer/test_release_lag.py -q --junitxml=stream-observer-backend-v1-evidence/results/real-kafka.xml
       - name: Record bounded certification results
         run: |
-          python scripts/release/release_metadata.py > stream-observer-backend-v1-evidence/terminal-migration.txt
-          printf '%s\n' '{"kafka_admin":"available","consumer_groups":"available","offsets":"available","kafka_connect":"partial","schema_registry":"partial","broker_metrics":"not_configured"}' > stream-observer-backend-v1-evidence/capability-matrix.json
-          printf '%s\n' '{"lag_messages":90,"retention_risk":"safe","replication_health":"healthy"}' > stream-observer-backend-v1-evidence/intelligence.json
-          printf '%s\n' '{"lease_contention":"pass","expiry":"pass","fencing":"pass"}' > stream-observer-backend-v1-evidence/lease-fencing.json
-          printf '%s\n' '{"tenant_isolation":"pass"}' > stream-observer-backend-v1-evidence/tenant-isolation.json
+          python -m scripts.release.release_metadata > stream-observer-backend-v1-evidence/terminal-migration.txt
+          test -s stream-observer-backend-v1-evidence/intelligence.json
       - name: Generate exact-commit evidence
         if: always()
         env: {GH_TOKEN: "${{ github.token }}"}
@@ -80,4 +79,4 @@ jobs:
         with: {fetch-depth: 0}
       - uses: actions/download-artifact@v4
         with: {name: stream-observer-backend-v1-evidence, path: downloaded-evidence}
-      - run: python scripts/certification/verify_product_evidence.py verify --directory downloaded-evidence/stream-observer-backend-v1-evidence --repository "${{ github.repository }}" --workflow "stream-observer-backend.yml" --run-id "${{ github.run_id }}" --expected-sha "$(git rev-parse HEAD)" --required-suite elasticsearch --required-suite kafka --required-suite observer --required-suite security --required-suite tenant
+      - run: python scripts/certification/verify_product_evidence.py verify --directory downloaded-evidence --repository "${{ github.repository }}" --workflow "stream-observer-backend.yml" --run-id "${{ github.run_id }}" --expected-sha "$(git rev-parse HEAD)" --required-suite elasticsearch --required-suite kafka --required-suite observer --required-suite security --required-suite tenant

@@ -26,7 +26,10 @@ def test_observer_persists_collection_through_repository():
         deduplication_key="d",
     )
     result = KafkaObserverService(Admin(), checkpoints, [binding], repository=repository).collect_once()
-    assert repository.collections == [result["capabilities"]["inventory"]["result"]]
+    assert repository.collections == [
+        result["capabilities"]["inventory"]["result"],
+        result["capabilities"]["offsets"]["result"],
+    ]
     assert checkpoints.load("offsets")["consecutive_failure_count"] == 0
 
 

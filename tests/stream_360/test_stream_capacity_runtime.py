@@ -72,6 +72,28 @@ def test_pressure_is_not_saturation_and_throttling_is():
     )
     assert throttled.overall_state == "throttled"
 
+    mixed = evaluate_capacity(
+        {
+            "provider": "aws",
+            "messaging_system": "kinesis",
+            "stream_mode": "provisioned",
+            "demand": measurement(),
+            "limit": limit(),
+            "signals": [
+                {"signal_type": "backlog_growth", "confidence": 0.99},
+                {"signal_type": "quota_breach", "authoritative": True, "confidence": 0.8},
+            ],
+            "source_coverage": 1,
+        }
+    )
+    assert mixed.overall_state == "saturated"
+    assert [signal.strength for signal in mixed.saturation_signals] == [
+        "supporting",
+        "authoritative",
+    ]
+    assert mixed.bottleneck_candidates[0].candidate == "provider_ingress"
+    assert mixed.bottleneck_candidates[0].confidence == 0.8
+
 
 def test_kinesis_on_demand_and_kafka_parallelism_semantics():
     result = evaluate_capacity(

@@ -8,6 +8,7 @@ from typing import Any
 from integrations.kafka.admin_client import ReadOnlyAdmin
 
 from .collector_registry import CapabilityBinding, validate_bindings
+from .groups import group_projection
 from .repository import ObserverRepository
 
 
@@ -41,9 +42,11 @@ class KafkaObserverService:
                     self.repository.save_collection(capability, payload, {})
             elif capability == "groups":
                 inventory = self.admin.inventory()
-                payload = {"cluster_id": inventory.get("cluster_id"), "groups": inventory.get("consumer_groups", [])}
+                payload = group_projection(inventory)
             elif capability == "offsets":
                 payload = self.admin.offsets(maximum=100_000)
+                if self.repository is not None:
+                    self.repository.save_offset_projection(payload)
             elif capability == "connectors":
                 payload = (
                     self.connect_collector.collect()

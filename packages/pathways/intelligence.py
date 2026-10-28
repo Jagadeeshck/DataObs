@@ -107,9 +107,16 @@ def assemble_pathways(
     selected = [
         e for e in edges if (not active_only or e.get("active", True)) and e.get("confidence", 0) >= minimum_confidence
     ]
+    if (
+        not 1 <= max_hops <= 32
+        or not 1 <= max_nodes <= 500
+        or not 1 <= max_edges <= 1000
+        or not 1 <= max_pathways <= 200
+    ):
+        raise ValueError("pathway traversal bounds exceeded")
+    selected = sorted(selected, key=lambda edge: edge["edge_id"])[:max_edges]
     excluded = len(edges) - len(selected)
-    selected = selected[:max_edges]
-    node_map = {n["node_id"]: n for n in nodes[:max_nodes]}
+    node_map = {n["node_id"]: n for n in sorted(nodes, key=lambda node: node["node_id"])[:max_nodes]}
     outgoing: dict[str, list[dict[str, Any]]] = {}
     incoming: set[str] = set()
     for edge in selected:
@@ -149,6 +156,8 @@ def assemble_pathways(
         )
 
     def walk(current: str, path: list[dict[str, Any]], visited: set[str]) -> None:
+        if len(result) >= max_pathways:
+            return
         choices = sorted(outgoing.get(current, []), key=lambda item: item["edge_id"])
         if not choices or len(path) >= max_hops:
             emit(path)
@@ -178,6 +187,8 @@ def pathway_health(edges: list[dict[str, Any]], *, partial: bool = False, stale:
         reasons.append("partial_coverage")
         missing.append("complete_topology")
     confidence = min((edge.get("confidence", 0.0) for edge in edges), default=0.0)
+    if health == "healthy" and (missing or partial or stale):
+        health = "unknown"
     if stale:
         confidence *= 0.5
         reasons.append("stale_evidence")

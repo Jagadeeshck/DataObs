@@ -123,3 +123,88 @@ def test_checkpoint_advances_only_after_projection_persistence():
         pass
     assert checkpoints.values["schemas"]["last_successful_collection"] == "previous"
     assert checkpoints.values["schemas"]["consecutive_failure_count"] == 1
+
+
+def test_nested_connector_and_schema_metadata_do_not_leak_raw_inputs():
+    repo = repository()
+    repo.save_connector_projection(
+        {
+            "connectors": [
+                {
+                    "connector_id": "orders",
+                    "task_states": [
+                        {"id": 1, "state": "RUNNING", "password": "sentinel", "config": {"sasl": "sentinel"}}
+                    ],
+                }
+            ]
+        }
+    )
+    repo.save_schema_projection(
+        {
+            "schemas": [
+                {
+                    "subject_id": "orders",
+                    "version": 1,
+                    "compatibility_mode": "BACKWARD",
+                    "semantic_summary": {"field_count": 2, "raw_schema": "sentinel"},
+                    "references": [{"name": "ref", "subject": "shared", "version": 1, "token": "sentinel"}],
+                }
+            ]
+        }
+    )
+    assert "sentinel" not in repr(repo.es.writes)
+    schema = repo.es.writes[-1]["document"]
+    assert schema["health"] == "unknown"
+    assert schema["reason_codes"] == ["compatibility_not_evaluated"]
+
+
+def test_schema_runtime_rejects_nested_payload_and_credentials():
+    import pytest
+
+    from services.kafka_observer.schema_intelligence_repository import ElasticsearchSchemaIntelligenceRepository
+
+    for field in ("raw_schema", "schema", "payload", "password", "token", "credentials", "sample"):
+        with pytest.raises(ValueError, match="forbidden"):
+            ElasticsearchSchemaIntelligenceRepository._safe({"evidence": [{field: "sentinel"}]})
+
+
+def test_schema_reads_are_fixed_scoped_bounded_and_source_allowlisted():
+    import pytest
+
+    from services.kafka_observer.schema_intelligence_repository import (
+        SAFE_SOURCE,
+        SUBJECTS,
+        ElasticsearchSchemaIntelligenceRepository,
+    )
+
+    class Search:
+        def __init__(self):
+            self.requests = []
+
+        def search(self, **kwargs):
+            self.requests.append(kwargs)
+            return {"hits": {"hits": []}}
+
+    es = Search()
+    repo = ElasticsearchSchemaIntelligenceRepository(es)
+    with pytest.raises(ValueError):
+        repo.search("*", "tenant-a", "prod")
+    repo.search(SUBJECTS, "tenant-a", "prod", subject_id="subject", size=100_000)
+    request = es.requests[-1]
+    assert request["size"] == 200 and request["source"] is SAFE_SOURCE
+    assert request["sort"][-1] == {"_id": "asc"}
+    assert request["query"]["bool"]["filter"][:2] == [
+        {"term": {"tenant_id": "tenant-a"}},
+        {"term": {"environment": "prod"}},
+    ]
+    assert not {"schema", "raw_schema", "payload", "credentials", "token"}.intersection(request["source"])
+
+
+def test_same_schema_subject_is_isolated_across_tenants_and_environments():
+    from packages.streaming.schema_intelligence import SchemaIdentity
+
+    a = SchemaIdentity("tenant-a", "prod", "registry", "orders")
+    b = SchemaIdentity("tenant-b", "prod", "registry", "orders")
+    c = SchemaIdentity("tenant-a", "stage", "registry", "orders")
+    assert len({item.subject_id for item in (a, b, c)}) == 3
+    assert len({item.version_id(1, "same-fingerprint") for item in (a, b, c)}) == 3

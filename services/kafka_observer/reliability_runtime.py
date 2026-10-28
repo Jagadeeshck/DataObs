@@ -17,6 +17,7 @@ class Store(Protocol):
     def acquire(self, scope: str, worker: str, expires_at: datetime) -> int | None: ...
     def due(self, tenant: str, environment: str, now: datetime, limit: int) -> list[Definition]: ...
     def previous(self, definition: Definition) -> PreviousState: ...
+    def pending(self, definition: Definition) -> Evaluation | None: ...
     def persist(self, evaluation: Evaluation, definition: Definition, fencing_token: int) -> bool: ...
     def project(self, evaluation: Evaluation, definition: Definition, fencing_token: int) -> None: ...
     def signal(self, evaluation: Evaluation, definition: Definition, fencing_token: int) -> None: ...
@@ -74,9 +75,13 @@ class ReliabilityRuntime:
                 break
             try:
                 start = now - timedelta(seconds=definition.evaluation_window_seconds)
-                result = evaluate(
-                    definition, self.observe(definition, start, now), self.store.previous(definition), now
-                )
+                # Resume the immutable append after a crash, rather than reevaluate
+                # against an already-updated projection and lose its transition.
+                result = self.store.pending(definition)
+                if result is None:
+                    result = evaluate(
+                        definition, self.observe(definition, start, now), self.store.previous(definition), now
+                    )
                 # append-only persistence is deliberately ordered before checkpointing
                 # The append-only record is the reconciliation anchor. Projection and
                 # signal writes are idempotent; the checkpoint moves only after both.

@@ -80,4 +80,4 @@ jobs:
         with: {fetch-depth: 0}
       - uses: actions/download-artifact@v4
         with: {name: stream-observer-backend-v1-evidence, path: downloaded-evidence}
-      - run: python scripts/certification/verify_product_evidence.py verify --directory downloaded-evidence/stream-observer-backend-v1-evidence --repository "${{ github.repository }}" --workflow "stream-observer-backend.yml" --run-id "${{ github.run_id }}" --expected-sha "$(git rev-parse HEAD)" --required-suite elasticsearch --required-suite kafka --required-suite observer --required-suite security --required-suite tenant
+      - run: python scripts/certification/verify_product_evidence.py verify --directory downloaded-evidence --repository "${{ github.repository }}" --workflow "stream-observer-backend.yml" --run-id "${{ github.run_id }}" --expected-sha "$(git rev-parse HEAD)" --required-suite elasticsearch --required-suite kafka --required-suite observer --required-suite security --required-suite tenant

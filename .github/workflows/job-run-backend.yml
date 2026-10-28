@@ -61,9 +61,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: job-run-backend-evidence
-          path: |
-            job-run-backend-evidence
-            /tmp/es.json
+          path: job-run-backend-evidence
           if-no-files-found: error
           retention-days: 30
   verify-evidence:
@@ -78,6 +76,6 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: job-run-backend-evidence
-          path: downloaded-evidence
+          path: downloaded-evidence/job-run-backend-evidence
       - name: Validate provenance, service version, migration and test XML
         run: python scripts/certification/verify_product_evidence.py verify --directory downloaded-evidence/job-run-backend-evidence --repository "${{ github.repository }}" --workflow "job-run-backend.yml" --run-id "${{ github.run_id }}" --expected-sha "$(git rev-parse HEAD)" --required-suite elasticsearch --required-suite openlineage --required-suite redaction --required-suite idempotency --required-suite ordering --required-suite airflow --required-suite dbt --required-suite spark --required-suite security --required-suite tenant --required-suite rbac

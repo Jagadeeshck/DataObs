@@ -88,9 +88,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: lineage-analysis-console-evidence
-          path: |
-            lineage-analysis-console-evidence
-            /tmp/es.json
+          path: lineage-analysis-console-evidence
           if-no-files-found: error
           retention-days: 30
   verify-evidence:
@@ -105,6 +103,6 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: lineage-analysis-console-evidence
-          path: downloaded-evidence
+          path: downloaded-evidence/lineage-analysis-console-evidence
       - name: Validate provenance, service version, migration and test XML
         run: python scripts/certification/verify_product_evidence.py verify --directory downloaded-evidence/lineage-analysis-console-evidence --repository "${{ github.repository }}" --workflow "lineage-analysis-console.yml" --run-id "${{ github.run_id }}" --expected-sha "$(git rev-parse HEAD)" --required-suite elasticsearch --required-suite lineage --required-suite critical-path --required-suite run-comparison --required-suite security --required-suite tenant --required-suite browser --required-suite accessibility

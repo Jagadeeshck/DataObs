@@ -46,7 +46,9 @@ assert round(sum(policy.weight for policy in FEATURE_POLICIES), 10) == 1.0
 def _compare(a: object, b: object, method: str) -> float | None:
     if method == "exact":
         return None if a is None or b is None else float(a == b)
-    if not isinstance(a, (tuple, list, set, frozenset)) or not isinstance(b, (tuple, list, set, frozenset)):
+    if not isinstance(a, (tuple, list, set, frozenset)):
+        return None
+    if not isinstance(b, (tuple, list, set, frozenset)):
         return None
     left, right = set(a), set(b)
     if not left or not right:

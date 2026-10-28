@@ -7,6 +7,7 @@ from elasticsearch import Elasticsearch
 
 from .manifest import (
     BASE_PROPERTIES,
+    DATA_PRODUCT_PROPERTIES,
     INCIDENT_AUTOMATION_MUTABLE_INDICES,
     INCIDENT_AUTOMATION_PROPERTIES,
     KAFKA_PROPERTIES,
@@ -122,17 +123,8 @@ def _mapping(index: str | None = None) -> Dict[str, Any]:
     )
     if index in INCIDENT_AUTOMATION_MUTABLE_INDICES:
         properties |= INCIDENT_AUTOMATION_PROPERTIES
-    # An index's first released explicit field definition owns its initial type.
-    # The global union is only a fallback: unrelated provider/job contracts must
-    # not preempt the later explicit mapping migration for this concrete index.
-    # Keep the first definition so incompatible *later* evolution still fails
-    # closed in _apply_mapping_update (including its existing narrow exception).
-    owned_properties: Dict[str, Any] = {}
-    for migration in migrations():
-        contract = migration.operations.get("mapping_updates", {}).get(index, {})
-        for field, definition in _mapping_properties(contract).items():
-            owned_properties.setdefault(field, definition)
-    properties |= owned_properties
+    if index == "dataobs-data-products-v1":
+        properties |= DATA_PRODUCT_PROPERTIES
     return {
         "dynamic": "strict",
         "properties": properties,

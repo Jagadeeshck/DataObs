@@ -88,9 +88,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: data-quality-console-v1-evidence
-          path: |
-            data-quality-console-v1-evidence
-            /tmp/es.json
+          path: data-quality-console-v1-evidence
           if-no-files-found: error
           retention-days: 30
   verify-evidence:
@@ -105,6 +103,6 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: data-quality-console-v1-evidence
-          path: downloaded-evidence
+          path: downloaded-evidence/data-quality-console-v1-evidence
       - name: Validate provenance, service version, migration and test XML
         run: python scripts/certification/verify_product_evidence.py verify --directory downloaded-evidence/data-quality-console-v1-evidence --repository "${{ github.repository }}" --workflow "data-quality-console-v1.yml" --run-id "${{ github.run_id }}" --expected-sha "$(git rev-parse HEAD)" --required-suite elasticsearch --required-suite quality --required-suite security --required-suite tenant --required-suite browser --required-suite accessibility

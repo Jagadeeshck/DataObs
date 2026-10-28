@@ -19,6 +19,12 @@ MAX_OCC_RETRIES = 3
 _SEVERITY = {"low": 0, "medium": 1, "high": 2, "critical": 3}
 
 
+def _metadata_string_set(value: object) -> set[str]:
+    if not isinstance(value, (list, tuple, set, frozenset)):
+        return set()
+    return {item for item in value if isinstance(item, str)}
+
+
 class IncidentCorrelationCoordinator:
     """Durable, idempotent post-incident orchestration boundary."""
 
@@ -220,7 +226,7 @@ class IncidentCorrelationCoordinator:
                 ("data_product_ids", incident.data_product_ids),
                 ("business_services", incident.business_services),
             ):
-                group.metadata[key] = sorted(set(group.metadata.get(key, [])) | set(values))[:100]
+                group.metadata[key] = sorted(_metadata_string_set(group.metadata.get(key)) | set(values))[:100]
             group.updated_at = datetime.now(timezone.utc)
             try:
                 return self.correlations.update_group(selected)

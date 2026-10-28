@@ -37,7 +37,7 @@ This audit records observed hosted evidence and the focused Team 2 fixes. It doe
 | Baseline and quality rules | Existing monitor tests | Pass |
 | Missing/stale/zero/error semantics | Existing focused Quality tests | Pass with measured-zero preserved |
 | Manual run-now safety | Existing bounded lifecycle behavior; verify explicitly | Pass before promotion |
-| Quality → finding → incident signal path | `tests/integration/test_quality_signal_path.py` included in Quality hosted certification | Exact-head ES 9.4.2 evidence required |
+| Quality → OTel/collector → ES → finding → deduplicated incident | Focused Quality JUnit includes the integration test as an environment-gated skip; the complete compose-backed path is executed by `CI / Integration tests` with `RUN_INTEGRATION_TESTS=1` and emits `e2e-signal-path` | Final-head `e2e-signal-path` artifact must pass; the focused skip is not E2E proof |
 | OpenLineage ingestion/validation | Job certify job passed at starting head | Exact-head pass + independent verification |
 | Job/Run projection and isolation | Job certify job passed at starting head | Exact-head pass + independent verification |
 | Lineage cycles/truncation/partial evidence | Lineage backend suite passed at starting head | Exact-head pass |
@@ -65,7 +65,7 @@ The Data Product clean-install fix touches the shared Elasticsearch registry but
 - No browser or accessibility certification while the shared Playwright suite is red.
 - No Data Product ES certification until clean-install, repeat apply and reconciliation pass on Elasticsearch 9.4.2.
 - No SLO certification until the focused tests actually execute.
-- No evidence promotion unless the independent verifier accepts the final-head artifact.
+- No evidence promotion unless the independent verifier accepts the final-head artifact.\n- The focused Quality workflow must not be cited as end-to-end signal-path proof while its container-backed test is skipped; use the exact-head `e2e-signal-path` artifact from CI.
 - No autonomous remediation, new quality engine, new connector, or migration rewrite.
 
 ## Success condition

@@ -87,6 +87,42 @@ The Connector/Schema reusable Console run reaches Playwright but the full-suite 
 
 Team 1 will correct only a Stream/Pathway-specific browser assertion if a focused failure remains after Team 5/global Console stabilization.
 
+## Cross-team dependency status
+
+### Team 2 PR #310 — clean-install Data Product mapping repair
+
+Team 2 has an open release-stabilisation PR, **#310 — Team 2: Stabilize v0.2.0 Quality, Job Observability and Lineage release workflows**, based on the same audited main SHA.
+
+Its audit reproduces the clean-install defect that blocks the Team 1 capability workflows: generic mutable-index creation can pre-empt the Data Product-owned mapping for `description`, `owner`, `revision`, and `tags` on `dataobs-data-products-v1`. PR #310 changes shared `packages/elastic_store/registry.py` and adds a registry regression without editing a released migration. Team 0 review is required.
+
+Team 1 does not duplicate this shared-registry change. Until #310 (or an equivalent Team 0-approved correction) is merged and rebased into this branch, dedicated clean-install Team 1 workflows are expected to remain blocked before their domain assertions.
+
+### Hosted Stream Observer evidence already obtained
+
+On PR #309 run [40652669752](https://github.com/Jagadeeshck/DataObs/actions/runs/40652669752), the `certify` job ran Elasticsearch 9.4.2 and Kafka 3.9.1 and completed the Team 1 Stream 360/security suite with **148 passed and 2 legitimate opt-in security skips**. The producer generated exact-commit product evidence and uploaded artifact **12799504917**.
+
+Artifact: https://github.com/Jagadeeshck/DataObs/actions/runs/40652669752/artifacts/12799504917
+
+The independent verifier then failed because the workflow passed a non-existent nested extraction directory to the verifier. GitHub's single-artifact download had extracted `metadata.json` directly into `downloaded-evidence`. PR #309 corrects the verifier directory to that actual extraction root.
+
+This successful producer is useful real-stack/domain evidence, but it does not replace the dedicated full-migration capability workflows because Stream Observer intentionally does not apply the complete released migration chain.
+
+## Current PR-head hosted status
+
+Current Team 1 branch head at the latest audit update: `76fd972c285b1bc2b6402c0bb4b763747e925ed5`.
+
+The required exact-head Team 1 workflows were queued in GitHub Actions at audit time, so no final-head PASS is claimed. Relevant queued runs:
+
+- Pathway Intelligence backend: [40653695111](https://github.com/Jagadeeshck/DataObs/actions/runs/40653695111)
+- Stream Observer backend: [40653694439](https://github.com/Jagadeeshck/DataObs/actions/runs/40653694439)
+- Kafka Cluster 360: [40653694082](https://github.com/Jagadeeshck/DataObs/actions/runs/40653694082)
+- Connector and Schema 360: [40653694280](https://github.com/Jagadeeshck/DataObs/actions/runs/40653694280)
+- Stream 360 Core: [40653694041](https://github.com/Jagadeeshck/DataObs/actions/runs/40653694041)
+- Pathway Explorer: [40653694256](https://github.com/Jagadeeshck/DataObs/actions/runs/40653694256)
+- Stream and Pathway Reliability Runtime: [40653694485](https://github.com/Jagadeeshck/DataObs/actions/runs/40653694485)
+
+Queued is not successful evidence. The PR must remain draft while mandatory final-head results are unavailable or while the shared migration dependency remains unmerged.
+
 ## Remaining blockers
 
 1. **Shared migration chain** — `dataobs-data-products-v1` incompatibility prevents clean Elasticsearch 9.4.2 capability jobs from reaching Team 1 seed/domain assertions.

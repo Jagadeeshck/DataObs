@@ -14,7 +14,10 @@ from packages.streaming.intelligence import (
     ExpectedRange,
     evaluate_anomaly,
 )
-from services.kafka_observer.intelligence_repository import ElasticsearchIntelligenceRepository, canonical_id
+from services.kafka_observer.intelligence_repository import (
+    ElasticsearchIntelligenceRepository,
+    canonical_id,
+)
 from services.kafka_observer.reliability_runtime import StaleWriter
 
 

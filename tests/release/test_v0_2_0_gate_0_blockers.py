@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 import yaml
 
+from scripts.certification.provenance import certification_commit_sha
 from scripts.certification.validate_backup_restore_evidence import validate
 from scripts.deployment.write_structural_digest_values import COMPONENTS, structural_values
 
@@ -19,37 +20,16 @@ def test_gate_0_inventory_preserves_release_truth_and_defers_freeze():
     assert inventory["security_state"] == "INCOMPLETE"
     assert inventory["supported_platforms"] == []
     assert inventory["candidate_frozen"] is False
-    assert inventory["gate_0_state"] == "pending_hosted_verification"
-    assert inventory["audited_main_sha"] == "b39a66d1546feba70de84aa6d8c9956e5892d16d"
+    assert inventory["gate_0_state"] == "GATE_0_BLOCKED"
+    assert len(inventory["audited_main_sha"]) == 40
     assert inventory["observed_workflow_sha"] == inventory["audited_main_sha"]
-    assert all(item["owner"] and item["workflow"] and item["hosted_state"] for item in inventory["blockers"])
-    assert all(item["first_meaningful_error"] or item["hosted_state"] == "passed" for item in inventory["blockers"])
-    assert {item["id"]: item["hosted_state"] for item in inventory["blockers"]} == {
-        "T0-RC-HELM-PROFILES": "blocked_external_configuration",
-        "T0-RC-BACKUP-EVIDENCE": "requires_authenticated_artifact_triage",
-        "T0-RC-SECURITY-SUITES": "shared_migration_failure_requires_triage",
-        "T1-RC-PATHWAY-FIXTURES": "blocked_by_team_0_migration",
-        "T0-RC-MVP-SMOKE": "not_run",
-        "T0-RC-FOUNDATION": "passed",
-    }
-    assert {item["id"]: item["workflow_run_id"] for item in inventory["blockers"]} == {
-        "T0-RC-HELM-PROFILES": 40578796841,
-        "T0-RC-BACKUP-EVIDENCE": 40578797192,
-        "T0-RC-SECURITY-SUITES": 40578796917,
-        "T1-RC-PATHWAY-FIXTURES": 40578796828,
-        "T0-RC-MVP-SMOKE": None,
-        "T0-RC-FOUNDATION": 40578797145,
-    }
-    summary = inventory["latest_head_workflow_summary"]
-    assert summary["exact_sha"] == inventory["audited_main_sha"]
-    assert (summary["observed_total"], summary["passed"], summary["failed"]) == (26, 7, 19)
-    assert (
-        len(summary["passed_runs"]) + sum(len(runs) for runs in summary["failed_runs_by_owner"].values())
-        == summary["observed_total"]
-    )
-    execution = {item["owner"]: item for item in inventory["team_execution_order"]}
-    assert execution["Team 0"]["branch"] == "codex/team0-v0-2-0-shared-stabilization"
-    assert all(execution[f"Team {team}"]["branch"].startswith("pending_") for team in range(1, 6))
+    assert inventory["candidate_sha"] is None
+    for item in inventory["blockers"]:
+        assert item["owner"] and item["workflow"] and item["root_cause"] and item["resolution"]
+        assert item["source_sha"] == inventory["observed_workflow_sha"]
+        assert item["hosted_state"] in {"passed", "failed", "blocked", "not_run"}
+        assert item["final_head_hosted_state"] == "not_run"
+        assert item["workflow_run_id"] and item["artifact_id"]
     assert inventory["gate_0_exit_criteria"]["freeze_after_gate_0_only"] is True
 
 
@@ -68,7 +48,10 @@ def test_failed_release_infrastructure_retains_diagnostics():
     assert "evidence/helm-lint.log" in workflows["beta-deployment-packaging.yml"]
     assert "evidence/migration-base-error.log" in workflows["beta-deployment-packaging.yml"]
     assert "evidence/migration-immutability.log" in workflows["beta-deployment-packaging.yml"]
-    assert "DATAOBS_KIND_DIAGNOSTICS: evidence/kind-diagnostics.txt" in workflows["beta-deployment-packaging.yml"]
+    assert (
+        "DATAOBS_KIND_DIAGNOSTICS: gate0-packaging-evidence/kind-diagnostics.txt"
+        in workflows["beta-deployment-packaging.yml"]
+    )
     assert "migration-apply.log" in workflows["beta-security-hardening.yml"]
     assert "team-0-security-hardening-evidence/security-junit.xml" in workflows["beta-security-hardening.yml"]
     assert "migration-apply.log" in workflows["pathway-intelligence-backend.yml"]
@@ -117,8 +100,23 @@ def test_helm_profiles_pin_kubernetes_and_use_re2_compatible_schema():
 def test_backup_restore_evidence_validator_is_fail_closed(tmp_path: Path):
     junit = tmp_path / "report.xml"
     report = tmp_path / "report.json"
-    junit.write_text("<testsuite tests='1' failures='0'/>")
+    junit.write_text(
+        "<testsuite tests='1' failures='0'><testcase name='test_beta_backup_restore_exact_state_and_tenant_isolation'/></testsuite>"
+    )
     good = {
+        "commit_sha": certification_commit_sha(),
+        "snapshot_repository": "synthetic-ci",
+        "snapshot": "bounded-test",
+        "snapshot_result": "pass",
+        "destructive_deletion_result": "pass",
+        "restore_result": "pass",
+        "integrity_verification": "pass",
+        "recovery_result": "pass",
+        "started_at": "2026-10-28T00:00:00+00:00",
+        "completed_at": "2026-10-28T00:01:00+00:00",
+        "backup_duration_seconds": 1.0,
+        "restore_duration_seconds": 2.0,
+        "duration_seconds": 60.0,
         "status": "pass",
         "elasticsearch_version": "9.4.2",
         "terminal_migration": "0033_team1_stream_schema_intelligence_runtime",
@@ -129,6 +127,26 @@ def test_backup_restore_evidence_validator_is_fail_closed(tmp_path: Path):
     report.write_text(json.dumps(good))
     validate(report, junit)
 
+    for key, value in [
+        ("commit_sha", "0" * 40),
+        ("elasticsearch_version", "9.0.0"),
+        ("restore_result", "fail"),
+        ("integrity_verification", None),
+        ("restore_duration_seconds", None),
+        ("backup_duration_seconds", -1),
+    ]:
+        report.write_text(json.dumps(good | {key: value}))
+        with pytest.raises((ValueError, TypeError)):
+            validate(report, junit)
+    report.write_text(json.dumps(good))
+    for xml in [
+        "<broken",
+        "<testsuite tests='0'/>",
+        "<testsuite><testcase name='test_beta_backup_restore_exact_state_and_tenant_isolation'><skipped/></testcase></testsuite>",
+    ]:
+        junit.write_text(xml)
+        with pytest.raises(Exception):
+            validate(report, junit)
     report.unlink()
     with pytest.raises(ValueError, match="missing or empty destructive restore report"):
         validate(report, junit)

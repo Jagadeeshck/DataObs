@@ -13,5 +13,5 @@ def test_generated_current_state_matches_canonical_source():
 def test_stale_migration_and_release_sha_are_detectable():
     value = render()
     assert value.replace(migration_report()["terminal_migration"], "stale") != value
-    candidate = yaml.safe_load(open("docs/release/first-supported-platform-candidate.yaml"))["candidate_source_sha"]
+    candidate = yaml.safe_load(open("docs/release/v0.2.0-gate-0-blockers.yaml"))["audited_main_sha"]
     assert value.replace(candidate, "0" * 40) != value

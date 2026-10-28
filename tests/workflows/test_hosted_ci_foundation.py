@@ -71,7 +71,10 @@ def test_elasticsearch_client_pin_is_published_and_checked_for_resolution():
 def test_elasticsearch_readiness_is_before_work_in_repaired_foundations():
     for name in ("reusable-backend-validation.yml", "beta-security-hardening.yml", "beta-backup-restore.yml"):
         text = (WORKFLOWS / name).read_text()
-        ready = text.index("wait_for_elasticsearch.py")
+        readiness = (
+            "start_gate0_elasticsearch.sh" if name == "beta-security-hardening.yml" else "wait_for_elasticsearch.py"
+        )
+        ready = text.index(readiness)
         following_work = [
             text.find(token, ready + 1) for token in ("pytest", "Apply existing migrations", "Real Elasticsearch")
         ]

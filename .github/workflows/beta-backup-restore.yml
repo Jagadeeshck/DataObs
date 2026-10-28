@@ -8,8 +8,10 @@ jobs:
     runs-on: ubuntu-latest
     env:
       RUN_BETA_BACKUP_RESTORE: '1'
+      RUN_INTEGRATION_TESTS: '1'
+      DATA_PRODUCT_CERTIFICATION_SHA: ${{ github.sha }}
       ELASTICSEARCH_URL: http://localhost:9200
-      BETA_RESTORE_REPORT: evidence/results/backup-restore.json
+      BETA_RESTORE_REPORT: ${{ github.workspace }}/evidence/results/backup-restore.json
     services:
       elasticsearch:
         image: docker.elastic.co/elasticsearch/elasticsearch:9.4.2

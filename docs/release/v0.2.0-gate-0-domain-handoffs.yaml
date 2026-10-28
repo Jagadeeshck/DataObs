@@ -1,0 +1,97 @@
+schema_version: '1.0'
+release_decision: NO_GO
+handoffs:
+- id: T1-GATE0-PATHWAY
+  owner: Team 1
+  source_sha: 09fa1fe615c69f79a8056772a4b424b5c564fb86
+  workflow: pathway-intelligence-backend.yml
+  run_id: 40583122017
+  failure: Apply released migrations failed before pathway fixtures
+  shared_dependency_resolved: false
+  required_action: Rerun unchanged after Team 0 secured migration proof; report remaining
+    domain mapping/schema errors via additive migrations only
+- id: T1-GATE0-STREAM-EVIDENCE
+  owner: Team 1
+  source_sha: 09fa1fe615c69f79a8056772a4b424b5c564fb86
+  workflow: stream-observer-backend.yml
+  run_id: 40583121972
+  failure: Record bounded certification results and independent verification failed
+  shared_dependency_resolved: false
+  required_action: Inspect retained producer report and exact-SHA evidence contract
+    after shared migration stabilization
+- id: T2-GATE0-DATA-PRODUCT
+  owner: Team 2
+  source_sha: 09fa1fe615c69f79a8056772a4b424b5c564fb86
+  workflow: data-product-runtime.yml
+  run_id: 40583121904
+  failure: Foundation Elasticsearch migration suite and security migration application
+    failed
+  shared_dependency_resolved: false
+  required_action: Rerun after shared registry repair; own remaining domain schema/evidence
+    defects; released migrations remain immutable
+- id: T2-GATE0-QUALITY-EVIDENCE
+  owner: Team 2
+  source_sha: 09fa1fe615c69f79a8056772a4b424b5c564fb86
+  workflow: data-quality-monitoring.yml
+  run_id: 40583122085
+  failure: Validate provenance, service version, migration and test XML failed after
+    producer succeeded
+  shared_dependency_resolved: false
+  required_action: Diagnose retained producer provenance and mandatory test execution;
+    do not flip evidence state
+- id: T2-GATE0-JOB-EVIDENCE
+  owner: Team 2
+  source_sha: 09fa1fe615c69f79a8056772a4b424b5c564fb86
+  workflow: job-run-backend.yml
+  run_id: 40583122167
+  failure: Validate provenance, service version, migration and test XML failed after
+    producer succeeded
+  shared_dependency_resolved: false
+  required_action: Diagnose exact-SHA evidence without weakening independent verification
+- id: T3-GATE0-TYPING
+  owner: Team 3
+  source_sha: 09fa1fe615c69f79a8056772a4b424b5c564fb86
+  workflow: ci.yml
+  run_id: 40583121862
+  failure: 'Incident OCC mypy: nullable datetime arithmetic; set(object); correlation
+    tuple typing; recurrence and automation nullability'
+  shared_dependency_resolved: false
+  required_action: Repair services/incident_manager domain typing; no Team 0 exclusions
+- id: T5-GATE0-BROWSER
+  owner: Team 5
+  source_sha: 09fa1fe615c69f79a8056772a4b424b5c564fb86
+  workflow: console-product-experience.yml
+  run_id: 40583122002
+  failure: Playwright, axe, and cross-capability smoke failed
+  shared_dependency_resolved: false
+  required_action: Review exact retained browser errors after shared stabilization;
+    do not disable accessibility
+- id: T5-GATE0-ADMIN-BROWSER
+  owner: Team 5
+  source_sha: 09fa1fe615c69f79a8056772a4b424b5c564fb86
+  workflow: administration-access-console-v1.yml
+  run_id: 40583122218
+  failure: Browser, accessibility, and mock OTLP journeys failed
+  shared_dependency_resolved: false
+  required_action: Workflow shell repair is Team 0; remaining browser behavior belongs
+    to Team 5
+- id: T5-GATE0-TELEMETRY-BROWSER
+  owner: Team 5
+  source_sha: 09fa1fe615c69f79a8056772a4b424b5c564fb86
+  workflow: console-self-observability-v1.yml
+  run_id: 40583122066
+  failure: Browser, accessibility, and mock OTLP journeys failed
+  shared_dependency_resolved: false
+  required_action: Rerun after shared shell repair and fix only remaining Console
+    defects
+- id: T2-GATE0-LEGACY-RULE-ISOLATION
+  owner: Team 2
+  source_sha: 09fa1fe615c69f79a8056772a4b424b5c564fb86
+  workflow: beta-security-hardening.yml
+  run_id: null
+  failure: Local signed tenant A can list/search/delete tenant B legacy rule data
+    without selecting B; three enabled regressions fail
+  shared_dependency_resolved: false
+  required_action: Scope legacy rule store reads, searches and writes to authenticated
+    tenant/environment. Retain the new negative signed-JWT regressions; do not relax
+    auth or mark them expected failures. Confirm durable-store behavior separately.

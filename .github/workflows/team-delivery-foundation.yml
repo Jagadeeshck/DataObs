@@ -8,7 +8,7 @@ permissions: {contents: read}
 jobs:
   foundation-backend:
     uses: ./.github/workflows/reusable-backend-validation.yml
-    with: {test-path: 'tests/test_team_delivery_foundation.py', artifact-name: team-delivery-foundation-evidence, evidence-profile: team-foundation}
+    with: {test-path: 'tests/test_team_delivery_foundation.py', artifact-name: team-delivery-foundation-evidence, evidence-profile: team-foundation, workflow-file: team-delivery-foundation.yml}
   foundation-console:
     uses: ./.github/workflows/reusable-console-validation.yml
-    with: {artifact-name: team-delivery-foundation-console-evidence, run-playwright: false, run-accessibility: false}
+    with: {artifact-name: team-delivery-foundation-console-evidence, workflow-file: team-delivery-foundation.yml, run-playwright: false, run-accessibility: false}

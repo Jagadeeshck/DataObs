@@ -81,6 +81,17 @@ def plan() -> List[Dict[str, Any]]:
     return migration_plan()
 
 
+def _mapping_properties(contract: Dict[str, Any]) -> Dict[str, Any]:
+    """Normalize both released explicit-mapping shapes, preserving strictness."""
+    if "dynamic" in contract:
+        if contract.get("dynamic") != "strict" or set(contract) != {"dynamic", "properties"}:
+            raise RuntimeError("Released mapping wrapper must be strict and contain only properties")
+        contract = contract["properties"]
+    if not isinstance(contract, dict) or any(not isinstance(value, dict) for value in contract.values()):
+        raise RuntimeError("Released mapping properties must be field definitions")
+    return contract
+
+
 def _mapping(index: str | None = None) -> Dict[str, Any]:
     """Build the shared strict mapping without changing released migrations.
 
@@ -111,6 +122,17 @@ def _mapping(index: str | None = None) -> Dict[str, Any]:
     )
     if index in INCIDENT_AUTOMATION_MUTABLE_INDICES:
         properties |= INCIDENT_AUTOMATION_PROPERTIES
+    # An index's first released explicit field definition owns its initial type.
+    # The global union is only a fallback: unrelated provider/job contracts must
+    # not preempt the later explicit mapping migration for this concrete index.
+    # Keep the first definition so incompatible *later* evolution still fails
+    # closed in _apply_mapping_update (including its existing narrow exception).
+    owned_properties: Dict[str, Any] = {}
+    for migration in migrations():
+        contract = migration.operations.get("mapping_updates", {}).get(index, {})
+        for field, definition in _mapping_properties(contract).items():
+            owned_properties.setdefault(field, definition)
+    properties |= owned_properties
     return {
         "dynamic": "strict",
         "properties": properties,
@@ -319,6 +341,7 @@ def _mapping_update_type_matches(
 
 def _apply_mapping_update(es: Elasticsearch, index: str, properties: Dict[str, Any]) -> None:
     """Add and verify explicit fields on a trusted concrete product index."""
+    properties = _mapping_properties(properties)
     registered_targets = {
         name for migration in migrations() for name in migration.operations.get("mapping_updates", {})
     }

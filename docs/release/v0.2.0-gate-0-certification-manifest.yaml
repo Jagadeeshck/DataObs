@@ -1,0 +1,47 @@
+schema_version: '1.0'
+repository: Jagadeeshck/DataObs
+terminal_migration: 0033_team1_stream_schema_intelligence_runtime
+capabilities:
+  - capability_id: foundation-backend
+    owning_team: Team 0
+    workflow: team-delivery-foundation.yml
+    artifact: team-delivery-foundation-evidence
+    required_jobs: [foundation-backend / validate, foundation-console / validate]
+    required_test_categories: [foundation-backend]
+  - capability_id: foundation-console
+    owning_team: Team 0
+    workflow: team-delivery-foundation.yml
+    artifact: team-delivery-foundation-console-evidence
+    required_jobs: [foundation-backend / validate, foundation-console / validate]
+    required_test_categories: [typecheck, build]
+  - capability_id: shared-ci
+    owning_team: Team 0
+    workflow: ci.yml
+    artifact: team-0-gate0-shared-evidence
+    required_jobs: [Python quality and unit tests, Certification contracts, Terraform and Helm validation, Documentation truth gate, Incident migration and OCC gate, Mandatory Team 0 Gate 0 evidence]
+    required_test_categories: [shared-ci]
+  - capability_id: deployment
+    owning_team: Team 0
+    workflow: beta-deployment-packaging.yml
+    artifact: team-0-deployment-packaging-evidence
+    required_jobs: [validate, independent-verification]
+    required_test_categories: [helm, kind, upgrade, rollback]
+  - capability_id: secured-migrations-security
+    owning_team: Team 0
+    workflow: beta-security-hardening.yml
+    artifact: team-0-security-hardening-evidence
+    required_jobs: [security]
+    required_test_categories: [security, rbac, tenant-isolation]
+  - capability_id: mvp-smoke
+    owning_team: Team 0
+    workflow: first-mvp-demo-smoke.yml
+    artifact: first-mvp-demo-smoke
+    artifact_sha_suffix: true
+    required_jobs: [smoke]
+    required_test_categories: [mvp-smoke]
+  - capability_id: backup-restore
+    owning_team: Team 0
+    workflow: beta-backup-restore.yml
+    artifact: team-0-backup-restore-v1-evidence
+    required_jobs: [certify]
+    required_test_categories: [backup, restore, tenant-isolation]

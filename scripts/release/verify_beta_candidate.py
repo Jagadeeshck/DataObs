@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import io
 import json
 import os
@@ -40,7 +41,11 @@ def _download_evidence(url: str, token: str) -> Mapping[str, Any]:
         payload = response.read(50_000_001)
         if len(payload) > 50_000_000:
             raise ValueError("artifact archive exceeds 50 MB limit")
-        archive = zipfile.ZipFile(io.BytesIO(payload))
+    return read_evidence_archive(payload)
+
+
+def read_evidence_archive(payload: bytes, *, require_inventory: bool = False) -> Mapping[str, Any]:
+    archive = zipfile.ZipFile(io.BytesIO(payload))
     for info in archive.infolist():
         path = Path(info.filename)
         if path.is_absolute() or ".." in path.parts or info.file_size > 25_000_000:
@@ -51,6 +56,25 @@ def _download_evidence(url: str, token: str) -> Mapping[str, Any]:
     value = json.loads(archive.read(candidates[0]))
     if not isinstance(value, dict):
         raise ValueError("evidence envelope is not an object")
+    inventory = value.get("artifact_inventory", [])
+    if not isinstance(inventory, list) or any(
+        not isinstance(item, dict) or not isinstance(item.get("path"), str) or not isinstance(item.get("sha256"), str)
+        for item in inventory
+    ):
+        raise ValueError("invalid supporting artifact inventory")
+    if require_inventory and not inventory:
+        raise ValueError("required supporting artifact inventory is empty")
+    for item in inventory:
+        path = Path(item["path"])
+        if path.is_absolute() or ".." in path.parts:
+            raise ValueError("supporting artifact path is unsafe")
+        # GitHub upload strips the declared artifact root; match suffixes
+        # unambiguously, never an arbitrary same-basename file.
+        matches = [
+            name for name in archive.namelist() if name == path.as_posix() or path.as_posix().endswith("/" + name)
+        ]
+        if len(matches) != 1 or hashlib.sha256(archive.read(matches[0])).hexdigest() != item["sha256"]:
+            raise ValueError("supporting artifact missing, ambiguous or checksum mismatch")
     return value
 
 

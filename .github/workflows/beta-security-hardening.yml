@@ -9,13 +9,6 @@ permissions:
 jobs:
   security:
     runs-on: ubuntu-latest
-    services:
-      elasticsearch:
-        image: docker.elastic.co/elasticsearch/elasticsearch:9.4.2
-        env:
-          discovery.type: single-node
-          xpack.security.enabled: 'false'
-        ports: ['9200:9200']
     steps:
       - uses: actions/checkout@v4
         with: {fetch-depth: 0}
@@ -25,24 +18,34 @@ jobs:
         with: {version: v3.18.6}
       - name: Install canonical backend CI dependencies
         run: python -m pip install -r requirements.txt -r requirements-ci.txt
-      - name: Wait for Elasticsearch readiness
-        run: python scripts/ci/wait_for_elasticsearch.py --url http://localhost:9200 --timeout 120
-      - name: Apply existing migrations
-        run: set -o pipefail; mkdir -p team-0-security-hardening-evidence && python -m packages.elastic_store.cli apply 2>&1 | tee team-0-security-hardening-evidence/migration-apply.log
-        env: {ELASTICSEARCH_URL: 'http://localhost:9200'}
+      - name: Start clean secured TLS Elasticsearch 9.4.2
+        run: bash scripts/security/start_gate0_elasticsearch.sh
+      - name: Apply existing migrations and verify idempotency
+        run: |
+          set -o pipefail
+          mkdir -p team-0-security-hardening-evidence
+          python scripts/certification/check_clean_migrations.py --output team-0-security-hardening-evidence/migration-report.json 2>&1 | tee team-0-security-hardening-evidence/migration-apply.log
       - name: Security and certification suites
         run: python -m pytest tests/security tests/certification -q -rA --junitxml=team-0-security-hardening-evidence/security-junit.xml
+      - name: Mandatory Gate 0 resource-server and tenant isolation proof
+        run: |
+          python -m pytest tests/security/test_gate0_oidc_runtime.py -q --junitxml=team-0-security-hardening-evidence/gate0-security.xml
+          python scripts/certification/check_executed_junit.py team-0-security-hardening-evidence/gate0-security.xml
       - run: python scripts/security/check_route_permissions.py
       - run: python scripts/check_migration_immutability.py --base-ref "$(python scripts/resolve_ci_base.py)"
+      - uses: pnpm/action-setup@v4
+        with: {version: 10.28.1}
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
       - name: Console OIDC checks
-        run: corepack enable && pnpm --dir ui/dataobs-console install --frozen-lockfile && pnpm --dir ui/dataobs-console test
+        run: pnpm --dir ui/dataobs-console install --frozen-lockfile && pnpm --dir ui/dataobs-console test
       - name: Helm security render
         run: |
           python scripts/deployment/write_structural_digest_values.py --output /tmp/structural-digests.yaml
           helm lint helm/dataobs --kube-version 1.30.0 --values helm/dataobs/values-production.yaml --values /tmp/structural-digests.yaml
           helm template dataobs helm/dataobs --kube-version 1.30.0 --values helm/dataobs/values-production.yaml --values /tmp/structural-digests.yaml > rendered.yaml
-      - name: Secret scan
-        run: '! grep -RInE "Bearer[[:space:]]+[A-Za-z0-9._-]+|client_secret:[[:space:]]+[^{$\"]|private_key:[[:space:]]+[^{$\"]" tests docs helm/dataobs --exclude-dir=node_modules'
+      - name: Secret scan with exact synthetic-fixture allowance
+        run: python scripts/security/check_secret_literals.py
       - name: Exact-commit evidence
         run: |
           mkdir -p team-0-security-hardening-evidence
@@ -51,11 +54,16 @@ jobs:
             --repository "$GITHUB_REPOSITORY" --producer-sha "$GITHUB_SHA" --workflow-file beta-security-hardening.yml \
             --workflow-run-id "$GITHUB_RUN_ID" --workflow-run-attempt "$GITHUB_RUN_ATTEMPT" --event "$GITHUB_EVENT_NAME" \
             --status pass --test-category security --test-category rbac --test-category tenant-isolation \
-            --supporting-file team-0-security-hardening-evidence/security-junit.xml --tool-version "python=$(python --version | cut -d' ' -f2)"
+            --supporting-file team-0-security-hardening-evidence/security-junit.xml --supporting-file team-0-security-hardening-evidence/migration-report.json --tool-version "python=$(python --version | cut -d' ' -f2)"
           find team-0-security-hardening-evidence -type f -printf '%P\n' | sort > team-0-security-hardening-evidence/inventory.txt
-          sha256sum team-0-security-hardening-evidence/* > team-0-security-hardening-evidence/SHA256SUMS
+          (cd team-0-security-hardening-evidence && sha256sum ./* > SHA256SUMS)
       - name: Evidence checksum verification
         run: cd team-0-security-hardening-evidence && sha256sum -c SHA256SUMS
+      - name: Dispose secured Elasticsearch
+        if: always()
+        run: |
+          docker logs dataobs-gate0-secured-es > team-0-security-hardening-evidence/elasticsearch.log 2>&1 || true
+          docker rm -f dataobs-gate0-secured-es || true
       - uses: actions/upload-artifact@v4
         if: always()
         with:

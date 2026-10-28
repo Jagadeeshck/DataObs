@@ -32,5 +32,5 @@ jobs:
       - name: Search contract and privacy source gates
         run: |
           test -f ui/dataobs-console/src/search/privacyPolicy.ts
-          ! rg 'fixtureProvider|fixture-provider' ui/dataobs-console/src/search --glob '!*.test.ts'
-          ! rg 'elasticsearch|localStorage|sessionStorage' ui/dataobs-console/src/search --glob '!*.test.ts'
+          if rg 'fixtureProvider|fixture-provider' ui/dataobs-console/src/search --glob '!*.test.ts'; then exit 1; else result=$?; test "$result" -eq 1; fi
+          if rg 'elasticsearch|localStorage|sessionStorage' ui/dataobs-console/src/search --glob '!*.test.ts'; then exit 1; else result=$?; test "$result" -eq 1; fi

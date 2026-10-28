@@ -49,6 +49,12 @@ EVENT_FIELDS = frozenset(
 )
 
 
+def _bounded_string_values(value: object, *, limit: int = 100) -> list[str]:
+    if not isinstance(value, (list, tuple, set, frozenset)):
+        return []
+    return sorted({item for item in value if isinstance(item, str)})[:limit]
+
+
 def group_to_document(group: CorrelationGroup) -> dict[str, Any]:
     sample = sorted(set(group.member_incident_ids))[:100]
     metadata = dict(group.metadata)
@@ -73,9 +79,9 @@ def group_to_document(group: CorrelationGroup) -> dict[str, Any]:
         "correlation_version": group.policy_version,
         "incident_id": group.representative_incident_id,
         "resource_ids": sample,
-        "affected_assets": sorted(set(metadata.get("affected_assets", [])))[:100],
-        "data_product_ids": sorted(set(metadata.get("data_product_ids", [])))[:100],
-        "business_services": sorted(set(metadata.get("business_services", [])))[:100],
+        "affected_assets": _bounded_string_values(metadata.get("affected_assets")),
+        "data_product_ids": _bounded_string_values(metadata.get("data_product_ids")),
+        "business_services": _bounded_string_values(metadata.get("business_services")),
         "severity": group.highest_severity,
         "confidence": group.confidence,
         "occurrence_count": group.total_occurrence_count,

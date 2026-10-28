@@ -108,3 +108,9 @@ when the integration conftest was loaded. The hook now checks actual directory
 ancestry, with a regression covering both directory names. This removes false
 skips; it does not enable destructive/live tests without opt-in. Required hosted
 producers must all rerun after this final source change.
+
+The shared CI Terraform job also had a latent Helm render failure hidden behind
+invalid HCL: its template command used Helm's default Kubernetes version and
+production values without structural digests. The job now uses the same
+non-publishable structural generator and Kubernetes 1.30 target as the already
+green packaging static checks. This does not supply runnable Kind images.

@@ -37,7 +37,7 @@ jobs:
       - run: pip install -r requirements.txt
       - name: Wait for Elasticsearch readiness
         run: python scripts/ci/wait_for_elasticsearch.py --url http://localhost:9200 --timeout 120
-      - run: python scripts/migrate_to_es.py
+      - run: python -m packages.elastic_store.cli apply
         env: {ELASTICSEARCH_URL: 'http://localhost:9200'}
       - run: RUN_RELIABILITY_ELASTICSEARCH_TESTS=1 python -m pytest tests/integration/stream_pathway_reliability -q
   console:

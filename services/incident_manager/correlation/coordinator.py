@@ -226,7 +226,8 @@ class IncidentCorrelationCoordinator:
                 ("data_product_ids", incident.data_product_ids),
                 ("business_services", incident.business_services),
             ):
-                group.metadata[key] = sorted(_metadata_string_set(group.metadata.get(key)) | set(values))[:100]
+                current_values = _metadata_string_set(group.metadata.get(key))
+                group.metadata[key] = sorted(current_values | set(values))[:100]
             group.updated_at = datetime.now(timezone.utc)
             try:
                 return self.correlations.update_group(selected)

@@ -101,3 +101,10 @@ Final-head hosted results, workflow URLs and artifact IDs belong in the retained
 Gate 0 verification artifact, generated after committing. The tracked inventory
 records exact observed base runs; it does not invent a self-referential commit
 SHA or relabel base evidence as final-head proof.
+
+A full pytest collection also exposed a shared opt-in bug: the substring
+`tests/integration` matched `tests/integrations`, skipping provider unit tests
+when the integration conftest was loaded. The hook now checks actual directory
+ancestry, with a regression covering both directory names. This removes false
+skips; it does not enable destructive/live tests without opt-in. Required hosted
+producers must all rerun after this final source change.

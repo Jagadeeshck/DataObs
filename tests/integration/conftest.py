@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import os
 import time
+from pathlib import Path
 
 import pytest
 
@@ -27,7 +28,7 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
         return
     skip_integration = pytest.mark.skip(reason="set RUN_INTEGRATION_TESTS=1 to run service-backed integration tests")
     for item in items:
-        if "tests/integration" in item.path.as_posix():
+        if Path(__file__).resolve().parent in item.path.resolve().parents:
             item.add_marker(skip_integration)
 
 

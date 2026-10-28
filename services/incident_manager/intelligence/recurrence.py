@@ -125,6 +125,7 @@ def propose_recurrence(
     same_signature = failure_signature_fingerprint(source.failure_signature) == failure_signature_fingerprint(
         candidate.failure_signature
     )
+    recurrence_type: RecurrenceType | None
     if same_signature:
         recurrence_type = RecurrenceType.SAME_FAILURE_SIGNATURE
     else:

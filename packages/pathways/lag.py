@@ -2,22 +2,30 @@ from __future__ import annotations
 
 
 def estimate_lag(
-    latest_offset: int,
+    latest_offset: int | None,
     committed_offset: int | None,
     *,
     unread_age_seconds: float | None = None,
     consume_rate: float | None = None,
     produce_rate: float | None = None,
 ) -> dict:
-    if committed_offset is None:
+    if committed_offset is None or latest_offset is None:
         return {
             "lag_messages": None,
             "lag_seconds": None,
             "method": "unknown",
             "confidence": 0.0,
-            "reason": "no committed offset",
+            "reason": "no committed offset" if committed_offset is None else "no high watermark",
         }
-    lag = max(0, latest_offset - committed_offset)
+    if latest_offset < 0 or committed_offset < 0 or committed_offset > latest_offset:
+        return {
+            "lag_messages": None,
+            "lag_seconds": None,
+            "method": "unknown",
+            "confidence": 0.0,
+            "reason": "inconsistent offset window",
+        }
+    lag = latest_offset - committed_offset
     if unread_age_seconds is not None:
         return {
             "lag_messages": lag,

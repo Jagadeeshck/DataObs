@@ -15,7 +15,7 @@ import { useProductContext } from "../../state/context";
 
 const shown = (value: unknown, suffix = "") =>
   value === null || value === undefined || value === ""
-    ? "unavailable"
+    ? "Unknown"
     : `${String(value)}${suffix}`;
 const Evidence = ({ value }: { value?: Partial<PathwayDetail> }) => (
   <dl className="pathway-evidence">

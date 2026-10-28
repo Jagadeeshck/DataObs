@@ -18,12 +18,12 @@ from services.kafka_observer.schema_intelligence_repository import (
     BINDINGS,
     CHANGE_EVENTS,
     COMPATIBILITY_EVENTS,
-    ElasticsearchSchemaIntelligenceRepository,
     IMPACT_EVENTS,
     IMPACTS,
     SUBJECTS,
     VERSION_EVENTS,
     VERSIONS,
+    ElasticsearchSchemaIntelligenceRepository,
 )
 
 

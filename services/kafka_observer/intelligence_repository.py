@@ -416,6 +416,9 @@ class ElasticsearchIntelligenceRepository:
 
     def validate_fencing_token(self, tenant: str, environment: str, token: int, worker: str | None = None) -> None:
         source = self.es.get(index=RUNTIME, id=canonical_id("lease", tenant, environment))["_source"]
+        expiry = source.get("lease_expiry")
+        if not expiry or datetime.fromisoformat(expiry) <= datetime.now(timezone.utc):
+            raise StaleWriter("lease has expired")
         if int(source.get("fencing_token", -1)) != token or (worker and source.get("worker_id") != worker):
             raise StaleWriter("lease fencing token is stale")
 

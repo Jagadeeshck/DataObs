@@ -24,6 +24,65 @@ VERSION_EVENTS = "logs-dataobs.stream-schema-version-default"
 CHANGE_EVENTS = "logs-dataobs.stream-schema-change-default"
 COMPATIBILITY_EVENTS = "logs-dataobs.stream-schema-compatibility-default"
 IMPACT_EVENTS = "logs-dataobs.stream-schema-consumer-impact-default"
+READ_INDICES = frozenset(
+    {SUBJECTS, VERSIONS, BINDINGS, IMPACTS, RUNTIME, VERSION_EVENTS, CHANGE_EVENTS, COMPATIBILITY_EVENTS, IMPACT_EVENTS}
+)
+SAFE_SOURCE = [
+    "application_id",
+    "authoritative",
+    "binding_confidence",
+    "binding_method",
+    "change_categories",
+    "change_counts",
+    "compatibility_mode",
+    "compatibility_state",
+    "confidence",
+    "consumer_group_or_subscription",
+    "consumer_id",
+    "data_status",
+    "environment",
+    "evaluated_at",
+    "evaluation_method",
+    "event_id",
+    "evidence_refs",
+    "exposure_state",
+    "field_count",
+    "field_hashes",
+    "ingested_at",
+    "integration_id",
+    "known_supported_versions",
+    "latest_compatibility",
+    "latest_version",
+    "limitations",
+    "measurement_method",
+    "messaging_system",
+    "observed_at",
+    "policy",
+    "reason_codes",
+    "reference_count",
+    "registry_id",
+    "resource_id",
+    "result",
+    "role",
+    "schema_error_count",
+    "schema_fingerprint",
+    "schema_id",
+    "schema_type",
+    "schema_version",
+    "schema_version_contract",
+    "source_coverage",
+    "structural_fingerprint",
+    "subject_fingerprint",
+    "subject_id",
+    "technical_severity",
+    "tenant_id",
+    "worker_id",
+    "fencing_token",
+    "lease_expiry",
+    "heartbeat_at",
+    "configured",
+    "checkpoint_cursor",
+]
 
 
 class ElasticsearchSchemaIntelligenceRepository:
@@ -37,12 +96,23 @@ class ElasticsearchSchemaIntelligenceRepository:
 
     @classmethod
     def _safe(cls, document: dict[str, Any]) -> dict[str, Any]:
-        offending = cls._FORBIDDEN.intersection(document)
-        if offending:
-            raise ValueError(f"raw schema persistence forbidden: {sorted(offending)[0]}")
+        def validate(value: Any) -> None:
+            if isinstance(value, dict):
+                forbidden = cls._FORBIDDEN | {"password", "credentials", "token", "secret", "samples", "config"}
+                if any(str(key).lower() in forbidden for key in value):
+                    raise ValueError("raw schema or credentials persistence forbidden")
+                for nested in value.values():
+                    validate(nested)
+            elif isinstance(value, (list, tuple)):
+                for nested in value:
+                    validate(nested)
+
+        validate(document)
         return document
 
     def append(self, stream: str, event_id: str, document: dict[str, Any], token: int) -> bool:
+        if stream not in {VERSION_EVENTS, CHANGE_EVENTS, COMPATIBILITY_EVENTS, IMPACT_EVENTS}:
+            raise ValueError("unsupported schema evidence stream")
         self.validate_fence(document["tenant_id"], document["environment"], token)
         try:
             self.es.index(
@@ -53,6 +123,8 @@ class ElasticsearchSchemaIntelligenceRepository:
             return False
 
     def project(self, index: str, identifier: str, document: dict[str, Any], token: int) -> None:
+        if index not in {SUBJECTS, VERSIONS, BINDINGS, IMPACTS, RUNTIME}:
+            raise ValueError("unsupported schema projection index")
         tenant, environment = document["tenant_id"], document["environment"]
         self.validate_fence(tenant, environment, token)
         try:
@@ -104,6 +176,9 @@ class ElasticsearchSchemaIntelligenceRepository:
 
     def validate_fence(self, tenant: str, environment: str, token: int) -> None:
         source = self.es.get(index=RUNTIME, id=canonical_id("schema-lease", tenant, environment))["_source"]
+        expiry = source.get("lease_expiry")
+        if not expiry or datetime.fromisoformat(expiry) <= datetime.now(timezone.utc):
+            raise StaleWriter("lease has expired")
         if int(source.get("fencing_token", -1)) != token:
             raise StaleWriter("schema lease fencing token is stale")
 
@@ -128,6 +203,8 @@ class ElasticsearchSchemaIntelligenceRepository:
     def search(
         self, index: str, tenant: str, environment: str, *, subject_id: str | None = None, size: int = 100
     ) -> list[dict[str, Any]]:
+        if index not in READ_INDICES:
+            raise ValueError("unsupported schema read index")
         filters: list[dict[str, Any]] = [{"term": {"tenant_id": tenant}}, {"term": {"environment": environment}}]
         if subject_id:
             filters.append({"term": {"subject_id": subject_id}})
@@ -135,7 +212,8 @@ class ElasticsearchSchemaIntelligenceRepository:
             index=index,
             size=min(max(size, 1), self.MAX_PAGE),
             query={"bool": {"filter": filters}},
-            sort=[{"observed_at": "desc"}, {"event_id": "asc"}],
+            sort=[{"observed_at": "desc"}, {"event_id": "asc"}, {"_id": "asc"}],
+            source=SAFE_SOURCE,
             timeout="5s",
         )
         return [hit["_source"] for hit in response["hits"]["hits"]]

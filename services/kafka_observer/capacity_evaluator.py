@@ -56,9 +56,7 @@ def evaluate_capacity(evidence: dict[str, Any], policy: CapacityPlanningPolicy |
         signal_type = raw["signal_type"]
         is_strong = signal_type in STRONG_SIGNALS
         strength = (
-            "authoritative"
-            if is_strong and raw.get("authoritative")
-            else "strong" if is_strong else "supporting"
+            "authoritative" if is_strong and raw.get("authoritative") else "strong" if is_strong else "supporting"
         )
         signals.append(
             SaturationSignal(

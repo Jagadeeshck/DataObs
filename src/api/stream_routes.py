@@ -85,7 +85,14 @@ SUBRESOURCES = {
 
 
 def create_stream_router(get_es: Callable[..., Any], require_auth: Callable[..., Any]) -> APIRouter:
-    router = APIRouter(prefix="/api/v1", tags=["stream-360"], dependencies=[Depends(require_auth)])
+    def validate_environment(request: Request) -> None:
+        selected = request.query_params.get("environment")
+        if selected is not None and selected != request.state.environment:
+            raise HTTPException(403, detail={"code": "environment_access_denied"})
+
+    router = APIRouter(
+        prefix="/api/v1", tags=["stream-360"], dependencies=[Depends(require_auth), Depends(validate_environment)]
+    )
     codec = CursorCodec(
         os.getenv("DATAOBS_CURSOR_SECRET", "development-cursor-secret-change-me"),
         previous_secrets=[value for value in os.getenv("DATAOBS_CURSOR_PREVIOUS_SECRETS", "").split(",") if value],

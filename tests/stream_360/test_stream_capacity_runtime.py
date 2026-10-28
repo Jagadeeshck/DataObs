@@ -91,7 +91,7 @@ def test_pressure_is_not_saturation_and_throttling_is():
         "supporting",
         "authoritative",
     ]
-    assert mixed.bottleneck_candidates[0].dimension == "provider_ingress"
+    assert mixed.bottleneck_candidates[0].candidate == "provider_ingress"
     assert mixed.bottleneck_candidates[0].confidence == 0.8
 
 

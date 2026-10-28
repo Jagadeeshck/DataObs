@@ -16,6 +16,7 @@ class EventWatermark:
     fencing_token: int = 0
     documents_processed: int = 0
     consecutive_failures: int = 0
+    scan_position: list[str] | None = None
 
     def position(self) -> list[str] | None:
         if self.last_event_timestamp is None or self.last_event_id is None:
@@ -26,6 +27,11 @@ class EventWatermark:
         return asdict(self)
 
     def committed(self, timestamp: str, event_id: str, count: int, worker_id: str, token: int) -> "EventWatermark":
+        if self.last_event_timestamp and self.last_event_id:
+            current = (datetime.fromisoformat(self.last_event_timestamp.replace("Z", "+00:00")), self.last_event_id)
+            proposed = (datetime.fromisoformat(timestamp.replace("Z", "+00:00")), event_id)
+            if proposed < current:
+                timestamp, event_id = self.last_event_timestamp, self.last_event_id
         return replace(
             self,
             last_event_timestamp=timestamp,

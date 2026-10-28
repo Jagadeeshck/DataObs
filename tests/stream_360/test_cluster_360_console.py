@@ -118,3 +118,17 @@ def test_measured_zero_is_distinct_from_unknown():
     assert result["leaderless_partition_count"] == 0
     assert result["failed_connector_count"] == 0
     assert result["reason_codes"] == ["measured_failures_zero"]
+
+
+def test_existing_partition_without_health_fields_does_not_prove_zero_failures():
+    docs = {
+        "dataobs-kafka-brokers-v1-read": [{"name": "1", "controller": True}],
+        "dataobs-kafka-partitions-v1-read": [{"partition_id": "0"}],
+    }
+    result = StreamRepository(FakeElasticsearch(docs)).cluster_health({"cluster_id": "c"}, "tenant-a", "prod")
+    assert result["health"] == "unknown"
+    assert result["leaderless_partition_count"] is None
+    assert result["offline_replica_count"] is None
+    assert result["under_replicated_partition_count"] is None
+    assert "measured_failures_zero" not in result["reason_codes"]
+    assert "leader_available" in result["missing_inputs"]

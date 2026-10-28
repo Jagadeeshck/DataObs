@@ -10,11 +10,15 @@ STATES = frozenset(
 
 
 def duration_metric(name: str, start: datetime | None, end: datetime | None) -> dict[str, Any]:
-    status = "measured" if start is not None and end is not None and end >= start else "unavailable"
+    value_ms: int | None = None
+    status = "unavailable"
+    if start is not None and end is not None and end >= start:
+        status = "measured"
+        value_ms = int((end - start).total_seconds() * 1000)
     return {
         "metric": name,
         "status": status,
-        "value_ms": int((end - start).total_seconds() * 1000) if status == "measured" else None,
+        "value_ms": value_ms,
         "source_timestamps": {"start": start.isoformat() if start else None, "end": end.isoformat() if end else None},
         "definition_version": DEFINITION_VERSION,
     }

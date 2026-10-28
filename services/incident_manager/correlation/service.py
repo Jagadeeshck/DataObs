@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 
 from packages.domain_model.incident import Incident, deterministic_id
 
-from .contracts import CorrelationDecision, EvidenceState
+from .contracts import CorrelationDecision, EvidenceState, FeatureResult
 from .features import extract_features
 from .policy import V1_POLICY, CorrelationPolicy
 from .scoring import score
@@ -38,6 +38,11 @@ class CorrelationService:
                 p.canonical_hash,
             ],
         )
+        features: tuple[FeatureResult, ...]
+        reasons: tuple[str, ...]
+        group_id: str | None
+        total: float
+        confidence: float
         if (incident.tenant_id, incident.environment) != (candidate.tenant_id, candidate.environment):
             action, reasons, group_id = "reject", ("scope_incompatible",), None
             features, total, confidence = (), 0.0, 0.0

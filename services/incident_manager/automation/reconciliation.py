@@ -66,10 +66,10 @@ class AutomationReconciler:
                     continue
                 if approval.state != ApprovalState.RESERVED or not approval.reserved_execution_id:
                     continue
-                execution = self.repository.get_execution(
+                reserved_execution = self.repository.get_execution(
                     approval.tenant_id, approval.environment, approval.reserved_execution_id
                 )
-                if execution:
+                if reserved_execution:
                     self.coordinator.consume_reservation(approval)
                     repaired += 1
                 elif approval.reservation_expires_at and approval.reservation_expires_at <= checked:

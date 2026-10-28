@@ -54,8 +54,12 @@ def evaluate_capacity(evidence: dict[str, Any], policy: CapacityPlanningPolicy |
     signals: list[SaturationSignal] = []
     for raw in evidence.get("signals", ()):
         signal_type = raw["signal_type"]
-        strong = signal_type in STRONG_SIGNALS
-        strength = "authoritative" if strong and raw.get("authoritative") else "strong" if strong else "supporting"
+        is_strong = signal_type in STRONG_SIGNALS
+        strength = (
+            "authoritative"
+            if is_strong and raw.get("authoritative")
+            else "strong" if is_strong else "supporting"
+        )
         signals.append(
             SaturationSignal(
                 signal_type,
@@ -71,10 +75,10 @@ def evaluate_capacity(evidence: dict[str, Any], policy: CapacityPlanningPolicy |
                 tuple(raw.get("evidence_refs", ())),
             )
         )
-    strong = [signal for signal in signals if signal.strength in {"authoritative", "strong"}]
-    if any(signal.signal_type == "provider_throttling" for signal in strong):
+    strong_signals = [signal for signal in signals if signal.strength in {"authoritative", "strong"}]
+    if any(signal.signal_type == "provider_throttling" for signal in strong_signals):
         state = CapacityState.THROTTLED
-    elif strong:
+    elif strong_signals:
         state = CapacityState.SATURATED
 
     refs = tuple(
@@ -107,10 +111,13 @@ def evaluate_capacity(evidence: dict[str, Any], policy: CapacityPlanningPolicy |
         candidates.append(CapacityBottleneck("consumer_processing", 0.8, ("processing_below_arrival",), refs))
     if parallelism.ceiling_reached:
         candidates.append(CapacityBottleneck("consumer_parallelism", 0.8, ("parallelism_ceiling_reached",), refs))
-    if strong:
+    if strong_signals:
         candidates.append(
             CapacityBottleneck(
-                "provider_ingress", max(item.confidence for item in strong), ("strong_saturation_evidence",), refs
+                "provider_ingress",
+                max(item.confidence for item in strong_signals),
+                ("strong_saturation_evidence",),
+                refs,
             )
         )
     retention = evidence.get("retention_forecast")

@@ -39,7 +39,7 @@ def canonical_id(kind: str, tenant: str, environment: str, *parts: object) -> st
 
 
 def _json(value: Any) -> Any:
-    if is_dataclass(value):
+    if is_dataclass(value) and not isinstance(value, type):
         value = asdict(value)
     if isinstance(value, Enum):
         return value.value

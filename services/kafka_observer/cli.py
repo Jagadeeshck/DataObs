@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+from functools import partial
 import json
 import os
 import signal
@@ -229,7 +230,7 @@ def main() -> int:
             }
             scheduler = CollectionScheduler(
                 [
-                    ScheduledCollection(name, seconds, lambda name=name: service.collect_capability(name))
+                    ScheduledCollection(name, seconds, partial(service.collect_capability, name))
                     for name, seconds in intervals.items()
                 ],
                 DurableLeases(repository),

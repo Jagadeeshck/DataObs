@@ -16,7 +16,7 @@ jobs:
         with: {fetch-depth: 0}
       - uses: actions/setup-python@v5
         with: {python-version: '3.12'}
-      - run: pip install -r requirements.txt
+      - run: python -m pip install -r requirements.txt -r requirements-ci.txt
       - run: python scripts/check_merge_conflict_markers.py
       - run: python -m compileall -q src packages services integrations tests scripts
       - run: ruff check packages/streaming/schema_intelligence.py integrations/schema_registry tests/stream_360/test_schema_intelligence_v1.py
@@ -41,7 +41,7 @@ jobs:
         with: {fetch-depth: 0}
       - uses: actions/setup-python@v5
         with: {python-version: '3.12'}
-      - run: pip install -r requirements.txt
+      - run: python -m pip install -r requirements.txt -r requirements-ci.txt
       - name: Wait for Elasticsearch readiness
         run: python scripts/ci/wait_for_elasticsearch.py --url http://localhost:9200 --timeout 120
       - run: python -m packages.elastic_store.cli apply

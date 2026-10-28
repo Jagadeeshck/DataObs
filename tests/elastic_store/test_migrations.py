@@ -157,3 +157,14 @@ def test_incident_index_creation_preserves_released_field_types():
     assert incident["tags"] == {"type": "keyword"}
     assert provider["retry_count"] == {"type": "long"}
     assert provider["tags"] == {"type": "flattened"}
+
+
+def test_data_product_index_creation_preserves_writer_mapping_types():
+    """Clean installs must create the Data Product index with its owning contract."""
+    from packages.elastic_store.manifest import DATA_PRODUCT_PROPERTIES
+    from packages.elastic_store.registry import _mapping
+
+    properties = _mapping("dataobs-data-products-v1")["properties"]
+
+    for field in ("description", "owner", "revision", "tags"):
+        assert properties[field] == DATA_PRODUCT_PROPERTIES[field]

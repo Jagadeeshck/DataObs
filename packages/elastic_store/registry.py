@@ -7,6 +7,7 @@ from elasticsearch import Elasticsearch
 
 from .manifest import (
     BASE_PROPERTIES,
+    DATA_PRODUCT_PROPERTIES,
     INCIDENT_AUTOMATION_MUTABLE_INDICES,
     INCIDENT_AUTOMATION_PROPERTIES,
     KAFKA_PROPERTIES,
@@ -111,6 +112,8 @@ def _mapping(index: str | None = None) -> Dict[str, Any]:
     )
     if index in INCIDENT_AUTOMATION_MUTABLE_INDICES:
         properties |= INCIDENT_AUTOMATION_PROPERTIES
+    if index == "dataobs-data-products-v1":
+        properties |= DATA_PRODUCT_PROPERTIES
     return {
         "dynamic": "strict",
         "properties": properties,

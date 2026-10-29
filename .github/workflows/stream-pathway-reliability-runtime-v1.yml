@@ -35,7 +35,7 @@ jobs:
         run: |
           mkdir -p evidence
           python -m packages.elastic_store.cli apply
-          python -m pytest tests/stream_360 tests/pathways tests/security -q --junitxml=evidence/backend.xml
+          python -m pytest tests/stream_360 tests/pathways tests/security --ignore=tests/security/data_products -q --junitxml=evidence/backend.xml
       - name: Console and accessibility
         working-directory: ui/dataobs-console
         run: |

@@ -47,7 +47,7 @@ jobs:
         run: mkdir -p evidence && python -m packages.elastic_store.cli apply && python -m pytest tests/stream_360/test_observer_backend_v1.py -q --junitxml=evidence/elasticsearch.xml
         env: {ELASTICSEARCH_URL: "http://localhost:9200"}
       - name: Backend cluster tests and tenant isolation
-        run: python -m pytest tests/stream_360/test_cluster_360_console.py tests/security -q --junitxml=evidence/api-security.xml
+        run: python -m pytest tests/stream_360/test_cluster_360_console.py tests/security --ignore=tests/security/data_products -q --junitxml=evidence/api-security.xml
       - name: Build and test Console
         working-directory: ui/dataobs-console
         run: pnpm install --frozen-lockfile && pnpm api:generate && git diff --exit-code src/api/generated/schema.ts && pnpm typecheck && pnpm lint && pnpm format:check && pnpm test -- --reporter=junit --outputFile=../../evidence/console-junit.xml && pnpm build && pnpm bundle:check

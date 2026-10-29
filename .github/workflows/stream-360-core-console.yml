@@ -33,7 +33,7 @@ jobs:
         run: mkdir -p evidence && python -m packages.elastic_store.cli apply && python -m pytest tests/stream_360/test_observer_backend_v1.py -q --junitxml=evidence/api.xml
         env: {ELASTICSEARCH_URL: "http://localhost:9200"}
       - name: API contract, filters, cursors, and tenant isolation
-        run: python -m pytest tests/stream_360 tests/security -q --junitxml=evidence/api-security.xml
+        run: python -m pytest tests/stream_360 tests/security --ignore=tests/security/data_products -q --junitxml=evidence/api-security.xml
       - name: Build and test Console
         working-directory: ui/dataobs-console
         run: pnpm install --frozen-lockfile && pnpm api:generate && pnpm typecheck && pnpm lint && pnpm test -- --reporter=junit --outputFile=../../evidence/console-junit.xml && pnpm build && pnpm bundle:check

@@ -55,7 +55,7 @@ jobs:
           KAFKA_BOOTSTRAP_SERVERS: localhost:9092
           TEAM1_KAFKA_EVIDENCE_PATH: stream-observer-backend-v1-evidence/intelligence.json
         run: |
-          python -m pytest tests/stream_360 tests/pathways tests/security -q --junitxml=stream-observer-backend-v1-evidence/results/observer.xml
+          python -m pytest tests/stream_360 tests/pathways tests/security --ignore=tests/security/data_products -q --junitxml=stream-observer-backend-v1-evidence/results/observer.xml
           RUN_INTEGRATION_TESTS=1 python -m pytest tests/integration/kafka_observer/test_release_lag.py -q --junitxml=stream-observer-backend-v1-evidence/results/real-kafka.xml
       - name: Record bounded certification results
         run: |

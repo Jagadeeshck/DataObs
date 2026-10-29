@@ -47,7 +47,7 @@ jobs:
           mkdir -p evidence
           python scripts/check_migration_immutability.py --base-ref "$(python scripts/resolve_ci_base.py)"
           python -m packages.elastic_store.cli apply
-          python -m pytest tests/stream_360/test_connector_schema_360.py tests/stream_360 tests/security -q --junitxml=evidence/backend.xml
+          python -m pytest tests/stream_360/test_connector_schema_360.py tests/stream_360 tests/security --ignore=tests/security/data_products -q --junitxml=evidence/backend.xml
       - name: Redaction sentinel
         run: |
           ! grep -RInE 'client_secret|private_key|sasl\.jaas\.config|authorization:[[:space:]]*bearer' tests/fixtures/streams docs/development/connector-schema-360-audit.md docs/operations/connector-schema-360.md

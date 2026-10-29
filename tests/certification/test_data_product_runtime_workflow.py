@@ -31,6 +31,11 @@ def test_data_product_runtime_trigger_covers_every_certification_surface():
     assert set(trigger["pull_request"]["paths"]) == REQUIRED_PATHS
 
 
+def test_foundation_evidence_directory_is_generated_not_source_controlled():
+    assert "/artifacts/foundation/" in Path(".gitignore").read_text()
+    assert not Path("artifacts/foundation").exists()
+
+
 def test_foundation_workflow_supports_diagnostic_dispatch_with_read_only_permissions():
     workflow = yaml.safe_load(Path(".github/workflows/data-product-runtime.yml").read_text())
     # PyYAML 1.1 parses the YAML key `on` as boolean True.

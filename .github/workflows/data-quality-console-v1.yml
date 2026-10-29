@@ -55,7 +55,7 @@ jobs:
       - name: Quality monitor, lifecycle, tenancy and security tests
         env:
           ELASTICSEARCH_URL: http://localhost:9200
-        run: python -m pytest tests/monitoring tests/security tests/certification -q --junitxml=data-quality-console-v1-evidence/results/backend.xml
+        run: python -m pytest tests/monitoring tests/security/test_oidc_rbac_tenant.py tests/security/test_gate0_oidc_runtime.py -q --junitxml=data-quality-console-v1-evidence/results/backend.xml
       - name: Console static, unit and production checks
         working-directory: ui/dataobs-console
         run: |

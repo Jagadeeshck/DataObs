@@ -41,9 +41,15 @@ class StoreProtocol(Protocol):
         severity: Optional[str] = None,
         run_id: Optional[str] = None,
     ) -> List[Dict[str, Any]]: ...
-    def save_rule(self, rule: Dict[str, Any]) -> str: ...
-    def add_rule(self, rule: Dict[str, Any]) -> str: ...
-    def get_rule(self, rule_id: str) -> Optional[Dict[str, Any]]: ...
+    def save_rule(
+        self, rule: Dict[str, Any], *, tenant_id: str | None = None, environment: str | None = None
+    ) -> str: ...
+    def add_rule(
+        self, rule: Dict[str, Any], *, tenant_id: str | None = None, environment: str | None = None
+    ) -> str: ...
+    def get_rule(
+        self, rule_id: str, *, tenant_id: str | None = None, environment: str | None = None
+    ) -> Optional[Dict[str, Any]]: ...
     def get_all_rules(
         self,
         limit: int = 100,
@@ -52,9 +58,15 @@ class StoreProtocol(Protocol):
         enabled: Optional[bool] = None,
         severity: Optional[str] = None,
         check_type: Optional[str] = None,
+        tenant_id: str | None = None,
+        environment: str | None = None,
     ) -> List[Dict[str, Any]]: ...
-    def get_rules_for_dataset(self, dataset: str) -> List[Dict[str, Any]]: ...
-    def delete_rule(self, rule_id: str) -> bool: ...
+    def get_rules_for_dataset(
+        self, dataset: str, *, tenant_id: str | None = None, environment: str | None = None
+    ) -> List[Dict[str, Any]]: ...
+    def delete_rule(
+        self, rule_id: str, *, tenant_id: str | None = None, environment: str | None = None
+    ) -> bool: ...
     def save_lineage_node(self, node: Dict[str, Any]) -> str: ...
     def get_lineage_node(self, node_id: str) -> Optional[Dict[str, Any]]: ...
     def get_all_nodes(
@@ -116,16 +128,41 @@ class InMemoryStore:
         results.sort(key=lambda r: r.get("@timestamp", ""), reverse=True)
         return results[offset : offset + limit]
 
-    def add_rule(self, rule: Dict[str, Any]) -> str:
-        return self.save_rule(rule)
+    @staticmethod
+    def _rule_key(rule_id: str, tenant_id: str | None = None, environment: str | None = None) -> str:
+        if tenant_id is None and environment is None:
+            return rule_id
+        return f"{tenant_id or ''}\0{environment or ''}\0{rule_id}"
 
-    def save_rule(self, rule: Dict[str, Any]) -> str:
+    def add_rule(
+        self, rule: Dict[str, Any], *, tenant_id: str | None = None, environment: str | None = None
+    ) -> str:
+        return self.save_rule(rule, tenant_id=tenant_id, environment=environment)
+
+    def save_rule(
+        self, rule: Dict[str, Any], *, tenant_id: str | None = None, environment: str | None = None
+    ) -> str:
         rule_id = rule.get("rule_id") or str(uuid.uuid4())
-        self._rules[rule_id] = {**rule, "rule_id": rule_id, "@timestamp": _now_iso()}
+        effective_tenant = tenant_id if tenant_id is not None else rule.get("tenant_id")
+        effective_environment = environment if environment is not None else rule.get("environment")
+        document = {**rule, "rule_id": rule_id, "@timestamp": _now_iso()}
+        if effective_tenant is not None:
+            document["tenant_id"] = effective_tenant
+        if effective_environment is not None:
+            document["environment"] = effective_environment
+        self._rules[self._rule_key(rule_id, effective_tenant, effective_environment)] = document
         return rule_id
 
-    def get_rule(self, rule_id: str) -> Optional[Dict[str, Any]]:
-        return self._rules.get(rule_id)
+    def get_rule(
+        self, rule_id: str, *, tenant_id: str | None = None, environment: str | None = None
+    ) -> Optional[Dict[str, Any]]:
+        if tenant_id is not None or environment is not None:
+            return self._rules.get(self._rule_key(rule_id, tenant_id, environment))
+        direct = self._rules.get(rule_id)
+        if direct is not None:
+            return direct
+        matches = [rule for rule in self._rules.values() if rule.get("rule_id") == rule_id]
+        return matches[0] if len(matches) == 1 else None
 
     def get_all_rules(
         self,
@@ -135,8 +172,14 @@ class InMemoryStore:
         enabled: Optional[bool] = None,
         severity: Optional[str] = None,
         check_type: Optional[str] = None,
+        tenant_id: str | None = None,
+        environment: str | None = None,
     ) -> List[Dict[str, Any]]:
         rules = sorted(self._rules.values(), key=lambda r: r.get("dataset", ""))
+        if tenant_id is not None:
+            rules = [r for r in rules if r.get("tenant_id") == tenant_id]
+        if environment is not None:
+            rules = [r for r in rules if r.get("environment") == environment]
         if dataset is not None:
             rules = [r for r in rules if r.get("dataset") == dataset]
         if enabled is not None:
@@ -147,11 +190,30 @@ class InMemoryStore:
             rules = [r for r in rules if r.get("check_type", r.get("type")) == check_type]
         return rules[offset : offset + limit]
 
-    def get_rules_for_dataset(self, dataset: str) -> List[Dict[str, Any]]:
-        return [r for r in self._rules.values() if r.get("dataset") == dataset]
+    def get_rules_for_dataset(
+        self, dataset: str, *, tenant_id: str | None = None, environment: str | None = None
+    ) -> List[Dict[str, Any]]:
+        return [
+            r
+            for r in self._rules.values()
+            if r.get("dataset") == dataset
+            and (tenant_id is None or r.get("tenant_id") == tenant_id)
+            and (environment is None or r.get("environment") == environment)
+        ]
 
-    def delete_rule(self, rule_id: str) -> bool:
-        return self._rules.pop(rule_id, None) is not None
+    def delete_rule(
+        self, rule_id: str, *, tenant_id: str | None = None, environment: str | None = None
+    ) -> bool:
+        key = self._rule_key(rule_id, tenant_id, environment)
+        if tenant_id is not None or environment is not None:
+            return self._rules.pop(key, None) is not None
+        if self._rules.pop(rule_id, None) is not None:
+            return True
+        matches = [key for key, rule in self._rules.items() if rule.get("rule_id") == rule_id]
+        if len(matches) != 1:
+            return False
+        self._rules.pop(matches[0], None)
+        return True
 
     def save_lineage_node(self, node: Dict[str, Any]) -> str:
         node_id = node.get("node_id") or str(uuid.uuid4())

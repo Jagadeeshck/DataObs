@@ -7,6 +7,8 @@ from elasticsearch import Elasticsearch
 
 from .manifest import (
     BASE_PROPERTIES,
+    DATA_PRODUCT_AUXILIARY_PROPERTIES,
+    DATA_PRODUCT_EVENT_PROPERTIES,
     DATA_PRODUCT_PROPERTIES,
     INCIDENT_AUTOMATION_MUTABLE_INDICES,
     INCIDENT_AUTOMATION_PROPERTIES,
@@ -18,6 +20,26 @@ from .manifest import (
 )
 
 _DATA_PRODUCT_DECISION_INDEX = "dataobs-data-product-membership-decisions-v1"
+
+_DATA_PRODUCT_0015_INDEX_PROPERTIES: Dict[str, Dict[str, Any]] = {
+    "dataobs-data-products-v1": DATA_PRODUCT_PROPERTIES,
+    "dataobs-data-product-revisions-v1": DATA_PRODUCT_EVENT_PROPERTIES,
+    "dataobs-data-product-operation-state-v1": DATA_PRODUCT_EVENT_PROPERTIES,
+    **{
+        index: DATA_PRODUCT_AUXILIARY_PROPERTIES
+        for index in (
+            "dataobs-data-product-membership-v1",
+            "dataobs-data-product-membership-proposals-v1",
+            "dataobs-data-product-membership-decisions-v1",
+            "dataobs-data-product-slos-v1",
+            "dataobs-data-product-slo-evaluations-v1",
+            "dataobs-data-product-scorecards-v1",
+            "dataobs-data-product-coverage-v1",
+            "dataobs-data-product-impact-current-v1",
+            "dataobs-data-product-dependency-current-v1",
+        )
+    },
+}
 
 PROVIDER_PROPERTIES: Dict[str, Any] = {
     **{
@@ -123,8 +145,8 @@ def _mapping(index: str | None = None) -> Dict[str, Any]:
     )
     if index in INCIDENT_AUTOMATION_MUTABLE_INDICES:
         properties |= INCIDENT_AUTOMATION_PROPERTIES
-    if index == "dataobs-data-products-v1":
-        properties |= DATA_PRODUCT_PROPERTIES
+    if index in _DATA_PRODUCT_0015_INDEX_PROPERTIES:
+        properties |= _DATA_PRODUCT_0015_INDEX_PROPERTIES[index]
     return {
         "dynamic": "strict",
         "properties": properties,

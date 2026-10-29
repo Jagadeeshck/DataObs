@@ -73,7 +73,7 @@ body {
 }
 .app-shell nav section h2 {
   margin: 12px 12px 4px;
-  color: #5f7891;
+  color: var(--muted);
   font-size: 9px;
   letter-spacing: 1px;
   text-transform: uppercase;
@@ -260,9 +260,17 @@ body {
 }
 button,
 select,
-input {
+input,
+textarea {
   font: inherit;
   color: inherit;
+}
+button,
+select,
+input,
+textarea {
+  background-color: var(--surface2);
+  border: 1px solid var(--border);
 }
 button {
   cursor: pointer;
@@ -1205,7 +1213,7 @@ header {
 .primary {
   background: var(--blue) !important;
   border: 1px solid #68a1ff !important;
-  color: white;
+  color: #07101e;
   border-radius: 6px;
   padding: 10px 14px;
 }
@@ -1479,7 +1487,7 @@ header {
 .flow-controls label:not(.search) {
   font-size: 8px;
   text-transform: uppercase;
-  color: #6e8398;
+  color: var(--muted);
   background: #0e1d2f;
   border: 1px solid var(--border);
   border-radius: 5px;

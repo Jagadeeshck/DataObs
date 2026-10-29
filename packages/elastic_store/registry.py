@@ -325,7 +325,7 @@ def _ensure_data_stream_template(es: Elasticsearch, pattern: str) -> None:
         data_stream={},
         template={
             "mappings": {"dynamic": "strict", "properties": properties},
-            "settings": {"index.default_pipeline": "none"},
+            "settings": {"index.default_pipeline": "_none"},
         },
         priority=500,
         allow_auto_create=True,

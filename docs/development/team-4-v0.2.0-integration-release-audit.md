@@ -158,3 +158,73 @@ For v0.2.0, Team 4 recommends:
 2. PostgreSQL — excluded from supported connectors; contract-tested but packaged runtime durability is not proven.
 3. AWS, Snowflake, Databricks, BigQuery, GCP/PubSub, Azure, Trino, Presto, MySQL, MariaDB, SQL Server, Oracle and RabbitMQ — implemented but experimental because their operational path is Collection Manager, which is not in the supported Helm package.
 4. OpenTelemetry, OpenLineage and Kafka — possible first-release collection/ingestion paths only through their owning teams' exact-SHA packaging and runtime certification; Team 4 does not promote them.
+
+
+## Sprint 3 certification protection — 2026-10-29
+
+Audited `main`: `855345eb02250f9a738abe44bd520247243032bf`.
+
+### Integration SDK protected pass
+
+The current-main Integration SDK workflow `40961601111` was explicitly re-run. Attempt 2 completed successfully on the same exact SHA.
+
+Passed steps include:
+
+- canonical runtime + CI dependency installation;
+- SDK/Collection Manager compile;
+- Ruff;
+- Black;
+- full `tests/integrations` suite;
+- certification evidence-envelope generation;
+- exact-SHA evidence verification;
+- evidence artifact upload.
+
+The retained rerun artifact is `integration-sdk-v1-evidence`, created at 2026-10-29T21:57:14Z, bound to `855345eb02250f9a738abe44bd520247243032bf` with artifact digest `sha256:8b44962a5a95cb611e2757184b5e6d3f71c68b6e610c49b4468c12b1051e0650`.
+
+The passing contract continues to cover bounded retries, non-retryable authentication failures, cancellation propagation, collection timeouts, malformed-provider-response rejection, duplicate suppression, recursive credential redaction, trusted tenant/integration boundaries, observation/run persistence ordering and OCC checkpoint advancement.
+
+No SDK code change was required in Sprint 3.
+
+### Provider hosted evidence at the audited baseline
+
+Current-main hosted contract results include:
+
+- Azure data platform: `40961601165` — pass;
+- Google Pub/Sub: `40961601012` — pass;
+- RabbitMQ: `40961601051` — pass.
+
+The supplied earlier closure runs `40869888478`, `40869888236` and `40869888078` were also successful. These results protect provider contracts; they do not establish live provider support.
+
+### Credential redaction and least-privilege review
+
+The Integration SDK regression suite retains recursive redaction of keys matching authorization/password/passwd/secret/token/api-key/credential/external-id patterns and bounded inline token/password redaction.
+
+Provider support wording remains constrained by each implementation's read-only contract:
+
+- Pub/Sub: viewer/monitoring read paths; no pull, acknowledge, seek or publish.
+- RabbitMQ: monitoring-only HTTP access; no AMQP consume/basic.get/publish or message bodies.
+- Azure: management-plane read operations and bounded ADLS metadata listing; no storage content reads or SQL execution.
+- Database/warehouse providers: secret references, fixed/bounded metadata operations and no arbitrary business-row collection unless an explicitly documented aggregate feature is enabled.
+
+A hosted fixture/contract pass is not substituted for live IAM/TLS/provider certification.
+
+### Packaged runtime reconciliation
+
+Team 0's `docs/release/beta-deployment-package.md` still excludes Collection Manager. Therefore AWS, Snowflake, Databricks, BigQuery, GCP/PubSub, Azure, Trino, Presto, MySQL, MariaDB, SQL Server, Oracle and RabbitMQ remain outside the supported v0.2.0 provider set.
+
+PostgreSQL remains separately excluded. Its contract suite is green, but the packaged Scanner Worker still lacks a demonstrated durable distributed scheduler and persistent lease/fencing/restart path.
+
+### Team 0 wording
+
+Team 4 adopts Team 0's current release authority verbatim in substance:
+
+- v0.2.0 remains `NO_GO` until Gate 0 is green for one exact SHA;
+- no supported platform is published until Team 0 promotes one;
+- historical/provider-local passes do not override Gate 0;
+- Team 4 does not independently publish a supported-platform claim.
+
+### Sprint 3 conclusion
+
+Team 4's supported connector recommendation for v0.2.0 remains **none**.
+
+The Integration SDK is certified as a mandatory release foundation on the audited exact SHA. Provider implementations remain implemented/unvalidated, experimental or excluded according to packaging and live-evidence status; no optional provider failure is reclassified to bypass mandatory release policy.

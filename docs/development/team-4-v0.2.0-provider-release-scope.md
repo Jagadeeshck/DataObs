@@ -60,3 +60,53 @@ Team 4 recommends **zero Team 4 provider connectors as supported in v0.2.0**.
 This is intentional. The Integration SDK can be certified as a foundation, but the cloud/warehouse/database/messaging providers that use Collection Manager are not operationally packaged. PostgreSQL has a packaged Scanner Worker image but not a demonstrated durable distributed scheduler/lease/fencing path.
 
 The release may still include OpenTelemetry, OpenLineage and Kafka collection/ingestion capabilities if Team 0, Team 2 and Team 1 respectively provide exact-release-SHA runtime/package certification. Those are owner-gated product paths, not Team 4 provider promotions.
+
+
+## Sprint 3 provider certification closure
+
+Audited release baseline: `855345eb02250f9a738abe44bd520247243032bf`.
+
+Team 0's current release authority remains authoritative: DataObs v0.2.0 is **NO_GO**, no supported platform is published, and rc.1 must not be promoted until one exact SHA reaches `GATE_0_GREEN` with independently verified mandatory evidence.
+
+### Evidence categories used in this matrix
+
+- **PACKAGED_AND_CERTIFIED** — runtime is in the supported package and exact-SHA live/runtime certification is independently verified.
+- **IMPLEMENTED_UNVALIDATED** — implementation and hosted contract/fixture tests exist, but live provider/runtime certification or packaging is incomplete.
+- **EXPERIMENTAL** — implementation exists but has weaker/current-SHA evidence, optional dependencies/environment constraints, or no current release certification.
+- **EXCLUDED** — intentionally outside the v0.2.0 supported connector boundary.
+
+No Team 4 provider currently qualifies as `PACKAGED_AND_CERTIFIED`.
+
+| Provider | Version | Implemented collection | Packaged runtime | Current hosted evidence | Live provider evidence | Credential / least-privilege boundary | Sprint 3 classification | v0.2.0 support decision |
+|---|---:|---|---|---|---|---|---|---|
+| AWS | 3 | bounded metadata/metrics plus Kinesis/SQS inventory | Collection Manager; excluded from supported Helm package | historical provider workflows only; AWS is optional in Team 0 certification manifest | no release-SHA live AWS proof | SDK/assume-role style credentials, allowlisted read APIs/CloudWatch; no message or database payload reads | EXPERIMENTAL | EXCLUDED |
+| Snowflake | 1 | account, warehouse, catalog, SQL-free query history, usage/load evidence | Collection Manager; not packaged | fixture/contract implementation exists | opt-in approved sandbox not release-certified | secret-referenced key/OAuth/workload auth; fixed SQL and no business-row collection | EXPERIMENTAL | EXCLUDED |
+| Databricks | 1 | Unity Catalog, warehouse, job/run and bounded system evidence | Collection Manager; not packaged | fixture/contract implementation exists | approved OAuth workspace live proof not retained for release | OAuth M2M; bounded metadata/system evidence, no arbitrary notebook/data reads | EXPERIMENTAL | EXCLUDED |
+| BigQuery | 1 | projects, datasets, tables, jobs, storage, reservations | Collection Manager; not packaged | fixture/contract implementation exists | approved synthetic project live proof absent | ADC/WIF/impersonation; no arbitrary table-row reads | EXPERIMENTAL | EXCLUDED |
+| GCP / Pub/Sub | 1 | topic/subscription metadata and allowlisted Monitoring metrics | Collection Manager; not packaged | supplied pass `40869888236`; current-main pass `40961601012` | live external Pub/Sub fixture is opt-in and not certified by these passes | viewer/monitoring read access; never pull, ack, seek or publish | IMPLEMENTED_UNVALIDATED | EXCLUDED |
+| Azure | 1 | ADF, Synapse and ADLS metadata/metrics | Collection Manager; not packaged | supplied pass `40869888478`; current-main pass `40961601165` | approved synthetic Azure live test not established by hosted contract pass | managed/workload identity or referenced SP secret; management-plane reads and bounded ADLS listing only | IMPLEMENTED_UNVALIDATED | EXCLUDED |
+| Trino | 1 | catalog/schema/relation plus bounded runtime/query metadata | Collection Manager; not packaged | implementation/contract evidence exists | disposable Trino live proof not retained for release SHA | verified TLS/secret refs; fixed metadata/runtime statements, no arbitrary SQL | EXPERIMENTAL | EXCLUDED |
+| Presto | 1 | catalog/schema/relation plus bounded runtime/query metadata | Collection Manager; not packaged | implementation/contract evidence exists | disposable Presto live proof not retained for release SHA | HTTPS authority confinement, secret refs and fixed metadata statements | EXPERIMENTAL | EXCLUDED |
+| PostgreSQL | 1 | metadata/schema plus opt-in aggregate freshness/profiling | Scanner Worker is packaged | PR #314 contract run `40841108301` passed Python 3.11/3.12 | live PostgreSQL job skipped | secret references, verified TLS/read-only metadata; raw rows excluded | IMPLEMENTED_UNVALIDATED / BLOCKED | EXCLUDED |
+| MySQL | 1 | metadata/schema plus opt-in aggregate freshness/profiling | Collection Manager; not packaged | implementation/contract evidence exists | live fixture not release-certified | referenced secret, verified TLS, local infile disabled, no raw rows/query history | EXPERIMENTAL | EXCLUDED |
+| MariaDB | 1 | metadata/schema plus opt-in aggregate freshness/profiling | Collection Manager; not packaged | implementation exists; native Connector/C remains an environment dependency | live fixture not release-certified | referenced secret, verified TLS, no raw rows/query history | EXPERIMENTAL | EXCLUDED |
+| SQL Server | 1 | metadata/schema plus opt-in aggregate freshness/profiling | Collection Manager; not packaged | implementation/contract evidence exists | SQL Server 17/16 live fixture not release-certified | secret refs; strict/mandatory TLS; no Query Store/raw row collection | EXPERIMENTAL | EXCLUDED |
+| Oracle | 1 | ALL_* structural metadata plus opt-in aggregate freshness/profiling | Collection Manager; not packaged | implementation/contract evidence exists | approved 26ai/19c services not release-certified | secret refs, TCPS/server verification; no AWR/ASH/raw rows | EXPERIMENTAL | EXCLUDED |
+| RabbitMQ | 1 | vhost/exchange/queue/binding metadata and counters | Collection Manager; not packaged | supplied pass `40869888078`; current-main pass `40961601051` | external HTTPS RabbitMQ fixture is opt-in; contract pass is not live certification | monitoring-only credentials; no consume/basic.get/publish/message bodies | IMPLEMENTED_UNVALIDATED | EXCLUDED |
+
+### PostgreSQL packaged-runtime assessment
+
+The contract suite is healthy, but the package is not operationally certifiable as a supported scanner:
+
+- Helm starts `python -m services.scanner_worker.cli --config ... run`.
+- The current `run` path is heartbeat-oriented and does not provide a demonstrated durable distributed task scheduler.
+- `ScannerWorker` defaults to `InMemoryLeaseManager`, explicitly a development/test implementation.
+- No packaged durable lease/fencing store, restart-safe task acquisition loop, or independently verified failover/restart path is present.
+
+For v0.2.0, Team 4 chooses the bounded option: PostgreSQL remains excluded instead of adding a new scheduler/control plane during release closure.
+
+### First-release Team 4 recommendation
+
+**Supported Team 4 provider connectors: none.**
+
+The Integration SDK is a mandatory release foundation, not a provider support claim. Pub/Sub, Azure and RabbitMQ hosted passes prove their current contracts remain healthy, but all three still execute through Collection Manager, which Team 0 explicitly excludes from the supported package. PostgreSQL is packaged but lacks the durable production scheduling/lease evidence required for a support claim.

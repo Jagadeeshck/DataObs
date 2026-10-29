@@ -1,4 +1,7 @@
 import { expect, test } from "@playwright/test";
+import { mockDataProductRelease } from "../fixtures/release";
+
+test.beforeEach(async ({ page }) => mockDataProductRelease(page));
 
 test("Product 360 exposes API-backed membership and dependency tabs", async ({
   page,

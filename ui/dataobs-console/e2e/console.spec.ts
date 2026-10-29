@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
+import { mockReleaseAuth } from "./fixtures/release";
 const status = {
   complete: false,
   warnings: ["Cost evidence is not configured"],
@@ -8,22 +9,7 @@ const status = {
   missing_inputs: ["finops"],
 };
 async function mockConsole(page: Page) {
-  await page.route("**/api/v1/auth/me", (route) =>
-    route.fulfill({
-      json: {
-        subject: "test-user",
-        display_name: "Console Tester",
-        permissions: ["integrations:read"],
-        tenants: [
-          {
-            id: "verified-tenant",
-            name: "Verified tenant",
-            environments: ["prod", "stage"],
-          },
-        ],
-      },
-    }),
-  );
+  await mockReleaseAuth(page, ["console:read", "integrations:read"]);
   await page.route("**/api/v1/command-center?**", (route) =>
     route.fulfill({
       json: {
@@ -67,11 +53,11 @@ test("authenticated shell, context, command center and route recovery are access
     page.getByRole("heading", { name: "Command Center" }),
   ).toBeVisible();
   await page.getByText("Verified tenant / prod").click();
-  await expect(page.getByLabel("Tenant")).toHaveValue("verified-tenant");
-  await page.getByLabel("Environment").selectOption("stage");
+  await expect(page.getByLabel("Tenant", { exact: true })).toHaveValue("verified-tenant");
+  await page.getByLabel("Environment", { exact: true }).selectOption("stage");
   await expect(page).not.toHaveURL(/environment=stage/);
   await page.keyboard.press("Tab");
-  await expect(page.locator(":focus")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Skip to content" })).toBeFocused();
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   await page.goto("/missing");
   await expect(
@@ -82,8 +68,8 @@ test("workspace navigation and Quick Find remain accessible at narrow widths", a
   page,
 }) => {
   await page.goto("/");
-  await expect(page.getByLabel("Workspace")).toHaveValue("home");
-  await page.getByLabel("Workspace").selectOption("observe");
+  await expect(page.getByLabel("Workspace", { exact: true })).toHaveValue("home");
+  await page.getByLabel("Workspace", { exact: true }).selectOption("observe");
   await expect(page).toHaveURL(/\/flow$/);
   await expect(page.getByRole("link", { name: "Streams" })).toBeVisible();
 

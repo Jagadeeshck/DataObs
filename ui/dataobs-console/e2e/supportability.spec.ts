@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page, type Request } from "@playwright/test";
+import { mockReleaseAuth } from "./fixtures/release";
 
 const responses: Record<string, unknown> = {
   support: {
@@ -74,16 +75,7 @@ const responses: Record<string, unknown> = {
 
 async function mockOperator(page: Page, requests: Request[]) {
   page.on("request", (request) => requests.push(request));
-  await page.route("**/api/v1/auth/me", (route) =>
-    route.fulfill({
-      json: {
-        subject: "operator",
-        display_name: "Platform Operator",
-        permissions: ["platform_operations:read"],
-        tenants: [],
-      },
-    }),
-  );
+  await mockReleaseAuth(page, ["console:read", "platform_operations:read"]);
   await page.route("**/api/v1/platform/*", (route) => {
     const section = new URL(route.request().url()).pathname.split("/").at(-1)!;
     return route.fulfill({ json: responses[section] });
@@ -114,6 +106,8 @@ test("supportability uses typed fields and never renders accidental secrets", as
   page,
 }) => {
   const requests: Request[] = [];
+  const browserLogs: string[] = [];
+  page.on("console", (message) => browserLogs.push(message.text()));
   await mockOperator(page, requests);
   await page.goto("/administration/platform/supportability");
   await expect(
@@ -125,16 +119,14 @@ test("supportability uses typed fields and never renders accidental secrets", as
     page.getByText(/not exposed through the Console API/),
   ).toBeVisible();
   expect(requests.filter((request) => request.method() !== "GET")).toEqual([]);
+  expect(browserLogs.join("\n")).not.toContain("must-not-render");
 });
+
 
 test("ordinary tenant user cannot see or open supportability", async ({
   page,
 }) => {
-  await page.route("**/api/v1/auth/me", (route) =>
-    route.fulfill({
-      json: { subject: "tenant", permissions: ["console:read"], tenants: [] },
-    }),
-  );
+  await mockReleaseAuth(page, ["console:read"]);
   let platformCalls = 0;
   await page.route("**/api/v1/platform/*", (route) => {
     platformCalls += 1;

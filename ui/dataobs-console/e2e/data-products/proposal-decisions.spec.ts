@@ -1,5 +1,8 @@
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import { mockDataProductRelease } from "../fixtures/release";
+
+test.beforeEach(async ({ page }) => mockDataProductRelease(page));
 
 test("Members proposal controls remain accessible", async ({ page }) => {
   await page.goto("/data-products");

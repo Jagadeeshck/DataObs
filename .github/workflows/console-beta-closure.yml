@@ -69,6 +69,11 @@ jobs:
           manifest=json.loads((root/'manifest.json').read_text()); assert manifest['commit_sha']==os.environ['TESTED_SHA']
           for report in ('vitest.xml','playwright.xml'):
             tree=ET.parse(root/report); suites=tree.getroot(); assert int(suites.attrib.get('failures','0'))==0
+          playwright=(root/'playwright.xml').read_text(errors='ignore').lower()
+          for browser in ('chromium','firefox','webkit'):
+            assert browser in playwright, f'missing browser evidence: {browser}'
+          for width in ('320','375','768','1024','1440'):
+            assert f'shared release shell is accessible at {width}px' in playwright, f'missing responsive evidence: {width}px'
           assert 'JavaScript bundle:' in (root/'bundle.log').read_text()
           payload='\n'.join(p.read_text(errors='ignore') for p in root.rglob('*') if p.is_file())
           assert not re.search(r'(?i)(authorization:\s*bearer\s+\S+|-----BEGIN (?:RSA |EC )?PRIVATE KEY-----|aws_secret_access_key\s*[=:])',payload)

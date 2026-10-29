@@ -1,4 +1,7 @@
 import { expect, test } from "@playwright/test";
+import { mockReleaseShell } from "../fixtures/release";
+
+test.beforeEach(async ({ page }) => mockReleaseShell(page));
 
 const sentinelNames = [
   "DATAOBS_CERT_SENTINEL_DB_PASSWORD",
@@ -32,5 +35,5 @@ test("primary navigation is keyboard reachable with visible focus", async ({
 }) => {
   await page.goto("/");
   await page.keyboard.press("Tab");
-  await expect(page.locator(":focus")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Skip to content" })).toBeFocused();
 });

@@ -106,6 +106,8 @@ test("supportability uses typed fields and never renders accidental secrets", as
   page,
 }) => {
   const requests: Request[] = [];
+  const browserLogs: string[] = [];
+  page.on("console", (message) => browserLogs.push(message.text()));
   await mockOperator(page, requests);
   await page.goto("/administration/platform/supportability");
   await expect(
@@ -117,7 +119,9 @@ test("supportability uses typed fields and never renders accidental secrets", as
     page.getByText(/not exposed through the Console API/),
   ).toBeVisible();
   expect(requests.filter((request) => request.method() !== "GET")).toEqual([]);
+  expect(browserLogs.join("\n")).not.toContain("must-not-render");
 });
+
 
 test("ordinary tenant user cannot see or open supportability", async ({
   page,

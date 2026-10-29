@@ -55,3 +55,18 @@ jobs:
             --test-category pathways --test-category browser --test-category tenant-isolation --tool-version "python=$(python --version | cut -d' ' -f2)"
       - uses: actions/upload-artifact@v4
         with: {name: pathway-explorer-console-v1-evidence, path: evidence/, retention-days: 30}
+
+  verify-evidence:
+    if: always()
+    needs: exact-commit-evidence
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/download-artifact@v4
+        with: {name: pathway-explorer-console-v1-evidence, path: downloaded-evidence}
+      - name: Independently verify downloaded exact-commit evidence
+        run: |
+          python scripts/certification/check_downloaded_envelope.py --directory downloaded-evidence \
+            --sha "$GITHUB_SHA" --repository "$GITHUB_REPOSITORY" --workflow pathway-explorer-console.yml \
+            --run "$GITHUB_RUN_ID" --attempt "$GITHUB_RUN_ATTEMPT" --event "$GITHUB_EVENT_NAME" --category pathways --category browser --category tenant-isolation

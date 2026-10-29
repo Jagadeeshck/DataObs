@@ -47,3 +47,35 @@ def test_team1_browser_callers_install_certified_browser_matrix():
     ):
         text = (ROOT / relative).read_text()
         assert "playwright install --with-deps chromium firefox webkit" in text
+
+
+def test_mandatory_team1_artifacts_have_downloaded_envelope_verification():
+    expected = {
+        ".github/workflows/pathway-intelligence-backend.yml": (
+            "pathway-intelligence-backend-v1-evidence",
+            ("pathways", "tenant-isolation"),
+        ),
+        ".github/workflows/cluster-360-console.yml": (
+            "cluster-360-console-v1-evidence",
+            ("api", "browser", "accessibility"),
+        ),
+        ".github/workflows/connector-schema-360-console.yml": (
+            "connector-schema-360-console-v1-evidence",
+            ("api", "redaction", "browser"),
+        ),
+        ".github/workflows/stream-360-core-console.yml": (
+            "stream-360-core-console-v1-evidence",
+            ("api", "browser", "accessibility"),
+        ),
+        ".github/workflows/pathway-explorer-console.yml": (
+            "pathway-explorer-console-v1-evidence",
+            ("pathways", "browser", "tenant-isolation"),
+        ),
+    }
+    for relative, (artifact, categories) in expected.items():
+        text = (ROOT / relative).read_text()
+        assert "verify-evidence:" in text
+        assert f"name: {artifact}, path: downloaded-evidence" in text
+        assert "check_downloaded_envelope.py --directory downloaded-evidence" in text
+        for category in categories:
+            assert f"--category {category}" in text

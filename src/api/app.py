@@ -1156,6 +1156,7 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
 
     @app.get("/rules", response_model=RulesResponse, dependencies=[Depends(require_auth)])
     async def get_rules(
+        request: Request,
         stores: StoreBundle = Depends(get_stores),
         limit: int = Query(100, ge=1, le=1000),
         offset: int = Query(0, ge=0),
@@ -1164,16 +1165,17 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
         severity: str | None = None,
         check_type: str | None = None,
     ) -> Dict[str, Any]:
-        rules = stores.store.get_all_rules()
-        filtered = [
-            rule
-            for rule in rules
-            if (dataset is None or rule.get("dataset") == dataset)
-            and (enabled is None or rule.get("enabled") == enabled)
-            and (severity is None or rule.get("severity") == severity)
-            and (check_type is None or rule.get("check_type", rule.get("type")) == check_type)
-        ]
-        page = _paginate(filtered, limit, offset)
+        rules = stores.store.get_all_rules(
+            limit=1000,
+            offset=0,
+            dataset=dataset,
+            enabled=enabled,
+            severity=severity,
+            check_type=check_type,
+            tenant_id=request.state.tenant_id,
+            environment=request.state.environment,
+        )
+        page = _paginate(rules, limit, offset)
         return {"rules": page["items"], "count": len(page["items"]), "pagination": page["pagination"]}
 
     @app.get("/quality/results", response_model=QualityResultsResponse, dependencies=[Depends(require_auth)])
@@ -1253,12 +1255,27 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
         return {"edges": page["items"], "count": len(page["items"]), "pagination": page["pagination"]}
 
     @app.post("/rules", status_code=201, response_model=RuleCreateResponse, dependencies=[Depends(require_auth)])
-    async def create_rule(rule: RuleRequest, stores: StoreBundle = Depends(get_stores)) -> Dict[str, Any]:
-        return {"rule_id": stores.store.add_rule(_as_dict(rule)), "status": "created"}
+    async def create_rule(
+        rule: RuleRequest, request: Request, stores: StoreBundle = Depends(get_stores)
+    ) -> Dict[str, Any]:
+        return {
+            "rule_id": stores.store.add_rule(
+                _as_dict(rule),
+                tenant_id=request.state.tenant_id,
+                environment=request.state.environment,
+            ),
+            "status": "created",
+        }
 
     @app.delete("/rules/{rule_id}", response_model=RuleDeleteResponse, dependencies=[Depends(require_auth)])
-    async def delete_rule(rule_id: str, stores: StoreBundle = Depends(get_stores)) -> Dict[str, Any]:
-        if not stores.store.delete_rule(rule_id):
+    async def delete_rule(
+        rule_id: str, request: Request, stores: StoreBundle = Depends(get_stores)
+    ) -> Dict[str, Any]:
+        if not stores.store.delete_rule(
+            rule_id,
+            tenant_id=request.state.tenant_id,
+            environment=request.state.environment,
+        ):
             raise HTTPException(status_code=404, detail=f"Rule '{rule_id}' not found")
         return {"rule_id": rule_id, "status": "deleted"}
 

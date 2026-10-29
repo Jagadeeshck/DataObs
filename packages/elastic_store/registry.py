@@ -115,6 +115,26 @@ def _mapping_properties(contract: Dict[str, Any]) -> Dict[str, Any]:
     return contract
 
 
+def _first_released_mapping_field_owners(index: str) -> Dict[str, Any]:
+    """Return the earliest released explicit definition for each index field.
+
+    Some mutable indices are created by an earlier migration and receive their
+    writer-complete strict mapping in a later released migration. The shared
+    global mapping union must not preempt those later owner definitions with a
+    conflicting type during clean installation. Choosing the first released
+    explicit definition per field preserves historical ownership while later
+    incompatible changes still fail closed in _apply_mapping_update.
+    """
+    owned: Dict[str, Any] = {}
+    for migration in migrations():
+        contract = migration.operations.get("mapping_updates", {}).get(index)
+        if contract is None:
+            continue
+        for field, definition in _mapping_properties(contract).items():
+            owned.setdefault(field, definition)
+    return owned
+
+
 def _mapping(index: str | None = None) -> Dict[str, Any]:
     """Build the shared strict mapping without changing released migrations.
 
@@ -143,6 +163,8 @@ def _mapping(index: str | None = None) -> Dict[str, Any]:
         | SECURITY_PROPERTIES
         | PROVIDER_PROPERTIES
     )
+    if index is not None:
+        properties |= _first_released_mapping_field_owners(index)
     if index in INCIDENT_AUTOMATION_MUTABLE_INDICES:
         properties |= INCIDENT_AUTOMATION_PROPERTIES
     if index in _DATA_PRODUCT_0015_INDEX_PROPERTIES:

@@ -10,6 +10,7 @@ on:
       - src/api/**
       - src/config/**
       - src/security/**
+      - packages/elastic_store/**
       - ui/dataobs-console/**
       - .github/workflows/first-mvp-demo-smoke.yml
   push:

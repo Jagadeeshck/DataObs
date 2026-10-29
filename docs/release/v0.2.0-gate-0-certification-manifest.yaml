@@ -18,7 +18,7 @@ capabilities:
     owning_team: Team 0
     workflow: ci.yml
     artifact: team-0-gate0-shared-evidence
-    required_jobs: [Python quality and unit tests, Certification contracts, Terraform and Helm validation, Documentation truth gate, Incident migration and OCC gate, Mandatory Team 0 Gate 0 evidence]
+    required_jobs: [Python quality and unit tests, Certification contracts, Terraform and Helm validation, Documentation truth gate, Incident migration and OCC gate, Production image security and SBOM, Mandatory Team 0 Gate 0 evidence]
     required_test_categories: [shared-ci]
   - capability_id: deployment
     owning_team: Team 0
@@ -45,3 +45,9 @@ capabilities:
     artifact: team-0-backup-restore-v1-evidence
     required_jobs: [certify]
     required_test_categories: [backup, restore, tenant-isolation]
+  - capability_id: console-browser-accessibility
+    owning_team: Team 5
+    workflow: console-beta-closure.yml
+    artifact: console-beta-closure-v1-evidence
+    required_jobs: [validate, verify-evidence]
+    required_test_categories: [browser, accessibility]

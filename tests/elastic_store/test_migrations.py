@@ -160,11 +160,38 @@ def test_incident_index_creation_preserves_released_field_types():
 
 
 def test_data_product_index_creation_preserves_writer_mapping_types():
-    """Clean installs must create the Data Product index with its owning contract."""
-    from packages.elastic_store.manifest import DATA_PRODUCT_PROPERTIES
+    """Clean installs must preserve every released 0015 Data Product mapping contract."""
+    from packages.elastic_store.manifest import (
+        DATA_PRODUCT_AUXILIARY_PROPERTIES,
+        DATA_PRODUCT_EVENT_PROPERTIES,
+        DATA_PRODUCT_PROPERTIES,
+    )
     from packages.elastic_store.registry import _mapping
 
-    properties = _mapping("dataobs-data-products-v1")["properties"]
+    contracts = {
+        "dataobs-data-products-v1": DATA_PRODUCT_PROPERTIES,
+        "dataobs-data-product-revisions-v1": DATA_PRODUCT_EVENT_PROPERTIES,
+        "dataobs-data-product-operation-state-v1": DATA_PRODUCT_EVENT_PROPERTIES,
+        **{
+            index: DATA_PRODUCT_AUXILIARY_PROPERTIES
+            for index in (
+                "dataobs-data-product-membership-v1",
+                "dataobs-data-product-membership-proposals-v1",
+                "dataobs-data-product-membership-decisions-v1",
+                "dataobs-data-product-slos-v1",
+                "dataobs-data-product-slo-evaluations-v1",
+                "dataobs-data-product-scorecards-v1",
+                "dataobs-data-product-coverage-v1",
+                "dataobs-data-product-impact-current-v1",
+                "dataobs-data-product-dependency-current-v1",
+            )
+        },
+    }
 
-    for field in ("description", "owner", "revision", "tags"):
-        assert properties[field] == DATA_PRODUCT_PROPERTIES[field]
+    for index, contract in contracts.items():
+        properties = _mapping(index)["properties"]
+        for field, definition in contract.items():
+            assert properties[field] == definition, f"{index}.{field} was preempted by the global mapping"
+
+    assert _mapping("dataobs-data-product-revisions-v1")["properties"]["revision"] == {"type": "integer"}
+    assert _mapping("dataobs-data-product-operation-state-v1")["properties"]["operation_id"] == {"type": "keyword"}

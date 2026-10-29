@@ -1,5 +1,15 @@
 name: Team 0 backup restore resilience
 on:
+  pull_request:
+    paths:
+      - packages/elastic_store/**
+      - scripts/operations/backup_dataobs.py
+      - scripts/operations/restore_dataobs.py
+      - scripts/operations/snapshot_common.py
+      - scripts/certification/**
+      - tests/integration/test_beta_backup_restore.py
+      - docs/release/**
+      - .github/workflows/beta-backup-restore.yml
   workflow_dispatch:
   push: {branches: [main]}
 permissions: {contents: read}

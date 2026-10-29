@@ -64,7 +64,6 @@ def test_missing_provider_never_passes():
     assert evaluate(monitor(), observation, provider_status="unsupported")["state"] == "source_unavailable"
 
 
-
 def test_manual_run_request_is_idempotent_scoped_and_bounded():
     repository = ElasticsearchMonitorRepository(MagicMock())
     repository._get_dict = MagicMock(return_value=None)
@@ -119,7 +118,6 @@ def test_manual_run_request_is_idempotent_scoped_and_bounded():
             scheduled_for=scheduled_for,
             idempotency_key="x" * 201,
         )
-
 
 
 def test_suppression_requires_bounded_approval():

@@ -2034,6 +2034,7 @@ header {
 .quality-banner {
   border-left: 4px solid #a86400;
   background: #fff5dc;
+  color: #3a2a00;
   padding: 0.7rem 1rem;
   margin: 1rem 0;
 }

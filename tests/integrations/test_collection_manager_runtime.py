@@ -16,7 +16,7 @@ from packages.collectors.sdk import (
     RetryPolicy,
     ValidationResult,
 )
-from packages.collectors.sdk.errors import CollectionTimeoutError
+from packages.collectors.sdk.errors import CollectionTimeoutError, MalformedProviderResponseError
 from services.collection_manager.provider_runtime import ProviderRuntime
 from services.collection_manager.provider_storage import InMemoryObservationRepository, InMemoryRunRepository
 
@@ -124,5 +124,62 @@ def test_runtime_enforces_timeout_and_propagates_cancellation():
         with pytest.raises(asyncio.CancelledError):
             await task
         RuntimeProvider.delay = 0
+
+    asyncio.run(scenario())
+
+
+class MalformedRuntimeProvider(RuntimeProvider):
+    provider_type = "malformed_runtime_test"
+
+    async def collect(self, context, request):
+        yield {"unexpected": "mapping"}
+
+
+class FailingObservationRepository:
+    async def persist(self, context, observations):
+        raise RuntimeError("synthetic observation persistence failure")
+
+
+def test_runtime_rejects_malformed_observation_without_persistence_or_checkpoint():
+    async def scenario():
+        registry = ProviderRegistry()
+        registry.register(MalformedRuntimeProvider)
+        checkpoints = InMemoryCheckpointStore()
+        observations = InMemoryObservationRepository()
+        runs = InMemoryRunRepository()
+        runtime = ProviderRuntime(registry, checkpoints, observations, runs)
+        context = IntegrationContext(
+            "tenant-a", "integration-a", "run-malformed", datetime.now(timezone.utc) + timedelta(seconds=5)
+        )
+        config = IntegrationConfiguration(
+            "v1",
+            "integration-a",
+            "malformed_runtime_test",
+            True,
+            1,
+            frozenset({Capability.RESOURCE_DISCOVERY}),
+            provider={},
+        )
+        with pytest.raises(MalformedProviderResponseError):
+            await runtime.execute(context, config)
+        assert observations.observations == []
+        assert runs.runs == []
+        assert await checkpoints.load("tenant-a", "integration-a", "resource_discovery") is None
+
+    asyncio.run(scenario())
+
+
+def test_runtime_does_not_advance_checkpoint_when_observation_persistence_fails():
+    async def scenario():
+        registry = ProviderRegistry()
+        registry.register(RuntimeProvider)
+        checkpoints = InMemoryCheckpointStore()
+        runs = InMemoryRunRepository()
+        runtime = ProviderRuntime(registry, checkpoints, FailingObservationRepository(), runs)
+        context, config = inputs()
+        with pytest.raises(RuntimeError, match="observation persistence failure"):
+            await runtime.execute(context, config)
+        assert runs.runs == []
+        assert await checkpoints.load("tenant-a", "integration-a", "resource_discovery") is None
 
     asyncio.run(scenario())

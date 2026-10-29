@@ -40,7 +40,6 @@ blockers:
   workflow_url: https://github.com/Jagadeeshck/DataObs/actions/runs/40961601206
   workflow_attempt: 1
   job: certify
-  first_meaning_error: 'pipeline with id [none] does not exist'
   first_meaningful_error: 'pipeline with id [none] does not exist'
   root_cause: Shared data-stream template configured literal index.default_pipeline=none instead of Elasticsearch no-pipeline
     sentinel _none.

@@ -964,6 +964,9 @@ header {
   padding: 10px 18px;
   color: white;
 }
+.investigation-toolbar button.primary {
+  color: #07101e;
+}
 .table-wrap {
   overflow: auto;
   border: 1px solid var(--border);

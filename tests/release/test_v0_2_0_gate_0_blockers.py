@@ -29,7 +29,13 @@ def test_gate_0_inventory_preserves_release_truth_and_defers_freeze():
         assert item["source_sha"] == inventory["observed_workflow_sha"]
         assert item["hosted_state"] in {"passed", "failed", "blocked", "not_run"}
         assert item["final_head_hosted_state"] == "not_run"
-        assert item["workflow_run_id"] and item["artifact_id"]
+        assert item["workflow_run_id"]
+        if item.get("artifact_id") is None:
+            assert item["hosted_state"] == "failed"
+            assert item.get("artifact_state") == "missing"
+        else:
+            assert item["artifact_id"]
+            assert item.get("artifact_state") == "retained"
     assert inventory["gate_0_exit_criteria"]["freeze_after_gate_0_only"] is True
 
 

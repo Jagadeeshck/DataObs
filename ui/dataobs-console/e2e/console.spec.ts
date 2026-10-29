@@ -53,9 +53,9 @@ test("authenticated shell, context, command center and route recovery are access
     page.getByRole("heading", { name: "Command Center" }),
   ).toBeVisible();
   await page.getByText("Verified tenant / prod").click();
-  await expect(
-    page.getByLabel("Tenant", { exact: true }),
-  ).toHaveValue("verified-tenant");
+  await expect(page.getByLabel("Tenant", { exact: true })).toHaveValue(
+    "verified-tenant",
+  );
   await page.getByLabel("Environment", { exact: true }).selectOption("stage");
   await expect(page).not.toHaveURL(/environment=stage/);
   await page.keyboard.press("Tab");
@@ -72,9 +72,9 @@ test("workspace navigation and Quick Find remain accessible at narrow widths", a
   page,
 }) => {
   await page.goto("/");
-  await expect(
-    page.getByLabel("Workspace", { exact: true }),
-  ).toHaveValue("home");
+  await expect(page.getByLabel("Workspace", { exact: true })).toHaveValue(
+    "home",
+  );
   await page.getByLabel("Workspace", { exact: true }).selectOption("observe");
   await expect(page).toHaveURL(/\/flow$/);
   await expect(page.getByRole("link", { name: "Streams" })).toBeVisible();

@@ -200,18 +200,29 @@ class ElasticsearchStore:
 
     # ── Rules ────────────────────────────────────────────────────────────
 
-    def save_rule(self, rule: Dict[str, Any]) -> str:
-        """Persist or replace a quality rule.  Returns the rule_id."""
+    @staticmethod
+    def _rule_doc_id(rule_id: str, environment: str | None = None) -> str:
+        return f"{environment}::{rule_id}" if environment else rule_id
+
+    def save_rule(
+        self, rule: Dict[str, Any], *, tenant_id: str | None = None, environment: str | None = None
+    ) -> str:
+        """Persist or replace a tenant/environment-scoped quality rule."""
+        if tenant_id is not None and tenant_id != self._tenant:
+            raise ValueError("rule tenant does not match store tenant")
         rule_id = rule.get("rule_id") or str(uuid.uuid4())
+        effective_environment = environment if environment is not None else rule.get("environment")
         doc = {
             **rule,
             "rule_id": rule_id,
             "tenant_id": self._tenant,
             "@timestamp": _now_iso(),
         }
+        if effective_environment is not None:
+            doc["environment"] = effective_environment
         self._es.index(
             index=self._ri,
-            id=rule_id,
+            id=self._rule_doc_id(rule_id, effective_environment),
             document=doc,
             refresh="wait_for",
         )
@@ -219,12 +230,21 @@ class ElasticsearchStore:
         return rule_id
 
     # Alias kept for backward compat with RuleStore.add_rule() call sites
-    def add_rule(self, rule: Dict[str, Any]) -> str:
-        return self.save_rule(rule)
+    def add_rule(
+        self, rule: Dict[str, Any], *, tenant_id: str | None = None, environment: str | None = None
+    ) -> str:
+        return self.save_rule(rule, tenant_id=tenant_id, environment=environment)
 
-    def get_rule(self, rule_id: str) -> Optional[Dict[str, Any]]:
+    def get_rule(
+        self, rule_id: str, *, tenant_id: str | None = None, environment: str | None = None
+    ) -> Optional[Dict[str, Any]]:
+        if tenant_id is not None and tenant_id != self._tenant:
+            return None
         try:
-            return self._es.get(index=self._ri, id=rule_id)["_source"]
+            source = self._es.get(index=self._ri, id=self._rule_doc_id(rule_id, environment))["_source"]
+            if environment is not None and source.get("environment") != environment:
+                return None
+            return source
         except NotFoundError:
             return None
         except Exception:
@@ -239,10 +259,16 @@ class ElasticsearchStore:
         enabled: Optional[bool] = None,
         severity: Optional[str] = None,
         check_type: Optional[str] = None,
+        tenant_id: str | None = None,
+        environment: str | None = None,
     ) -> List[Dict[str, Any]]:
-        """Return all rules for this tenant, ordered by dataset."""
+        """Return rules for this tenant/environment, ordered by dataset."""
+        if tenant_id is not None and tenant_id != self._tenant:
+            return []
         try:
             must: List[Dict[str, Any]] = [{"term": {"tenant_id": self._tenant}}]
+            if environment is not None:
+                must.append({"term": {"environment": environment}})
             if dataset is not None:
                 must.append({"term": {"dataset": dataset}})
             if enabled is not None:
@@ -263,19 +289,22 @@ class ElasticsearchStore:
             logger.exception("Failed to fetch rules")
             return []
 
-    def get_rules_for_dataset(self, dataset: str) -> List[Dict[str, Any]]:
-        """Return rules for a specific dataset."""
+    def get_rules_for_dataset(
+        self, dataset: str, *, tenant_id: str | None = None, environment: str | None = None
+    ) -> List[Dict[str, Any]]:
+        """Return rules for a specific dataset and tenant/environment."""
+        if tenant_id is not None and tenant_id != self._tenant:
+            return []
         try:
+            must: List[Dict[str, Any]] = [
+                {"term": {"tenant_id": self._tenant}},
+                {"term": {"dataset": dataset}},
+            ]
+            if environment is not None:
+                must.append({"term": {"environment": environment}})
             resp = self._es.search(
                 index=self._ri,
-                query={
-                    "bool": {
-                        "must": [
-                            {"term": {"tenant_id": self._tenant}},
-                            {"term": {"dataset": dataset}},
-                        ]
-                    }
-                },
+                query={"bool": {"must": must}},
                 size=1000,
             )
             return [h["_source"] for h in resp["hits"]["hits"]]
@@ -283,10 +312,14 @@ class ElasticsearchStore:
             logger.exception("Failed to fetch rules for dataset '%s'", dataset)
             return []
 
-    def delete_rule(self, rule_id: str) -> bool:
-        """Delete a rule. Returns True if deleted, False if not found."""
+    def delete_rule(
+        self, rule_id: str, *, tenant_id: str | None = None, environment: str | None = None
+    ) -> bool:
+        """Delete only a rule visible in the requested tenant/environment."""
+        if self.get_rule(rule_id, tenant_id=tenant_id, environment=environment) is None:
+            return False
         try:
-            self._es.delete(index=self._ri, id=rule_id, refresh="wait_for")
+            self._es.delete(index=self._ri, id=self._rule_doc_id(rule_id, environment), refresh="wait_for")
             return True
         except NotFoundError:
             return False
@@ -481,6 +514,7 @@ def _rules_mapping() -> Dict[str, Any]:
             "@timestamp": {"type": "date"},
             "rule_id": {"type": "keyword"},
             "tenant_id": {"type": "keyword"},
+            "environment": {"type": "keyword"},
             "dataset": {"type": "keyword"},
             "check_type": {"type": "keyword"},
             "severity": {"type": "keyword"},

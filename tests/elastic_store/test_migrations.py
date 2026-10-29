@@ -172,12 +172,16 @@ def test_clean_index_creation_preserves_first_released_mapping_field_owners():
                 owners.setdefault(field, definition)
 
     assert "dataobs-reliability-status-v1" in first_released
-    assert first_released["dataobs-reliability-status-v1"]["observed_value"] == {"type": "double"}
+    assert first_released["dataobs-reliability-status-v1"]["observed_value"] == {
+        "type": "double"
+    }
 
     for index, owners in first_released.items():
         installed = _mapping(index)["properties"]
         for field, definition in owners.items():
-            assert installed[field] == definition, f"{index}.{field} was preempted by the global mapping"
+            assert installed[field] == definition, (
+                f"{index}.{field} was preempted by the global mapping"
+            )
 
 
 def test_data_product_index_creation_preserves_writer_mapping_types():

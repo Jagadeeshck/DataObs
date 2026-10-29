@@ -1,0 +1,46 @@
+schema_version: '1.0'
+release_version: 0.2.0
+audited_main_sha: 8115f557ad7f6c53ab73054dc356f7bbfb676054
+branch: codex/v020-team0-final-gates
+release_decision: NO_GO
+handoffs:
+  - id: T2-RULE-TENANT-ISOLATION
+    owner_team: Team 2
+    state: source_fixed_hosted_proof_pending
+    historical_failure: Legacy /rules list, search and delete permitted implicit cross-tenant access.
+    source_resolution: PR 322 scopes legacy rule/quality storage to authenticated tenant and environment.
+    team0_dependency_resolved: true
+    required_action: Pass unchanged Gate 0 tenant A/B/C and legacy rule isolation suites on the final exact SHA, including durable Elasticsearch-backed proof.
+    release_blocking: true
+  - id: T5-CONSOLE-ACCEPTANCE
+    owner_team: Team 5
+    state: source_fixed_hosted_proof_pending
+    historical_failure: Console release acceptance stopped at formatting before full Playwright and axe evidence.
+    source_resolution: PR 321 includes formatter and browser-certification closure.
+    team0_dependency_resolved: true
+    required_action: Pass Console Beta validate and independent evidence verification on the final exact SHA for Chromium, Firefox, WebKit and all required responsive widths.
+    release_blocking: true
+  - id: T4-SCHEMA-DISCOVERY-CAPABILITY
+    owner_team: Team 4
+    state: verify_current_main
+    historical_failure: A pre-PR-320 shared CI run reported an incomplete provider capability declaration for SCHEMA_DISCOVERY.
+    source_resolution: PR 320 changed SDK/provider release-boundary declarations; current integrated source must be rerun before retaining this as an active defect.
+    team0_dependency_resolved: true
+    required_action: Re-run shared Python CI on the final exact SHA; only reopen a Team 4 defect if the capability declaration failure reproduces.
+    release_blocking: true
+  - id: T1-STREAMS-FINAL-EVIDENCE
+    owner_team: Team 1
+    state: exact_sha_rerun_required
+    historical_failure: Team 1 hosted producers were previously cascaded by shared migration and tenant-security defects.
+    source_resolution: Team 0 migration ownership and Team 2 tenant-boundary fixes are integrated.
+    team0_dependency_resolved: pending_exact_sha
+    required_action: Do not promote Team 1 capability support from historical runs; consume only final exact-SHA evidence required by the bounded release profile.
+    release_blocking: conditional_on_release_profile
+  - id: T3-INCIDENTS-FINAL-EVIDENCE
+    owner_team: Team 3
+    state: exact_sha_rerun_required
+    historical_failure: Earlier Team 3 type-safety failures were repaired in PR 312; later broad failures were cascaded by shared security/provider tests.
+    source_resolution: PR 312 is integrated.
+    team0_dependency_resolved: pending_exact_sha
+    required_action: Re-run only the mandatory incident checks for the final release profile; do not revive obsolete pre-312 typing failures.
+    release_blocking: conditional_on_release_profile

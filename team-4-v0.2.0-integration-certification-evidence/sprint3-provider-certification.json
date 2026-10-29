@@ -1,0 +1,101 @@
+{
+  "schema_version": "1.0",
+  "team": "Team 4",
+  "release": "v0.2.0",
+  "audited_main_sha": "855345eb02250f9a738abe44bd520247243032bf",
+  "branch": "codex/sprint3-team4-provider-certification",
+  "integration_sdk": {
+    "workflow_run_id": 40961601111,
+    "run_attempt": 2,
+    "conclusion": "success",
+    "head_sha": "855345eb02250f9a738abe44bd520247243032bf",
+    "artifact": {
+      "name": "integration-sdk-v1-evidence",
+      "created_at": "2026-10-29T21:57:14Z",
+      "digest": "sha256:8b44962a5a95cb611e2757184b5e6d3f71c68b6e610c49b4468c12b1051e0650"
+    },
+    "verified_contracts": [
+      "bounded_retry",
+      "non_retryable_authentication_failure",
+      "cancellation_propagation",
+      "collection_timeout",
+      "malformed_provider_response_rejection",
+      "duplicate_suppression",
+      "recursive_redaction",
+      "trusted_tenant_integration_boundary",
+      "persist_before_checkpoint",
+      "occ_checkpoint"
+    ]
+  },
+  "provider_contract_runs": {
+    "azure": {
+      "run_id": 40961601165,
+      "conclusion": "success",
+      "live_provider_certification": false
+    },
+    "google_pubsub": {
+      "run_id": 40961601012,
+      "conclusion": "success",
+      "live_provider_certification": false
+    },
+    "rabbitmq": {
+      "run_id": 40961601051,
+      "conclusion": "success",
+      "live_provider_certification": false
+    },
+    "postgresql": {
+      "run_id": 40841108301,
+      "conclusion": "success",
+      "live_provider_certification": false,
+      "live_job": "skipped"
+    }
+  },
+  "package_boundary": {
+    "collection_manager_packaged": false,
+    "scanner_worker_packaged": true,
+    "postgres_durable_scheduler_proven": false,
+    "postgres_distributed_lease_fencing_proven": false
+  },
+  "classifications": {
+    "packaged_and_certified": [],
+    "implemented_unvalidated": [
+      "gcp_pubsub",
+      "azure",
+      "rabbitmq",
+      "postgresql"
+    ],
+    "experimental": [
+      "aws",
+      "snowflake",
+      "databricks",
+      "bigquery",
+      "trino",
+      "presto",
+      "mysql",
+      "mariadb",
+      "sqlserver",
+      "oracle"
+    ],
+    "excluded_from_v020_team4_support": [
+      "aws",
+      "snowflake",
+      "databricks",
+      "bigquery",
+      "gcp_pubsub",
+      "azure",
+      "trino",
+      "presto",
+      "postgresql",
+      "mysql",
+      "mariadb",
+      "sqlserver",
+      "oracle",
+      "rabbitmq"
+    ]
+  },
+  "release_authority": {
+    "team0_gate": "NO_GO until GATE_0_GREEN",
+    "supported_platforms": "none until Team 0 promotion"
+  },
+  "conclusion": "No Team 4 provider connector is recommended as supported in v0.2.0; Integration SDK is a certified release foundation on the audited SHA."
+}

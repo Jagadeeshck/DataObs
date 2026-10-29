@@ -27,7 +27,7 @@ jobs:
       - run: python scripts/validate_capability_ledger.py
       - run: python scripts/check_generated_artifacts.py
       - run: pip check && pip-audit -r requirements-postgres.txt
-      - run: if rg -n '^(<<<<<<<|=======|>>>>>>>)' --glob '!*.lock' .; then exit 1; else result=$?; test "$result" -eq 1; fi
+      - run: python scripts/check_merge_conflict_markers.py
   postgres-live:
     if: inputs.run_postgres_live
     runs-on: ubuntu-latest

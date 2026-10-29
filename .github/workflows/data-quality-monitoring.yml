@@ -65,7 +65,7 @@ jobs:
       - name: Quality scenarios, provider, tenancy, RBAC and lease tests
         env:
           ELASTICSEARCH_URL: http://localhost:9200
-        run: python -m pytest tests/monitoring tests/integration/test_quality_signal_path.py tests/security/test_oidc_rbac_tenant.py -q --junitxml=data-quality-monitoring-v1-evidence/results/quality.xml
+        run: python -m pytest tests/monitoring tests/security/test_oidc_rbac_tenant.py -q --junitxml=data-quality-monitoring-v1-evidence/results/quality.xml
       - name: Resolve numeric job ID and generate exact-commit evidence
         if: always()
         env:

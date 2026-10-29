@@ -18,8 +18,12 @@ test.describe("v0.2.0 critical Console journeys", () => {
       page.getByRole("heading", { name: "Asset Catalog" }),
     ).toBeVisible();
     await page.getByRole("link", { name: "warehouse.public.orders" }).click();
-    await expect(page.getByRole("heading", { name: "asset-orders" })).toBeVisible();
-    await expect(page.getByText("degraded", { exact: true }).first()).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "asset-orders" }),
+    ).toBeVisible();
+    await expect(
+      page.getByText("degraded", { exact: true }).first(),
+    ).toBeVisible();
     expect(await seriousOrCritical(page)).toEqual([]);
   });
 
@@ -39,7 +43,9 @@ test.describe("v0.2.0 critical Console journeys", () => {
     await expect(
       page.getByRole("heading", { name: "Create draft monitor" }),
     ).toBeVisible();
-    await expect(page.getByRole("option", { name: "Freshness" })).toBeAttached();
+    await expect(
+      page.getByRole("option", { name: "Freshness" }),
+    ).toBeAttached();
     expect(await seriousOrCritical(page)).toEqual([]);
   });
 
@@ -72,8 +78,12 @@ test.describe("v0.2.0 critical Console journeys", () => {
     await expect(
       page.getByRole("heading", { name: "Streams Inventory" }),
     ).toBeVisible();
-    await expect(page.getByRole("link", { name: "orders.events" })).toBeVisible();
-    await expect(page.getByText("at_risk", { exact: true }).first()).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "orders.events" }),
+    ).toBeVisible();
+    await expect(
+      page.getByText("at_risk", { exact: true }).first(),
+    ).toBeVisible();
 
     await page.goto("/pathways");
     await expect(
@@ -83,11 +93,15 @@ test.describe("v0.2.0 critical Console journeys", () => {
     await expect(
       page.getByRole("heading", { name: "Orders ingestion" }),
     ).toBeVisible();
-    await expect(page.getByText("degraded", { exact: true }).first()).toBeVisible();
+    await expect(
+      page.getByText("degraded", { exact: true }).first(),
+    ).toBeVisible();
     expect(await seriousOrCritical(page)).toEqual([]);
   });
 
-  test("Incident Inbox opens the related Incident Workbench", async ({ page }) => {
+  test("Incident Inbox opens the related Incident Workbench", async ({
+    page,
+  }) => {
     await page.goto("/incidents");
     await expect(
       page.getByRole("heading", { name: "Incident Inbox" }),
@@ -111,8 +125,12 @@ test.describe("v0.2.0 critical Console journeys", () => {
       page.getByRole("heading", { name: "Integrations", exact: true }),
     ).toBeVisible();
     await page.getByRole("link", { name: "Manage integration" }).click();
-    await expect(page.getByRole("heading", { name: "PostgreSQL" })).toBeVisible();
-    await expect(page.getByText("preview", { exact: false }).first()).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "PostgreSQL" }),
+    ).toBeVisible();
+    await expect(
+      page.getByText("preview", { exact: false }).first(),
+    ).toBeVisible();
 
     await page.goto("/onboarding");
     await expect(page.getByRole("heading").first()).toBeVisible();
@@ -163,9 +181,7 @@ test.describe("v0.2.0 security and trusted-context acceptance", () => {
     await page
       .getByLabel("Environment", { exact: true })
       .selectOption("stage");
-    await expect
-      .poll(() => seen.at(-1)?.environment)
-      .toBe("stage");
+    await expect.poll(() => seen.at(-1)?.environment).toBe("stage");
     expect(seen.at(-1)?.tenant).toBe("verified-tenant");
   });
 

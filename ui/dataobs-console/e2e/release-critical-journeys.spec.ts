@@ -143,7 +143,8 @@ test.describe("v0.2.0 security and trusted-context acceptance", () => {
     page,
   }) => {
     await mockReleaseShell(page);
-    const seen: Array<{ tenant: string | null; environment: string | null }> = [];
+    const seen: Array<{ tenant: string | null; environment: string | null }> =
+      [];
     await page.route("**/api/v1/command-center?**", (route) => {
       const url = new URL(route.request().url());
       seen.push({
@@ -178,9 +179,7 @@ test.describe("v0.2.0 security and trusted-context acceptance", () => {
     });
 
     await page.getByText("Verified tenant / prod", { exact: true }).click();
-    await page
-      .getByLabel("Environment", { exact: true })
-      .selectOption("stage");
+    await page.getByLabel("Environment", { exact: true }).selectOption("stage");
     await expect.poll(() => seen.at(-1)?.environment).toBe("stage");
     expect(seen.at(-1)?.tenant).toBe("verified-tenant");
   });

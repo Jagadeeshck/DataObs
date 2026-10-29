@@ -30,6 +30,7 @@ def test_stream_observer_generate_and_verify_require_identical_suites():
     required = (
         "--required-suite elasticsearch "
         "--required-suite kafka "
+        "--required-suite integration "
         "--required-suite observer "
         "--required-suite security "
         "--required-suite tenant"
@@ -100,3 +101,23 @@ def test_stream_observer_verifies_run_attempt_provenance():
     assert 'value["workflow_run_attempt"]' in text
     assert 'os.environ["GITHUB_RUN_ATTEMPT"]' in text
     assert 'value["producer_sha"] == os.environ["GITHUB_SHA"]' in text
+
+
+def test_stream_observer_matches_release_manifest_categories_and_checksums():
+    text = (ROOT / ".github/workflows/stream-observer-backend.yml").read_text()
+    assert text.count("--required-suite integration") == 2
+    assert 'item["sha256"] = hashlib.sha256(target.read_bytes()).hexdigest()' in text
+
+
+def test_reliability_release_authority_workflow_retains_canonical_evidence():
+    text = (ROOT / ".github/workflows/stream-pathway-reliability-production-closure-v1.yml").read_text()
+    assert ".github/workflows/stream-pathway-reliability-production-closure-v1.yml" in text
+    assert "--ignore=tests/security/data_products" in text
+    assert "playwright install --with-deps chromium firefox webkit" in text
+    assert "stream-pathway-reliability-production-closure-v1-evidence" in text
+    assert "write_evidence_envelope.py --output evidence/evidence.json" in text
+    assert "--test-category reliability" in text
+    assert "--test-category tenant-isolation" in text
+    assert "--test-category browser" in text
+    assert "--test-category accessibility" in text
+    assert "check_downloaded_envelope.py --directory downloaded-evidence" in text

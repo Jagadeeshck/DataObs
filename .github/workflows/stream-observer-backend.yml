@@ -66,7 +66,18 @@ jobs:
         env: {GH_TOKEN: "${{ github.token }}"}
         run: |
           JOB_ID=$(curl -fsS -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" "${{ github.api_url }}/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/jobs?per_page=100" | python -c 'import json,sys; print(next(j["id"] for j in json.load(sys.stdin)["jobs"] if j["name"] == "certify"))')
-          python scripts/certification/verify_product_evidence.py generate --directory stream-observer-backend-v1-evidence --repository "${{ github.repository }}" --workflow "stream-observer-backend.yml" --run-id "${{ github.run_id }}" --job-id "$JOB_ID" --event "${{ github.event_name }}" --elasticsearch-version 9.4.2 --python-version "$(python --version | cut -d' ' -f2)" --required-suite elasticsearch --required-suite kafka --required-suite observer --required-suite security --required-suite tenant
+          python scripts/certification/verify_product_evidence.py generate --directory stream-observer-backend-v1-evidence --repository "${{ github.repository }}" --workflow "stream-observer-backend.yml" --run-id "${{ github.run_id }}" --job-id "$JOB_ID" --event "${{ github.event_name }}" --elasticsearch-version 9.4.2 --python-version "$(python --version | cut -d' ' -f2)" --required-suite elasticsearch --required-suite kafka --required-suite integration --required-suite observer --required-suite security --required-suite tenant
+          python - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+          root = Path("stream-observer-backend-v1-evidence")
+          path = root / "evidence.json"
+          value = json.loads(path.read_text())
+          for item in value["artifact_inventory"]:
+              target = root / item["path"]
+              item["sha256"] = hashlib.sha256(target.read_bytes()).hexdigest()
+          path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n")
+          PY
       - uses: actions/upload-artifact@v4
         if: always()
         with: {name: stream-observer-backend-v1-evidence, path: stream-observer-backend-v1-evidence, retention-days: 30, if-no-files-found: error}
@@ -88,4 +99,4 @@ jobs:
           assert str(value["workflow_run_id"]) == os.environ["GITHUB_RUN_ID"]
           assert value["producer_sha"] == os.environ["GITHUB_SHA"]
           PY
-      - run: python scripts/certification/verify_product_evidence.py verify --directory downloaded-evidence --repository "${{ github.repository }}" --workflow "stream-observer-backend.yml" --run-id "${{ github.run_id }}" --expected-sha "$(git rev-parse HEAD)" --required-suite elasticsearch --required-suite kafka --required-suite observer --required-suite security --required-suite tenant
+      - run: python scripts/certification/verify_product_evidence.py verify --directory downloaded-evidence --repository "${{ github.repository }}" --workflow "stream-observer-backend.yml" --run-id "${{ github.run_id }}" --expected-sha "$(git rev-parse HEAD)" --required-suite elasticsearch --required-suite kafka --required-suite integration --required-suite observer --required-suite security --required-suite tenant

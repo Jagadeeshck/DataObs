@@ -43,7 +43,7 @@ jobs:
           pnpm api:generate
           pnpm typecheck && pnpm lint && pnpm format:check && pnpm test
           pnpm build && pnpm bundle:check
-          pnpm exec playwright install --with-deps chromium
+          pnpm exec playwright install --with-deps chromium firefox webkit
           pnpm playwright
       - name: Exact-commit evidence
         run: |

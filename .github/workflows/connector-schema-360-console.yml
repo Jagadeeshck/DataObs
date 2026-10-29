@@ -58,7 +58,7 @@ jobs:
           pnpm api:generate
           git diff --exit-code src/api/generated/schema.ts
           pnpm typecheck && pnpm lint && pnpm format:check && pnpm test -- --reporter=junit --outputFile=../../evidence/console.xml && pnpm build && pnpm bundle:check
-          pnpm exec playwright install --with-deps chromium
+          pnpm exec playwright install --with-deps chromium firefox webkit
           pnpm playwright
       - name: Generate and independently verify evidence
         run: |

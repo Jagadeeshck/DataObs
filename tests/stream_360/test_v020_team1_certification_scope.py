@@ -35,3 +35,15 @@ def test_stream_observer_generate_and_verify_require_identical_suites():
         "--required-suite tenant"
     )
     assert text.count(required) == 2
+
+
+def test_team1_browser_callers_install_certified_browser_matrix():
+    for relative in (
+        ".github/workflows/cluster-360-console.yml",
+        ".github/workflows/connector-schema-360-console.yml",
+        ".github/workflows/stream-360-core-console.yml",
+        ".github/workflows/pathway-explorer-console.yml",
+        ".github/workflows/stream-pathway-reliability-runtime-v1.yml",
+    ):
+        text = (ROOT / relative).read_text()
+        assert "playwright install --with-deps chromium firefox webkit" in text

@@ -53,7 +53,7 @@ jobs:
         run: pnpm install --frozen-lockfile && pnpm api:generate && git diff --exit-code src/api/generated/schema.ts && pnpm typecheck && pnpm lint && pnpm format:check && pnpm test -- --reporter=junit --outputFile=../../evidence/console-junit.xml && pnpm build && pnpm bundle:check
       - name: Playwright and accessibility
         working-directory: ui/dataobs-console
-        run: pnpm exec playwright install --with-deps chromium && pnpm playwright
+        run: pnpm exec playwright install --with-deps chromium firefox webkit && pnpm playwright
       - name: Produce and independently verify exact-commit evidence
         run: |
           printf '{"final_sha":"%s","elasticsearch_version":"9.4.2","cluster_overview":true,"broker_result":true,"topic_result":true,"consumer_group_result":true,"connector_result":true,"health_aggregation":true,"cursor_result":true,"tenant_isolation":true,"playwright":true,"accessibility":true,"junit_results":["elasticsearch.xml","api-security.xml","console-junit.xml"]}\n' "$(git rev-parse HEAD)" > evidence/cluster-360-console-v1.json

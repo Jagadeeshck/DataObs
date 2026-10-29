@@ -101,10 +101,24 @@ services:
     networks: [certification-data, certification-control, certification-host]
   kafka-2:
     <<: *kafka
-    environment: {<<: *kafka-env, KAFKA_NODE_ID: 2, KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka-2:9092"}
+    environment:
+      <<: *kafka-env
+      KAFKA_NODE_ID: 2
+      KAFKA_LISTENERS: "PLAINTEXT://:9092,EXTERNAL://:29092,CONTROLLER://:9093"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka-2:9092,EXTERNAL://127.0.0.1:19093"
+    ports: ["127.0.0.1:19093:29092"]
+    networks: [certification-data, certification-control, certification-host]
   kafka-3:
     <<: *kafka
-    environment: {<<: *kafka-env, KAFKA_NODE_ID: 3, KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka-3:9092"}
+    environment:
+      <<: *kafka-env
+      KAFKA_NODE_ID: 3
+      KAFKA_LISTENERS: "PLAINTEXT://:9092,EXTERNAL://:29092,CONTROLLER://:9093"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka-3:9092,EXTERNAL://127.0.0.1:19094"
+    ports: ["127.0.0.1:19094:29092"]
+    networks: [certification-data, certification-control, certification-host]
   schema-registry:
     image: confluentinc/cp-schema-registry:7.9.0
     profiles: [kafka, cert-kafka, full]

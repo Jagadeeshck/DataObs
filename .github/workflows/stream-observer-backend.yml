@@ -79,4 +79,13 @@ jobs:
         with: {fetch-depth: 0}
       - uses: actions/download-artifact@v4
         with: {name: stream-observer-backend-v1-evidence, path: downloaded-evidence}
+      - name: Verify exact run attempt provenance
+        run: |
+          python - <<'PY'
+          import json, os
+          value = json.load(open("downloaded-evidence/evidence.json"))
+          assert str(value["workflow_run_attempt"]) == os.environ["GITHUB_RUN_ATTEMPT"]
+          assert str(value["workflow_run_id"]) == os.environ["GITHUB_RUN_ID"]
+          assert value["producer_sha"] == os.environ["GITHUB_SHA"]
+          PY
       - run: python scripts/certification/verify_product_evidence.py verify --directory downloaded-evidence --repository "${{ github.repository }}" --workflow "stream-observer-backend.yml" --run-id "${{ github.run_id }}" --expected-sha "$(git rev-parse HEAD)" --required-suite elasticsearch --required-suite kafka --required-suite observer --required-suite security --required-suite tenant

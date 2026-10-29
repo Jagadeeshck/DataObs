@@ -79,3 +79,24 @@ def test_mandatory_team1_artifacts_have_downloaded_envelope_verification():
         assert "check_downloaded_envelope.py --directory downloaded-evidence" in text
         for category in categories:
             assert f"--category {category}" in text
+
+
+def test_downloaded_envelope_verifiers_have_checksum_inventory_and_bootstrap():
+    for relative in (
+        ".github/workflows/pathway-intelligence-backend.yml",
+        ".github/workflows/cluster-360-console.yml",
+        ".github/workflows/connector-schema-360-console.yml",
+        ".github/workflows/stream-360-core-console.yml",
+        ".github/workflows/pathway-explorer-console.yml",
+    ):
+        text = (ROOT / relative).read_text()
+        assert "--supporting-file evidence/" in text
+        assert "python -m pip install pyyaml" in text
+        assert "verify_artifacts.py downloaded-evidence --sentinels-only" in text
+
+
+def test_stream_observer_verifies_run_attempt_provenance():
+    text = (ROOT / ".github/workflows/stream-observer-backend.yml").read_text()
+    assert 'value["workflow_run_attempt"]' in text
+    assert 'os.environ["GITHUB_RUN_ATTEMPT"]' in text
+    assert 'value["producer_sha"] == os.environ["GITHUB_SHA"]' in text

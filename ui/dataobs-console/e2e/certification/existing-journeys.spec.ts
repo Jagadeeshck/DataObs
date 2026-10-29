@@ -35,5 +35,7 @@ test("primary navigation is keyboard reachable with visible focus", async ({
 }) => {
   await page.goto("/");
   await page.keyboard.press("Tab");
-  await expect(page.getByRole("link", { name: "Skip to content" })).toBeFocused();
+  await expect(
+    page.getByRole("link", { name: "Skip to content" }),
+  ).toBeFocused();
 });

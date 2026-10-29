@@ -122,7 +122,6 @@ test("supportability uses typed fields and never renders accidental secrets", as
   expect(browserLogs.join("\n")).not.toContain("must-not-render");
 });
 
-
 test("ordinary tenant user cannot see or open supportability", async ({
   page,
 }) => {

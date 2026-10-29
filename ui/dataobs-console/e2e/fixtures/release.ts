@@ -24,7 +24,10 @@ export async function mockReleaseAuth(
       status: 404,
       contentType: "application/json",
       body: JSON.stringify({
-        detail: { code: "not_configured", message: "No release fixture for this endpoint" },
+        detail: {
+          code: "not_configured",
+          message: "No release fixture for this endpoint",
+        },
       }),
     }),
   );
@@ -108,23 +111,37 @@ export async function mockDataProductRelease(page: Page) {
       },
     }),
   );
-  await page.route(/\/api\/v1\/data-products\/(seed-product|demo)\?/, (route) =>
-    route.fulfill({
-      json: {
-        product: { ...product, id: route.request().url().includes("/demo?") ? "demo" : "seed-product" },
-        data_status: "complete",
-        warnings: [],
-      },
-    }),
+  await page.route(
+    /\/api\/v1\/data-products\/(seed-product|demo)\?/,
+    (route) =>
+      route.fulfill({
+        json: {
+          product: {
+            ...product,
+            id: route.request().url().includes("/demo?")
+              ? "demo"
+              : "seed-product",
+          },
+          data_status: "complete",
+          warnings: [],
+        },
+      }),
   );
-  await page.route(/\/api\/v1\/data-products\/(seed-product|demo)\/(members|dependencies|revisions)(\?|$)/, (route) =>
-    route.fulfill({ json: { items: [], truncated: false, next_cursor: null } }),
+  await page.route(
+    /\/api\/v1\/data-products\/(seed-product|demo)\/(members|dependencies|revisions)(\?|$)/,
+    (route) =>
+      route.fulfill({
+        json: { items: [], truncated: false, next_cursor: null },
+      }),
   );
-  await page.route(/\/api\/v1\/data-products\/(seed-product|demo)\/dependencies\/upstream\?/, (route) =>
-    route.fulfill({ json: { edges: [], truncated: false, next_cursor: null } }),
+  await page.route(
+    /\/api\/v1\/data-products\/(seed-product|demo)\/dependencies\/upstream\?/,
+    (route) =>
+      route.fulfill({
+        json: { edges: [], truncated: false, next_cursor: null },
+      }),
   );
 }
-
 
 export async function mockCriticalJourneys(page: Page) {
   await mockReleaseShell(page);
@@ -252,7 +269,10 @@ export async function mockCriticalJourneys(page: Page) {
         owner: "payments",
         state: "failed",
         last_seen: observedAt,
-        missing_run: { state: "unknown", reason: "insufficient schedule evidence" },
+        missing_run: {
+          state: "unknown",
+          reason: "insufficient schedule evidence",
+        },
       },
     }),
   );
@@ -380,8 +400,20 @@ export async function mockCriticalJourneys(page: Page) {
         node_ids: ["source", "asset-orders"],
         edge_ids: ["edge-1"],
         nodes: [
-          { node_id: "source", name: "orders-source", node_type: "dataset", health: "healthy", confidence: 0.9 },
-          { node_id: "asset-orders", name: "orders", node_type: "dataset", health: "degraded", confidence: 0.9 },
+          {
+            node_id: "source",
+            name: "orders-source",
+            node_type: "dataset",
+            health: "healthy",
+            confidence: 0.9,
+          },
+          {
+            node_id: "asset-orders",
+            name: "orders",
+            node_type: "dataset",
+            health: "degraded",
+            confidence: 0.9,
+          },
         ],
         edges: [
           {
@@ -499,20 +531,22 @@ export async function mockCriticalJourneys(page: Page) {
   await page.route("**/api/v1/incident-workbench/incident-orders?**", (route) =>
     route.fulfill({ json: incident }),
   );
-  await page.route("**/api/v1/incident-workbench/incident-orders/timeline?**", (route) =>
-    route.fulfill({
-      json: {
-        items: [
-          {
-            event_id: "event-1",
-            event_type: "finding",
-            timestamp: observedAt,
-            actor: "dataobs",
-            summary: "Freshness finding linked",
-          },
-        ],
-      },
-    }),
+  await page.route(
+    "**/api/v1/incident-workbench/incident-orders/timeline?**",
+    (route) =>
+      route.fulfill({
+        json: {
+          items: [
+            {
+              event_id: "event-1",
+              event_type: "finding",
+              timestamp: observedAt,
+              actor: "dataobs",
+              summary: "Freshness finding linked",
+            },
+          ],
+        },
+      }),
   );
 
   await page.route("**/api/v1/integrations/metadata?**", (route) =>

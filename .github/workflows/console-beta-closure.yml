@@ -28,7 +28,16 @@ jobs:
         run: pnpm install --frozen-lockfile && pnpm api:generate && git diff --exit-code src/api/generated/schema.ts
       - name: Static, route, contract, and unit tests
         working-directory: ui/dataobs-console
-        run: mkdir -p ../../evidence && pnpm typecheck && pnpm lint && pnpm format:check && pnpm exec vitest run --reporter=junit --outputFile=../../evidence/vitest.xml
+        run: |
+          mkdir -p ../../evidence
+          pnpm typecheck
+          pnpm lint
+          if ! pnpm format:check; then
+            pnpm exec prettier --write e2e/console.spec.ts e2e/fixtures/release.ts e2e/release-critical-journeys.spec.ts
+            git diff -- e2e/console.spec.ts e2e/fixtures/release.ts e2e/release-critical-journeys.spec.ts
+            exit 1
+          fi
+          pnpm exec vitest run --reporter=junit --outputFile=../../evidence/vitest.xml
       - name: Production bundle
         working-directory: ui/dataobs-console
         run: mkdir -p ../../evidence && pnpm build 2>&1 | tee ../../evidence/build.log && pnpm bundle:check 2>&1 | tee ../../evidence/bundle.log

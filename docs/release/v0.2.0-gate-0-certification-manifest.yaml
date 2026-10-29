@@ -45,3 +45,9 @@ capabilities:
     artifact: team-0-backup-restore-v1-evidence
     required_jobs: [certify]
     required_test_categories: [backup, restore, tenant-isolation]
+  - capability_id: console-browser-accessibility
+    owning_team: Team 5
+    workflow: console-beta-closure.yml
+    artifact: console-beta-closure-v1-evidence
+    required_jobs: [validate, verify-evidence]
+    required_test_categories: [browser, accessibility]

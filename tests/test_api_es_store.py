@@ -186,6 +186,34 @@ class TestRules:
         query = store._es.search.call_args.kwargs["query"]
         assert {"term": {"tenant_id": "t42"}} in query["bool"]["must"]
 
+    def test_rule_scope_is_written_and_queried(self):
+        store = _make_store(tenant_id="tenant-a")
+        store._es.index.return_value = {}
+        store.save_rule(
+            {"rule_id": "shared", "dataset": "orders"},
+            tenant_id="tenant-a",
+            environment="prod",
+        )
+        assert store._es.index.call_args.kwargs["id"] == "prod::shared"
+        document = store._es.index.call_args.kwargs["document"]
+        assert document["tenant_id"] == "tenant-a"
+        assert document["environment"] == "prod"
+
+        store._es.search.return_value = {"hits": {"hits": []}}
+        store.get_all_rules(tenant_id="tenant-a", environment="prod")
+        must = store._es.search.call_args.kwargs["query"]["bool"]["must"]
+        assert {"term": {"tenant_id": "tenant-a"}} in must
+        assert {"term": {"environment": "prod"}} in must
+
+    def test_rule_scope_fails_closed_for_other_tenant(self):
+        store = _make_store(tenant_id="tenant-a")
+        assert store.get_rule("shared", tenant_id="tenant-b", environment="prod") is None
+        assert store.get_all_rules(tenant_id="tenant-b", environment="prod") == []
+        assert store.delete_rule("shared", tenant_id="tenant-b", environment="prod") is False
+        store._es.get.assert_not_called()
+        store._es.search.assert_not_called()
+        store._es.delete.assert_not_called()
+
     def test_multi_tenant_isolation(self):
         """Two stores with different tenant_ids must never share index names."""
         from src.api.es_store import ElasticsearchStore

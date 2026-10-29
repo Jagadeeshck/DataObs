@@ -66,14 +66,36 @@ class _FakeStore:
         }
 
     def get_all_rules(self, **kwargs):
-        return list(self.rules.values())
+        tenant_id = kwargs.get("tenant_id")
+        environment = kwargs.get("environment")
+        return [
+            rule
+            for rule in self.rules.values()
+            if (tenant_id is None or rule.get("tenant_id", tenant_id) == tenant_id)
+            and (environment is None or rule.get("environment", environment) == environment)
+        ]
 
-    def add_rule(self, rule):
-        self.rules[rule.get("rule_id", "rnew")] = rule
+    def add_rule(self, rule, **kwargs):
+        document = {**rule}
+        if kwargs.get("tenant_id") is not None:
+            document["tenant_id"] = kwargs["tenant_id"]
+        if kwargs.get("environment") is not None:
+            document["environment"] = kwargs["environment"]
+        self.rules[rule.get("rule_id", "rnew")] = document
         return rule.get("rule_id", "rnew")
 
-    def delete_rule(self, rule_id):
-        return self.rules.pop(rule_id, None) is not None
+    def delete_rule(self, rule_id, **kwargs):
+        rule = self.rules.get(rule_id)
+        if rule is None:
+            return False
+        tenant_id = kwargs.get("tenant_id")
+        environment = kwargs.get("environment")
+        if tenant_id is not None and rule.get("tenant_id", tenant_id) != tenant_id:
+            return False
+        if environment is not None and rule.get("environment", environment) != environment:
+            return False
+        self.rules.pop(rule_id)
+        return True
 
     def save_quality_result(self, result):
         self.results[result.get("id", "new")] = result

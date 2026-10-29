@@ -760,6 +760,9 @@ jobs:
         with: {python-version: "3.11", cache: pip}
       - run: pip install -r requirements.txt
       - run: cd ui/dataobs-console && pnpm install --frozen-lockfile && pnpm api:generate && pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm build && pnpm bundle:check
+      - name: Install supported Console certification browsers
+        working-directory: ui/dataobs-console
+        run: pnpm exec playwright install --with-deps chromium firefox webkit
       - name: Start production Console stack
         run: CERTIFICATION_PROFILE=cert-browser ./scripts/certification/compose.sh up
       - name: Apply and verify released migrations

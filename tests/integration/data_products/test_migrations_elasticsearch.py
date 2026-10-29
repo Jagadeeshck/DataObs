@@ -46,10 +46,41 @@ def test_clean_install_executes_all_released_migrations(elasticsearch_client, el
     assert set(migration_status["applied"]) == {item.migration_id for item in expected}
     assert all(migration_status["applied"][item.migration_id]["checksum"] == item.checksum for item in expected)
     assert all(elasticsearch_client.indices.exists(index=name) for name in REQUIRED_RESOURCES)
+
+    # Sprint 3 hosted regression: a Data Product clean install traverses the
+    # shared reliability migrations too.  The global mapping union must not
+    # preempt the first released owner of observed_value before migration 0025
+    # validates the resource.
+    reliability_index = "dataobs-reliability-status-v1"
+    reliability_mapping = elasticsearch_client.indices.get_mapping(index=reliability_index)[reliability_index][
+        "mappings"
+    ]
+    assert reliability_mapping["properties"]["observed_value"]["type"] == "double"
+
+    # Retain direct proof that the Data Product 0015 writer contracts also
+    # survive the same hosted clean-install path.
+    revisions_index = "dataobs-data-product-revisions-v1"
+    revisions_mapping = elasticsearch_client.indices.get_mapping(index=revisions_index)[revisions_index]["mappings"]
+    assert revisions_mapping["properties"]["revision"]["type"] == "integer"
+    assert revisions_mapping["properties"]["operation_id"]["type"] == "keyword"
+
+    operation_mapping = _mapping(elasticsearch_client)
+    assert operation_mapping["properties"]["revision"]["type"] == "integer"
+    assert operation_mapping["properties"]["operation_id"]["type"] == "keyword"
+
     recorder = scenario_recorder("migration-clean-install.json", "clean install through latest migration")
     recorder.assert_that(True, "cluster began clean and registry apply executed")
     recorder.assert_that(len(applied) == len(expected), "exact released migration count observed")
+    recorder.assert_that(
+        reliability_mapping["properties"]["observed_value"]["type"] == "double",
+        "shared reliability status mapping preserved first released field ownership",
+    )
+    recorder.assert_that(
+        revisions_mapping["properties"]["revision"]["type"] == "integer",
+        "Data Product revision mapping remained writer compatible",
+    )
     recorder.reference(expected[-1].migration_id)
+    recorder.reference("dataobs-reliability-status-v1.observed_value:double")
     recorder.passed(elasticsearch_version)
 
 

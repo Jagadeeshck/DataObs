@@ -1,0 +1,44 @@
+{
+  "schema_version": "1.0",
+  "team": "Team 4",
+  "target": "DataObs v0.2.0",
+  "audited_main_sha": "919b1e5f1f069ceb76830b92f8eb44e423e15a90",
+  "branch": "codex/release-team4-integrations",
+  "final_head_status": "pending_pr_workflows",
+  "terminal_migration": "0033_team1_stream_schema_intelligence_runtime",
+  "release_state_at_audit": "NO_GO",
+  "reviewed_hosted_runs": {
+    "integration_sdk": {
+      "run_id": 40671870750,
+      "result": "pass",
+      "live_provider": "not_applicable"
+    },
+    "google_pubsub": {
+      "run_id": 40671870728,
+      "result": "pass",
+      "live_provider": "not_run"
+    },
+    "rabbitmq": {
+      "run_id": 40671870655,
+      "result": "pass",
+      "live_provider": "not_certified"
+    },
+    "azure": {
+      "run_id": 40671870703,
+      "result": "pass",
+      "live_provider": "not_run"
+    },
+    "postgresql": {
+      "run_id": 40583054174,
+      "result": "fail",
+      "failure": "missing canonical runtime dependency pydantic in workflow environment",
+      "live_provider": "skipped"
+    },
+    "kafka_team1": {
+      "run_id": 40671870669,
+      "result": "fail",
+      "owner": "Team 1/security"
+    }
+  },
+  "support_claim": "none; reviewed-base evidence only"
+}

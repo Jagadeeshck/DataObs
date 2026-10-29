@@ -2,15 +2,27 @@ name: Integration SDK certification
 on:
   workflow_dispatch:
   push: {branches: [main]}
+  pull_request:
+    paths:
+      - 'packages/collectors/sdk/**'
+      - 'services/collection_manager/**'
+      - 'integrations/**'
+      - 'tests/integrations/**'
+      - 'requirements*.txt'
+      - '.github/workflows/integration-sdk-certification.yml'
 permissions: {contents: read}
 jobs:
   certify:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
       - uses: actions/setup-python@v5
         with: {python-version: '3.12'}
-      - run: pip install -r requirements.txt pytest
+      - run: pip install -r requirements.txt -r requirements-ci.txt
+      - run: python -m compileall -q packages/collectors/sdk services/collection_manager
+      - run: ruff check packages/collectors/sdk services/collection_manager tests/integrations
+      - run: black --check packages/collectors/sdk services/collection_manager tests/integrations
       - run: mkdir -p evidence/results && python -m pytest tests/integrations -q --junitxml=evidence/results/sdk.xml
       - run: |
           python scripts/certification/write_evidence_envelope.py --output evidence/evidence.json \
@@ -19,5 +31,16 @@ jobs:
             --workflow-run-attempt "$GITHUB_RUN_ATTEMPT" --event "$GITHUB_EVENT_NAME" --status pass \
             --test-category unit --test-category redaction --test-category tenant-isolation \
             --supporting-file evidence/results/sdk.xml --tool-version "python=$(python --version | cut -d' ' -f2)"
+      - name: Verify exact-SHA evidence
+        run: |
+          python - <<'PY'
+          import json, os
+          value=json.load(open('evidence/evidence.json', encoding='utf-8'))
+          assert value['repository'] == os.environ['GITHUB_REPOSITORY']
+          assert value['producer_sha'] == os.environ['GITHUB_SHA']
+          assert value['status'] == 'pass'
+          assert value['redaction_status'] == 'pass'
+          assert value['artifact_inventory']
+          PY
       - uses: actions/upload-artifact@v4
         with: {name: integration-sdk-v1-evidence, path: evidence, retention-days: 30}

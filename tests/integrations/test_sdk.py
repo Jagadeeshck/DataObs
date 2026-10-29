@@ -171,3 +171,19 @@ def test_retry_propagates_cancellation():
             await with_retry(cancelled, RetryPolicy())
 
     asyncio.run(scenario())
+
+
+def test_registered_provider_capability_declarations_are_complete():
+    from services.collection_manager.cli import build_registry
+
+    registry = build_registry()
+    all_capabilities = frozenset(Capability)
+    assert registry.provider_types()
+    for provider_type in registry.provider_types():
+        provider = registry.create(provider_type)
+        capabilities = provider.capabilities()
+        assert capabilities.supported
+        assert capabilities.supported.isdisjoint(capabilities.unsupported)
+        assert capabilities.supported | capabilities.unsupported == all_capabilities
+        assert capabilities.collection_modes
+        assert all(str(permission).strip() for permission in capabilities.required_permissions)

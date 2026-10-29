@@ -16,7 +16,7 @@ jobs:
         with: {fetch-depth: 0}
       - uses: actions/setup-python@v5
         with: {python-version: '${{ matrix.python }}'}
-      - run: pip install -r requirements-postgres.txt pytest ruff black mypy pip-audit
+      - run: pip install -r requirements.txt -r requirements-ci.txt -r requirements-postgres.txt
       - run: python -m compileall integrations/database integrations/databases/postgres services/collection_manager
       - run: ruff check integrations/database integrations/databases/postgres services/collection_manager tests/unit/database_foundation tests/unit/postgres_provider
       - run: black --check integrations/database integrations/databases/postgres tests/unit/database_foundation tests/unit/postgres_provider
@@ -26,8 +26,8 @@ jobs:
       - run: python scripts/release/check_release_metadata.py
       - run: python scripts/validate_capability_ledger.py
       - run: python scripts/check_generated_artifacts.py
-      - run: pip-audit -r requirements-postgres.txt
-      - run: if rg -n '^(<<<<<<<|=======|>>>>>>>)' --glob '!*.lock' .; then exit 1; else result=$?; test "$result" -eq 1; fi
+      - run: pip check && pip-audit -r requirements-postgres.txt
+      - run: python scripts/check_merge_conflict_markers.py
   postgres-live:
     if: inputs.run_postgres_live
     runs-on: ubuntu-latest
@@ -44,6 +44,6 @@ jobs:
         with: {fetch-depth: 0}
       - uses: actions/setup-python@v5
         with: {python-version: '3.12'}
-      - run: pip install -r requirements-postgres.txt pytest
+      - run: pip install -r requirements.txt -r requirements-ci.txt -r requirements-postgres.txt
       - run: RUN_POSTGRES_INTEGRATION_TESTS=1 RUN_INTEGRATION_TESTS=1 pytest -q tests/integration/postgres_vertical_slice
         env: {POSTGRES_PASSWORD: synthetic, POSTGRES_USER: postgres, POSTGRES_DB: dataobs_test, POSTGRES_SSLMODE: prefer}

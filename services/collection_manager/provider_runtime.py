@@ -11,15 +11,22 @@ from packages.collectors.sdk import (
     CollectionCheckpoint,
     CollectionRequest,
     CollectionRunResult,
+    HealthObservation,
     IntegrationConfiguration,
     IntegrationContext,
+    MetricObservation,
     PartialFailure,
     ProviderRegistry,
     ResourceObservation,
     RetryPolicy,
     with_retry,
 )
-from packages.collectors.sdk.errors import CollectionTimeoutError, IntegrationError, InternalCollectorError
+from packages.collectors.sdk.errors import (
+    CollectionTimeoutError,
+    IntegrationError,
+    InternalCollectorError,
+    MalformedProviderResponseError,
+)
 from packages.collectors.sdk.redaction import redact_text
 
 from .provider_storage import ObservationRepository, RunRepository
@@ -72,6 +79,11 @@ class ProviderRuntime:
         async def collect_once() -> list[object]:
             observations: list[object] = []
             async for observation in provider.collect(context, request):
+                if not isinstance(
+                    observation,
+                    (ResourceObservation, MetricObservation, HealthObservation, PartialFailure),
+                ):
+                    raise MalformedProviderResponseError("provider emitted unsupported observation type")
                 if len(observations) >= self.maximum_observations:
                     raise InternalCollectorError("provider observation bound exceeded")
                 observations.append(observation)

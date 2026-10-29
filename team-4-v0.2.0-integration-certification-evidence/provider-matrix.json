@@ -1,0 +1,125 @@
+{
+  "schema_version": "1.0",
+  "decision_vocabulary": [
+    "SUPPORTED_CANDIDATE",
+    "EXPERIMENTAL",
+    "EXCLUDED",
+    "BLOCKED",
+    "OWNER_HANDOFF"
+  ],
+  "providers": [
+    {
+      "name": "integration_sdk",
+      "version": "v1",
+      "packaged": false,
+      "decision": "SUPPORTED_CANDIDATE",
+      "note": "foundation only; not a connector"
+    },
+    {
+      "name": "opentelemetry",
+      "version": "external",
+      "packaged": true,
+      "decision": "OWNER_HANDOFF",
+      "owner": "Team 0"
+    },
+    {
+      "name": "openlineage",
+      "version": "api-contract",
+      "packaged": true,
+      "decision": "OWNER_HANDOFF",
+      "owner": "Team 2/Team 0"
+    },
+    {
+      "name": "kafka",
+      "version": "team1-runtime",
+      "packaged": true,
+      "decision": "OWNER_HANDOFF",
+      "owner": "Team 1/Team 0"
+    },
+    {
+      "name": "postgres",
+      "version": "1",
+      "packaged": true,
+      "decision": "BLOCKED",
+      "note": "scanner run path/lease durability unproven"
+    },
+    {
+      "name": "aws",
+      "packaged": false,
+      "decision": "EXPERIMENTAL",
+      "note": "Collection Manager runtime not in supported v0.2.0 package"
+    },
+    {
+      "name": "gcp",
+      "packaged": false,
+      "decision": "EXPERIMENTAL",
+      "note": "Collection Manager runtime not in supported v0.2.0 package"
+    },
+    {
+      "name": "rabbitmq",
+      "packaged": false,
+      "decision": "EXPERIMENTAL",
+      "note": "Collection Manager runtime not in supported v0.2.0 package"
+    },
+    {
+      "name": "azure",
+      "packaged": false,
+      "decision": "EXPERIMENTAL",
+      "note": "Collection Manager runtime not in supported v0.2.0 package"
+    },
+    {
+      "name": "snowflake",
+      "packaged": false,
+      "decision": "EXPERIMENTAL",
+      "note": "Collection Manager runtime not in supported v0.2.0 package"
+    },
+    {
+      "name": "databricks",
+      "packaged": false,
+      "decision": "EXPERIMENTAL",
+      "note": "Collection Manager runtime not in supported v0.2.0 package"
+    },
+    {
+      "name": "bigquery",
+      "packaged": false,
+      "decision": "EXPERIMENTAL",
+      "note": "Collection Manager runtime not in supported v0.2.0 package"
+    },
+    {
+      "name": "trino",
+      "packaged": false,
+      "decision": "EXPERIMENTAL",
+      "note": "Collection Manager runtime not in supported v0.2.0 package"
+    },
+    {
+      "name": "presto",
+      "packaged": false,
+      "decision": "EXPERIMENTAL",
+      "note": "Collection Manager runtime not in supported v0.2.0 package"
+    },
+    {
+      "name": "mysql",
+      "packaged": false,
+      "decision": "EXPERIMENTAL",
+      "note": "Collection Manager runtime not in supported v0.2.0 package"
+    },
+    {
+      "name": "mariadb",
+      "packaged": false,
+      "decision": "EXPERIMENTAL",
+      "note": "Collection Manager runtime not in supported v0.2.0 package"
+    },
+    {
+      "name": "sqlserver",
+      "packaged": false,
+      "decision": "EXPERIMENTAL",
+      "note": "Collection Manager runtime not in supported v0.2.0 package"
+    },
+    {
+      "name": "oracle",
+      "packaged": false,
+      "decision": "EXPERIMENTAL",
+      "note": "Collection Manager runtime not in supported v0.2.0 package"
+    }
+  ]
+}

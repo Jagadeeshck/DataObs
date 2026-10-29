@@ -1,0 +1,23 @@
+{
+  "schema_version": "1.0",
+  "team4": [
+    "final-head Integration SDK workflow must pass",
+    "PostgreSQL mandatory workflow must pass after dependency repair",
+    "PostgreSQL packaged Scanner Worker lacks proven durable scheduling/lease/restart path",
+    "PostgreSQL live service proof is absent"
+  ],
+  "team0": [
+    "Collection Manager is excluded from the supported package",
+    "bundled OpenTelemetry Collector image/version/digest requires validated release pin",
+    "final supported-platform and release promotion evidence remains pending"
+  ],
+  "team1": [
+    "stream-observer-backend run 40671870669 failed; security tenant-isolation assertions must close before Kafka release recommendation"
+  ],
+  "team2": [
+    "OpenLineage release suitability requires Team 2 exact-SHA contract/runtime evidence"
+  ],
+  "external": [
+    "live provider credentials/environments are intentionally absent for most optional providers"
+  ]
+}

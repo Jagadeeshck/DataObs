@@ -27,7 +27,7 @@ from src.quality.checks.in_memory_null_check import InMemoryNullCheck
 from src.quality.runner import QualityRunner
 
 WEBHOOK = "http://localhost:8089"
-HEADERS_A = {"X-DataObs-Tenant": "signal-tenant-a"}
+HEADERS_A = {"X-DataObs-Tenant": "signal-tenant-a", "X-DataObs-Environment": "production"}
 
 
 def _wait_for_trace(es: Elasticsearch, execution_id: str) -> dict:

@@ -16,7 +16,7 @@ permissions: { contents: read }
 jobs:
   exact-commit-evidence:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 45
     env:
       CERT_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
     steps:
@@ -38,16 +38,18 @@ jobs:
         run: pnpm install --frozen-lockfile && pnpm api:generate && git diff --exit-code src/api/generated/schema.ts
       - name: Static and route-manifest validation
         working-directory: ui/dataobs-console
-        run: mkdir -p ../../evidence && pnpm typecheck && pnpm lint && pnpm format:check && pnpm test -- --reporter=junit --outputFile=../../evidence/console-junit.xml
+        run: mkdir -p ../../evidence && pnpm typecheck && pnpm lint && pnpm format:check && pnpm exec vitest run --reporter=junit --outputFile=../../evidence/console-junit.xml
       - name: Production build and bundle report
         working-directory: ui/dataobs-console
         run: pnpm build && pnpm bundle:check | tee ../../evidence/bundle-report.txt && find dist -type f -printf '%s %p\n' | sort -nr > ../../evidence/production-assets.txt
       - name: Official browser installation
         working-directory: ui/dataobs-console
-        run: pnpm exec playwright install --with-deps chromium && pnpm exec playwright --version | tee ../../evidence/browser-version.txt
+        run: pnpm exec playwright install --with-deps chromium firefox webkit && pnpm exec playwright --version | tee ../../evidence/browser-version.txt
       - name: Playwright, axe, and cross-capability smoke
         working-directory: ui/dataobs-console
         run: pnpm playwright --reporter=html,junit && cp -R playwright-report ../../evidence/playwright-report
+        env:
+          PLAYWRIGHT_JUNIT_OUTPUT_FILE: ../../evidence/playwright.xml
       - name: Repository policy gates
         run: |
           python scripts/check_team_boundaries.py | tee evidence/team-boundaries.txt
@@ -91,13 +93,27 @@ jobs:
       - name: Verify independently selected exact commit and evidence contract
         run: |
           python - <<'PY'
-          import json, os, pathlib
+          import json, os, pathlib, xml.etree.ElementTree as ET
           from scripts.certification.provenance import expected_certification_sha
-          body=json.loads(pathlib.Path('retained/console-evidence.json').read_text())
+          root=pathlib.Path('retained')
+          body=json.loads((root/'console-evidence.json').read_text())
           expected=expected_certification_sha()
           required={'schema_version','repository','commit_sha','workflow','workflow_run_id','job_id','event','test_summaries','route_count','timestamp','known_warnings','skipped_gates'}
           if expected is None or body['commit_sha'] != expected: raise SystemExit('producer commit does not match independently selected SHA')
           if required-body.keys(): raise SystemExit(f'missing evidence fields: {sorted(required-body.keys())}')
           if any(value != 'passed' for value in body['test_summaries'].values()): raise SystemExit('a Console gate did not pass')
+          for name in ('console-junit.xml','playwright.xml'):
+              path=root/name
+              if not path.is_file(): raise SystemExit(f'missing retained report: {name}')
+              suites=ET.parse(path).getroot()
+              failures=sum(int(s.attrib.get('failures','0')) for s in suites.iter('testsuite'))
+              errors=sum(int(s.attrib.get('errors','0')) for s in suites.iter('testsuite'))
+              if failures or errors: raise SystemExit(f'{name} contains failed tests')
+          playwright=(root/'playwright.xml').read_text(errors='ignore').lower()
+          for browser in ('chromium','firefox','webkit'):
+              if browser not in playwright: raise SystemExit(f'missing browser evidence: {browser}')
+          for width in ('320','375','768','1024','1440'):
+              if f'shared release shell is accessible at {width}px' not in playwright:
+                  raise SystemExit(f'missing responsive evidence: {width}px')
           print(f"verified console evidence for {expected}")
           PY

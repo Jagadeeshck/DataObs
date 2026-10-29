@@ -74,6 +74,7 @@ jobs:
         working-directory: ui/dataobs-console
         env:
           PLAYWRIGHT_JUNIT_OUTPUT_FILE: ../../data-quality-console-v1-evidence/results/browser.xml
+          DATAOBS_PLAYWRIGHT_MATRIX: "all"
         run: |
           pnpm exec playwright test --config=playwright.config.ts --reporter=junit,html
           cp -R playwright-report ../../data-quality-console-v1-evidence/playwright-report

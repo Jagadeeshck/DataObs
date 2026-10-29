@@ -1,8 +1,8 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { mockCriticalJourneys, mockReleaseShell } from "./fixtures/release";
 
-const seriousOrCritical = async (page: Parameters<typeof AxeBuilder>[0]["page"]) =>
+const seriousOrCritical = async (page: Page) =>
   (await new AxeBuilder({ page }).analyze()).violations.filter((violation) =>
     ["serious", "critical"].includes(violation.impact ?? ""),
   );

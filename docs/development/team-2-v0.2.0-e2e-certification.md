@@ -31,6 +31,12 @@ The legacy `/rules` handlers now bind reads, writes and deletes to the authentic
 
 This is a security/domain correction; it does not create a new Quality engine.
 
+### Legacy Quality result isolation
+
+The legacy `/quality/results` write path now constructs a request-tenant Elasticsearch store, injects the authenticated tenant/environment, and list/get responses fail closed unless the stored environment matches the authenticated request context. The production-representative signal-path fixture now sends both `X-DataObs-Tenant` and `X-DataObs-Environment: production`, matching the evidence written by the Quality runner.
+
+A signed-OIDC regression proves tenant A cannot retrieve or list tenant B's Quality result.
+
 ### Data Product mapping ownership
 
 No released migration is modified.
@@ -71,7 +77,7 @@ Populate final run/artifact IDs after hosted execution.
 | Monitor scheduling/lease/checkpoint | pending final head | pending where applicable | pending | n/a | pending | n/a | pending | functional_unvalidated |
 | Missing/zero/stale Quality semantics | pending final head | pending | pending | pending | pending | pending | pending | functional_unvalidated |
 | Manual run-now | regression added | n/a | pending indirect | n/a | scoped | pending | pending | functional_unvalidated |
-| Quality signal path | unit/focused is not E2E proof | **mandatory CI integration stack** | mandatory | as compose requires | mandatory | Console investigation dependency | exact-SHA artifact required | blocked |
+| Quality signal path | unit/focused is not E2E proof | **mandatory CI integration stack** | mandatory | as compose requires | tenant + environment explicit | Console investigation dependency | exact-SHA artifact required | blocked |
 | OpenLineage ingestion/redaction | previous exact-head PASS | pending final-head rerun | pending | n/a | pending | Jobs journey pending | pending | functional_unvalidated |
 | Job/Run projections | previous exact-head PASS | pending final-head rerun | pending | n/a | pending | pending | pending | functional_unvalidated |
 | Dataset/column lineage | previous backend PASS | pending | pending | n/a | pending | pending | pending | functional_unvalidated |

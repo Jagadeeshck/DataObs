@@ -204,9 +204,7 @@ class ElasticsearchStore:
     def _rule_doc_id(rule_id: str, environment: str | None = None) -> str:
         return f"{environment}::{rule_id}" if environment else rule_id
 
-    def save_rule(
-        self, rule: Dict[str, Any], *, tenant_id: str | None = None, environment: str | None = None
-    ) -> str:
+    def save_rule(self, rule: Dict[str, Any], *, tenant_id: str | None = None, environment: str | None = None) -> str:
         """Persist or replace a tenant/environment-scoped quality rule."""
         if tenant_id is not None and tenant_id != self._tenant:
             raise ValueError("rule tenant does not match store tenant")
@@ -230,13 +228,15 @@ class ElasticsearchStore:
         return rule_id
 
     # Alias kept for backward compat with RuleStore.add_rule() call sites
-    def add_rule(
-        self, rule: Dict[str, Any], *, tenant_id: str | None = None, environment: str | None = None
-    ) -> str:
+    def add_rule(self, rule: Dict[str, Any], *, tenant_id: str | None = None, environment: str | None = None) -> str:
         return self.save_rule(rule, tenant_id=tenant_id, environment=environment)
 
     def get_rule(
-        self, rule_id: str, *, tenant_id: str | None = None, environment: str | None = None
+        self,
+        rule_id: str,
+        *,
+        tenant_id: str | None = None,
+        environment: str | None = None,
     ) -> Optional[Dict[str, Any]]:
         if tenant_id is not None and tenant_id != self._tenant:
             return None
@@ -290,7 +290,11 @@ class ElasticsearchStore:
             return []
 
     def get_rules_for_dataset(
-        self, dataset: str, *, tenant_id: str | None = None, environment: str | None = None
+        self,
+        dataset: str,
+        *,
+        tenant_id: str | None = None,
+        environment: str | None = None,
     ) -> List[Dict[str, Any]]:
         """Return rules for a specific dataset and tenant/environment."""
         if tenant_id is not None and tenant_id != self._tenant:
@@ -312,9 +316,7 @@ class ElasticsearchStore:
             logger.exception("Failed to fetch rules for dataset '%s'", dataset)
             return []
 
-    def delete_rule(
-        self, rule_id: str, *, tenant_id: str | None = None, environment: str | None = None
-    ) -> bool:
+    def delete_rule(self, rule_id: str, *, tenant_id: str | None = None, environment: str | None = None) -> bool:
         """Delete only a rule visible in the requested tenant/environment."""
         if self.get_rule(rule_id, tenant_id=tenant_id, environment=environment) is None:
             return False

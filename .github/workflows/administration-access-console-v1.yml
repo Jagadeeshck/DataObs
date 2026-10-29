@@ -45,6 +45,7 @@ jobs:
         working-directory: ui/dataobs-console
         env:
           PLAYWRIGHT_JUNIT_OUTPUT_FILE: ../../evidence/playwright.xml
+          DATAOBS_PLAYWRIGHT_MATRIX: "all"
         run: |
           pnpm exec playwright install --with-deps chromium firefox webkit
           pnpm playwright --reporter=html,junit

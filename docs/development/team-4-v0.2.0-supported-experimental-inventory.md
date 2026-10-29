@@ -94,3 +94,50 @@ Keep the release connector story deliberately small:
 - PostgreSQL only if its packaged runtime blocker is closed without broadening the release.
 
 Everything else remains experimental for v0.2.0.
+
+
+## Final Team 4 closure decision
+
+Closure baseline: `f62acd9f0d32ec827c26b7c8ccc56b18ac0c9401`.
+
+### Team 4 supported connectors for v0.2.0
+
+**None.**
+
+The Integration SDK is a release foundation and is being separately exact-SHA certified, but it is not itself a connector. Team 4 does not recommend promoting any provider connector until its actual runtime is both packaged and live-certified.
+
+### Explicit v0.2.0 exclusions
+
+The following remain implemented/experimental and are explicitly excluded from Team 4 support claims:
+
+- AWS data platform, Kinesis and SQS;
+- Snowflake;
+- Databricks;
+- BigQuery;
+- Google Pub/Sub;
+- Azure data platform;
+- Trino;
+- Presto;
+- MySQL;
+- MariaDB;
+- Microsoft SQL Server;
+- Oracle;
+- RabbitMQ.
+
+Reason: their operational runtime is Collection Manager, and Collection Manager remains excluded from the supported Helm package.
+
+PostgreSQL is also excluded. Its Python 3.11/3.12 contract suite passed in run `40841108301`, but the live service job was skipped and the packaged Scanner Worker does not yet demonstrate a durable distributed scheduler plus persistent lease/fencing/restart recovery.
+
+### Owner-gated collection paths
+
+These may be part of the product's first release only if their owning teams close their release gates:
+
+- **OpenTelemetry** — Team 0 package/image/configuration evidence.
+- **OpenLineage** — Team 2 canonical job/run contract evidence plus Team 0 package/release evidence. Team 2 job-run backend run `40862723962` passed on the closure baseline.
+- **Kafka** — Team 1 runtime evidence plus Team 0 package evidence. Team 1 stream-observer run `40862723897` failed on the closure baseline and therefore remains owner-gated.
+
+### Optional failures
+
+Optional provider workflow failures are classified, retained and reported; they are not silently ignored. They do not become v0.2.0 release blockers unless the provider is declared part of the supported profile or the failure exposes a shared SDK/runtime defect.
+
+The Azure capability-declaration failure was a shared SDK contract defect and is fixed in this closure branch. Provider-specific environment failures for excluded experimental providers remain visible but do not expand the v0.2.0 connector scope.

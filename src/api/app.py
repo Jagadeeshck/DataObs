@@ -1214,6 +1214,12 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
             severity=severity,
             run_id=run_id,
         )
+        results = [
+            result
+            for result in results
+            if result.get("tenant_id", request.state.tenant_id) == request.state.tenant_id
+            and result.get("environment") == request.state.environment
+        ]
         page = _paginate(results, limit, offset)
         return {"results": page["items"], "count": len(page["items"]), "pagination": page["pagination"]}
 
@@ -1229,7 +1235,11 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
 
             store = ElasticsearchStore(make_es_client(resolved_settings), tenant_id=request.state.tenant_id)
         result = store.get_quality_result(result_id)
-        if result is None:
+        if (
+            result is None
+            or result.get("tenant_id", request.state.tenant_id) != request.state.tenant_id
+            or result.get("environment") != request.state.environment
+        ):
             raise HTTPException(status_code=404, detail=f"Quality result '{result_id}' not found")
         return result
 
@@ -1301,9 +1311,14 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
         dependencies=[Depends(require_auth)],
     )
     async def create_quality_result(
-        result: QualityResultRequest, stores: StoreBundle = Depends(get_stores)
+        result: QualityResultRequest, request: Request, stores: StoreBundle = Depends(get_stores)
     ) -> Dict[str, Any]:
-        return {"id": stores.store.save_quality_result(_as_dict(result)), "status": "created"}
+        document = {
+            **_as_dict(result),
+            "tenant_id": request.state.tenant_id,
+            "environment": request.state.environment,
+        }
+        return {"id": scoped_legacy_store(request, stores).save_quality_result(document), "status": "created"}
 
     def dataobs_service(request: Request, stores: StoreBundle = Depends(get_stores)) -> DataObservabilityService:
         return DataObservabilityService(

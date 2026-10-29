@@ -159,6 +159,36 @@ def test_incident_index_creation_preserves_released_field_types():
     assert provider["tags"] == {"type": "flattened"}
 
 
+def test_console_and_pathway_projection_indices_have_writer_complete_mappings():
+    from packages.elastic_store.registry import _mapping
+
+    command_center = _mapping("dataobs-command-center-summary-v1")["properties"]
+    assert {
+        "overall_health",
+        "pillars",
+        "priority_items",
+        "recent_changes",
+        "data_status",
+        "critical_incidents",
+        "affected_services",
+    } <= set(command_center)
+
+    pathway_nodes = _mapping("dataobs-pathway-nodes-v1")["properties"]
+    assert {
+        "node_id",
+        "node_type",
+        "qualified_name",
+        "type",
+        "health",
+        "first_seen",
+        "last_seen",
+        "active",
+        "source_coverage",
+        "evidence_refs",
+        "badges",
+    } <= set(pathway_nodes)
+
+
 def test_data_stream_templates_disable_default_ingest_pipeline():
     """DataObs data streams must not reference a literal nonexistent pipeline."""
 

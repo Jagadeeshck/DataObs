@@ -803,7 +803,7 @@ jobs:
 
   team0-gate0-evidence:
     name: Mandatory Team 0 Gate 0 evidence
-    needs: [python-quality, certification-contracts, terraform-helm, documentation-truth-gate, incident-migration-occ-gate]
+    needs: [python-quality, certification-contracts, terraform-helm, documentation-truth-gate, incident-migration-occ-gate, image-security]
     if: always()
     runs-on: ubuntu-latest
     steps:

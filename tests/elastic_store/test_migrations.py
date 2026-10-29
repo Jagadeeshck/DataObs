@@ -159,6 +159,25 @@ def test_incident_index_creation_preserves_released_field_types():
     assert provider["tags"] == {"type": "flattened"}
 
 
+def test_data_stream_templates_disable_default_ingest_pipeline():
+    """DataObs data streams must not reference a literal nonexistent pipeline."""
+
+    from packages.elastic_store.registry import _ensure_data_stream_template
+
+    captured = {}
+
+    class Indices:
+        def put_index_template(self, **kwargs):
+            captured.update(kwargs)
+
+    class FakeElasticsearch:
+        indices = Indices()
+
+    _ensure_data_stream_template(FakeElasticsearch(), "logs-dataobs.security-event-*")
+
+    assert captured["template"]["settings"]["index.default_pipeline"] == "_none"
+
+
 def test_clean_index_creation_preserves_first_released_mapping_field_owners():
     """Global unions must not preempt explicit released index field types."""
     from packages.elastic_store.manifest import migrations

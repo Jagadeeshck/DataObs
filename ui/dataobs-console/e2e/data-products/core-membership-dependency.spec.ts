@@ -1,4 +1,7 @@
 import { test, expect } from "@playwright/test";
+import { mockDataProductRelease } from "../fixtures/release";
+
+test.beforeEach(async ({ page }) => mockDataProductRelease(page));
 
 test("Product 360 exposes scoped core workflow surfaces", async ({ page }) => {
   await page.goto("/data-products/seed-product?tab=Members");

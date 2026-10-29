@@ -38,6 +38,7 @@ coverage-*/
 test-results/
 playwright-report/
 .playwright/
+/artifacts/foundation/
 **/.cache/ms-playwright/
 
 # JavaScript dependencies and reproducible build output. Lockfiles remain tracked.

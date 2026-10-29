@@ -56,6 +56,34 @@ def test_memory_store_rule_crud_roundtrip():
     assert store.get_rule(rule_id) is None
 
 
+def test_memory_store_rules_are_tenant_and_environment_scoped():
+    store = InMemoryStore()
+    store.add_rule(
+        {"rule_id": "shared", "dataset": "tenant-a.orders", "check_type": "freshness"},
+        tenant_id="tenant-a",
+        environment="prod",
+    )
+    store.add_rule(
+        {"rule_id": "shared", "dataset": "tenant-b.orders", "check_type": "freshness"},
+        tenant_id="tenant-b",
+        environment="prod",
+    )
+    store.add_rule(
+        {"rule_id": "shared", "dataset": "tenant-a.dev.orders", "check_type": "freshness"},
+        tenant_id="tenant-a",
+        environment="dev",
+    )
+
+    assert [item["dataset"] for item in store.get_all_rules(tenant_id="tenant-a", environment="prod")] == [
+        "tenant-a.orders"
+    ]
+    assert store.get_rule("shared", tenant_id="tenant-b", environment="prod")["dataset"] == "tenant-b.orders"
+    assert store.delete_rule("shared", tenant_id="tenant-a", environment="prod") is True
+    assert store.get_rule("shared", tenant_id="tenant-a", environment="prod") is None
+    assert store.get_rule("shared", tenant_id="tenant-b", environment="prod") is not None
+    assert store.get_rule("shared", tenant_id="tenant-a", environment="dev") is not None
+
+
 def test_memory_store_quality_save_list_and_filters():
     store = InMemoryStore()
     store.save_quality_result({"id": "q1", "check_name": "null", "table": "orders", "status": "pass", "score": 1.0})

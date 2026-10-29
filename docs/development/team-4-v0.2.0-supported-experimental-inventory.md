@@ -141,3 +141,45 @@ These may be part of the product's first release only if their owning teams clos
 Optional provider workflow failures are classified, retained and reported; they are not silently ignored. They do not become v0.2.0 release blockers unless the provider is declared part of the supported profile or the failure exposes a shared SDK/runtime defect.
 
 The Azure capability-declaration failure was a shared SDK contract defect and is fixed in this closure branch. Provider-specific environment failures for excluded experimental providers remain visible but do not expand the v0.2.0 connector scope.
+
+
+## Sprint 3 final support boundary
+
+Baseline: `855345eb02250f9a738abe44bd520247243032bf`.
+
+### Packaged and certified
+
+No Team 4 provider connector currently qualifies.
+
+The Integration SDK is mandatory release infrastructure and has a current-main hosted pass, but it is not itself a connector.
+
+### Implemented but unvalidated
+
+These providers have healthy hosted contract/fixture evidence but remain outside supported v0.2.0 because their runtime is not in the supported package and/or live service proof is absent:
+
+- Google Pub/Sub — hosted pass `40961601012`; live external fixture not established.
+- Azure data platform — hosted pass `40961601165`; live synthetic Azure proof not established.
+- RabbitMQ — hosted pass `40961601051`; no retained live RabbitMQ provider certification.
+- PostgreSQL — contract workflow `40841108301` passed on Python 3.11/3.12, but live job was skipped and packaged scheduler/lease durability remains unproven.
+
+### Experimental
+
+AWS, Snowflake, Databricks, BigQuery, Trino, Presto, MySQL, MariaDB, SQL Server and Oracle remain implemented/experimental. They are not part of the v0.2.0 supported package and do not have the complete packaged-runtime plus live exact-release-SHA proof required for promotion.
+
+### Explicitly excluded from v0.2.0 Team 4 support claims
+
+All Team 4 provider connectors are excluded from the supported v0.2.0 connector set.
+
+Collection Manager remains explicitly excluded from the Team 0 Beta deployment package. Consequently no provider whose only operational path is Collection Manager can be promoted by Team 4 in this release.
+
+PostgreSQL is separately excluded because its packaged Scanner Worker does not yet demonstrate durable distributed scheduling, persistent lease/fencing and restart-safe recovery.
+
+### Owner-gated product collection paths
+
+OpenTelemetry, OpenLineage and Kafka are not Team 4 provider promotions.
+
+- OpenTelemetry support wording follows Team 0 package/image certification.
+- OpenLineage follows Team 2 job/run/lineage certification plus Team 0 release authority.
+- Kafka follows Team 1 stream-observer certification plus Team 0 release authority.
+
+Team 0 remains the only authority that can publish a supported platform or change the overall NO_GO/GO decision.

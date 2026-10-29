@@ -1,4 +1,5 @@
 import re
+import subprocess
 from pathlib import Path
 
 import yaml
@@ -33,7 +34,13 @@ def test_data_product_runtime_trigger_covers_every_certification_surface():
 
 def test_foundation_evidence_directory_is_generated_not_source_controlled():
     assert "/artifacts/foundation/" in Path(".gitignore").read_text()
-    assert not Path("artifacts/foundation").exists()
+    tracked = subprocess.run(
+        ["git", "ls-files", "artifacts/foundation"],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    assert tracked == ""
 
 
 def test_foundation_workflow_supports_diagnostic_dispatch_with_read_only_permissions():

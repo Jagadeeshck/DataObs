@@ -159,6 +159,27 @@ def test_incident_index_creation_preserves_released_field_types():
     assert provider["tags"] == {"type": "flattened"}
 
 
+def test_clean_index_creation_preserves_first_released_mapping_field_owners():
+    """Global unions must not preempt explicit released index field types."""
+    from packages.elastic_store.manifest import migrations
+    from packages.elastic_store.registry import _mapping, _mapping_properties
+
+    first_released: dict[str, dict[str, dict[str, object]]] = {}
+    for migration in migrations():
+        for index, contract in migration.operations.get("mapping_updates", {}).items():
+            owners = first_released.setdefault(index, {})
+            for field, definition in _mapping_properties(contract).items():
+                owners.setdefault(field, definition)
+
+    assert "dataobs-reliability-status-v1" in first_released
+    assert first_released["dataobs-reliability-status-v1"]["observed_value"] == {"type": "double"}
+
+    for index, owners in first_released.items():
+        installed = _mapping(index)["properties"]
+        for field, definition in owners.items():
+            assert installed[field] == definition, f"{index}.{field} was preempted by the global mapping"
+
+
 def test_data_product_index_creation_preserves_writer_mapping_types():
     """Clean installs must preserve every released 0015 Data Product mapping contract."""
     from packages.elastic_store.manifest import (

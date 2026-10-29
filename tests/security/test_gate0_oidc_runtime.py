@@ -193,6 +193,31 @@ def test_signed_tenant_abc_isolation_and_bounded_roles(provider):
             assert client.post("/api/v1/iam/role-bindings", headers=headers, json={}).status_code == 403
 
 
+def test_legacy_quality_results_reject_cross_tenant_and_environment_access(provider):
+    settings, _, issue = provider
+    app_settings = replace(load_settings(), auth=AuthSettings(provider="oidc", oidc=settings), store_backend="memory")
+    app = create_app(settings=app_settings)
+    app.state.authenticator.authenticate(issue())
+    with TestClient(app) as client:
+        tenant_b = {"Authorization": "Bearer " + issue("tenant-b")}
+        tenant_a = {"Authorization": "Bearer " + issue("tenant-a")}
+        created = client.post(
+            "/quality/results",
+            json={"id": "quality-private-b", "check_name": "freshness", "table": "orders", "status": "fail", "score": 0.0},
+            headers=tenant_b,
+        )
+        assert created.status_code == 201, created.text
+
+        assert client.get("/quality/results/quality-private-b", headers=tenant_b).status_code == 200
+        assert client.get("/quality/results/quality-private-b", headers=tenant_a).status_code == 404
+        tenant_a_list = client.get("/quality/results", headers=tenant_a)
+        assert tenant_a_list.status_code == 200
+        assert "quality-private-b" not in tenant_a_list.text
+
+        wrong_environment = tenant_b | {"X-DataObs-Environment": "development"}
+        assert client.get("/quality/results/quality-private-b", headers=wrong_environment).status_code in {403, 404}
+
+
 @pytest.mark.parametrize("operation", ["list", "search", "delete"])
 def test_legacy_rules_reject_implicit_cross_tenant_access(provider, operation):
     settings, _, issue = provider

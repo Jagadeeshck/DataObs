@@ -1274,7 +1274,9 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
 
     @app.post("/rules", status_code=201, response_model=RuleCreateResponse, dependencies=[Depends(require_auth)])
     async def create_rule(
-        rule: RuleRequest, request: Request, stores: StoreBundle = Depends(get_stores)
+        rule: RuleRequest,
+        request: Request,
+        stores: StoreBundle = Depends(get_stores),
     ) -> Dict[str, Any]:
         return {
             "rule_id": scoped_legacy_store(request, stores).add_rule(
@@ -1286,9 +1288,7 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
         }
 
     @app.delete("/rules/{rule_id}", response_model=RuleDeleteResponse, dependencies=[Depends(require_auth)])
-    async def delete_rule(
-        rule_id: str, request: Request, stores: StoreBundle = Depends(get_stores)
-    ) -> Dict[str, Any]:
+    async def delete_rule(rule_id: str, request: Request, stores: StoreBundle = Depends(get_stores)) -> Dict[str, Any]:
         if not scoped_legacy_store(request, stores).delete_rule(
             rule_id,
             tenant_id=request.state.tenant_id,
@@ -1311,7 +1311,9 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
         dependencies=[Depends(require_auth)],
     )
     async def create_quality_result(
-        result: QualityResultRequest, request: Request, stores: StoreBundle = Depends(get_stores)
+        result: QualityResultRequest,
+        request: Request,
+        stores: StoreBundle = Depends(get_stores),
     ) -> Dict[str, Any]:
         document = {
             **_as_dict(result),

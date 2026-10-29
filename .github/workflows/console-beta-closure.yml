@@ -28,13 +28,13 @@ jobs:
         run: pnpm install --frozen-lockfile && pnpm api:generate && git diff --exit-code src/api/generated/schema.ts
       - name: Static, route, contract, and unit tests
         working-directory: ui/dataobs-console
-        run: mkdir -p ../../evidence && pnpm typecheck && pnpm lint && pnpm format:check && pnpm test -- --reporter=junit --outputFile=../../evidence/vitest.xml
+        run: mkdir -p ../../evidence && pnpm typecheck && pnpm lint && pnpm format:check && pnpm exec vitest run --reporter=junit --outputFile=../../evidence/vitest.xml
       - name: Production bundle
         working-directory: ui/dataobs-console
         run: mkdir -p ../../evidence && pnpm build 2>&1 | tee ../../evidence/build.log && pnpm bundle:check 2>&1 | tee ../../evidence/bundle.log
       - name: Browser matrix and axe
         working-directory: ui/dataobs-console
-        run: pnpm exec playwright install --with-deps chromium && pnpm playwright --reporter=html,junit
+        run: pnpm exec playwright install --with-deps chromium firefox webkit && pnpm playwright --reporter=html,junit
         env: {PLAYWRIGHT_JUNIT_OUTPUT_FILE: '../../evidence/playwright.xml'}
       - name: Exact-commit manifest
         if: always()

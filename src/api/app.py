@@ -1154,6 +1154,14 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
             _as_dict(body).get("comments") if body else None,
         )
 
+    def scoped_legacy_store(request: Request, stores: StoreBundle) -> StoreProtocol:
+        store = stores.store
+        if resolved_settings.store_backend.lower() == "elasticsearch":
+            from src.api.es_store import ElasticsearchStore
+
+            store = ElasticsearchStore(make_es_client(resolved_settings), tenant_id=request.state.tenant_id)
+        return store
+
     @app.get("/rules", response_model=RulesResponse, dependencies=[Depends(require_auth)])
     async def get_rules(
         request: Request,
@@ -1165,7 +1173,7 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
         severity: str | None = None,
         check_type: str | None = None,
     ) -> Dict[str, Any]:
-        rules = stores.store.get_all_rules(
+        rules = scoped_legacy_store(request, stores).get_all_rules(
             limit=1000,
             offset=0,
             dataset=dataset,
@@ -1259,7 +1267,7 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
         rule: RuleRequest, request: Request, stores: StoreBundle = Depends(get_stores)
     ) -> Dict[str, Any]:
         return {
-            "rule_id": stores.store.add_rule(
+            "rule_id": scoped_legacy_store(request, stores).add_rule(
                 _as_dict(rule),
                 tenant_id=request.state.tenant_id,
                 environment=request.state.environment,
@@ -1271,7 +1279,7 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
     async def delete_rule(
         rule_id: str, request: Request, stores: StoreBundle = Depends(get_stores)
     ) -> Dict[str, Any]:
-        if not stores.store.delete_rule(
+        if not scoped_legacy_store(request, stores).delete_rule(
             rule_id,
             tenant_id=request.state.tenant_id,
             environment=request.state.environment,

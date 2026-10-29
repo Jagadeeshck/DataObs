@@ -662,7 +662,7 @@ jobs:
         run: source certification/runtime-secrets/compose.env; export CERTIFICATION_POSTGRES_PASSWORD_FILE; mkdir -p artifacts/kafka && python -m pytest tests/certification/test_kafka.py tests/certification/test_otel.py -q --junitxml=artifacts/kafka/results.xml
       - name: Diagnostics and memory
         if: always()
-        run: docker stats --no-stream > artifacts/kafka/container-memory.txt || true; docker compose -f docker-compose.certification.yml --profile cert-kafka logs --no-color > artifacts/kafka/redacted.log || true
+        run: mkdir -p artifacts/kafka; docker stats --no-stream > artifacts/kafka/container-memory.txt || true; docker compose -f docker-compose.certification.yml --profile cert-kafka logs --no-color > artifacts/kafka/redacted.log || true
       - uses: actions/upload-artifact@v4
         if: always()
         with: {name: kafka, path: artifacts/kafka, retention-days: 30}

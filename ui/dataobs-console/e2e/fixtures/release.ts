@@ -111,21 +111,19 @@ export async function mockDataProductRelease(page: Page) {
       },
     }),
   );
-  await page.route(
-    /\/api\/v1\/data-products\/(seed-product|demo)\?/,
-    (route) =>
-      route.fulfill({
-        json: {
-          product: {
-            ...product,
-            id: route.request().url().includes("/demo?")
-              ? "demo"
-              : "seed-product",
-          },
-          data_status: "complete",
-          warnings: [],
+  await page.route(/\/api\/v1\/data-products\/(seed-product|demo)\?/, (route) =>
+    route.fulfill({
+      json: {
+        product: {
+          ...product,
+          id: route.request().url().includes("/demo?")
+            ? "demo"
+            : "seed-product",
         },
-      }),
+        data_status: "complete",
+        warnings: [],
+      },
+    }),
   );
   await page.route(
     /\/api\/v1\/data-products\/(seed-product|demo)\/(members|dependencies|revisions)(\?|$)/,

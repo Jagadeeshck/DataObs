@@ -45,6 +45,15 @@ jobs:
         working-directory: ui/dataobs-console
         run: pnpm exec playwright install --with-deps chromium firefox webkit && pnpm playwright --reporter=html,junit
         env: {PLAYWRIGHT_JUNIT_OUTPUT_FILE: '../../evidence/playwright.xml'}
+      - name: Canonical Gate 0 browser and accessibility evidence
+        run: |
+          python scripts/certification/write_evidence_envelope.py --output evidence/evidence.json \
+            --repository "$GITHUB_REPOSITORY" --producer-sha "$GITHUB_SHA" --workflow-file console-beta-closure.yml \
+            --workflow-run-id "$GITHUB_RUN_ID" --workflow-run-attempt "$GITHUB_RUN_ATTEMPT" --event "$GITHUB_EVENT_NAME" \
+            --status pass --test-category browser --test-category accessibility \
+            --supporting-file evidence/vitest.xml --supporting-file evidence/playwright.xml \
+            --supporting-file evidence/build.log --supporting-file evidence/bundle.log \
+            --tool-version "node=$(node --version)" --tool-version "pnpm=$(pnpm --version)"
       - name: Exact-commit manifest
         if: always()
         run: |
@@ -88,3 +97,7 @@ jobs:
           assert not re.search(r'(?i)(authorization:\s*bearer\s+\S+|-----BEGIN (?:RSA |EC )?PRIVATE KEY-----|aws_secret_access_key\s*[=:])',payload)
           print('exact-commit evidence verified')
           PY
+          python scripts/certification/check_downloaded_envelope.py --directory evidence \
+            --sha "$TESTED_SHA" --repository "$GITHUB_REPOSITORY" --workflow console-beta-closure.yml \
+            --run "$GITHUB_RUN_ID" --attempt "$GITHUB_RUN_ATTEMPT" --event "$GITHUB_EVENT_NAME" \
+            --category browser --category accessibility

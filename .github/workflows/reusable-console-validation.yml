@@ -29,13 +29,25 @@ jobs:
       - run: mkdir -p ../../evidence && pnpm exec vitest run --reporter=junit --outputFile=../../evidence/console-junit.xml
       - run: pnpm build && pnpm bundle:check && pnpm performance:check
       - if: inputs.run-playwright
-        run: pnpm exec playwright install --with-deps chromium && pnpm playwright
+        run: |
+          mkdir -p ../../evidence
+          pnpm exec playwright install --with-deps chromium firefox webkit
+          pnpm playwright --reporter=html,junit
+          cp -R playwright-report ../../evidence/playwright-report
+        env:
+          PLAYWRIGHT_JUNIT_OUTPUT_FILE: ../../evidence/playwright.xml
       - if: inputs.run-accessibility && !inputs.run-playwright
         run: echo 'Accessibility requested but requires browser execution' >&2; exit 1
       - run: pnpm audit --audit-level high
       - name: Exact-commit evidence
         run: |
           test -s ../../evidence/console-junit.xml
+          if [ '${{ inputs.run-playwright }}' = 'true' ]; then
+            test -s ../../evidence/playwright.xml
+            grep -qi chromium ../../evidence/playwright.xml
+            grep -qi firefox ../../evidence/playwright.xml
+            grep -qi webkit ../../evidence/playwright.xml
+          fi
           printf '{"commit_sha":"%s","playwright_executed":%s,"accessibility_executed":%s}\n' "$(git rev-parse HEAD)" '${{ inputs.run-playwright }}' '${{ inputs.run-accessibility }}' > ../../evidence/console.json
           cd ../..
           python scripts/certification/write_evidence_envelope.py --output evidence/evidence.json \

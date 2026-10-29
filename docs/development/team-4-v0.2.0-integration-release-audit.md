@@ -99,3 +99,62 @@ Team 4 does not alter Team 1 or shared security contracts. Kafka is `OWNER_HANDO
 - Collection-Manager-only providers: implemented/experimental and excluded from v0.2.0 supported connector claims.
 
 A green fixture workflow is never used as a live-provider support claim.
+
+
+## SDK/provider closure pass — 2026-10-29
+
+This closure pass rebased the Team 4 release review on current `main`:
+
+- audited SHA: `f62acd9f0d32ec827c26b7c8ccc56b18ac0c9401`;
+- latest Integration SDK certification: run `40862724272`, **failed**;
+- first meaningful failure: `test_registered_provider_capability_declarations_are_complete`;
+- result: 107 passed, 10 skipped, 1 failed;
+- root cause: Azure v1 omitted `SCHEMA_DISCOVERY` from both its supported and unsupported capability sets;
+- closure fix: classify `SCHEMA_DISCOVERY` as unsupported and lock the declaration with a provider-specific regression.
+
+The failure is a capability declaration defect, not evidence that Azure implements schema discovery. The release contract requires every provider to classify every SDK capability explicitly so unsupported operations fail closed.
+
+### SDK runtime re-verification
+
+The current SDK/runtime regression suite verifies:
+
+- explicit provider registration and unsupported capability rejection;
+- trusted tenant/integration identity cannot be overridden by provider configuration;
+- recursive, bounded secret redaction;
+- deterministic identities and bounded pagination;
+- measured zero remains distinct from missing evidence;
+- bounded retry with non-retryable authentication failures;
+- retry cancellation propagation;
+- runtime collection timeout and cancellation propagation;
+- duplicate suppression;
+- malformed provider observations fail with `malformed_provider_response` before persistence;
+- failed observation persistence prevents run persistence and checkpoint advancement;
+- OCC checkpoint semantics remain tenant/integration scoped.
+
+No retry, timeout, cancellation, redaction, tenant-boundary or persistence-ordering behavior was weakened in this closure pass.
+
+### PostgreSQL closure evidence
+
+PR #314 PostgreSQL workflow run `40841108301` passed both Python 3.11 and Python 3.12 contract jobs after the workflow dependency/tooling repair. The live PostgreSQL job remained skipped.
+
+This does **not** change PostgreSQL's release status. The packaged Scanner Worker still executes `services.scanner_worker.cli ... run`, whose current runtime is heartbeat-oriented rather than a durable distributed scheduling loop. `ScannerWorker` still defaults to `InMemoryLeaseManager`, explicitly development/test-only. No durable distributed lease/fencing and restart-safe scheduler path is packaged.
+
+PostgreSQL therefore remains **BLOCKED / experimental for v0.2.0 support**.
+
+### Current owner coordination
+
+At `f62acd9f...`:
+
+- Team 2 `job-run-backend` run `40862723962` passed; OpenLineage remains Team 2/Team 0 release-owned.
+- Team 1 `stream-observer-backend` run `40862723897` failed; Kafka remains an owner handoff rather than a Team 4 support claim.
+- Team 0 deployment packaging run `40862723886` failed; final package/support promotion remains Team 0-owned.
+- Collection Manager remains excluded from `docs/release/beta-deployment-package.md`.
+
+### Exact Team 4 boundary
+
+For v0.2.0, Team 4 recommends:
+
+1. Integration SDK — release foundation only, pending exact-head hosted PASS from this closure branch.
+2. PostgreSQL — excluded from supported connectors; contract-tested but packaged runtime durability is not proven.
+3. AWS, Snowflake, Databricks, BigQuery, GCP/PubSub, Azure, Trino, Presto, MySQL, MariaDB, SQL Server, Oracle and RabbitMQ — implemented but experimental because their operational path is Collection Manager, which is not in the supported Helm package.
+4. OpenTelemetry, OpenLineage and Kafka — possible first-release collection/ingestion paths only through their owning teams' exact-SHA packaging and runtime certification; Team 4 does not promote them.

@@ -159,3 +159,22 @@ def test_structural_digest_writer_is_deterministic(tmp_path: Path):
     subprocess.run(command + [str(first)], cwd=ROOT, check=True)
     subprocess.run(command + [str(second)], cwd=ROOT, check=True)
     assert first.read_bytes() == second.read_bytes()
+
+
+def test_gate_0_manifest_requires_supply_chain_and_browser_accessibility():
+    manifest = yaml.safe_load((ROOT / "docs/release/v0.2.0-gate-0-certification-manifest.yaml").read_text())
+    capabilities = {item["capability_id"]: item for item in manifest["capabilities"]}
+
+    shared = capabilities["shared-ci"]
+    assert "Production image security and SBOM" in shared["required_jobs"]
+
+    console = capabilities["console-browser-accessibility"]
+    assert console["workflow"] == "console-beta-closure.yml"
+    assert console["artifact"] == "console-beta-closure-v1-evidence"
+    assert console["required_jobs"] == ["validate", "verify-evidence"]
+    assert console["required_test_categories"] == ["browser", "accessibility"]
+
+    workflow = (ROOT / ".github/workflows/console-beta-closure.yml").read_text()
+    assert "write_evidence_envelope.py --output evidence/evidence.json" in workflow
+    assert "--test-category browser --test-category accessibility" in workflow
+    assert "check_downloaded_envelope.py --directory evidence" in workflow

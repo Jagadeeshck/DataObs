@@ -73,7 +73,7 @@ test.describe("v0.2.0 critical Console journeys", () => {
       page.getByRole("heading", { name: "Streams Inventory" }),
     ).toBeVisible();
     await expect(page.getByRole("link", { name: "orders.events" })).toBeVisible();
-    await expect(page.getByText("At risk", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("at_risk", { exact: true }).first()).toBeVisible();
 
     await page.goto("/pathways");
     await expect(

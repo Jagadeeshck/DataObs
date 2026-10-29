@@ -1,0 +1,49 @@
+schema_version: '1.0'
+release_version: 0.2.0
+starting_main_sha: 855345eb02250f9a738abe44bd520247243032bf
+branch: codex/sprint3-team0-release-gates
+release_decision: NO_GO
+handoffs:
+  - id: TEAM5-CONSOLE-SPRINT3
+    owner_team: Team 5
+    state: open_pr
+    pull_request: 328
+    source_sha: 5dd76196099cee6dfdc1dd282a7a3fa190fdfc65
+    blocker: Main CI, Foundation Console and browser certification stop on pinned Prettier formatting for three Team 5 E2E files.
+    required_action: Merge the Team 5-owned formatting/certification closure, then rerun Console Beta on the same final integrated SHA used by Gate 0.
+    team0_dependency_resolved: true
+    release_blocking: true
+  - id: TEAM1-SPRINT3-CERTIFICATION
+    owner_team: Team 1
+    state: open_pr
+    pull_request: 327
+    source_sha: c9ab97eb7b33cf5eda78fc65ab70f14b146183ac
+    blocker: Team 1 capability evidence must not be promoted from historical heads.
+    required_action: Complete the bounded Team 1 certification PR and consume only final integrated exact-SHA evidence required by the release profile.
+    team0_dependency_resolved: true
+    release_blocking: conditional_on_release_profile
+  - id: TEAM2-SPRINT3-CERTIFICATION
+    owner_team: Team 2
+    state: open_pr
+    pull_request: 325
+    source_sha: d88d4e17a96701d87e3f5f210e0048b2fa0a5c47
+    blocker: Data Product and data-observability capability promotion requires final integrated evidence.
+    required_action: Complete Team 2 Sprint 3 certification and rerun on the final integrated SHA; do not reuse pre-merge evidence.
+    team0_dependency_resolved: true
+    release_blocking: conditional_on_release_profile
+  - id: TEAM4-SPRINT3-PROVIDER-BOUNDARY
+    owner_team: Team 4
+    state: open_pr
+    pull_request: 326
+    source_sha: b2c3a6cfb0bc6401896a8575ad3b8ef2045c26df
+    blocker: Provider support boundary must remain truthful for v0.2.0.
+    required_action: Complete Team 4 release-boundary PR; only providers with required packaged/live evidence may be promoted.
+    team0_dependency_resolved: true
+    release_blocking: conditional_on_release_profile
+  - id: TEAM3-INCIDENTS
+    owner_team: Team 3
+    state: no_new_domain_defect_observed
+    blocker: null
+    required_action: No Sprint 3 semantic handoff from Team 0. Incident automation is green on integrated main; OCC remains subject to the shared static and hosted gates.
+    team0_dependency_resolved: true
+    release_blocking: false

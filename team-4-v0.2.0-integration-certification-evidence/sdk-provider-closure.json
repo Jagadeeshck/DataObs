@@ -1,0 +1,83 @@
+{
+  "schema_version": "1.0",
+  "team": "Team 4",
+  "target": "DataObs v0.2.0",
+  "audited_main_sha": "f62acd9f0d32ec827c26b7c8ccc56b18ac0c9401",
+  "branch": "codex/v020-team4-sdk-provider-closure",
+  "branch_head_at_generation": "b05c367538ac78b6f0daa83484d825ca4c2d0e15",
+  "sdk_failure": {
+    "workflow_run_id": 40862724272,
+    "result": "fail",
+    "tests": {
+      "passed": 107,
+      "skipped": 10,
+      "failed": 1
+    },
+    "first_meaningful_failure": "Azure v1 did not classify schema_discovery as supported or unsupported"
+  },
+  "closure_fix": {
+    "provider": "azure",
+    "provider_version": "1",
+    "capability": "schema_discovery",
+    "classification": "unsupported",
+    "regression": "provider-specific completeness assertion plus registry-wide SDK gate"
+  },
+  "sdk_runtime_verification": [
+    "bounded retry",
+    "non-retryable authentication failure",
+    "cancellation propagation",
+    "collection timeout",
+    "malformed provider response rejection",
+    "duplicate suppression",
+    "recursive redaction",
+    "trusted tenant/integration identity boundary",
+    "observation persistence before run/checkpoint advancement",
+    "OCC checkpoint versioning"
+  ],
+  "postgresql": {
+    "contract_run_id": 40841108301,
+    "python_311": "pass",
+    "python_312": "pass",
+    "live_job": "skipped",
+    "packaged_runtime": "scanner_worker",
+    "release_decision": "blocked",
+    "blocker": "no demonstrated durable distributed scheduler/lease/fencing/restart path; default lease manager is development/test in-memory"
+  },
+  "owner_handoffs": {
+    "team0": {
+      "deployment_packaging_run": 40862723886,
+      "result": "fail"
+    },
+    "team1": {
+      "stream_observer_run": 40862723897,
+      "result": "fail"
+    },
+    "team2": {
+      "job_run_backend_run": 40862723962,
+      "result": "pass"
+    }
+  },
+  "exact_sha_sdk_certification": {
+    "status": "pending_pr_head_run",
+    "workflow_run_id": null,
+    "producer_sha": null
+  },
+  "team4_supported_provider_connectors": [],
+  "experimental_provider_connectors": [
+    "aws",
+    "snowflake",
+    "databricks",
+    "bigquery",
+    "gcp",
+    "azure",
+    "trino",
+    "presto",
+    "postgres",
+    "mysql",
+    "mariadb",
+    "sqlserver",
+    "oracle",
+    "rabbitmq"
+  ],
+  "support_claim": "No Team 4 provider connector is recommended as supported for v0.2.0"
+}

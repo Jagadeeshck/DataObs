@@ -38,6 +38,7 @@ class AzureDataPlatformProvider:
             frozenset(
                 {
                     Capability.QUERY_HISTORY,
+                    Capability.SCHEMA_DISCOVERY,
                     Capability.LOG_COLLECTION,
                     Capability.LINEAGE_COLLECTION,
                     Capability.COST_COLLECTION,

@@ -107,8 +107,11 @@ def test_registration_capabilities_and_dependency_boundary():
     r = ProviderRegistry()
     r.register(AzureDataPlatformProvider)
     assert r.provider_types() == ("azure",) and r.create("azure").provider_version == "1"
-    assert Capability.INCREMENTAL_COLLECTION in r.create("azure").capabilities().supported
-    assert Capability.QUERY_HISTORY in r.create("azure").capabilities().unsupported
+    capabilities = r.create("azure").capabilities()
+    assert Capability.INCREMENTAL_COLLECTION in capabilities.supported
+    assert Capability.QUERY_HISTORY in capabilities.unsupported
+    assert Capability.SCHEMA_DISCOVERY in capabilities.unsupported
+    assert capabilities.supported | capabilities.unsupported == frozenset(Capability)
     with pytest.raises(ValueError):
         r.register(AzureDataPlatformProvider)
 

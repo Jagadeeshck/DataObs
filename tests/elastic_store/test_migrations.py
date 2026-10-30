@@ -159,6 +159,55 @@ def test_incident_index_creation_preserves_released_field_types():
     assert provider["tags"] == {"type": "flattened"}
 
 
+def test_console_and_pathway_projection_indices_have_writer_complete_mappings():
+    from packages.elastic_store.registry import _mapping
+
+    command_center = _mapping("dataobs-command-center-summary-v1")["properties"]
+    assert {
+        "overall_health",
+        "pillars",
+        "priority_items",
+        "recent_changes",
+        "data_status",
+        "critical_incidents",
+        "affected_services",
+    } <= set(command_center)
+
+    pathway_nodes = _mapping("dataobs-pathway-nodes-v1")["properties"]
+    assert {
+        "node_id",
+        "node_type",
+        "qualified_name",
+        "type",
+        "health",
+        "first_seen",
+        "last_seen",
+        "active",
+        "source_coverage",
+        "evidence_refs",
+        "badges",
+    } <= set(pathway_nodes)
+
+
+def test_data_stream_templates_disable_default_ingest_pipeline():
+    """DataObs data streams must not reference a literal nonexistent pipeline."""
+
+    from packages.elastic_store.registry import _ensure_data_stream_template
+
+    captured = {}
+
+    class Indices:
+        def put_index_template(self, **kwargs):
+            captured.update(kwargs)
+
+    class FakeElasticsearch:
+        indices = Indices()
+
+    _ensure_data_stream_template(FakeElasticsearch(), "logs-dataobs.security-event-*")
+
+    assert captured["template"]["settings"]["index.default_pipeline"] == "_none"
+
+
 def test_clean_index_creation_preserves_first_released_mapping_field_owners():
     """Global unions must not preempt explicit released index field types."""
     from packages.elastic_store.manifest import migrations
@@ -172,16 +221,12 @@ def test_clean_index_creation_preserves_first_released_mapping_field_owners():
                 owners.setdefault(field, definition)
 
     assert "dataobs-reliability-status-v1" in first_released
-    assert first_released["dataobs-reliability-status-v1"]["observed_value"] == {
-        "type": "double"
-    }
+    assert first_released["dataobs-reliability-status-v1"]["observed_value"] == {"type": "double"}
 
     for index, owners in first_released.items():
         installed = _mapping(index)["properties"]
         for field, definition in owners.items():
-            assert installed[field] == definition, (
-                f"{index}.{field} was preempted by the global mapping"
-            )
+            assert installed[field] == definition, f"{index}.{field} was preempted by the global mapping"
 
 
 def test_data_product_index_creation_preserves_writer_mapping_types():

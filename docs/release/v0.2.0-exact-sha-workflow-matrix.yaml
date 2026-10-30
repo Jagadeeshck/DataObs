@@ -1,57 +1,50 @@
 schema_version: '1.0'
 release_version: 0.2.0
-branch: codex/v020-team0-final-gates
-audited_main_sha: 8115f557ad7f6c53ab73054dc356f7bbfb676054
+branch: codex/sprint3-team0-release-gates
+starting_main_sha: 855345eb02250f9a738abe44bd520247243032bf
 final_sha: null
 gate_0_status: GATE_0_BLOCKED
 release_decision: NO_GO
-note: Final exact-SHA workflow identities and artifact IDs are populated only from executed hosted runs. Historical PR-head runs are not transplanted.
+candidate_frozen: false
+note: Current branch execution is not complete. Historical main/PR runs are diagnostic only and are not final-candidate evidence.
 gates:
   - gate: foundation-backend
     workflow: team-delivery-foundation.yml
-    owner: Team 0
     mandatory: true
     result: not_run
     verified: false
   - gate: foundation-console
     workflow: team-delivery-foundation.yml
-    owner: Team 0
     mandatory: true
     result: not_run
     verified: false
   - gate: shared-ci
     workflow: ci.yml
-    owner: Team 0
     mandatory: true
     result: not_run
     verified: false
   - gate: deployment
     workflow: beta-deployment-packaging.yml
-    owner: Team 0
     mandatory: true
     result: not_run
     verified: false
   - gate: secured-migrations-security
     workflow: beta-security-hardening.yml
-    owner: Team 0
     mandatory: true
     result: not_run
     verified: false
   - gate: mvp-smoke
     workflow: first-mvp-demo-smoke.yml
-    owner: Team 0
     mandatory: true
     result: not_run
     verified: false
   - gate: backup-restore
     workflow: beta-backup-restore.yml
-    owner: Team 0
     mandatory: true
     result: not_run
     verified: false
   - gate: console-browser-accessibility
     workflow: console-beta-closure.yml
-    owner: Team 5
     mandatory: true
     result: not_run
     verified: false

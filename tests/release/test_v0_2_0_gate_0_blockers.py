@@ -29,7 +29,13 @@ def test_gate_0_inventory_preserves_release_truth_and_defers_freeze():
         assert item["source_sha"] == inventory["observed_workflow_sha"]
         assert item["hosted_state"] in {"passed", "failed", "blocked", "not_run"}
         assert item["final_head_hosted_state"] == "not_run"
-        assert item["workflow_run_id"] and item["artifact_id"]
+        assert item["workflow_run_id"]
+        if item.get("artifact_id") is None:
+            assert item["hosted_state"] == "failed"
+            assert item.get("artifact_state") == "missing"
+        else:
+            assert item["artifact_id"]
+            assert item.get("artifact_state") == "retained"
     assert inventory["gate_0_exit_criteria"]["freeze_after_gate_0_only"] is True
 
 
@@ -178,3 +184,24 @@ def test_gate_0_manifest_requires_supply_chain_and_browser_accessibility():
     assert "write_evidence_envelope.py --output evidence/evidence.json" in workflow
     assert "--test-category browser --test-category accessibility" in workflow
     assert "check_downloaded_envelope.py --directory evidence" in workflow
+
+
+def test_api_template_has_unique_security_environment_entries():
+    template = (ROOT / "helm/dataobs/templates/api.yaml").read_text()
+    for name in (
+        "DATAOBS_AUTHORIZATION_SOURCE",
+        "DATAOBS_SECURITY_BOOTSTRAP_ENABLED",
+        "DATAOBS_OIDC_MAXIMUM_TOKEN_LIFETIME_SECONDS",
+        "DATAOBS_OIDC_ALLOWED_AUTHORISED_PARTIES",
+        "DATAOBS_OIDC_ALLOWED_TOKEN_TYPES",
+        "DATAOBS_OIDC_REQUIRE_JTI_FOR_SERVICE_TOKENS",
+        "DATAOBS_CORS_ALLOWED_ORIGINS",
+    ):
+        assert template.count(f"name: {name}") == 1
+
+
+def test_kind_smoke_failure_diagnostics_include_events_and_container_logs():
+    script = (ROOT / "scripts/deployment/kind_smoke_test.sh").read_text()
+    assert "kubectl -n \"$NS\" get events --sort-by=.lastTimestamp" in script
+    assert 'kubectl -n "$NS" logs "$pod" --tail=300' in script
+    assert 'kubectl -n "$NS" logs "$pod" --previous --tail=300' in script

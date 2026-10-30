@@ -203,7 +203,13 @@ def test_legacy_quality_results_reject_cross_tenant_and_environment_access(provi
         tenant_a = {"Authorization": "Bearer " + issue("tenant-a")}
         created = client.post(
             "/quality/results",
-            json={"id": "quality-private-b", "check_name": "freshness", "table": "orders", "status": "fail", "score": 0.0},
+            json={
+                "id": "quality-private-b",
+                "check_name": "freshness",
+                "table": "orders",
+                "status": "fail",
+                "score": 0.0,
+            },
             headers=tenant_b,
         )
         assert created.status_code == 201, created.text

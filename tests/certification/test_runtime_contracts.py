@@ -41,3 +41,31 @@ def test_scanner_cli_config_precedes_run_subcommand():
 
     dockerfile = (ROOT / "Dockerfile.scanner").read_text()
     assert 'CMD ["--config", "config/postgres-scanner.example.yaml", "run"]' in dockerfile
+
+
+def test_loopback_certification_services_keep_internal_networks_and_host_bridge():
+    compose = yaml.safe_load((ROOT / "docker-compose.certification.yml").read_text())
+    networks = compose["networks"]
+    assert networks["certification-data"]["internal"] is True
+    assert networks["certification-control"]["internal"] is True
+    assert networks["certification-denied"]["internal"] is True
+    assert networks["certification-host"].get("internal") is not True
+
+    expected = {
+        "elasticsearch": "127.0.0.1:19200:9200",
+        "postgres": "127.0.0.1:15432:5432",
+        "kafka-1": "127.0.0.1:19092:29092",
+        "kafka-2": "127.0.0.1:19093:29092",
+        "kafka-3": "127.0.0.1:19094:29092",
+        "schema-registry": "127.0.0.1:18081:8081",
+        "kafka-connect": "127.0.0.1:18083:8083",
+    }
+    for service, port in expected.items():
+        definition = compose["services"][service]
+        assert port in definition["ports"]
+        assert "certification-host" in definition["networks"]
+
+    for number, port in ((1, 19092), (2, 19093), (3, 19094)):
+        kafka = compose["services"][f"kafka-{number}"]["environment"]
+        assert f"EXTERNAL://127.0.0.1:{port}" in kafka["KAFKA_ADVERTISED_LISTENERS"]
+        assert "EXTERNAL://:29092" in kafka["KAFKA_LISTENERS"]

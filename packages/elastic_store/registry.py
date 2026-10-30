@@ -21,6 +21,31 @@ from .manifest import (
 
 _DATA_PRODUCT_DECISION_INDEX = "dataobs-data-product-membership-decisions-v1"
 
+_INDEX_MAPPING_OVERRIDES: Dict[str, Dict[str, Any]] = {
+    "dataobs-command-center-summary-v1": {
+        "overall_health": {"type": "keyword"},
+        "pillars": {"type": "object", "enabled": False},
+        "priority_items": {"type": "object", "enabled": False},
+        "recent_changes": {"type": "object", "enabled": False},
+        "data_status": {"type": "object", "enabled": False},
+        "critical_incidents": {"type": "long"},
+        "affected_services": {"type": "long"},
+    },
+    "dataobs-pathway-nodes-v1": {
+        "node_id": {"type": "keyword"},
+        "node_type": {"type": "keyword"},
+        "qualified_name": {"type": "keyword"},
+        "type": {"type": "keyword"},
+        "health": {"type": "keyword"},
+        "first_seen": {"type": "date"},
+        "last_seen": {"type": "date"},
+        "active": {"type": "boolean"},
+        "source_coverage": {"type": "keyword"},
+        "evidence_refs": {"type": "keyword"},
+        "badges": {"type": "keyword"},
+    },
+}
+
 _DATA_PRODUCT_0015_INDEX_PROPERTIES: Dict[str, Dict[str, Any]] = {
     "dataobs-data-products-v1": DATA_PRODUCT_PROPERTIES,
     "dataobs-data-product-revisions-v1": DATA_PRODUCT_EVENT_PROPERTIES,
@@ -163,6 +188,8 @@ def _mapping(index: str | None = None) -> Dict[str, Any]:
         | SECURITY_PROPERTIES
         | PROVIDER_PROPERTIES
     )
+    if index in _INDEX_MAPPING_OVERRIDES:
+        properties |= _INDEX_MAPPING_OVERRIDES[index]
     if index is not None:
         properties |= _first_released_mapping_field_owners(index)
     if index in INCIDENT_AUTOMATION_MUTABLE_INDICES:
@@ -325,7 +352,7 @@ def _ensure_data_stream_template(es: Elasticsearch, pattern: str) -> None:
         data_stream={},
         template={
             "mappings": {"dynamic": "strict", "properties": properties},
-            "settings": {"index.default_pipeline": "none"},
+            "settings": {"index.default_pipeline": "_none"},
         },
         priority=500,
         allow_auto_create=True,

@@ -2743,6 +2743,14 @@ def migration_plan() -> List[Dict[str, Any]]:
     ]
 
 
+def terminal_migration_id() -> str:
+    """Return the terminal executable migration from the packaged registry."""
+    registry = migrations()
+    if not registry:
+        raise ValueError("migration registry is empty")
+    return registry[-1].migration_id
+
+
 def registered_mutable_resources() -> tuple[str, ...]:
     """Exact concrete indices a guarded certification reset may remove."""
     resources = {MIGRATION_STATE_INDEX}

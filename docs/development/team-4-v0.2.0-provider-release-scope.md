@@ -110,3 +110,59 @@ For v0.2.0, Team 4 chooses the bounded option: PostgreSQL remains excluded inste
 **Supported Team 4 provider connectors: none.**
 
 The Integration SDK is a mandatory release foundation, not a provider support claim. Pub/Sub, Azure and RabbitMQ hosted passes prove their current contracts remain healthy, but all three still execute through Collection Manager, which Team 0 explicitly excludes from the supported package. PostgreSQL is packaged but lacks the durable production scheduling/lease evidence required for a support claim.
+
+
+## Sprint 4 provider-scope lock
+
+Audited release baseline: `c3d3dfe63b2d8227612dc867988db268c8b7424f`.
+
+Team 0 remains the release/support authority. The generated current production-readiness view still reports:
+
+- release decision: **NO_GO**;
+- candidate frozen: no;
+- supported platforms: none;
+- terminal migration: `0033_team1_stream_schema_intelligence_runtime`.
+
+The Helm package still includes API, Console, Quality Worker, Scanner Worker, Monitor Runtime, Pathway Worker, Kafka Observer, optional OpenTelemetry Collector and the migration Job. **Collection Manager remains excluded.**
+
+### Sprint 4 support matrix
+
+| Provider / path | Version | Packaged in v0.2.0 | Current hosted evidence | Live/runtime certification | Security / least-privilege boundary | Sprint 4 classification | v0.2.0 Team 4 support |
+|---|---:|---|---|---|---|---|---|
+| Integration SDK | v1 contract | foundation only; no standalone connector workload | exact-main run `41120485748` rerun attempt 2 on `c3d3dfe6...` | exact-SHA SDK contract/evidence rerun; not a provider live test | recursive redaction, bounded retry/timeout/cancellation, trusted tenant/integration context, OCC checkpoints | CERTIFIED_FOUNDATION | not a connector |
+| AWS | 3 | no — Collection Manager only | implementation/regression evidence; optional in release manifest | no live release-SHA AWS certification | read-only AWS SDK/CloudWatch allowlists; no payload/database reads | EXPERIMENTAL | EXCLUDED |
+| Snowflake | 1 | no — Collection Manager only | implementation/fixture evidence | approved live sandbox not release-certified | secret references, fixed SQL, no arbitrary business-row collection | EXPERIMENTAL | EXCLUDED |
+| Databricks | 1 | no — Collection Manager only | implementation/fixture evidence | approved workspace live proof not retained for release | OAuth M2M; bounded metadata/system evidence | EXPERIMENTAL | EXCLUDED |
+| BigQuery | 1 | no — Collection Manager only | implementation/fixture evidence | approved project live proof absent | ADC/WIF/impersonation; no arbitrary table-row reads | EXPERIMENTAL | EXCLUDED |
+| GCP / Pub/Sub | 1 | no — Collection Manager only | exact-main pass `41130816933` | hosted contract/fixture pass only; external live fixture is separate opt-in | viewer/Monitoring read paths; no pull, ack, seek or publish | IMPLEMENTED_UNVALIDATED | EXCLUDED |
+| Azure data platform | 1 | no — Collection Manager only | exact-main pass `41130816932` | hosted contract/fixture pass only; approved live Azure resources not certified | managed/workload identity or referenced SP secret; management-plane and bounded metadata reads only | IMPLEMENTED_UNVALIDATED | EXCLUDED |
+| Trino | 1 | no — Collection Manager only | implementation/fixture evidence | disposable live engine not release-certified | verified TLS/secret refs; fixed metadata/runtime statements | EXPERIMENTAL | EXCLUDED |
+| Presto | 1 | no — Collection Manager only | implementation/fixture evidence | disposable live engine not release-certified | HTTPS authority confinement and fixed metadata statements | EXPERIMENTAL | EXCLUDED |
+| PostgreSQL | 1 | Scanner Worker image is packaged | contract run `40841108301` passed Python 3.11/3.12 | live PostgreSQL job skipped; production scheduling/lease durability unproven | secret references, bounded/read-only metadata, no raw-row persistence by default | IMPLEMENTED_UNVALIDATED / BLOCKED | EXCLUDED |
+| MySQL | 1 | no — Collection Manager only | implementation/fixture evidence | live fixture not release-certified | referenced secret, verified TLS, local infile disabled | EXPERIMENTAL | EXCLUDED |
+| MariaDB | 1 | no — Collection Manager only | implementation/fixture evidence | live fixture not release-certified | referenced secret, verified TLS; Connector/C runtime dependency | EXPERIMENTAL | EXCLUDED |
+| SQL Server | 1 | no — Collection Manager only | implementation/fixture evidence | SQL Server live matrix not release-certified | secret refs; strict/mandatory TLS; no raw-row collection | EXPERIMENTAL | EXCLUDED |
+| Oracle | 1 | no — Collection Manager only | implementation/fixture evidence | approved Oracle live services not release-certified | secret refs, TCPS/server verification; no AWR/ASH/raw rows | EXPERIMENTAL | EXCLUDED |
+| RabbitMQ | 1 | no — Collection Manager only | exact-main pass `41130816949` | hosted contract/fixture pass only; external live RabbitMQ fixture not certified | monitoring-only credentials; no consume/basic.get/publish/message bodies | IMPLEMENTED_UNVALIDATED | EXCLUDED |
+
+### Capability declaration lock
+
+The registry-wide Integration SDK test requires every registered provider to classify the complete `Capability` enum as either supported or unsupported, with no overlap. Azure explicitly classifies `SCHEMA_DISCOVERY` as unsupported. Sprint 4 introduces no capability expansion.
+
+### PostgreSQL runtime decision
+
+No durable scheduler/lease implementation appeared in Sprint 4:
+
+- packaged Helm still launches `services.scanner_worker.cli ... run`;
+- that command emits heartbeats rather than acquiring/executing scheduled scan tasks;
+- `ScannerWorker` still defaults to `InMemoryLeaseManager`;
+- the source explicitly states that lease manager is development/test-only and unsafe for distributed workers;
+- repository search found no durable Scanner Worker lease/fencing backend.
+
+PostgreSQL therefore remains excluded from v0.2.0 support. Team 4 does not add a scheduler/control plane during release closure.
+
+### Final Team 4 support claim
+
+**Packaged and certified Team 4 provider connectors: none.**
+
+The Integration SDK is a certified release foundation, not a connector support claim. Collection Manager-only providers remain excluded while Team 0 leaves Collection Manager outside the supported package. Any future Helm/runtime inclusion is a Team 0 approval item.

@@ -1,0 +1,148 @@
+{
+  "schema_version": "1.0",
+  "team": "Team 4",
+  "release": "v0.2.0",
+  "audited_main_sha": "c3d3dfe63b2d8227612dc867988db268c8b7424f",
+  "branch": "codex/sprint4-team4-provider-scope",
+  "integration_sdk": {
+    "workflow_run_id": 41120485748,
+    "run_attempt": 2,
+    "conclusion": "success",
+    "head_sha": "c3d3dfe63b2d8227612dc867988db268c8b7424f",
+    "artifact": {
+      "name": "integration-sdk-v1-evidence",
+      "artifact_id": 13011969582,
+      "created_at": "2026-10-30T21:26:28Z",
+      "digest": "sha256:92e353527658d0f6416d7ff6ce7b27d8ddb1caffee4824b63b25d5d0dfb47298"
+    },
+    "verified_contracts": [
+      "complete_provider_capability_partition",
+      "azure_schema_discovery_explicitly_unsupported",
+      "bounded_retry",
+      "non_retryable_authentication_failure",
+      "cancellation_propagation",
+      "collection_timeout",
+      "malformed_provider_response_rejection",
+      "duplicate_suppression",
+      "recursive_redaction",
+      "trusted_tenant_integration_boundary",
+      "observation_and_run_persist_before_checkpoint",
+      "occ_checkpoint"
+    ]
+  },
+  "provider_contract_runs": {
+    "azure": {
+      "run_id": 41130816932,
+      "conclusion": "success",
+      "live_provider_certification": false
+    },
+    "google_pubsub": {
+      "run_id": 41130816933,
+      "conclusion": "success",
+      "live_provider_certification": false
+    },
+    "rabbitmq": {
+      "run_id": 41130816949,
+      "conclusion": "success",
+      "live_provider_certification": false
+    },
+    "postgresql": {
+      "run_id": 40841108301,
+      "conclusion": "success",
+      "python_311": "success",
+      "python_312": "success",
+      "live_job": "skipped",
+      "live_provider_certification": false
+    }
+  },
+  "package_boundary": {
+    "packaged_components": [
+      "api",
+      "console",
+      "quality_worker",
+      "scanner_worker",
+      "monitor_runtime",
+      "pathway_worker",
+      "kafka_observer",
+      "optional_opentelemetry_collector",
+      "migration_job"
+    ],
+    "collection_manager_packaged": false,
+    "elasticsearch_external": true
+  },
+  "postgresql_runtime": {
+    "helm_command": "python -m services.scanner_worker.cli --config /etc/dataobs-scanner/config.yaml run",
+    "run_mode": "heartbeat_only",
+    "durable_scheduler_proven": false,
+    "distributed_lease_fencing_proven": false,
+    "default_lease_manager": "InMemoryLeaseManager",
+    "default_lease_manager_production_safe": false,
+    "release_decision": "excluded"
+  },
+  "classifications": {
+    "packaged_and_certified": [],
+    "certified_foundation": [
+      "integration_sdk"
+    ],
+    "implemented_unvalidated": [
+      "google_pubsub",
+      "azure",
+      "rabbitmq",
+      "postgresql"
+    ],
+    "experimental": [
+      "aws",
+      "snowflake",
+      "databricks",
+      "bigquery",
+      "trino",
+      "presto",
+      "mysql",
+      "mariadb",
+      "sqlserver",
+      "oracle"
+    ],
+    "excluded_from_v020_team4_support": [
+      "aws",
+      "snowflake",
+      "databricks",
+      "bigquery",
+      "google_pubsub",
+      "azure",
+      "trino",
+      "presto",
+      "postgresql",
+      "mysql",
+      "mariadb",
+      "sqlserver",
+      "oracle",
+      "rabbitmq"
+    ]
+  },
+  "release_policy": {
+    "integration_sdk_mandatory": true,
+    "aws_collector_optional": true,
+    "optional_provider_failures_do_not_bypass_mandatory_gates": true
+  },
+  "cross_team": {
+    "team1_stream_observer": {
+      "run_id": 41120485524,
+      "conclusion": "success"
+    },
+    "team2_job_run_backend": {
+      "run_id": 41120485697,
+      "conclusion": "success"
+    },
+    "team0_deployment_packaging": {
+      "run_id": 41120485485,
+      "conclusion": "failure"
+    }
+  },
+  "release_authority": {
+    "decision": "NO_GO",
+    "candidate_frozen": false,
+    "supported_platforms": [],
+    "owner": "Team 0"
+  },
+  "conclusion": "Integration SDK exact-SHA certification is protected; no Team 4 provider connector is supported for v0.2.0."
+}

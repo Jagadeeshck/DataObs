@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { mockReleaseShell } from "../fixtures/release";
+import { expectKeyboardReachable } from "../helpers/keyboard";
 
 test.beforeEach(async ({ page }) => mockReleaseShell(page));
 
@@ -34,8 +35,8 @@ test("primary navigation is keyboard reachable with visible focus", async ({
   page,
 }) => {
   await page.goto("/");
-  await page.keyboard.press("Tab");
-  await expect(
+  await expectKeyboardReachable(
+    page,
     page.getByRole("link", { name: "Skip to content" }),
-  ).toBeFocused();
+  );
 });

@@ -12,7 +12,10 @@ export async function expectKeyboardReachable(
 ) {
   for (let index = 0; index < maxTabs; index += 1) {
     await page.keyboard.press("Tab");
-    if (await target.evaluate((element) => element === document.activeElement)) {
+    const isFocused = await target.evaluate(
+      (element) => element === document.activeElement,
+    );
+    if (isFocused) {
       await expect(target).toBeFocused();
       return;
     }

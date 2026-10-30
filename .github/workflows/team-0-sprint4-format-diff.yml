@@ -1,0 +1,24 @@
+name: Team 0 Sprint 4 formatter diff
+
+on:
+  push:
+    branches: [codex/sprint4-team0-release-candidate]
+
+permissions:
+  contents: read
+
+jobs:
+  black-diff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Pinned Black diff
+        run: |
+          python -m pip install black==26.10.1
+          black --diff --color=false \
+            src/api/store.py \
+            tests/integration/data_products/test_migrations_elasticsearch.py \
+            tests/release/test_v0_2_0_gate_0_blockers.py

@@ -1,0 +1,197 @@
+name: Team 2 — Sprint 4 First-Release E2E Proof
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  TEAM2_CERTIFICATION_SHA: >-
+    ${{ github.event_name == 'pull_request'
+        && github.event.pull_request.head.sha
+        || github.sha }}
+
+jobs:
+  certify:
+    name: Team 2 exact-SHA producer
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TEAM2_CERTIFICATION_SHA }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Require exact certification checkout
+        run: test "$(git rev-parse HEAD)" = "$TEAM2_CERTIFICATION_SHA"
+      - name: Install integration dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest requests
+      - name: Migration immutability
+        run: python scripts/check_migration_immutability.py --base-ref "$(python scripts/resolve_ci_base.py)"
+      - name: Prepare evidence directory
+        run: mkdir -p artifacts/e2e-signal-path/results artifacts/e2e-signal-path/data-product
+      - name: Start Team 2 integration stack
+        run: docker compose -f tests/integration/docker-compose.test.yml up -d --build
+      - name: Wait for Elasticsearch, Collector, webhook and API
+        run: |
+          python scripts/ci/wait_for_elasticsearch.py --url http://127.0.0.1:9200 --timeout 180
+          timeout 180 bash -c 'until curl -fsS http://127.0.0.1:13133 >/dev/null; do sleep 3; done'
+          timeout 180 bash -c 'until curl -fsS http://127.0.0.1:8089/health >/dev/null; do sleep 3; done'
+          timeout 180 bash -c 'until curl -fsS http://127.0.0.1:8000/health >/dev/null; do sleep 3; done'
+      - name: Require Elasticsearch 9.4.2
+        run: |
+          curl -fsS http://127.0.0.1:9200 > artifacts/e2e-signal-path/elasticsearch.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          body = json.loads(Path("artifacts/e2e-signal-path/elasticsearch.json").read_text())
+          assert body["version"]["number"] == "9.4.2"
+          PY
+      - name: Execute Data Product migration and mapping certification
+        env:
+          RUN_INTEGRATION_TESTS: "1"
+          DATA_PRODUCT_ALLOW_DESTRUCTIVE_TEST_RESET: "1"
+          DATA_PRODUCT_CERTIFICATION_PROFILE: data-product-runtime-foundation
+          DATA_PRODUCT_CERTIFICATION_SHA: ${{ env.TEAM2_CERTIFICATION_SHA }}
+          DATA_PRODUCT_EVIDENCE_DIR: artifacts/e2e-signal-path/data-product
+          ELASTICSEARCH_URL: http://127.0.0.1:9200
+        run: |
+          python -m pytest tests/integration/data_products/test_migrations_elasticsearch.py -q \
+            --junitxml=artifacts/e2e-signal-path/results/data-product-migrations.xml
+          ./bin/dataobs elastic status > artifacts/e2e-signal-path/migration-status-first.json
+          ./bin/dataobs elastic apply > artifacts/e2e-signal-path/repeat-apply.json
+          ./bin/dataobs elastic status > artifacts/e2e-signal-path/migration-status-second.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          from elasticsearch import Elasticsearch
+
+          es = Elasticsearch("http://127.0.0.1:9200")
+          assert es.info()["version"]["number"] == "9.4.2"
+
+          fields = {}
+          checks = {
+              "dataobs-reliability-status-v1": {
+                  "observed_value": "double",
+              },
+              "dataobs-data-product-revisions-v1": {
+                  "revision": "integer",
+                  "operation_id": "keyword",
+              },
+              "dataobs-data-product-operation-state-v1": {
+                  "revision": "integer",
+                  "operation_id": "keyword",
+              },
+          }
+          for index, expected in checks.items():
+              mapping = es.indices.get_mapping(index=index)[index]["mappings"]["properties"]
+              for field, field_type in expected.items():
+                  actual = mapping[field]["type"]
+                  assert actual == field_type, (index, field, actual, field_type)
+                  fields[f"{index}.{field}"] = actual
+
+          Path("artifacts/e2e-signal-path/mapping-contract.json").write_text(
+              json.dumps(
+                  {
+                      "elasticsearch_version": es.info()["version"]["number"],
+                      "fields": fields,
+                  },
+                  indent=2,
+              )
+              + "\n"
+          )
+          PY
+      - name: Restart API after migration reset and wait for health
+        run: |
+          docker compose -f tests/integration/docker-compose.test.yml restart dataobs-api
+          timeout 180 bash -c 'until curl -fsS http://127.0.0.1:8000/health >/dev/null; do sleep 3; done'
+      - name: Execute complete Quality to incident signal path
+        env:
+          RUN_INTEGRATION_TESTS: "1"
+          ELASTICSEARCH_URL: http://127.0.0.1:9200
+          OTEL_EXPORTER_OTLP_ENDPOINT: http://127.0.0.1:4317
+        run: |
+          python -m pytest \
+            tests/integration/test_quality_signal_path.py \
+            tests/integration/test_api_e2e.py \
+            tests/integration/test_alert_delivery.py \
+            tests/integration/test_otel_pipeline.py \
+            -q --junitxml=artifacts/e2e-signal-path/results/signal-path.xml
+      - name: Generate exact-SHA evidence envelope
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          JOB_ID=$(curl --fail --silent --retry 3 \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "${{ github.api_url }}/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/jobs?per_page=100" \
+            | python -c 'import json,sys; jobs=[j for j in json.load(sys.stdin)["jobs"] if j["name"] == "Team 2 exact-SHA producer"]; assert len(jobs)==1; print(jobs[0]["id"])')
+          python scripts/certification/verify_team2_sprint4_e2e.py generate \
+            --directory artifacts/e2e-signal-path \
+            --repository "${{ github.repository }}" \
+            --workflow "team-2-sprint4-e2e-proof.yml" \
+            --run-id "${{ github.run_id }}" \
+            --job-id "$JOB_ID" \
+            --event "${{ github.event_name }}"
+      - name: Upload exact-SHA signal-path evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-signal-path
+          path: artifacts/e2e-signal-path
+          if-no-files-found: error
+          retention-days: 30
+      - name: Capture integration stack logs on failure
+        if: failure()
+        run: docker compose -f tests/integration/docker-compose.test.yml logs --no-color > team2-sprint4-compose.log
+      - name: Upload failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: team-2-sprint4-e2e-diagnostics
+          path: team2-sprint4-compose.log
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Tear down integration stack
+        if: always()
+        run: docker compose -f tests/integration/docker-compose.test.yml down -v
+
+  verify-evidence:
+    name: Team 2 independent exact-SHA verifier
+    if: always()
+    needs: certify
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TEAM2_CERTIFICATION_SHA }}
+          fetch-depth: 0
+      - name: Require exact verification checkout
+        run: test "$(git rev-parse HEAD)" = "$TEAM2_CERTIFICATION_SHA"
+      - uses: actions/download-artifact@v4
+        with:
+          name: e2e-signal-path
+          path: downloaded-evidence/e2e-signal-path
+      - name: Independently verify executed evidence
+        run: |
+          python scripts/certification/verify_team2_sprint4_e2e.py verify \
+            --directory downloaded-evidence/e2e-signal-path \
+            --repository "${{ github.repository }}" \
+            --workflow "team-2-sprint4-e2e-proof.yml" \
+            --expected-sha "$TEAM2_CERTIFICATION_SHA"

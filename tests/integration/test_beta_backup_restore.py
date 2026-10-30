@@ -63,7 +63,7 @@ def test_beta_backup_restore_exact_state_and_tenant_isolation() -> None:
     }
     for tenant, document in fixtures.items():
         es.index(index=current, id=f"{tenant}-current", document=document)
-        es.index(index=stream, document={**document, "action": "certification_fixture"})
+        es.index(index=stream, document={**document, "event_action": "authentication_failed"})
     es.indices.refresh(index=f"{current},{stream}")
     before = {name: _fingerprint(es, name) for name in (current, stream)}
     snapshot = f"beta-{int(time.time())}"

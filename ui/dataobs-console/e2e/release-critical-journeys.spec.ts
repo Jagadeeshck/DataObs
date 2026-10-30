@@ -82,7 +82,7 @@ test.describe("v0.2.0 critical Console journeys", () => {
       page.getByRole("link", { name: "orders.events" }),
     ).toBeVisible();
     await expect(
-      page.getByText("at_risk", { exact: true }).first(),
+      page.getByRole("cell", { name: "at_risk", exact: true }),
     ).toBeVisible();
 
     await page.goto("/pathways");
@@ -115,6 +115,18 @@ test.describe("v0.2.0 critical Console journeys", () => {
       page.getByText("Freshness finding linked", { exact: false }),
     ).toBeVisible();
     expect(await seriousOrCritical(page)).toEqual([]);
+  });
+
+  test("System information displays the v0.2.0 Console release", async ({
+    page,
+  }) => {
+    await page.goto("/administration/system");
+    await expect(
+      page.getByRole("heading", { name: "System information", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByText("Version: 0.2.0", { exact: true }),
+    ).toBeVisible();
   });
 
   test("Integration metadata and first-run onboarding remain truthful", async ({

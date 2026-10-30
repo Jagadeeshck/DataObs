@@ -1,6 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import { mockReleaseShell } from "./fixtures/release";
+import { expectKeyboardReachable } from "./helpers/keyboard";
 
 const viewports = [
   { name: "320", width: 320, height: 720 },
@@ -33,12 +34,12 @@ for (const viewport of viewports) {
     );
     expect(hasBodyOverflow).toBe(false);
 
-    await page.keyboard.press("Tab");
-    await expect(
+    await expectKeyboardReachable(
+      page,
       page.getByRole("link", { name: "Skip to content" }),
-    ).toBeFocused();
+    );
 
-    if (viewport.width <= 768) {
+    if (viewport.width < 768) {
       await page
         .getByRole("button", { name: "Open product navigation" })
         .click();
@@ -74,7 +75,9 @@ test("stale and unavailable API responses remain understandable", async ({
     }),
   );
   await page.goto("/");
-  await expect(page.getByText(/unavailable|could not load/i)).toBeVisible();
+  await expect(
+    page.getByText("Operational evidence is unavailable.", { exact: true }),
+  ).toBeVisible();
   await expect(
     page.getByRole("navigation", { name: "Product navigation" }),
   ).toBeVisible();

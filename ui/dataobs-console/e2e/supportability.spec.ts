@@ -93,7 +93,11 @@ test("NO_GO, stale, unknown and safe evidence remain truthful and read-only", as
   ).toBeVisible();
   await expect(page.getByText("NO GO", { exact: true })).toBeVisible();
   await expect(page.getByText("Current evidence: Stale")).toBeVisible();
-  await expect(page.getByText(/UNKNOWN — evidence unavailable/)).toBeVisible();
+  await expect(
+    page.getByRole("row", {
+      name: /backup_restore UNKNOWN evidence unavailable/,
+    }),
+  ).toBeVisible();
   expect(requests.filter((request) => request.method() !== "GET")).toEqual([]);
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   await page.screenshot({
@@ -113,7 +117,9 @@ test("supportability uses typed fields and never renders accidental secrets", as
   await expect(
     page.getByRole("heading", { name: "Platform Supportability" }),
   ).toBeVisible();
-  await expect(page.getByText("Support Profile")).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Support Profile", exact: true }),
+  ).toBeVisible();
   await expect(page.getByText("must-not-render")).toHaveCount(0);
   await expect(
     page.getByText(/not exposed through the Console API/),
@@ -132,6 +138,8 @@ test("ordinary tenant user cannot see or open supportability", async ({
     return route.abort();
   });
   await page.goto("/administration/platform/supportability");
-  await expect(page.getByText(/permission|access/i)).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Access denied", exact: true }),
+  ).toBeVisible();
   expect(platformCalls).toBe(0);
 });

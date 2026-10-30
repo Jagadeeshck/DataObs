@@ -2609,3 +2609,49 @@ progress {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* Team 5 Sprint 4 browser certification closure. */
+.data-status a {
+  color: var(--cyan);
+}
+
+@media (max-width: 767px) {
+  body {
+    min-width: 0;
+  }
+
+  .app-shell,
+  .app-header,
+  .context,
+  .header-search,
+  .refresh-controls {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .app-header,
+  .context {
+    width: 100%;
+  }
+
+  .context > *,
+  .app-header > * {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .context-selector,
+  .context-selector summary {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .context-selector {
+    flex: 1 1 145px;
+  }
+
+  .refresh-controls {
+    flex-wrap: wrap;
+  }
+}

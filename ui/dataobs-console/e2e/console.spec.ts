@@ -1,6 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { mockReleaseAuth } from "./fixtures/release";
+import { expectKeyboardReachable } from "./helpers/keyboard";
 const status = {
   complete: false,
   warnings: ["Cost evidence is not configured"],
@@ -52,16 +53,16 @@ test("authenticated shell, context, command center and route recovery are access
   await expect(
     page.getByRole("heading", { name: "Command Center" }),
   ).toBeVisible();
+  await expectKeyboardReachable(
+    page,
+    page.getByRole("link", { name: "Skip to content" }),
+  );
   await page.getByText("Verified tenant / prod").click();
   await expect(page.getByLabel("Tenant", { exact: true })).toHaveValue(
     "verified-tenant",
   );
   await page.getByLabel("Environment", { exact: true }).selectOption("stage");
   await expect(page).not.toHaveURL(/environment=stage/);
-  await page.keyboard.press("Tab");
-  await expect(
-    page.getByRole("link", { name: "Skip to content" }),
-  ).toBeFocused();
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   await page.goto("/missing");
   await expect(
@@ -77,7 +78,7 @@ test("workspace navigation and Quick Find remain accessible at narrow widths", a
   );
   await page.getByLabel("Workspace", { exact: true }).selectOption("observe");
   await expect(page).toHaveURL(/\/flow$/);
-  await expect(page.getByRole("link", { name: "Streams" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Messaging" })).toBeVisible();
 
   await page.keyboard.press("Control+k");
   await page.getByRole("combobox").fill("observe");

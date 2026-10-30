@@ -12,7 +12,7 @@ from typing import Any
 
 import yaml
 
-from scripts.release.current_terminal_migration import migration_report
+from packages.elastic_store.manifest import terminal_migration_id
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -120,7 +120,7 @@ def identities() -> dict[str, str]:
     return {
         "dataobs_version": str(chart["appVersion"]),
         "release_sha": str(candidate.get("candidate_source_sha") or "unknown"),
-        "terminal_migration": migration_report()["terminal_migration"],
+        "terminal_migration": terminal_migration_id(),
         "release_decision": "NO_GO",
     }
 

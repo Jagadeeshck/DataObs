@@ -222,7 +222,7 @@ def test_certification_migrations_default_to_published_elasticsearch_endpoint():
     assert 'ELASTICSEARCH_URL:-http://127.0.0.1:19200' in script
     workflow = (ROOT / ".github/workflows/ci.yml").read_text()
     assert "./scripts/certification/apply_migrations.sh" in workflow
-    assert "./bin/dataobs elastic status" not in workflow
+    assert "./scripts/certification/apply_migrations.sh\n          ./bin/dataobs elastic status" not in workflow
 
 
 def test_kafka_observer_image_contains_runtime_telemetry_dependency():

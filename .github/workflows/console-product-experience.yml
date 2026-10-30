@@ -50,6 +50,7 @@ jobs:
         run: pnpm playwright --reporter=html,junit && cp -R playwright-report ../../evidence/playwright-report
         env:
           PLAYWRIGHT_JUNIT_OUTPUT_FILE: ../../evidence/playwright.xml
+          DATAOBS_PLAYWRIGHT_MATRIX: "all"
       - name: Repository policy gates
         run: |
           python scripts/check_team_boundaries.py | tee evidence/team-boundaries.txt

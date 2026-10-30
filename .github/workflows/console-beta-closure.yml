@@ -44,7 +44,9 @@ jobs:
       - name: Browser matrix and axe
         working-directory: ui/dataobs-console
         run: pnpm exec playwright install --with-deps chromium firefox webkit && pnpm playwright --reporter=html,junit
-        env: {PLAYWRIGHT_JUNIT_OUTPUT_FILE: '../../evidence/playwright.xml'}
+        env:
+          PLAYWRIGHT_JUNIT_OUTPUT_FILE: ../../evidence/playwright.xml
+          DATAOBS_PLAYWRIGHT_MATRIX: "all"
       - name: Canonical Gate 0 browser and accessibility evidence
         run: |
           python scripts/certification/write_evidence_envelope.py --output evidence/evidence.json \

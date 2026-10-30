@@ -37,13 +37,19 @@ jobs:
         run: pnpm install --frozen-lockfile && pnpm api:generate && git diff --exit-code src/api/generated/schema.ts
       - name: Static, unit, policy, and redaction tests
         working-directory: ui/dataobs-console
-        run: mkdir -p ../../evidence && pnpm typecheck && pnpm lint && pnpm format:check && pnpm test -- --reporter=junit --outputFile=../../evidence/administration-unit.xml
+        run: mkdir -p ../../evidence && pnpm typecheck && pnpm lint && pnpm format:check && pnpm exec vitest run --reporter=junit --outputFile=../../evidence/administration-unit.xml
       - name: Production, bundle, performance, and source-map gates
         working-directory: ui/dataobs-console
         run: pnpm build && pnpm bundle:check | tee ../../evidence/bundle-report.txt && pnpm performance:check | tee ../../evidence/performance-budget.txt && ! find dist -name '*.map' -print -quit | grep .
       - name: Browser, accessibility, and mock OTLP journeys
         working-directory: ui/dataobs-console
-        run: pnpm exec playwright install --with-deps chromium && pnpm playwright
+        env:
+          PLAYWRIGHT_JUNIT_OUTPUT_FILE: ../../evidence/playwright.xml
+          DATAOBS_PLAYWRIGHT_MATRIX: "all"
+        run: |
+          pnpm exec playwright install --with-deps chromium firefox webkit
+          pnpm playwright --reporter=html,junit
+          cp -R playwright-report ../../evidence/playwright-report
       - name: Repository policy gates
         run: |
           python scripts/check_merge_conflict_markers.py | tee evidence/merge-markers.txt
@@ -60,7 +66,7 @@ jobs:
             --repository "$GITHUB_REPOSITORY" --producer-sha "$CERT_SHA" --workflow-file administration-access-console-v1.yml \
             --workflow-run-id "$GITHUB_RUN_ID" --workflow-run-attempt "$GITHUB_RUN_ATTEMPT" --event "$GITHUB_EVENT_NAME" \
             --status pass --test-category typecheck --test-category browser --test-category accessibility --test-category build --test-category security \
-            --supporting-file evidence/administration-unit.xml --supporting-file evidence/administration.json --supporting-file evidence/performance-budget.txt \
+            --supporting-file evidence/administration-unit.xml --supporting-file evidence/playwright.xml --supporting-file evidence/administration.json --supporting-file evidence/performance-budget.txt \
             --tool-version "node=$(node --version)" --tool-version "pnpm=$(pnpm --version)" --tool-version "otel=$(node -p "require('./ui/dataobs-console/node_modules/@opentelemetry/api/package.json').version")"
       - uses: actions/upload-artifact@v4
         with:
@@ -80,4 +86,21 @@ jobs:
       - name: Verify exact-commit evidence independently
         env:
           EXPECTED_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
-        run: python -c 'import json,os; e=json.load(open("evidence/evidence.json")); assert e["producer"]["sha"]==os.environ["EXPECTED_SHA"] and e["status"]=="pass"'
+        run: |
+          python - <<'PY'
+          import json, os, pathlib, xml.etree.ElementTree as ET
+          root = pathlib.Path("evidence")
+          evidence = json.loads((root / "evidence.json").read_text())
+          assert evidence["producer"]["sha"] == os.environ["EXPECTED_SHA"]
+          assert evidence["status"] == "pass"
+          report = root / "playwright.xml"
+          assert report.is_file(), "missing Playwright JUnit"
+          suites = ET.parse(report).getroot()
+          failures = sum(int(s.attrib.get("failures", "0")) for s in suites.iter("testsuite"))
+          errors = sum(int(s.attrib.get("errors", "0")) for s in suites.iter("testsuite"))
+          assert failures == 0 and errors == 0, "Playwright JUnit contains failures"
+          payload = report.read_text(errors="ignore").lower()
+          for browser in ("chromium", "firefox", "webkit"):
+              assert browser in payload, f"missing browser evidence: {browser}"
+          print("verified exact-SHA cross-browser evidence")
+          PY

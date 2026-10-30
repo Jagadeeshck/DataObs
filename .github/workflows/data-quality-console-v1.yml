@@ -64,17 +64,20 @@ jobs:
           pnpm typecheck
           pnpm lint
           pnpm format:check
-          pnpm test -- --reporter=junit --outputFile=../../data-quality-console-v1-evidence/results/console.xml
+          pnpm exec vitest run --reporter=junit --outputFile=../../data-quality-console-v1-evidence/results/console.xml
           pnpm build
           pnpm bundle:check
-      - name: Install supported Playwright browser
+      - name: Install supported Playwright browsers
         working-directory: ui/dataobs-console
-        run: pnpm exec playwright install --with-deps chromium
+        run: pnpm exec playwright install --with-deps chromium firefox webkit
       - name: Browser and accessibility tests
         working-directory: ui/dataobs-console
         env:
-          PLAYWRIGHT_JUNIT_OUTPUT_NAME: ../../data-quality-console-v1-evidence/results/browser.xml
-        run: pnpm exec playwright test --config=playwright.config.ts --reporter=junit,html
+          PLAYWRIGHT_JUNIT_OUTPUT_FILE: ../../data-quality-console-v1-evidence/results/browser.xml
+          DATAOBS_PLAYWRIGHT_MATRIX: "all"
+        run: |
+          pnpm exec playwright test --config=playwright.config.ts --reporter=junit,html
+          cp -R playwright-report ../../data-quality-console-v1-evidence/playwright-report
       - name: Resolve numeric job ID and generate exact-commit evidence
         if: always()
         env:

@@ -1,4 +1,15 @@
 import { defineConfig, devices } from "@playwright/test";
+
+const supportedProjects = [
+  { name: "chromium", use: { ...devices["Desktop Chrome"] } },
+  { name: "firefox", use: { ...devices["Desktop Firefox"] } },
+  { name: "webkit", use: { ...devices["Desktop Safari"] } },
+];
+const projects =
+  process.env.DATAOBS_PLAYWRIGHT_MATRIX === "all"
+    ? supportedProjects
+    : [supportedProjects[0]];
+
 export default defineConfig({
   testDir: "./e2e",
   use: {
@@ -11,9 +22,5 @@ export default defineConfig({
     port: 4173,
     reuseExistingServer: true,
   },
-  projects: [
-    { name: "chromium", use: { ...devices["Desktop Chrome"] } },
-    { name: "firefox", use: { ...devices["Desktop Firefox"] } },
-    { name: "webkit", use: { ...devices["Desktop Safari"] } },
-  ],
+  projects,
 });

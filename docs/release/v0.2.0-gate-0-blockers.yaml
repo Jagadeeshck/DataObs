@@ -1,126 +1,115 @@
 schema_version: '1.0'
 release_version: 0.2.0
-assessment_date: '2026-10-29'
-audited_main_sha: 855345eb02250f9a738abe44bd520247243032bf
-observed_workflow_sha: 855345eb02250f9a738abe44bd520247243032bf
+assessment_date: '2026-10-30'
+audited_main_sha: c3d3dfe63b2d8227612dc867988db268c8b7424f
+observed_workflow_sha: c3d3dfe63b2d8227612dc867988db268c8b7424f
 release_decision: NO_GO
 security_state: INCOMPLETE
 supported_platforms: []
 candidate_frozen: false
 candidate_sha: null
 gate_0_state: GATE_0_BLOCKED
-assessment_scope: Fresh integrated-main observations after PR 323. Final branch/candidate identity
-  and exact-SHA results are emitted by scripts/release/gate0.py in retained run artifacts;
-  historical main evidence is diagnostic only and never authorizes freeze.
+assessment_scope: Fresh integrated-main observations for Sprint 4. Final candidate identity and same-SHA producer results are emitted by the Gate 0 verifier; audited-main evidence is diagnostic only.
 blockers:
 - id: T0-RC-HELM-KIND
   owner: Team 0
-  source_sha: 855345eb02250f9a738abe44bd520247243032bf
+  source_sha: c3d3dfe63b2d8227612dc867988db268c8b7424f
   workflow: beta-deployment-packaging.yml
-  workflow_run_id: 40961600975
-  workflow_url: https://github.com/Jagadeeshck/DataObs/actions/runs/40961600975
+  workflow_run_id: 41120485485
+  workflow_url: https://github.com/Jagadeeshck/DataObs/actions/runs/41120485485
   workflow_attempt: 1
   job: validate
-  first_meaningful_error: 'Kind smoke timed out; migration job completed, Console was healthy, API was CrashLoopBackOff'
-  root_cause: Helm rendered duplicate API security/CORS environment entries and the failure artifact omitted pod logs/events,
-    leaving the remaining API crash cause unobservable.
+  first_meaningful_error: 'API CrashLoopBackOff: ModuleNotFoundError: No module named scripts'
+  root_cause: Packaged API runtime imported release-only scripts.release.current_terminal_migration although Dockerfile.api intentionally excludes scripts.
   root_cause_class: TEAM0_PACKAGING
-  resolution: Remove duplicate env entries and retain bounded events/current/previous pod logs; rerun exact-head Kind without
-    weakening readiness or increasing timeout.
+  resolution: Derive terminal migration from packaged packages.elastic_store.manifest for runtime API/supportability consumers; rerun Kind clean install on final exact SHA.
   evidence_artifact: team-0-deployment-packaging-evidence
-  artifact_id: 12936349730
+  artifact_id: 13008748014
   artifact_state: retained
   hosted_state: failed
   final_head_hosted_state: not_run
 - id: T0-RC-BACKUP-EVIDENCE
   owner: Team 0
-  source_sha: 855345eb02250f9a738abe44bd520247243032bf
+  source_sha: c3d3dfe63b2d8227612dc867988db268c8b7424f
   workflow: beta-backup-restore.yml
-  workflow_run_id: 40961601206
-  workflow_url: https://github.com/Jagadeeshck/DataObs/actions/runs/40961601206
+  workflow_run_id: 41120485890
+  workflow_url: https://github.com/Jagadeeshck/DataObs/actions/runs/41120485890
   workflow_attempt: 1
   job: certify
-  first_meaningful_error: 'pipeline with id [none] does not exist'
-  root_cause: Shared data-stream template configured literal index.default_pipeline=none instead of Elasticsearch no-pipeline
-    sentinel _none.
+  first_meaningful_error: 'strict_dynamic_mapping_exception for field action in security-event data stream'
+  root_cause: Destructive recovery fixture used non-contract field action after all released migrations had applied successfully.
   root_cause_class: TEAM0_RELEASE_EVIDENCE
-  resolution: Use _none and retain executed destructive snapshot/delete/restore JSON plus non-skipped JUnit and independent
-    envelope verification.
+  resolution: Use released event_action security-event field and require successful real snapshot, destructive delete, restore, integrity fingerprint, JUnit and semantic recovery report on final exact SHA.
   evidence_artifact: team-0-backup-restore-v1-evidence
-  artifact_id: 12936476516
+  artifact_id: 13008142677
   artifact_state: retained
   hosted_state: failed
   final_head_hosted_state: not_run
 - id: T0-RC-SECURITY-SUITES
   owner: Team 0
-  source_sha: 855345eb02250f9a738abe44bd520247243032bf
+  source_sha: c3d3dfe63b2d8227612dc867988db268c8b7424f
   workflow: beta-security-hardening.yml
-  workflow_run_id: 40961601016
-  workflow_url: https://github.com/Jagadeeshck/DataObs/actions/runs/40961601016
+  workflow_run_id: 41120485735
+  workflow_url: https://github.com/Jagadeeshck/DataObs/actions/runs/41120485735
   workflow_attempt: 1
   job: security
   first_meaningful_error: null
-  root_cause: Earlier clean-install Data Product/reliability mapping ownership defects were fixed before this integrated-main run.
+  root_cause: No active security defect observed on audited main.
   root_cause_class: TEAM0_SECURITY_PLATFORM
-  resolution: Preserve the passing secured migration/security assertions and rerun them unchanged on the final exact SHA.
+  resolution: Preserve unchanged secured ES 9.4.2 migration, OIDC/JWKS, RBAC and tenant A/B/C assertions and rerun on final exact SHA.
   evidence_artifact: team-0-security-hardening-evidence
-  artifact_id: 12935867292
+  artifact_id: 13008981762
   artifact_state: retained
   hosted_state: passed
   final_head_hosted_state: not_run
 - id: T0-RC-MVP-SMOKE
   owner: Team 0
-  source_sha: 855345eb02250f9a738abe44bd520247243032bf
+  source_sha: c3d3dfe63b2d8227612dc867988db268c8b7424f
   workflow: first-mvp-demo-smoke.yml
-  workflow_run_id: 40961601001
-  workflow_url: https://github.com/Jagadeeshck/DataObs/actions/runs/40961601001
+  workflow_run_id: 41120485543
+  workflow_url: https://github.com/Jagadeeshck/DataObs/actions/runs/41120485543
   workflow_attempt: 1
   job: smoke
-  first_meaningful_error: 'strict_dynamic_mapping_exception: dynamic introduction of [overall_health] is not allowed'
-  root_cause: Existing Command Center and pathway projection indices lacked writer-complete index-owned mappings during clean
-    installation.
-  root_cause_class: TEAM0_SECURITY_PLATFORM
-  resolution: Add narrow clean-install mapping ownership for fields already emitted by existing projection writers; retain
-    strict mappings and rerun smoke.
-  evidence_artifact: first-mvp-demo-diagnostics-855345eb02250f9a738abe44bd520247243032bf
-  artifact_id: 12936716603
+  first_meaningful_error: 'API unhealthy after ModuleNotFoundError: No module named scripts'
+  root_cause: Same packaged runtime dependency as Kind after migrations and seed progress.
+  root_cause_class: TEAM0_PACKAGING
+  resolution: Rerun unchanged smoke after packaged terminal-migration identity fix; smoke remains diagnostic and not publication authority.
+  evidence_artifact: first-mvp-demo-diagnostics-c3d3dfe63b2d8227612dc867988db268c8b7424f
+  artifact_id: 13007474274
   artifact_state: retained
   hosted_state: failed
   final_head_hosted_state: not_run
 - id: T0-RC-FOUNDATION
   owner: Team 0
-  source_sha: 855345eb02250f9a738abe44bd520247243032bf
+  source_sha: c3d3dfe63b2d8227612dc867988db268c8b7424f
   workflow: team-delivery-foundation.yml
-  workflow_run_id: 40961601199
-  workflow_url: https://github.com/Jagadeeshck/DataObs/actions/runs/40961601199
+  workflow_run_id: 41120485671
+  workflow_url: https://github.com/Jagadeeshck/DataObs/actions/runs/41120485671
   workflow_attempt: 1
   job: foundation-backend / validate; foundation-console / validate
-  first_meaningful_error: 'Backend stopped at Black 26.10.1; Console stopped at pinned Prettier formatting'
-  root_cause: Formatting drift in recently merged shared Python regressions plus Team 5-owned Console E2E files.
+  first_meaningful_error: 'Backend stopped at Black 26.10.1; Console validation passed'
+  root_cause: Shared Python formatting drift in recently merged release regressions.
   root_cause_class: TEAM0_SHARED_CI
-  resolution: Team 0 applies format-only Python corrections; Team 5 PR 328 owns the Console formatting closure; rerun both on
-    the final integrated SHA.
-  evidence_artifact: team-delivery-foundation-evidence
-  artifact_id: null
-  artifact_state: missing
+  resolution: Apply formatter-only corrections where reproduced; rerun backend and Console on the final exact SHA.
+  evidence_artifact: team-delivery-foundation-console-evidence
+  artifact_id: 13008304018
+  artifact_state: retained
   hosted_state: failed
   final_head_hosted_state: not_run
 - id: T0-RC-SHARED-CI
   owner: Team 0
-  source_sha: 855345eb02250f9a738abe44bd520247243032bf
+  source_sha: c3d3dfe63b2d8227612dc867988db268c8b7424f
   workflow: ci.yml
-  workflow_run_id: 40961601171
-  workflow_url: https://github.com/Jagadeeshck/DataObs/actions/runs/40961601171
+  workflow_run_id: 41120485742
+  workflow_url: https://github.com/Jagadeeshck/DataObs/actions/runs/41120485742
   workflow_attempt: 1
-  job: Python quality; Console; incident OCC; certification Kafka/security/product
-  first_meaningful_error: 'Black/Prettier drift; bitnami/kafka:3.9 manifest missing; healthy Elasticsearch had no host loopback binding'
-  root_cause: Shared static formatting debt and certification bootstrap contracts that expected host-side access from services
-    attached only to internal Compose networks.
+  job: Python quality; incident OCC; certification profiles
+  first_meaningful_error: 'Black drift; certification migration helper used localhost:9200 instead of published 19200; Kafka observer image omitted src.telemetry dependency'
+  root_cause: Reproducible shared formatting and certification runtime/bootstrap defects. Terraform/Helm, Compose validation, docs truth, contracts and image SBOM/security were green.
   root_cause_class: TEAM0_SHARED_CI
-  resolution: Format shared Python, use official Kafka 3.9.1 with three loopback external listeners, add a dedicated host-access
-    bridge while preserving internal networks, retain Kafka diagnostics, and consume Team 5 PR 328 for Console formatting.
+  resolution: Repair only reproduced shared defects; preserve passing Terraform/Helm/actionlint/Compose/SBOM gates unchanged.
   evidence_artifact: team-0-gate0-shared-evidence
-  artifact_id: 12936999008
+  artifact_id: 13008004630
   artifact_state: retained
   hosted_state: failed
   final_head_hosted_state: not_run

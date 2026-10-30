@@ -4,7 +4,7 @@ from typing import Any, Callable
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 
-from scripts.release.current_terminal_migration import migration_report
+from packages.elastic_store.manifest import terminal_migration_id
 from src.platform_lifecycle import LifecycleError, PlatformLifecycleService
 from src.platform_lifecycle.compatibility import PlatformProfile, assess_upgrade, load_policy
 from src.platform_lifecycle.planning import create_plan, validate_promotion
@@ -198,7 +198,7 @@ def create_platform_lifecycle_router(require_auth: Callable[..., Any]) -> APIRou
     @router.get("/upgrade-readiness")
     def upgrade_readiness(target: str):
         matrix = load_policy()
-        terminal = migration_report()["terminal_migration"]
+        terminal = terminal_migration_id()
         current = PlatformProfile(
             matrix["dataobs_version"],
             "3.17.0",

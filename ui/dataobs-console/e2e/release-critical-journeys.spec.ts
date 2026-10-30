@@ -117,6 +117,16 @@ test.describe("v0.2.0 critical Console journeys", () => {
     expect(await seriousOrCritical(page)).toEqual([]);
   });
 
+  test("System information displays the v0.2.0 Console release", async ({
+    page,
+  }) => {
+    await page.goto("/administration/system");
+    await expect(
+      page.getByRole("heading", { name: "System information", exact: true }),
+    ).toBeVisible();
+    await expect(page.getByText("Version: 0.2.0", { exact: true })).toBeVisible();
+  });
+
   test("Integration metadata and first-run onboarding remain truthful", async ({
     page,
   }) => {

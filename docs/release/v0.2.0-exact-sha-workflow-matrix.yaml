@@ -1,12 +1,39 @@
 schema_version: '1.0'
 release_version: 0.2.0
-branch: codex/sprint3-team0-release-gates
-starting_main_sha: 855345eb02250f9a738abe44bd520247243032bf
+branch: codex/sprint4-team0-release-candidate
+audited_main_sha: c3d3dfe63b2d8227612dc867988db268c8b7424f
 final_sha: null
 gate_0_status: GATE_0_BLOCKED
 release_decision: NO_GO
 candidate_frozen: false
-note: Current branch execution is not complete. Historical main/PR runs are diagnostic only and are not final-candidate evidence.
+note: Final candidate evidence must be produced after the source SHA is frozen. Audited-main runs below are diagnostic only and are never transplanted into final Gate 0.
+diagnostic_baseline:
+  deployment:
+    run_id: 41120485485
+    result: failure
+    artifact_id: 13008748014
+  security:
+    run_id: 41120485735
+    result: success
+    artifact_id: 13008981762
+  iam:
+    run_id: 41120485609
+    result: success
+    artifact_id: 13007634526
+  backup_restore:
+    run_id: 41120485890
+    result: failure
+    artifact_id: 13008142677
+  mvp:
+    run_id: 41120485543
+    result: failure
+    artifact_id: 13007474274
+  foundation:
+    run_id: 41120485671
+    result: failure
+  shared_ci:
+    run_id: 41120485742
+    result: failure
 gates:
   - gate: foundation-backend
     workflow: team-delivery-foundation.yml

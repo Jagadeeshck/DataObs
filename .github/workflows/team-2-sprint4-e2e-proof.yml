@@ -43,12 +43,11 @@ jobs:
         run: mkdir -p artifacts/e2e-signal-path/results artifacts/e2e-signal-path/data-product
       - name: Start Team 2 integration stack
         run: docker compose -f tests/integration/docker-compose.test.yml up -d --build
-      - name: Wait for Elasticsearch, Collector, webhook and API
+      - name: Wait for Elasticsearch, Collector and webhook
         run: |
           python scripts/ci/wait_for_elasticsearch.py --url http://127.0.0.1:9200 --timeout 180
           timeout 180 bash -c 'until curl -fsS http://127.0.0.1:13133 >/dev/null; do sleep 3; done'
           timeout 180 bash -c 'until curl -fsS http://127.0.0.1:8089/health >/dev/null; do sleep 3; done'
-          timeout 180 bash -c 'until curl -fsS http://127.0.0.1:8000/health >/dev/null; do sleep 3; done'
       - name: Require Elasticsearch 9.4.2
         run: |
           curl -fsS http://127.0.0.1:9200 > artifacts/e2e-signal-path/elasticsearch.json

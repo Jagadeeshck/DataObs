@@ -124,7 +124,9 @@ test.describe("v0.2.0 critical Console journeys", () => {
     await expect(
       page.getByRole("heading", { name: "System information", exact: true }),
     ).toBeVisible();
-    await expect(page.getByText("Version: 0.2.0", { exact: true })).toBeVisible();
+    await expect(
+      page.getByText("Version: 0.2.0", { exact: true }),
+    ).toBeVisible();
   });
 
   test("Integration metadata and first-run onboarding remain truthful", async ({

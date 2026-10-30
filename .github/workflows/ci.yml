@@ -565,7 +565,6 @@ jobs:
       - name: Apply and verify released migrations
         run: |
           ./scripts/certification/apply_migrations.sh
-          ./bin/dataobs elastic status
           curl -fsS http://127.0.0.1:19200/_mapping >/dev/null
           curl -fsS http://127.0.0.1:19200/_alias >/dev/null
       - name: Prove migration apply is idempotent
@@ -604,7 +603,6 @@ jobs:
       - name: Apply and verify released migrations
         run: |
           ./scripts/certification/apply_migrations.sh
-          ./bin/dataobs elastic status
           curl -fsS http://127.0.0.1:19200/_mapping >/dev/null
           curl -fsS http://127.0.0.1:19200/_alias >/dev/null
       - name: Run live assertions
@@ -641,7 +639,6 @@ jobs:
       - name: Apply and verify released migrations
         run: |
           ./scripts/certification/apply_migrations.sh
-          ./bin/dataobs elastic status
           curl -fsS http://127.0.0.1:19200/_mapping >/dev/null
           curl -fsS http://127.0.0.1:19200/_alias >/dev/null
       - name: Seed deterministic Kafka fixtures
@@ -686,7 +683,6 @@ jobs:
       - name: Apply and verify released migrations
         run: |
           ./scripts/certification/apply_migrations.sh
-          ./bin/dataobs elastic status
           curl -fsS http://127.0.0.1:19200/_mapping >/dev/null
           curl -fsS http://127.0.0.1:19200/_alias >/dev/null
       - name: Run live assertions
@@ -723,7 +719,6 @@ jobs:
       - name: Apply and verify released migrations
         run: |
           ./scripts/certification/apply_migrations.sh
-          ./bin/dataobs elastic status
           curl -fsS http://127.0.0.1:19200/_mapping >/dev/null
           curl -fsS http://127.0.0.1:19200/_alias >/dev/null
       - name: Run live assertions
@@ -768,7 +763,6 @@ jobs:
       - name: Apply and verify released migrations
         run: |
           ./scripts/certification/apply_migrations.sh
-          ./bin/dataobs elastic status
           curl -fsS http://127.0.0.1:19200/_mapping >/dev/null
           curl -fsS http://127.0.0.1:19200/_alias >/dev/null
       - name: Run browser live assertions

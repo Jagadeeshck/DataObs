@@ -52,13 +52,8 @@ def test_clean_install_executes_all_released_migrations(
     applied = apply(elasticsearch_client)
     migration_status = status(elasticsearch_client)
     expected = migrations()
-    assert [item.migration_id[:4] for item in expected] == [
-        f"{number:04d}" for number in range(1, len(expected) + 1)
-    ]
-    assert any(
-        item.migration_id == "0019_data_product_operation_claim_expires_date"
-        for item in expected
-    )
+    assert [item.migration_id[:4] for item in expected] == [f"{number:04d}" for number in range(1, len(expected) + 1)]
+    assert any(item.migration_id == "0019_data_product_operation_claim_expires_date" for item in expected)
     assert len(applied) == len(expected)
     assert migration_status["ready"]
     assert set(migration_status["applied"]) == {

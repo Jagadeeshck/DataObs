@@ -5,6 +5,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY packages packages
 COPY integrations integrations
 COPY services services
+COPY src src
 COPY config config
 ENTRYPOINT ["python", "-m", "services.kafka_observer.cli"]
 CMD ["print-capabilities"]

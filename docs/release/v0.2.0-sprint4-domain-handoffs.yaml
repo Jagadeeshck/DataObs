@@ -1,0 +1,54 @@
+schema_version: '1.0'
+release_version: 0.2.0
+audited_main_sha: c3d3dfe63b2d8227612dc867988db268c8b7424f
+branch: codex/sprint4-team0-release-candidate
+release_decision: NO_GO
+candidate_frozen: false
+handoffs:
+  - id: T5-SPRINT4-BROWSER-ACCEPTANCE
+    owner_team: Team 5
+    state: exact_sha_browser_failures_observed
+    diagnostic_run_id: 41120485477
+    blocker: Shared release and supportability Playwright journeys fail across the supported browser matrix.
+    required_action: Reproduce on the final integrated candidate SHA and repair only Team 5-owned browser/UI harness defects; retain browser and accessibility evidence for the same workflow run and attempt.
+    team0_dependency_resolved: pending_final_shared_rerun
+    release_blocking: true
+  - id: T1-SPRINT4-CONSOLE-EVIDENCE
+    owner_team: Team 1
+    state: exact_sha_rerun_required
+    diagnostic_runs: [41120485518, 41120485664, 41120485592, 41120485812]
+    blocker: Several Team 1 Console producers fail browser stages; reusable backend failures also include shared Black drift.
+    required_action: Rerun mandatory Team 1 workflow-dispatch producers after Team 0 shared fixes; reopen Team 1 semantics only for failures that remain after shared/backend and Team 5 dependencies are green.
+    team0_dependency_resolved: pending_final_shared_rerun
+    release_blocking: true
+  - id: T2-SPRINT4-CONSOLE-EVIDENCE
+    owner_team: Team 2
+    state: exact_sha_rerun_required
+    diagnostic_runs: [41120485783, 41120485815]
+    blocker: Data Quality and Lineage Console producers fail browser/accessibility stages on audited main.
+    required_action: Rerun mandatory Team 2 workflow-dispatch producers on the final candidate SHA; preserve all browser/accessibility assertions.
+    team0_dependency_resolved: pending_final_shared_rerun
+    release_blocking: true
+  - id: T3-SPRINT4-INCIDENT-EVIDENCE
+    owner_team: Team 3
+    state: source_health_green
+    diagnostic_run_id: 41120485801
+    blocker: null
+    required_action: Produce mandatory workflow-dispatch evidence on the final candidate SHA; do not promote the push result as release evidence.
+    team0_dependency_resolved: true
+    release_blocking: true
+  - id: T4-SPRINT4-INTEGRATION-SDK
+    owner_team: Team 4
+    state: source_health_green
+    diagnostic_run_id: 41120485748
+    blocker: null
+    required_action: Produce mandatory workflow-dispatch Integration SDK evidence on the final candidate SHA. AWS remains optional per the Beta manifest.
+    team0_dependency_resolved: true
+    release_blocking: true
+  - id: T0-SPRINT4-SUPPORTED-PLATFORM
+    owner_team: Team 0
+    state: protected_evidence_missing
+    blocker: No supported platform is promoted; first-supported-platform evidence and protected sign/verify/install inputs remain absent.
+    required_action: After Gate 0 and domain evidence are green, run the existing protected platform/supply-chain authority with real staged digest-addressed artifacts and independently verify the retained outputs.
+    team0_dependency_resolved: false
+    release_blocking: true

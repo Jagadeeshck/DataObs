@@ -41,8 +41,20 @@ class StoreProtocol(Protocol):
         severity: Optional[str] = None,
         run_id: Optional[str] = None,
     ) -> List[Dict[str, Any]]: ...
-    def save_rule(self, rule: Dict[str, Any], *, tenant_id: str | None = None, environment: str | None = None) -> str: ...
-    def add_rule(self, rule: Dict[str, Any], *, tenant_id: str | None = None, environment: str | None = None) -> str: ...
+    def save_rule(
+        self,
+        rule: Dict[str, Any],
+        *,
+        tenant_id: str | None = None,
+        environment: str | None = None,
+    ) -> str: ...
+    def add_rule(
+        self,
+        rule: Dict[str, Any],
+        *,
+        tenant_id: str | None = None,
+        environment: str | None = None,
+    ) -> str: ...
     def get_rule(
         self,
         rule_id: str,

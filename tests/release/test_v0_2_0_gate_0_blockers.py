@@ -202,6 +202,31 @@ def test_api_template_has_unique_security_environment_entries():
 
 def test_kind_smoke_failure_diagnostics_include_events_and_container_logs():
     script = (ROOT / "scripts/deployment/kind_smoke_test.sh").read_text()
-    assert "kubectl -n \"$NS\" get events --sort-by=.lastTimestamp" in script
+    assert 'kubectl -n "$NS" get events --sort-by=.lastTimestamp' in script
     assert 'kubectl -n "$NS" logs "$pod" --tail=300' in script
     assert 'kubectl -n "$NS" logs "$pod" --previous --tail=300' in script
+
+
+def test_packaged_runtimes_do_not_depend_on_release_script_modules():
+    for relative in (
+        "src/api/platform_lifecycle_routes.py",
+        "src/platform_operations/supportability.py",
+    ):
+        source = (ROOT / relative).read_text()
+        assert "from scripts." not in source
+        assert "import scripts." not in source
+
+
+def test_certification_migrations_default_to_published_elasticsearch_endpoint():
+    script = (ROOT / "scripts/certification/apply_migrations.sh").read_text()
+    assert 'ELASTICSEARCH_URL:-http://127.0.0.1:19200' in script
+    workflow = (ROOT / ".github/workflows/ci.yml").read_text()
+    assert "./scripts/certification/apply_migrations.sh" in workflow
+    assert "./scripts/certification/apply_migrations.sh\n          ./bin/dataobs elastic status" not in workflow
+
+
+def test_kafka_observer_image_contains_runtime_telemetry_dependency():
+    dockerfile = (ROOT / "Dockerfile.kafka-observer").read_text()
+    cli = (ROOT / "services/kafka_observer/cli.py").read_text()
+    assert "from src.telemetry import init_telemetry" in cli
+    assert "COPY src src" in dockerfile

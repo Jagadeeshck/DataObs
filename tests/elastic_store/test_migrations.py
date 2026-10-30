@@ -2,6 +2,12 @@ from packages.elastic_store.manifest import DATA_STREAMS, MUTABLE_INDICES
 from packages.elastic_store.registry import plan
 
 
+def test_terminal_migration_id_is_derived_from_packaged_registry():
+    from packages.elastic_store.manifest import migrations, terminal_migration_id
+
+    assert terminal_migration_id() == migrations()[-1].migration_id
+
+
 def test_migration_plan_contains_foundation_storage_patterns():
     p = plan()[0]
     assert p["migration_id"] == "0001_product_foundation"

@@ -55,10 +55,31 @@ jobs:
           python scripts/certification/write_evidence_envelope.py --output evidence/evidence.json \
             --repository "$GITHUB_REPOSITORY" --producer-sha "$GITHUB_SHA" --workflow-file pathway-intelligence-backend.yml \
             --workflow-run-id "$GITHUB_RUN_ID" --workflow-run-attempt "$GITHUB_RUN_ATTEMPT" --event "$GITHUB_EVENT_NAME" --status pass \
-            --test-category pathways --test-category tenant-isolation --tool-version "python=$(python --version | cut -d' ' -f2)"
+            --test-category pathways --test-category tenant-isolation \
+            --supporting-file evidence/pathway-intelligence-junit.xml --supporting-file evidence/pathway-intelligence-backend-v1.json \
+            --tool-version "python=$(python --version | cut -d' ' -f2)"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: pathway-intelligence-backend-v1-evidence
           path: evidence
           retention-days: 30
+
+  verify-evidence:
+    if: always()
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: python -m pip install pyyaml
+      - uses: actions/download-artifact@v4
+        with: {name: pathway-intelligence-backend-v1-evidence, path: downloaded-evidence}
+      - name: Independently verify downloaded exact-commit evidence
+        run: |
+          python scripts/certification/verify_artifacts.py downloaded-evidence --sentinels-only
+          python scripts/certification/check_downloaded_envelope.py --directory downloaded-evidence \
+            --sha "$GITHUB_SHA" --repository "$GITHUB_REPOSITORY" --workflow pathway-intelligence-backend.yml \
+            --run "$GITHUB_RUN_ID" --attempt "$GITHUB_RUN_ATTEMPT" --event "$GITHUB_EVENT_NAME" --category pathways --category tenant-isolation

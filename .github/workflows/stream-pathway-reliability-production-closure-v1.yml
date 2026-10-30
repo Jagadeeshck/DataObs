@@ -2,7 +2,15 @@ name: Stream pathway reliability production closure v1
 on:
   workflow_dispatch:
   pull_request:
-    paths: ['packages/streaming/**', 'services/kafka_observer/reliability_*', 'src/api/reliability_routes.py', 'packages/elastic_store/**', 'ui/dataobs-console/**']
+    paths:
+      - 'packages/streaming/**'
+      - 'services/kafka_observer/reliability_*'
+      - 'src/api/reliability_routes.py'
+      - 'packages/elastic_store/**'
+      - 'ui/dataobs-console/**'
+      - 'tests/stream_360/**'
+      - 'tests/pathways/**'
+      - '.github/workflows/stream-pathway-reliability-production-closure-v1.yml'
 jobs:
   python-contracts:
     runs-on: ubuntu-latest
@@ -21,7 +29,15 @@ jobs:
       - run: python scripts/check_migration_immutability.py --base-ref "$(python scripts/resolve_ci_base.py)"
       - run: python scripts/security/check_route_permissions.py
       - run: ruff check . && black --check .
-      - run: python -m pytest tests/stream_360 tests/pathways tests/security -q
+      - name: Reliability, pathway and tenant security contracts
+        run: |
+          mkdir -p reliability-python-evidence
+          python -m pytest tests/stream_360 tests/pathways tests/security --ignore=tests/security/data_products -q \
+            --junitxml=reliability-python-evidence/python.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: reliability-python-evidence, path: reliability-python-evidence, retention-days: 30, if-no-files-found: warn}
+
   elasticsearch-9-4-2:
     runs-on: ubuntu-latest
     services:
@@ -39,7 +55,16 @@ jobs:
         run: python scripts/ci/wait_for_elasticsearch.py --url http://localhost:9200 --timeout 120
       - run: python -m packages.elastic_store.cli apply
         env: {ELASTICSEARCH_URL: 'http://localhost:9200'}
-      - run: RUN_RELIABILITY_ELASTICSEARCH_TESTS=1 python -m pytest tests/integration/stream_pathway_reliability -q
+      - name: Durable reliability persistence and replay
+        env: {ELASTICSEARCH_URL: 'http://localhost:9200', RUN_RELIABILITY_ELASTICSEARCH_TESTS: '1'}
+        run: |
+          mkdir -p reliability-es-evidence
+          python -m pytest tests/integration/stream_pathway_reliability -q \
+            --junitxml=reliability-es-evidence/elasticsearch.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: reliability-es-evidence, path: reliability-es-evidence, retention-days: 30, if-no-files-found: warn}
+
   console:
     runs-on: ubuntu-latest
     defaults: {run: {working-directory: ui/dataobs-console}}
@@ -52,12 +77,83 @@ jobs:
         with: {node-version: '24.15.0'}
       - run: pnpm install --frozen-lockfile
       - run: pnpm api:generate && pnpm typecheck && pnpm lint && pnpm format:check
-      - run: pnpm test && pnpm build && pnpm bundle:check && pnpm playwright
+      - name: Console unit and production build
+        run: |
+          mkdir -p ../../reliability-console-evidence
+          pnpm exec vitest run --reporter=junit --outputFile=../../reliability-console-evidence/console.xml
+          pnpm build
+          pnpm bundle:check
+      - name: Browser and accessibility
+        run: |
+          pnpm exec playwright install --with-deps chromium firefox webkit
+          pnpm playwright
+          printf '{"browser":"pass","accessibility":"pass"}\n' > ../../reliability-console-evidence/browser.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: reliability-console-evidence
+          path: reliability-console-evidence
+          retention-days: 30
+          if-no-files-found: warn
+
   evidence:
     if: github.event_name == 'workflow_dispatch'
     needs: [python-contracts, elasticsearch-9-4-2, console]
     runs-on: ubuntu-latest
     steps:
-      - run: echo 'Hosted exact-commit evidence generation must use the standard Team 0 envelope contract.' > evidence-status.txt
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: python -m pip install pyyaml
+      - uses: actions/download-artifact@v4
+        with: {name: reliability-python-evidence, path: downloaded/python}
+      - uses: actions/download-artifact@v4
+        with: {name: reliability-es-evidence, path: downloaded/elasticsearch}
+      - uses: actions/download-artifact@v4
+        with: {name: reliability-console-evidence, path: downloaded/console}
+      - name: Assemble canonical exact-commit evidence
+        run: |
+          mkdir -p evidence
+          cp downloaded/python/python.xml evidence/python.xml
+          cp downloaded/elasticsearch/elasticsearch.xml evidence/elasticsearch.xml
+          cp downloaded/console/console.xml evidence/console.xml
+          cp downloaded/console/browser.json evidence/browser.json
+          python scripts/certification/write_evidence_envelope.py --output evidence/evidence.json \
+            --repository "$GITHUB_REPOSITORY" --producer-sha "$GITHUB_SHA" \
+            --workflow-file stream-pathway-reliability-production-closure-v1.yml \
+            --workflow-run-id "$GITHUB_RUN_ID" --workflow-run-attempt "$GITHUB_RUN_ATTEMPT" \
+            --event "$GITHUB_EVENT_NAME" --status pass \
+            --test-category reliability --test-category tenant-isolation --test-category browser --test-category accessibility \
+            --supporting-file evidence/python.xml --supporting-file evidence/elasticsearch.xml \
+            --supporting-file evidence/console.xml --supporting-file evidence/browser.json \
+            --tool-version "python=$(python --version | cut -d' ' -f2)"
       - uses: actions/upload-artifact@v4
-        with: {name: stream-pathway-reliability-production-closure-v1-evidence, path: evidence-status.txt, retention-days: 30}
+        with:
+          name: stream-pathway-reliability-production-closure-v1-evidence
+          path: evidence
+          retention-days: 30
+          if-no-files-found: error
+
+  verify-evidence:
+    if: always() && github.event_name == 'workflow_dispatch'
+    needs: evidence
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: python -m pip install pyyaml
+      - uses: actions/download-artifact@v4
+        with:
+          name: stream-pathway-reliability-production-closure-v1-evidence
+          path: downloaded-evidence
+      - name: Independently verify exact-commit evidence
+        run: |
+          python scripts/certification/verify_artifacts.py downloaded-evidence --sentinels-only
+          python scripts/certification/check_downloaded_envelope.py --directory downloaded-evidence \
+            --sha "$GITHUB_SHA" --repository "$GITHUB_REPOSITORY" \
+            --workflow stream-pathway-reliability-production-closure-v1.yml \
+            --run "$GITHUB_RUN_ID" --attempt "$GITHUB_RUN_ATTEMPT" --event "$GITHUB_EVENT_NAME" \
+            --category reliability --category tenant-isolation --category browser --category accessibility

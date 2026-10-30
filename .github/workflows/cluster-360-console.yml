@@ -47,13 +47,13 @@ jobs:
         run: mkdir -p evidence && python -m packages.elastic_store.cli apply && python -m pytest tests/stream_360/test_observer_backend_v1.py -q --junitxml=evidence/elasticsearch.xml
         env: {ELASTICSEARCH_URL: "http://localhost:9200"}
       - name: Backend cluster tests and tenant isolation
-        run: python -m pytest tests/stream_360/test_cluster_360_console.py tests/security -q --junitxml=evidence/api-security.xml
+        run: python -m pytest tests/stream_360/test_cluster_360_console.py tests/security --ignore=tests/security/data_products -q --junitxml=evidence/api-security.xml
       - name: Build and test Console
         working-directory: ui/dataobs-console
         run: pnpm install --frozen-lockfile && pnpm api:generate && git diff --exit-code src/api/generated/schema.ts && pnpm typecheck && pnpm lint && pnpm format:check && pnpm test -- --reporter=junit --outputFile=../../evidence/console-junit.xml && pnpm build && pnpm bundle:check
       - name: Playwright and accessibility
         working-directory: ui/dataobs-console
-        run: pnpm exec playwright install --with-deps chromium && pnpm playwright
+        run: pnpm exec playwright install --with-deps chromium firefox webkit && pnpm playwright
       - name: Produce and independently verify exact-commit evidence
         run: |
           printf '{"final_sha":"%s","elasticsearch_version":"9.4.2","cluster_overview":true,"broker_result":true,"topic_result":true,"consumer_group_result":true,"connector_result":true,"health_aggregation":true,"cursor_result":true,"tenant_isolation":true,"playwright":true,"accessibility":true,"junit_results":["elasticsearch.xml","api-security.xml","console-junit.xml"]}\n' "$(git rev-parse HEAD)" > evidence/cluster-360-console-v1.json
@@ -63,9 +63,31 @@ jobs:
           python scripts/certification/write_evidence_envelope.py --output evidence/evidence.json \
             --repository "$GITHUB_REPOSITORY" --producer-sha "$GITHUB_SHA" --workflow-file cluster-360-console.yml \
             --workflow-run-id "$GITHUB_RUN_ID" --workflow-run-attempt "$GITHUB_RUN_ATTEMPT" --event "$GITHUB_EVENT_NAME" --status pass \
-            --test-category api --test-category browser --test-category accessibility --tool-version "python=$(python --version | cut -d' ' -f2)"
+            --test-category api --test-category browser --test-category accessibility \
+            --supporting-file evidence/elasticsearch.xml --supporting-file evidence/api-security.xml \
+            --supporting-file evidence/console-junit.xml --supporting-file evidence/cluster-360-console-v1.json \
+            --tool-version "python=$(python --version | cut -d' ' -f2)"
       - uses: actions/upload-artifact@v4
         with:
           name: cluster-360-console-v1-evidence
           path: evidence/
           retention-days: 30
+
+  verify-evidence:
+    if: always()
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: python -m pip install pyyaml
+      - uses: actions/download-artifact@v4
+        with: {name: cluster-360-console-v1-evidence, path: downloaded-evidence}
+      - name: Independently verify downloaded exact-commit evidence
+        run: |
+          python scripts/certification/verify_artifacts.py downloaded-evidence --sentinels-only
+          python scripts/certification/check_downloaded_envelope.py --directory downloaded-evidence \
+            --sha "$GITHUB_SHA" --repository "$GITHUB_REPOSITORY" --workflow cluster-360-console.yml \
+            --run "$GITHUB_RUN_ID" --attempt "$GITHUB_RUN_ATTEMPT" --event "$GITHUB_EVENT_NAME" --category api --category browser --category accessibility

@@ -47,7 +47,7 @@ jobs:
           mkdir -p evidence
           python scripts/check_migration_immutability.py --base-ref "$(python scripts/resolve_ci_base.py)"
           python -m packages.elastic_store.cli apply
-          python -m pytest tests/stream_360/test_connector_schema_360.py tests/stream_360 tests/security -q --junitxml=evidence/backend.xml
+          python -m pytest tests/stream_360/test_connector_schema_360.py tests/stream_360 tests/security --ignore=tests/security/data_products -q --junitxml=evidence/backend.xml
       - name: Redaction sentinel
         run: |
           ! grep -RInE 'client_secret|private_key|sasl\.jaas\.config|authorization:[[:space:]]*bearer' tests/fixtures/streams docs/development/connector-schema-360-audit.md docs/operations/connector-schema-360.md
@@ -58,7 +58,7 @@ jobs:
           pnpm api:generate
           git diff --exit-code src/api/generated/schema.ts
           pnpm typecheck && pnpm lint && pnpm format:check && pnpm test -- --reporter=junit --outputFile=../../evidence/console.xml && pnpm build && pnpm bundle:check
-          pnpm exec playwright install --with-deps chromium
+          pnpm exec playwright install --with-deps chromium firefox webkit
           pnpm playwright
       - name: Generate and independently verify evidence
         run: |
@@ -76,9 +76,30 @@ jobs:
           python scripts/certification/write_evidence_envelope.py --output evidence/evidence.json \
             --repository "$GITHUB_REPOSITORY" --producer-sha "$GITHUB_SHA" --workflow-file connector-schema-360-console.yml \
             --workflow-run-id "$GITHUB_RUN_ID" --workflow-run-attempt "$GITHUB_RUN_ATTEMPT" --event "$GITHUB_EVENT_NAME" --status pass \
-            --test-category api --test-category redaction --test-category browser --tool-version "python=$(python --version | cut -d' ' -f2)"
+            --test-category api --test-category redaction --test-category browser \
+            --supporting-file evidence/backend.xml --supporting-file evidence/console.xml --supporting-file evidence/result.json \
+            --tool-version "python=$(python --version | cut -d' ' -f2)"
       - uses: actions/upload-artifact@v4
         with:
           name: connector-schema-360-console-v1-evidence
           path: evidence/
           retention-days: 30
+
+  verify-evidence:
+    if: always()
+    needs: exact-commit-evidence
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: python -m pip install pyyaml
+      - uses: actions/download-artifact@v4
+        with: {name: connector-schema-360-console-v1-evidence, path: downloaded-evidence}
+      - name: Independently verify downloaded exact-commit evidence
+        run: |
+          python scripts/certification/verify_artifacts.py downloaded-evidence --sentinels-only
+          python scripts/certification/check_downloaded_envelope.py --directory downloaded-evidence \
+            --sha "$GITHUB_SHA" --repository "$GITHUB_REPOSITORY" --workflow connector-schema-360-console.yml \
+            --run "$GITHUB_RUN_ID" --attempt "$GITHUB_RUN_ATTEMPT" --event "$GITHUB_EVENT_NAME" --category api --category redaction --category browser

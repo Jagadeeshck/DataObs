@@ -183,3 +183,39 @@ OpenTelemetry, OpenLineage and Kafka are not Team 4 provider promotions.
 - Kafka follows Team 1 stream-observer certification plus Team 0 release authority.
 
 Team 0 remains the only authority that can publish a supported platform or change the overall NO_GO/GO decision.
+
+
+## Sprint 4 classification lock
+
+Audited baseline: `c3d3dfe63b2d8227612dc867988db268c8b7424f`.
+
+### Packaged and certified
+
+No Team 4 provider connector qualifies.
+
+The Integration SDK is exact-SHA certified on workflow `41120485748` attempt 2 and is mandatory release infrastructure, but it is not itself a source connector.
+
+### Implemented but unvalidated
+
+- Google Pub/Sub — exact-main hosted contract pass `41130816933`; Collection Manager not packaged; live provider certification absent.
+- Azure data platform — exact-main hosted contract pass `41130816932`; Collection Manager not packaged; live Azure certification absent.
+- RabbitMQ — exact-main hosted contract pass `41130816949`; Collection Manager not packaged; live RabbitMQ certification absent.
+- PostgreSQL — contract suite previously passed Python 3.11/3.12, but live PostgreSQL was skipped and the packaged Scanner Worker still lacks durable scheduling/lease/fencing.
+
+### Experimental
+
+AWS, Snowflake, Databricks, BigQuery, Trino, Presto, MySQL, MariaDB, SQL Server and Oracle remain experimental for v0.2.0. Their implementations do not have the complete combination of packaged runtime, exact-release-SHA live provider proof and final release authority required for support.
+
+### Explicitly excluded
+
+All Team 4 provider connectors remain excluded from v0.2.0 supported claims.
+
+This is not a statement that the implementations are unusable. It is a release-support boundary: Team 4 does not equate fixture/contract success with a supported, packaged and independently certified provider runtime.
+
+### Release limitations
+
+- Collection Manager is not part of the supported Helm package.
+- PostgreSQL Scanner Worker `run` is heartbeat-only and uses a development/test in-memory lease manager when executing one-shot tasks.
+- No Team 4 provider has both supported packaging and live exact-release-SHA provider certification.
+- Team 0 still reports `NO_GO`, no frozen candidate and no supported platforms.
+- Helm/runtime inclusion changes are not made by Team 4 in Sprint 4; they require Team 0 approval.

@@ -228,3 +228,103 @@ Team 4 adopts Team 0's current release authority verbatim in substance:
 Team 4's supported connector recommendation for v0.2.0 remains **none**.
 
 The Integration SDK is certified as a mandatory release foundation on the audited exact SHA. Provider implementations remain implemented/unvalidated, experimental or excluded according to packaging and live-evidence status; no optional provider failure is reclassified to bypass mandatory release policy.
+
+
+## Sprint 4 provider-scope revalidation — 2026-10-30
+
+Audited `main`: `c3d3dfe63b2d8227612dc867988db268c8b7424f`.
+
+### Exact-SHA Integration SDK evidence
+
+Integration SDK workflow `41120485748` was explicitly re-run on the audited SHA. Attempt 2 completed successfully.
+
+- workflow conclusion: `success`;
+- exact producer SHA: `c3d3dfe63b2d8227612dc867988db268c8b7424f`;
+- job: `certify` — pass;
+- retained artifact: `integration-sdk-v1-evidence`;
+- artifact created: 2026-10-30T21:26:28Z;
+- artifact digest: `sha256:92e353527658d0f6416d7ff6ce7b27d8ddb1caffee4824b63b25d5d0dfb47298`.
+
+The certified suite preserves the established SDK invariants:
+
+- complete provider capability declarations across the registered provider set;
+- explicit unsupported-capability rejection, including Azure `SCHEMA_DISCOVERY`;
+- bounded retries and non-retryable authentication failures;
+- cancellation propagation;
+- collection timeout enforcement;
+- malformed-provider-response rejection before persistence;
+- duplicate suppression;
+- recursive credential redaction;
+- trusted tenant/integration boundaries;
+- observation and run persistence before checkpoint advancement;
+- OCC checkpoint semantics.
+
+No SDK validation was weakened and no provider capability was expanded in Sprint 4.
+
+### Exact packaged runtime
+
+The Team 0 Beta deployment package still contains:
+
+- API;
+- Console;
+- Quality Worker;
+- Scanner Worker;
+- Monitor Runtime;
+- Pathway Worker;
+- Kafka Observer;
+- optional OpenTelemetry Collector;
+- migration Job.
+
+Elasticsearch remains external. Collection Manager, embedded Elasticsearch, Kibana, identity provider, ingress controller, Grafana Alloy, demos and POCs remain excluded.
+
+Therefore a passing Collection Manager provider workflow remains implementation/contract evidence, not proof that the provider is supported by the v0.2.0 package.
+
+### Current provider contract evidence
+
+On the audited exact main SHA, current hosted contract results include:
+
+- Azure data platform `41130816932` — pass;
+- Google Pub/Sub `41130816933` — pass;
+- RabbitMQ `41130816949` — pass.
+
+These workflows do not establish live provider certification.
+
+### PostgreSQL runtime re-assessment
+
+The packaged Scanner Worker remains unsuitable for a v0.2.0 PostgreSQL support claim:
+
+- Helm invokes `python -m services.scanner_worker.cli --config ... run`;
+- the `run` command emits periodic heartbeat JSON and does not acquire or execute durable scheduled tasks;
+- one-shot execution exists separately through `scan-once`;
+- `ScannerWorker` defaults to `InMemoryLeaseManager`;
+- that implementation is explicitly documented as development/test-only and unsafe for distributed workers;
+- repository search found no durable Scanner Worker lease/fencing backend.
+
+The existing PostgreSQL contract result remains useful implementation evidence, but no live service result plus no production scheduler/lease path means PostgreSQL stays excluded.
+
+### Optional-provider policy
+
+The existing certification manifest marks the Team 4 Integration SDK mandatory and AWS collection optional because live AWS certification and packaged Collection Manager are absent. Sprint 4 preserves that policy: optional provider failures are visible and classified, but they do not become supported by omission and do not bypass mandatory release gates.
+
+### Cross-team release state
+
+At the audited baseline:
+
+- Team 1 stream-observer run `41120485524` passed;
+- Team 2 job-run backend run `41120485697` passed;
+- Team 0 deployment-packaging run `41120485485` failed;
+- generated production-readiness still reports `NO_GO`, candidate not frozen, supported platforms none.
+
+Team 4 therefore does not alter supported-platform wording or Helm packaging. Any Collection Manager packaging change remains a Team 0 approval item.
+
+### Sprint 4 conclusion
+
+No corrective provider or SDK code change is required.
+
+Team 4's v0.2.0 provider support boundary remains:
+
+- Integration SDK: exact-SHA certified release foundation;
+- Team 4 provider connectors: no packaged-and-certified provider;
+- Collection Manager-only providers: excluded from supported status;
+- PostgreSQL: excluded because packaged runtime durability is unproven;
+- fixture/contract passes: retained as implementation evidence only.

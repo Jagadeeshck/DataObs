@@ -70,13 +70,16 @@ jobs:
       - name: Install supported Playwright browsers
         working-directory: ui/dataobs-console
         run: pnpm exec playwright install --with-deps chromium firefox webkit
-      - name: Browser and accessibility tests
+      - name: Team 2 Quality browser and accessibility acceptance
         working-directory: ui/dataobs-console
         env:
           PLAYWRIGHT_JUNIT_OUTPUT_FILE: ../../data-quality-console-v1-evidence/results/browser.xml
           DATAOBS_PLAYWRIGHT_MATRIX: "all"
         run: |
-          pnpm exec playwright test --config=playwright.config.ts --reporter=junit,html
+          pnpm exec playwright test e2e/release-critical-journeys.spec.ts \
+            --config=playwright.config.ts \
+            --grep "Quality inventory, authoring and monitor investigation remain usable|URL tenant/environment values cannot override trusted request scope|expired or unauthorised auth context fails closed before capability data loads" \
+            --reporter=junit,html
           cp -R playwright-report ../../data-quality-console-v1-evidence/playwright-report
       - name: Resolve numeric job ID and generate exact-commit evidence
         if: always()

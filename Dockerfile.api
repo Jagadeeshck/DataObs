@@ -33,6 +33,9 @@ COPY src ./src
 COPY packages ./packages
 COPY services ./services
 COPY config ./config
+# Platform lifecycle routes import the release migration report at API startup.
+# Keep the runtime surface narrow by copying only the required release helpers.
+COPY scripts/release ./scripts/release
 
 # Non-root user for security
 RUN addgroup --system dataobs && adduser --system --ingroup dataobs dataobs

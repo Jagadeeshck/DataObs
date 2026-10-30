@@ -202,7 +202,7 @@ def test_api_template_has_unique_security_environment_entries():
 
 def test_kind_smoke_failure_diagnostics_include_events_and_container_logs():
     script = (ROOT / "scripts/deployment/kind_smoke_test.sh").read_text()
-    assert "kubectl -n \"$NS\" get events --sort-by=.lastTimestamp" in script
+    assert 'kubectl -n "$NS" get events --sort-by=.lastTimestamp' in script
     assert 'kubectl -n "$NS" logs "$pod" --tail=300' in script
     assert 'kubectl -n "$NS" logs "$pod" --previous --tail=300' in script
 

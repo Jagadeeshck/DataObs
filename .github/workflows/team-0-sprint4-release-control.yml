@@ -1,0 +1,30 @@
+name: Team 0 Sprint 4 release control
+
+on:
+  push:
+    branches: [codex/sprint4-team0-release-control]
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  gate0-dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 87f6b06220ec57131a2c3716724e9e3b2e86710b
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install pyyaml
+      - name: Dispatch canonical Gate 0 producers at frozen candidate SHA
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python scripts/release/gate0.py dispatch \
+            --sha 87f6b06220ec57131a2c3716724e9e3b2e86710b \
+            --ref codex/sprint4-team0-release-candidate \
+            --output /tmp/gate0-dispatch.json
+          cat /tmp/gate0-dispatch.json

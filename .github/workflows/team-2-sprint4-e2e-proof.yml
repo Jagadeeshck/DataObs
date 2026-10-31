@@ -1,4 +1,4 @@
-name: Team 2 — Sprint 4 First-Release E2E Proof
+name: Team 2 — Sprint 6 First-Release E2E Proof
 
 on:
   pull_request:
@@ -45,9 +45,18 @@ jobs:
         run: docker compose -f tests/integration/docker-compose.test.yml up -d --build
       - name: Wait for Elasticsearch, Collector and webhook
         run: |
+          set -euo pipefail
           python scripts/ci/wait_for_elasticsearch.py --url http://127.0.0.1:9200 --timeout 180
-          timeout 180 bash -c 'until curl -fsS http://127.0.0.1:13133 >/dev/null; do sleep 3; done'
-          timeout 180 bash -c 'until curl -fsS http://127.0.0.1:8089/health >/dev/null; do sleep 3; done'
+          if ! timeout 180 bash -c 'until curl -fsS http://127.0.0.1:13133 >/dev/null; do sleep 3; done'; then
+            docker compose -f tests/integration/docker-compose.test.yml ps
+            docker compose -f tests/integration/docker-compose.test.yml logs --no-color otel-collector
+            exit 1
+          fi
+          if ! timeout 180 bash -c 'until curl -fsS http://127.0.0.1:8089/health >/dev/null; do sleep 3; done'; then
+            docker compose -f tests/integration/docker-compose.test.yml ps
+            docker compose -f tests/integration/docker-compose.test.yml logs --no-color mock-webhook
+            exit 1
+          fi
       - name: Require Elasticsearch 9.4.2
         run: |
           curl -fsS http://127.0.0.1:9200 > artifacts/e2e-signal-path/elasticsearch.json

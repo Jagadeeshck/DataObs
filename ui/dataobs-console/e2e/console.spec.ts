@@ -81,7 +81,9 @@ test("workspace navigation and Quick Find remain accessible at narrow widths", a
   await expect(page.getByRole("link", { name: "Messaging" })).toBeVisible();
 
   await page.keyboard.press("Control+k");
-  await page.getByRole("combobox").fill("observe");
+  await page
+    .getByRole("combobox", { name: "Search pages and operational entities" })
+    .fill("observe");
   await expect(
     page.getByText("Workspace · Understand systems and data movement"),
   ).toBeVisible();

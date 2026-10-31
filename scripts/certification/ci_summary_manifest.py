@@ -13,11 +13,15 @@ import hashlib
 import json
 import os
 import re
+import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
 
-from scripts.certification.validate_job_results import REQUIRED_JOBS
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT))
+
+from scripts.certification.validate_job_results import REQUIRED_JOBS  # noqa: E402
 
 SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 MAX_BYTES = 100 * 1024 * 1024

@@ -122,7 +122,10 @@ test("supportability uses typed fields and never renders accidental secrets", as
   ).toBeVisible();
   await expect(page.getByText("must-not-render")).toHaveCount(0);
   await expect(
-    page.getByText(/not exposed through the Console API/),
+    page.getByText(
+      "Runbook registry coverage is not exposed through the Console API. Existence, validation and rehearsal are therefore not inferred.",
+      { exact: true },
+    ),
   ).toBeVisible();
   expect(requests.filter((request) => request.method() !== "GET")).toEqual([]);
   expect(browserLogs.join("\n")).not.toContain("must-not-render");

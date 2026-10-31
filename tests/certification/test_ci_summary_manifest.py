@@ -1,4 +1,6 @@
 import json
+import subprocess
+import sys
 from pathlib import Path
 
 from scripts.certification.ci_summary_manifest import build, verify
@@ -6,6 +8,15 @@ from scripts.certification.ci_summary_manifest import build, verify
 
 def _junit(path: Path) -> None:
     path.write_text("<testsuite tests='1' failures='0' errors='0' skipped='0'><testcase name='ok'/></testsuite>")
+
+
+def test_ci_summary_script_is_directly_executable():
+    subprocess.run(
+        [sys.executable, "scripts/certification/ci_summary_manifest.py", "--help"],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
 
 
 def test_generic_ci_summary_is_exact_sha_and_digest_bound(tmp_path: Path, monkeypatch):

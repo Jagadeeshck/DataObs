@@ -13,7 +13,7 @@ jobs:
     timeout-minutes: 35
     services:
       elasticsearch:
-        image: docker.elastic.co/elasticsearch/elasticsearch:9.4.2
+        image: docker.elastic.co/elasticsearch/elasticsearch:9.5.5
         env:
           discovery.type: single-node
           xpack.security.enabled: "false"
@@ -45,7 +45,7 @@ jobs:
         run: |
           mkdir -p stream-observer-backend-v1-evidence/results
           for _ in {1..30}; do curl -fsS localhost:9200 >/tmp/es.json && break; sleep 2; done
-          python -c 'import json; d=json.load(open("/tmp/es.json")); assert d["version"]["number"] == "9.4.2"; print("9.4.2")' | tee stream-observer-backend-v1-evidence/elasticsearch-version.txt
+          python -c 'import json; d=json.load(open("/tmp/es.json")); assert d["version"]["number"] == "9.5.5"; print("9.5.5")' | tee stream-observer-backend-v1-evidence/elasticsearch-version.txt
           KAFKA_VERSION=$(docker exec "${{ job.services.kafka.id }}" /opt/kafka/bin/kafka-topics.sh --version | awk '{print $1}')
           test "$KAFKA_VERSION" = "3.9.1"
           printf '%s\n' "$KAFKA_VERSION" > stream-observer-backend-v1-evidence/kafka-version.txt
@@ -66,7 +66,7 @@ jobs:
         env: {GH_TOKEN: "${{ github.token }}"}
         run: |
           JOB_ID=$(curl -fsS -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" "${{ github.api_url }}/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/jobs?per_page=100" | python -c 'import json,sys; print(next(j["id"] for j in json.load(sys.stdin)["jobs"] if j["name"] == "certify"))')
-          python scripts/certification/verify_product_evidence.py generate --directory stream-observer-backend-v1-evidence --repository "${{ github.repository }}" --workflow "stream-observer-backend.yml" --run-id "${{ github.run_id }}" --job-id "$JOB_ID" --event "${{ github.event_name }}" --elasticsearch-version 9.4.2 --python-version "$(python --version | cut -d' ' -f2)" --required-suite elasticsearch --required-suite kafka --required-suite integration --required-suite observer --required-suite security --required-suite tenant
+          python scripts/certification/verify_product_evidence.py generate --directory stream-observer-backend-v1-evidence --repository "${{ github.repository }}" --workflow "stream-observer-backend.yml" --run-id "${{ github.run_id }}" --job-id "$JOB_ID" --event "${{ github.event_name }}" --elasticsearch-version 9.5.5 --python-version "$(python --version | cut -d' ' -f2)" --required-suite elasticsearch --required-suite kafka --required-suite integration --required-suite observer --required-suite security --required-suite tenant
           python - <<'PY'
           import hashlib, json
           from pathlib import Path

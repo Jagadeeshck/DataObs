@@ -64,8 +64,8 @@ def test_elasticsearch_client_pin_is_published_and_checked_for_resolution():
     assert requirement in (ROOT / "requirements-poc.txt").read_text()
     backend = (WORKFLOWS / "reusable-backend-validation.yml").read_text()
     assert f"pip download --no-deps --dest /tmp/dataobs-elasticsearch-client '{requirement}'" in backend
-    assert ">=9.4.2" not in (ROOT / "requirements.txt").read_text()
-    assert ">=9.4.2" not in (ROOT / "requirements-poc.txt").read_text()
+    assert ">=9.5.5" not in (ROOT / "requirements.txt").read_text()
+    assert ">=9.5.5" not in (ROOT / "requirements-poc.txt").read_text()
 
 
 def test_elasticsearch_readiness_is_before_work_in_repaired_foundations():
@@ -187,7 +187,7 @@ def test_elasticsearch_jobs_wait_before_application_interaction_without_sleeps()
     for path, _ in workflow_texts():
         for job_name, job in workflow_jobs(path):
             service = job.get("services", {}).get("elasticsearch", {})
-            if "elasticsearch:9.4.2" not in str(service.get("image", "")):
+            if "elasticsearch:9.5.5" not in str(service.get("image", "")):
                 continue
             commands = [str(step.get("run", "")) for step in job.get("steps", [])]
             interactions = [

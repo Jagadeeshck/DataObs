@@ -36,4 +36,4 @@ The runtime adds strict bidirectional adapters, Elasticsearch OCC repositories, 
 
 Team 3 owns the service, API, incident Console, tests and capability docs. Shared changes are limited to API composition, method-aware permission classification, typed routes and the Team 3 API client. Team 0 still owns worker packaging and exact-commit certification; Team 5 owns global Console design.
 
-Status remains **functional_unvalidated**. Local unit/API checks are not Elasticsearch 9.4.2, hosted Playwright/axe, retained `incident-correlation-runtime-v1-evidence`, or independent verification. Remaining gaps are a hosted exact-head run, retained mapping/alias/OCC/restart evidence, and Team 0 deployment of the documented worker command.
+Status remains **functional_unvalidated**. Local unit/API checks are not Elasticsearch 9.5.5, hosted Playwright/axe, retained `incident-correlation-runtime-v1-evidence`, or independent verification. Remaining gaps are a hosted exact-head run, retained mapping/alias/OCC/restart evidence, and Team 0 deployment of the documented worker command.

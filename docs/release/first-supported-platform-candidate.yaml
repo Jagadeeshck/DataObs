@@ -2,7 +2,7 @@ schema_version: "1.0"
 candidate_profile: development
 kubernetes_version: "1.30.x (unvalidated)"
 helm_version: "pending hosted capture"
-elasticsearch_version: "9.4.2 (unvalidated)"
+elasticsearch_version: "9.5.5 (unvalidated)"
 python_version: "3.13"
 node_version: "22"
 browser_test_environment: "pending Playwright hosted capture"

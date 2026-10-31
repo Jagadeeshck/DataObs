@@ -67,7 +67,7 @@ The Sprint 3 rerun must distinguish a backend failure from a shared browser fail
 
 ## Hosted Data Product regression
 
-`tests/integration/data_products/test_migrations_elasticsearch.py` now requires the real Elasticsearch 9.4.2 clean-install path to prove:
+`tests/integration/data_products/test_migrations_elasticsearch.py` now requires the real Elasticsearch 9.5.5 clean-install path to prove:
 
 - full released migration application succeeds;
 - migration checksums remain unchanged;
@@ -100,7 +100,7 @@ The hosted Elasticsearch and security jobs must execute after migration apply; s
 
 Populate this matrix only from the final PR head.
 
-| Capability | Workflow | Domain | ES 9.4.2 | Tenant/security | Browser/a11y | Independent verifier | Evidence artifact | Final state |
+| Capability | Workflow | Domain | ES 9.5.5 | Tenant/security | Browser/a11y | Independent verifier | Evidence artifact | Final state |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Data Quality Monitoring | data-quality-monitoring | prior PASS; rerun required | required | required | n/a | required | data-quality-monitoring-v1-evidence | pending |
 | Job/Run + OpenLineage backend | job-run-backend | prior PASS; rerun required | required | required | n/a | required | job-run-backend-evidence | pending |
@@ -128,7 +128,7 @@ Team 5 owns the shared Console shell, browser matrix and accessibility harness. 
 
 Team 2 remains **NO_GO** for v0.2.0 data certification until the exact final SHA has:
 
-1. real Elasticsearch 9.4.2 Data Product migration evidence;
+1. real Elasticsearch 9.5.5 Data Product migration evidence;
 2. executed Data Product security/isolation evidence;
 3. Quality and Lineage browser/accessibility evidence;
 4. independently verified Quality and Job/Run evidence;

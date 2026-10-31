@@ -19,7 +19,7 @@ def main() -> bool:
 
     def profile(version: str) -> PlatformProfile:
         return PlatformProfile(
-            version, "3.17.0", "1.30.0", "9.4.2", "3.13.0", "22.0.0", "dataobs-oidc-v1", "1.0.0", "1.0.0", "1", terminal
+            version, "3.17.0", "1.30.0", "9.5.5", "3.13.0", "22.0.0", "dataobs-oidc-v1", "1.0.0", "1.0.0", "1", terminal
         )
 
     evidence = json.loads(Path(args.evidence).read_text()) if args.evidence else {}

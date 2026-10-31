@@ -2,7 +2,7 @@
 
 from packages.elastic_store.manifest import migrations
 
-ELASTICSEARCH_VERSION = "9.4.2"
+ELASTICSEARCH_VERSION = "9.5.5"
 REPOSITORY = "Jagadeeshck/DataObs"
 
 

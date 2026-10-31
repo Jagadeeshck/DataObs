@@ -22,7 +22,7 @@ def arguments(path, **changes):
         run_id="42",
         job_id="99",
         event="pull_request",
-        elasticsearch_version="9.4.2",
+        elasticsearch_version="9.5.5",
         python_version="3.12.1",
         node_version="not-applicable",
         required_suite=["security", "tenant"],

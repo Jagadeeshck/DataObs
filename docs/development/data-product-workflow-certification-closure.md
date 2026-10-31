@@ -36,7 +36,7 @@ The table is intentionally an evidence ledger rather than a claim of completion.
 | Browser | Not retained | Full list/tab workflow | Playwright | data-product-browser | Blocked |
 | axe | Not retained | Serious/critical-free scans | axe | data-product-browser | Blocked |
 | Security | Incomplete | Scope, cursor, graph, poisoning, XSS gates | security suite | data-product-security | Blocked |
-| Elasticsearch | No retained 9.4.2 run | Real-stack integration | integration | data-product-elasticsearch | Blocked |
+| Elasticsearch | No retained 9.5.5 run | Real-stack integration | integration | data-product-elasticsearch | Blocked |
 | Hosted CI | No run URL/artifact manifest | Required jobs and retained hashes | summary validation | data-product-summary | Blocked |
 
 ## Release decision

@@ -34,7 +34,7 @@ def main():
     entry = {
         "workflow": args.workflow,
         "evidence_schema_version": "1.0",
-        "expected_elasticsearch_version": "9.4.2",
+        "expected_elasticsearch_version": "9.5.5",
         "required_test_categories": args.category,
     }
     errors = validate_evidence(

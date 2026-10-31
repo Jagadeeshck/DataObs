@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       elasticsearch:
-        image: docker.elastic.co/elasticsearch/elasticsearch:9.4.2
+        image: docker.elastic.co/elasticsearch/elasticsearch:9.5.5
         env:
           discovery.type: single-node
           xpack.security.enabled: "false"
@@ -66,7 +66,7 @@ jobs:
           mkdir -p team-1-schema-runtime-migration-reconciliation-v1-evidence
           python scripts/release/current_terminal_migration.py --json | tee team-1-schema-runtime-migration-reconciliation-v1-evidence/migration-report.json
           python -m packages.elastic_store.cli doctor > team-1-schema-runtime-migration-reconciliation-v1-evidence/doctor.json || true
-          printf 'audited_main_sha=%s\npr_264=merged\npr_267=merged\nelasticsearch=9.4.2\n' "${{ github.event.pull_request.base.sha || github.event.before }}" > team-1-schema-runtime-migration-reconciliation-v1-evidence/audit.txt
+          printf 'audited_main_sha=%s\npr_264=merged\npr_267=merged\nelasticsearch=9.5.5\n' "${{ github.event.pull_request.base.sha || github.event.before }}" > team-1-schema-runtime-migration-reconciliation-v1-evidence/audit.txt
           sha256sum team-1-schema-runtime-migration-reconciliation-v1-evidence/* > team-1-schema-runtime-migration-reconciliation-v1-evidence/checksums.txt
       - uses: actions/upload-artifact@v4
         if: always()

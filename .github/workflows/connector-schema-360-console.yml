@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       elasticsearch:
-        image: docker.elastic.co/elasticsearch/elasticsearch:9.4.2
+        image: docker.elastic.co/elasticsearch/elasticsearch:9.5.5
         env:
           discovery.type: single-node
           xpack.security.enabled: "false"
@@ -64,7 +64,7 @@ jobs:
         run: |
           BASE_SHA="$(git merge-base HEAD origin/main)"
           FINAL_SHA="$(git rev-parse HEAD)"
-          printf '{"repository":"Jagadeeshck/DataObs","final_sha":"%s","base_sha":"%s","elasticsearch_version":"9.4.2","connector_persistence":true,"schema_persistence":true,"redaction":true,"tenant_isolation":true,"connector_api":true,"schema_api":true,"connector_browser":true,"schema_browser":true,"accessibility":true,"junit_summaries":["backend.xml","console.xml"],"artifact_inventory":["result.json","backend.xml","console.xml"],"independent_verification":true}\n' "$FINAL_SHA" "$BASE_SHA" > evidence/result.json
+          printf '{"repository":"Jagadeeshck/DataObs","final_sha":"%s","base_sha":"%s","elasticsearch_version":"9.5.5","connector_persistence":true,"schema_persistence":true,"redaction":true,"tenant_isolation":true,"connector_api":true,"schema_api":true,"connector_browser":true,"schema_browser":true,"accessibility":true,"junit_summaries":["backend.xml","console.xml"],"artifact_inventory":["result.json","backend.xml","console.xml"],"independent_verification":true}\n' "$FINAL_SHA" "$BASE_SHA" > evidence/result.json
           python - <<'PY'
           import json, subprocess
           value=json.load(open('evidence/result.json'))

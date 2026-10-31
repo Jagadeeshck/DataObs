@@ -13,15 +13,15 @@ This document records executed evidence and exact-SHA certification state. A wor
 | --- | ---: | --- | --- |
 | Data Quality Monitoring | 41120485805 | **PASS**, including independent evidence verification | Preserve unchanged; rerun final head |
 | Job/Run backend | 41120485697 | **PASS**, including independent evidence verification | Preserve unchanged; rerun final head |
-| Data Product hosted foundation | 41120485725 | ES 9.4.2, security and unit **PASS**; contracts failed only Black formatting | Format Team 2 migration regression; rerun final head |
-| Data Product reconciliation | 41120485598 | ES 9.4.2, security and unit **PASS**; contracts failed only Black formatting | Format Team 2 migration regression; rerun final head |
+| Data Product hosted foundation | 41120485725 | ES 9.5.5, security and unit **PASS**; contracts failed only Black formatting | Format Team 2 migration regression; rerun final head |
+| Data Product reconciliation | 41120485598 | ES 9.5.5, security and unit **PASS**; contracts failed only Black formatting | Format Team 2 migration regression; rerun final head |
 | Data Quality Console | 41120485783 | backend/static/unit/build passed; shared global browser suite failed | Run Team 2 Quality browser/a11y journeys; hand global failures to Team 5 |
 | Lineage Console | 41120485815 | backend/static/unit/build passed; shared global browser suite failed | Run Team 2 Jobs/Lineage browser/a11y journeys; hand global failures to Team 5 |
 | Full CI | 41120485742 | integration-tests skipped after shared prerequisite failures | Dedicated Team 2 exact-SHA signal-path workflow required |
 
 ## Data Product certification state
 
-The starting-main Data Product foundation and reconciliation workflows both reached and passed their real Elasticsearch 9.4.2 producer jobs. Security and unit producers also passed. Their only Team 2-owned blocker was Black rejecting `tests/integration/data_products/test_migrations_elasticsearch.py`.
+The starting-main Data Product foundation and reconciliation workflows both reached and passed their real Elasticsearch 9.5.5 producer jobs. Security and unit producers also passed. Their only Team 2-owned blocker was Black rejecting `tests/integration/data_products/test_migrations_elasticsearch.py`.
 
 The retained migration regression proves on a real test-owned Elasticsearch service:
 
@@ -90,7 +90,7 @@ The artifact is exactly `e2e-signal-path`.
 The independent verifier requires:
 
 - producer SHA equals the exact PR head;
-- Elasticsearch is exactly 9.4.2;
+- Elasticsearch is exactly 9.5.5;
 - Data Product migration JUnit has tests, zero failures/errors and **zero skips**;
 - signal-path JUnit has tests, zero failures/errors and **zero skips**;
 - all five production-representative signal scenarios executed;
@@ -107,7 +107,7 @@ The independent verifier requires:
 
 Populate only from the final PR head.
 
-| Capability | Workflow | ES 9.4.2 | Domain/security | Browser/a11y | Integration | Independent verifier | Final state |
+| Capability | Workflow | ES 9.5.5 | Domain/security | Browser/a11y | Integration | Independent verifier | Final state |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Data Product foundation | Data Product hosted certification foundation | required | required | n/a | migration path | required | pending |
 | Data Product reconciliation | Data Product reconciliation certification | required | required | n/a | reconciliation path | required | pending |

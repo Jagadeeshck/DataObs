@@ -15,7 +15,7 @@ import {
 } from "../../platform-operations";
 import { AdminPageHeader } from "./Administration";
 
-const defaultTarget = "0.2.0";
+const defaultTarget = "1.0.0";
 export function PlatformUpgrades() {
   const [snapshot, setSnapshot] = useState<UpgradeSnapshot>();
   const [generation, setGeneration] = useState(0);

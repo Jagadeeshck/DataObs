@@ -109,7 +109,7 @@ Reliability checkpointing must remain last after durable evidence/projection/sig
 `BLOCKED` means certification cannot proceed to that dimension because an earlier mandatory shared gate failed.
 No prior-head result is promoted as exact-head certification for this branch.
 
-| Capability | Source/unit contract | Integrated Team 1 backend | ES 9.4.2 full-chain | Kafka real-stack | Tenant isolation | Console/browser | Exact-head certification | Current state |
+| Capability | Source/unit contract | Integrated Team 1 backend | ES 9.5.5 full-chain | Kafka real-stack | Tenant isolation | Console/browser | Exact-head certification | Current state |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Kafka cluster/topic inventory | PASS | PASS | BLOCKED | prior Team 1 proof exists; rerun required | PASS | BLOCKED | pending | BLOCKED |
 | Consumer groups / lag | PASS | PASS | BLOCKED | prior Team 1 proof exists; rerun required | PASS | BLOCKED | pending | BLOCKED |
@@ -125,7 +125,7 @@ No prior-head result is promoted as exact-head certification for this branch.
 
 ### Data Product revision mapping
 
-Current full-chain Elasticsearch 9.4.2 application fails on:
+Current full-chain Elasticsearch 9.5.5 application fails on:
 
 `dataobs-data-product-revisions-v1.revision`
 
@@ -164,7 +164,7 @@ Team 1 must not weaken Prettier, Playwright, axe, accessibility, browser matrix 
 3. Fix only Team 1-owned domain defects.
 4. Re-run focused Team 1 unit/security suites after any source fix.
 5. Re-run Kafka real-stack validation where the workflow reaches it.
-6. Re-run Elasticsearch 9.4.2 full-chain persistence once the shared migration gate is repaired.
+6. Re-run Elasticsearch 9.5.5 full-chain persistence once the shared migration gate is repaired.
 7. Run applicable Team 5 browser journeys without altering shared browser quality rules.
 8. Retain exact-SHA run/artifact links.
 9. Update the capability matrix to PASS/BLOCKED/FAIL/NOT_APPLICABLE only.

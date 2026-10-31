@@ -11,7 +11,7 @@ migration is `0028_pathway_investigation_history`; no migration is changed by th
 Local merge history and patches for PRs 187, 202, 209, 217, 219, 230, 235, and locally available merges after
 235 were reviewed. GitHub review/API access and Elastic's online API documentation both returned authentication
 errors. The complete PR 235 patch and its audit were inspected locally. The pinned contract therefore remains the
-Kibana 9.4.2 contract recorded by PR 235: Cases create/read/comment/find endpoints and Workflow definition/run/exact
+Kibana 9.5.5 contract recorded by PR 235: Cases create/read/comment/find endpoints and Workflow definition/run/exact
 execution endpoints. Workflow cancellation remains disabled. This is not represented as hosted certification.
 
 The existing strict resources were inspected through the migration manifests and mappings: Case links, Workflow
@@ -33,7 +33,7 @@ forward migration. Production adapters serialize explicit storage documents rath
 | Uncertain Case create | Reconciliation-required state | Durable reconciliation | State and bounded due query persist uncertainty; no blind retry | service regression | Partially implemented; provider search worker not certified |
 | Nested Workflow validation | Top-level only | Recursive composite inspection | Recursive traversal of branches/steps/then/else/sub-workflow containers | `test_nested_unsafe_workflow_step_is_rejected` | Implemented |
 | Workflow binding/execution runtime | Foundation only | Durable reviewed binding, drift gate, sync and UI | No safe claim of completion without licensed/provider infrastructure | Existing Workflow foundation tests | Open |
-| Real Kibana 9.4.2 | Unavailable | Licensed exact-head run | No credentials or licensed stack in environment | not_run | Blocked externally |
+| Real Kibana 9.5.5 | Unavailable | Licensed exact-head run | No credentials or licensed stack in environment | not_run | Blocked externally |
 | Browser and axe | Foundation UI only | End-to-end panels and accessibility | Not represented as passed | not_run | Open |
 
 ## Safety and operational conclusions
@@ -46,4 +46,4 @@ greater than one third of the lease, while takeover queries continue to select o
 No released migration or checksum was edited. Rollback is code-only: stop the Team 3 worker and restore the prior
 application revision; durable reservations and reconciliation-required records must be retained for later repair.
 Capability status remains `functional_unvalidated` until independently verified exact-head evidence includes real
-Elasticsearch 9.4.2 OCC/concurrency and licensed Kibana Cases/Workflows runs.
+Elasticsearch 9.5.5 OCC/concurrency and licensed Kibana Cases/Workflows runs.

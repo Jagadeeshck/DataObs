@@ -60,7 +60,7 @@ skip, missing artifact, mixed SHA or unexplained failure keeps Gate 0 blocked.
   Regression checks compare every explicit released mapping to index creation.
   All 33 migration checksums remain unchanged. Actual first/second clean apply
   is still required; static compatibility is not a substitute.
-- Local Elasticsearch 9.4.2 image pull succeeds, but a newly created container
+- Local Elasticsearch 9.5.5 image pull succeeds, but a newly created container
   exits during native bootstrap: `Could not set coredump filter`, caused by
   missing `/proc/self/coredump_filter`. This is EXTERNAL_ENVIRONMENT. It blocks
   local secured migration, MVP, Kind and recovery execution; no TLS/native-safety

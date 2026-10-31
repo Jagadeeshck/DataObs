@@ -4,8 +4,8 @@ Validated 2026-07-19 against published, stable documentation; pins are compatibi
 
 | Component | Tested version | Supported range | Integration package | Reason | CI coverage |
 |---|---:|---:|---|---|---|
-| Elasticsearch | 9.4.2 | project target | official Python client | system of record | required (pending real stack) |
-| Kibana | 9.4.2 | project target | saved objects/APIs | investigation | required (pending real stack) |
+| Elasticsearch | 9.5.5 | project target | official Python client | system of record | required (pending real stack) |
+| Kibana | 9.5.5 | project target | saved objects/APIs | investigation | required (pending real stack) |
 | OpenLineage spec/client | 1.39.0 | 1.x stable event schemas | `openlineage-python==1.39.0` | portable event contract and unknown-facet preservation | fixture contract |
 | Airflow | 3.1.7 | provider-declared `>=2.11.0` | `apache-airflow==3.1.7` | pinned stable orchestration target | required (pending integration) |
 | Airflow OpenLineage provider | 2.11.1 | Airflow `>=2.11.0` | `apache-airflow-providers-openlineage==2.11.1` | official listener/extractors | required (pending integration) |

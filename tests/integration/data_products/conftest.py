@@ -18,7 +18,7 @@ def elasticsearch_client():
         pytest.skip("real Elasticsearch opt-in")
     client = Elasticsearch(os.environ["ELASTICSEARCH_URL"])
     version = client.info()["version"]["number"]
-    assert version == "9.4.2", f"certification requires exactly Elasticsearch 9.4.2, got {version}"
+    assert version == "9.5.5", f"certification requires exactly Elasticsearch 9.5.5, got {version}"
     return client
 
 

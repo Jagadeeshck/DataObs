@@ -6,7 +6,7 @@ platform profile.
 * Development, standard-ha and production-ha topologies remain unvalidated.
 * Small, medium and large capacity profiles lack retained exact-SHA measurements.
 * Cloud, multi-zone, cross-cluster and cross-region topologies are unsupported.
-* Secured Elasticsearch 9.4.2 and OIDC PKCE/JWKS behavior lack hosted evidence.
+* Secured Elasticsearch 9.5.5 and OIDC PKCE/JWKS behavior lack hosted evidence.
 * Backup/restore and dependency recovery require protected disposable execution;
   DR procedures contain manual/operator boundaries and have no measured RPO/RTO.
 * There is no supported predecessor. N-1 guarantees can begin only after a first

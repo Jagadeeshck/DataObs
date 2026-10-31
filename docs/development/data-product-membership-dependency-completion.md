@@ -38,7 +38,7 @@ This focused audit is evidence-led. A row remains **blocked** until its required
 | Lineage tab | blocked | existing lineage evidence UI | Playwright/axe | data-product-browser | blocked |
 | Dependencies tab | blocked | bounded graph and table | Playwright/axe | data-product-browser | blocked |
 | Revisions tab | blocked | immutable operation page | Playwright/axe | data-product-browser | blocked |
-| Elasticsearch | blocked | run all strict mappings on 9.4.2 | integration | data-product-elasticsearch | no hosted URL |
+| Elasticsearch | blocked | run all strict mappings on 9.5.5 | integration | data-product-elasticsearch | no hosted URL |
 | browser | blocked | required journeys | Playwright | data-product-browser | no hosted URL |
 | axe | blocked | serious/critical gate | axe | data-product-browser | no hosted URL |
 | security | partial | executable abuse/leakage suite | security tests | data-product-security | blocked |

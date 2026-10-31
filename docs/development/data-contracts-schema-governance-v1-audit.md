@@ -12,6 +12,6 @@
 - Tenant/security: every production read predicates tenant/environment; drafts use OCC; evidence is create-only; authenticated actor and idempotency are required by the service boundary.
 - Integrations: monitor IDs consume quality evidence; canonical asset metadata supplies governance; lineage impact is referenced as potential structural impact; product IDs do not change membership.
 - Runtime: durable cycle contract is documented; full lease/checkpoint CLI wiring remains incomplete.
-- Local tests: focused backend unit tests executed. Full Elasticsearch 9.4.2, Console, Playwright, axe, hosted workflow, artifact and independent verification were not run.
+- Local tests: focused backend unit tests executed. Full Elasticsearch 9.5.5, Console, Playwright, axe, hosted workflow, artifact and independent verification were not run.
 - Workflow/artifact: unavailable; `data-contracts-schema-governance-v1-evidence` not produced. Capability must remain `functional_unvalidated`.
 - Rollback: stop evaluator, snapshot/remove mutable projections, retain immutable evidence, and roll back application routing. Never rewrite migration history.

@@ -29,7 +29,7 @@ def main():
     args.output.parent.mkdir(parents=True, exist_ok=True)
     try:
         report["elasticsearch_version"] = es.info()["version"]["number"]
-        assert report["elasticsearch_version"] == "9.4.2"
+        assert report["elasticsearch_version"] == "9.5.5"
         # Prove auth is enforced, rather than merely supplying credentials.
         from elasticsearch import AuthenticationException, Elasticsearch
 

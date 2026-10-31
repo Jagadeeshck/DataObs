@@ -6,7 +6,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       elasticsearch:
-        image: docker.elastic.co/elasticsearch/elasticsearch:9.4.2
+        image: docker.elastic.co/elasticsearch/elasticsearch:9.5.5
         env: {discovery.type: single-node, xpack.security.enabled: 'false'}
         ports: ['9200:9200']
     steps:
@@ -32,7 +32,7 @@ jobs:
           files=['config/integrations/aws-data-platform.example.yaml']
           json.dump({'repository':os.getenv('GITHUB_REPOSITORY'),'commit_sha':os.getenv('GITHUB_SHA'),'workflow_run_id':os.getenv('GITHUB_RUN_ID'),
           'python_version':platform.python_version(),'boto3_version':__import__('boto3').__version__,'botocore_version':__import__('botocore').__version__,
-          'Elasticsearch_version':'9.4.2','terminal_migration':__import__('packages.elastic_store.manifest',fromlist=['migrations']).migrations()[-1].migration_id,'supported_services':['rds','glue','athena','emr-serverless','cloudwatch'],
+          'Elasticsearch_version':'9.5.5','terminal_migration':__import__('packages.elastic_store.manifest',fromlist=['migrations']).migrations()[-1].migration_id,'supported_services':['rds','glue','athena','emr-serverless','cloudwatch'],
           'supported_capabilities':['resource_discovery','metadata_collection','metric_collection','health_check','incremental_collection'],
           'unsupported_capabilities':['logs','lineage','profiling','sql','cost','event_driven','remediation'],
           'fixture_manifest':{f:hashlib.sha256(open(f,'rb').read()).hexdigest() for f in files},'redaction_verification':'passed',

@@ -9,7 +9,7 @@ def test_required_profiles_and_exact_images():
     for profile in ("core", "postgres", "kafka", "jobs", "browser", "security", "full"):
         assert profile in text
     assert ":latest" not in text
-    assert "elasticsearch:9.4.2" in text and "kibana:9.4.2" in text
+    assert "elasticsearch:9.5.5" in text and "kibana:9.5.5" in text
 
 
 def test_tenant_fixture_overlaps_names():

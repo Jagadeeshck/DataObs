@@ -63,10 +63,10 @@ capabilities:
     artifacts:
     - team-2-asset-trust-score-v1-evidence
   blockers:
-  - Elasticsearch 9.4.2, API, Console, browser, accessibility, scale, and independent exact-head certification remain outstanding.
+  - Elasticsearch 9.5.5, API, Console, browser, accessibility, scale, and independent exact-head certification remain outstanding.
   non_goals:
   - Business Risk Score or replacement of Data Product Reliability.
-  next_gate: Add the forward migration and complete API, Console, ES 9.4.2, browser, axe, scale, and independent exact-head certification.
+  next_gate: Add the forward migration and complete API, Console, ES 9.5.5, browser, axe, scale, and independent exact-head certification.
   owner: Team 2
   last_audited_at: '2026-08-13'
   last_audited_commit: pending
@@ -168,12 +168,12 @@ capabilities:
     - incident-migration-occ-artifacts (defined; final-head hosted run pending)
     - data-product-foundation (defined; final-head hosted run pending)
   blockers:
-  - Final-head hosted Elasticsearch 9.4.2 and rolling-upgrade artifacts are not retained
+  - Final-head hosted Elasticsearch 9.5.5 and rolling-upgrade artifacts are not retained
     in this checkout.
   non_goals:
   - No product implementation is added by the ledger.
   next_gate: Retain final-head migration/OCC and rolling-upgrade evidence from Elasticsearch
-    9.4.2.
+    9.5.5.
   owner: unassigned
   last_audited_at: '2026-07-27'
   last_audited_commit: 5164762a6337a44a76ad2c7574a78edc048a70b3
@@ -412,12 +412,12 @@ capabilities:
     - incident-migration-occ-artifacts (defined; final-head hosted run pending)
     - data-product-foundation (defined; final-head hosted run pending)
   blockers:
-  - Final-head hosted Elasticsearch 9.4.2 and rolling-upgrade artifacts are not retained
+  - Final-head hosted Elasticsearch 9.5.5 and rolling-upgrade artifacts are not retained
     in this checkout.
   non_goals:
   - No product implementation is added by the ledger.
   next_gate: Retain final-head migration/OCC and rolling-upgrade evidence from Elasticsearch
-    9.4.2.
+    9.5.5.
   owner: unassigned
   last_audited_at: '2026-07-27'
   last_audited_commit: 5164762a6337a44a76ad2c7574a78edc048a70b3
@@ -1163,7 +1163,7 @@ capabilities:
     for this PR head is available yet.
   non_goals:
   - No product implementation is added by the ledger.
-  next_gate: Run the final-head Elasticsearch 9.4.2 integration job and retain the
+  next_gate: Run the final-head Elasticsearch 9.5.5 integration job and retain the
     redaction-safe e2e-signal-path artifact.
   owner: unassigned
   last_audited_at: '2026-07-27'
@@ -1584,7 +1584,7 @@ capabilities:
     for this PR head is available yet.
   non_goals:
   - No product implementation is added by the ledger.
-  next_gate: Run the final-head Elasticsearch 9.4.2 integration job and retain the
+  next_gate: Run the final-head Elasticsearch 9.5.5 integration job and retain the
     redaction-safe e2e-signal-path artifact.
   owner: unassigned
   last_audited_at: '2026-07-27'
@@ -2317,7 +2317,7 @@ capabilities:
     - docs/operations/data-slo-runtime.md
     artifacts: []
   blockers:
-  - Production repository/runtime, API, Console, Elasticsearch 9.4.2, browser, accessibility, scale, and exact-head independent evidence remain outstanding.
+  - Production repository/runtime, API, Console, Elasticsearch 9.5.5, browser, accessibility, scale, and exact-head independent evidence remain outstanding.
   non_goals:
   - Stream and platform SLOs, arbitrary expressions, raw-row evaluation, incident creation, and autonomous remediation.
   next_gate: Complete the production vertical slice and independently verify its retained exact-head artifact.
@@ -2357,7 +2357,7 @@ capabilities:
     artifacts: []
   blockers: [Durable Elasticsearch relationship and family resources, API and Console wiring, real-stack, browser, accessibility, and hosted exact-head evidence remain.]
   non_goals: [Causal inference, automatic confirmation, automatic remediation, embeddings, and prediction.]
-  next_gate: Complete the production vertical slice and certify against Elasticsearch 9.4.2 and the Console.
+  next_gate: Complete the production vertical slice and certify against Elasticsearch 9.5.5 and the Console.
   owner: Team 3
   owner_team: Team 3
   last_audited_at: '2026-08-13'
@@ -2382,7 +2382,7 @@ capabilities:
     audit_docs: [docs/development/team-1-stream-capacity-saturation-runtime-v1-audit.md]
     runbooks: [docs/operations/team-1-stream-capacity-saturation-runtime.md]
     artifacts: []
-  blockers: [Hosted exact-SHA ES 9.4.2 and scale evidence are absent.]
+  blockers: [Hosted exact-SHA ES 9.5.5 and scale evidence are absent.]
   non_goals: [Automatic scaling, mutations, recommendation planning, and root-cause claims.]
   next_gate: Verify hosted exact-SHA Elasticsearch and scale evidence.
   owner: Team 1
@@ -2408,7 +2408,7 @@ capabilities:
     audit_docs: [docs/development/team-1-stream-capacity-saturation-runtime-v1-audit.md]
     runbooks: [docs/operations/team-1-stream-capacity-saturation-runtime.md]
     artifacts: []
-  blockers: [Hosted exact-SHA ES 9.4.2 and scale evidence are absent.]
+  blockers: [Hosted exact-SHA ES 9.5.5 and scale evidence are absent.]
   non_goals: [Automatic scaling, mutations, recommendation planning, and root-cause claims.]
   next_gate: Verify hosted exact-SHA Elasticsearch and scale evidence.
   owner: Team 1
@@ -2434,7 +2434,7 @@ capabilities:
     audit_docs: [docs/development/team-1-stream-capacity-saturation-runtime-v1-audit.md]
     runbooks: [docs/operations/team-1-stream-capacity-saturation-runtime.md]
     artifacts: []
-  blockers: [Hosted exact-SHA ES 9.4.2 and scale evidence are absent.]
+  blockers: [Hosted exact-SHA ES 9.5.5 and scale evidence are absent.]
   non_goals: [Automatic scaling, mutations, recommendation planning, and root-cause claims.]
   next_gate: Verify hosted exact-SHA Elasticsearch and scale evidence.
   owner: Team 1
@@ -2460,7 +2460,7 @@ capabilities:
     audit_docs: [docs/development/team-1-stream-capacity-saturation-runtime-v1-audit.md]
     runbooks: [docs/operations/team-1-stream-capacity-saturation-runtime.md]
     artifacts: []
-  blockers: [Hosted exact-SHA ES 9.4.2 and scale evidence are absent.]
+  blockers: [Hosted exact-SHA ES 9.5.5 and scale evidence are absent.]
   non_goals: [Automatic scaling, mutations, recommendation planning, and root-cause claims.]
   next_gate: Verify hosted exact-SHA Elasticsearch and scale evidence.
   owner: Team 1
@@ -2486,7 +2486,7 @@ capabilities:
     audit_docs: [docs/development/team-1-stream-capacity-saturation-runtime-v1-audit.md]
     runbooks: [docs/operations/team-1-stream-capacity-saturation-runtime.md]
     artifacts: []
-  blockers: [Hosted exact-SHA ES 9.4.2 and scale evidence are absent.]
+  blockers: [Hosted exact-SHA ES 9.5.5 and scale evidence are absent.]
   non_goals: [Automatic scaling, mutations, recommendation planning, and root-cause claims.]
   next_gate: Verify hosted exact-SHA Elasticsearch and scale evidence.
   owner: Team 1

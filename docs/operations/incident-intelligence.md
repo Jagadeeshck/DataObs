@@ -4,4 +4,4 @@ Candidate searches are bounded to one tenant, one environment, an allowlisted ho
 
 Monitor low-cardinality query, latency, candidate, confirmed, rejected, projection, and projection-failure counters. Labels are limited to result, classification, and operation. Never label telemetry with tenant, incident, family, asset, or product IDs.
 
-Rebuild tooling must require tenant, environment, start/end dates, and batch size before it is production-enabled. Elasticsearch 9.4.2 and browser certification remain required before promotion beyond `functional_unvalidated`.
+Rebuild tooling must require tenant, environment, start/end dates, and batch size before it is production-enabled. Elasticsearch 9.5.5 and browser certification remain required before promotion beyond `functional_unvalidated`.

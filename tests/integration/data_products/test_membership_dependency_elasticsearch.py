@@ -22,7 +22,7 @@ from services.data_products.repository import DependencyEdgeSuperseded
 def test_real_elasticsearch_membership_dependency_profile_is_selected():
     client = Elasticsearch(os.environ["ELASTICSEARCH_URL"])
     repository = ElasticsearchDataProductRepository(client)
-    assert client.info()["version"]["number"].startswith("9.4.2")
+    assert client.info()["version"]["number"].startswith("9.5.5")
     readiness = repository.readiness()
     assert readiness["ready"], readiness
 

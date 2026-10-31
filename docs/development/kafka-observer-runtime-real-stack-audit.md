@@ -12,7 +12,7 @@ Baseline: `26be48b` (merge of PR #98). Migrations 0001 through 0010 were inspect
 | Registry | client boundary | no executable collector | bounded subject/version collector and semantic summaries without schema bodies | collector tests |
 | Broker metrics | helper models | absent-source semantics | explicit `not_configured` result | unit test |
 | Security | redaction helpers | runtime validation gaps | TLS verification, allowlists, secret references and bounded enumeration | security tests |
-| Real stack | two-broker demo | no three-broker gate | dedicated three-broker KRaft/Connect/Registry/ES 9.4.2 compose fixture | Docker commands recorded in PR |
+| Real stack | two-broker demo | no three-broker gate | dedicated three-broker KRaft/Connect/Registry/ES 9.5.5 compose fixture | Docker commands recorded in PR |
 | Monitoring/RCA | shared runtimes | end-to-end evidence not established here | unchanged; remains a draft-PR blocker | not claimed |
 
 A client, protocol or unit test is not represented here as a successful real collector probe. The draft must remain draft until all external gates have run successfully.

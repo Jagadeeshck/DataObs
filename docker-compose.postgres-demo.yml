@@ -1,6 +1,6 @@
 services:
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:9.4.2
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.5.5
     environment:
       discovery.type: single-node
       xpack.security.enabled: "false"
@@ -13,7 +13,7 @@ services:
       retries: 30
     volumes: ["esdata:/usr/share/elasticsearch/data"]
   kibana:
-    image: docker.elastic.co/kibana/kibana:9.4.2
+    image: docker.elastic.co/kibana/kibana:9.5.5
     environment:
       ELASTICSEARCH_HOSTS: http://elasticsearch:9200
       XPACK_SECURITY_ENABLED: "false"

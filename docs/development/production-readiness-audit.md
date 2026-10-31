@@ -5,7 +5,7 @@
 | Area | State | Evidence | Blockers | Owner | Next gate |
 |---|---|---|---|---|---|
 | Architecture | foundation | Six-pillar architecture and ledger | Unified certification absent | unassigned | Reconcile active architecture docs with ledger |
-| Migrations | functional_unvalidated | `packages/elastic_store/manifest.py`; local tests defined | Retained hosted upgrade run absent | unassigned | ES 9.4.2 upgrade rehearsal |
+| Migrations | functional_unvalidated | `packages/elastic_store/manifest.py`; local tests defined | Retained hosted upgrade run absent | unassigned | ES 9.5.5 upgrade rehearsal |
 | Storage | foundation | Elasticsearch registry and resources | durability, scale, restore evidence absent | unassigned | real-stack storage suite |
 | Connectors | foundation | PostgreSQL/Kafka/adapters in tree | provider/version matrix incomplete | unassigned | version-pinned integration evidence |
 | Collection runtime | foundation | collection manager and scanner worker | HA and scale absent | unassigned | failure/lease/scale certification |

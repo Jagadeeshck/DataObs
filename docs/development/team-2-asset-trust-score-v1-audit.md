@@ -12,7 +12,7 @@
 - **Integrations:** canonical quality/freshness/SLO/contract/job/dbt/schema/lineage/ownership evidence is accepted; source engines are not recreated. Criticality, downstream impact, Data Product member context, and Change Gate context remain separate from score calculation.
 - **Repository/security:** memory and Elasticsearch implementations scope tenant/environment, offer policy OCC, idempotent append, current/history/inventory/bulk/health operations, and never store raw rows.
 - **Runtime/API/Console:** scoring service and storage contract are implemented; worker wiring, signed-cursor HTTP endpoints, `/quality/trust`, Asset 360 integration, and contextual consumers remain limitations.
-- **Elasticsearch/migration:** ES repository targets 9.x APIs. No migration was added without latest-main reconciliation; ES 9.4.2 apply/repeat/upgrade/restart tests remain required.
+- **Elasticsearch/migration:** ES repository targets 9.x APIs. No migration was added without latest-main reconciliation; ES 9.5.5 apply/repeat/upgrade/restart tests remain required.
 - **Scale/browser/axe:** not certified in this snapshot. No throughput or accessibility claim is made.
 - **Workflow/artifact/independent verification:** not certified; capability must remain unvalidated and must not be promoted.
 - **Rollback:** stop callers, revert application commit, and retain immutable evaluation history. Remove resources only through a separately reviewed forward migration after retention review.

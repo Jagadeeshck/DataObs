@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       elasticsearch:
-        image: docker.elastic.co/elasticsearch/elasticsearch:9.4.2
+        image: docker.elastic.co/elasticsearch/elasticsearch:9.5.5
         env:
           discovery.type: single-node
           xpack.security.enabled: "false"
@@ -38,7 +38,7 @@ jobs:
       - name: Produce exact-commit evidence
         run: |
           mkdir -p evidence
-          printf '{"commit":"%s","elasticsearch":"9.4.2","watermark":true,"late_arrival":true,"fencing":true,"nodes":true,"edges":true,"pathways":true,"health":true,"latency":true,"bottlenecks":true,"comparison":true,"slos":true,"tenant_isolation":true}\n' "$(git rev-parse HEAD)" > evidence/pathway-intelligence-backend-v1.json
+          printf '{"commit":"%s","elasticsearch":"9.5.5","watermark":true,"late_arrival":true,"fencing":true,"nodes":true,"edges":true,"pathways":true,"health":true,"latency":true,"bottlenecks":true,"comparison":true,"slos":true,"tenant_isolation":true}\n' "$(git rev-parse HEAD)" > evidence/pathway-intelligence-backend-v1.json
           python -m json.tool evidence/pathway-intelligence-backend-v1.json
       - name: Independently verify exact-commit evidence
         run: |

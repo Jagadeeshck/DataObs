@@ -43,7 +43,7 @@ def test_semver_and_change_levels():
 
 
 def test_platform_versions_are_truthful():
-    assert classify_version("elasticsearch", "9.4.2") == SupportState.COMPATIBLE_UNVALIDATED
+    assert classify_version("elasticsearch", "9.5.5") == SupportState.COMPATIBLE_UNVALIDATED
     assert classify_version("elasticsearch", "8.9.0") == SupportState.INCOMPATIBLE
     assert classify_version("elasticsearch", "10.0.0") == SupportState.UNKNOWN
     assert classify_version("kubernetes", "1.30.2") == SupportState.COMPATIBLE_UNVALIDATED
@@ -51,7 +51,7 @@ def test_platform_versions_are_truthful():
     assert classify_version("kubernetes", "1.31.0") == SupportState.UNKNOWN
 
 
-def profile(version="0.2.0", es="9.4.2", kube="1.30.0"):
+def profile(version="0.2.0", es="9.5.5", kube="1.30.0"):
     return PlatformProfile(
         version, "3.17.0", kube, es, "3.13.0", "22.0.0", "dataobs-oidc-v1", "1.0.0", "1.0.0", "1", "0032_x"
     )

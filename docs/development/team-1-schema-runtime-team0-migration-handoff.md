@@ -12,7 +12,7 @@ contrary applied-state evidence, this PR must stop and use the collision escalat
 The final registry checksum is `47a6f9ba7de57a4336972b18fa75da7430c4f621e71f76c02f80c77062823a69` and 0033 checksum is
 `c53af6951bd1fa728981343272ea68c5cace73d68c5ed16d51ddf9fed785aec1`. Local registry, ledger, mapping, runtime,
 privacy, fencing, OCC, replay and checkpoint tests pass. Clean install, Team-2-to-Team-1 upgrade, repeat live apply,
-and doctor are workflow-gated on Elasticsearch 9.4.2 and have no local result because Elasticsearch/Docker is absent.
+and doctor are workflow-gated on Elasticsearch 9.5.5 and have no local result because Elasticsearch/Docker is absent.
 
 Team 0 review is explicitly required for the shared production Helm terminal change from stale 0030 to authoritative
 0033 and for confirmation that no supported cluster applied the orphan identity. Before approval, inspect the hosted

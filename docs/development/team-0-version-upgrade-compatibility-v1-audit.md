@@ -6,7 +6,7 @@
 * **Terminal migration:** `0032_team2_data_slo_production_runtime`, graph-derived.
 * **Migration integrity:** 32 IDs and ordinals; no duplicates, missing/future dependencies, cycles, branches, checksum conflicts, or ambiguous leaves. Runtime identity is the immutable full ID persisted in `dataobs-system-migrations-v1`; the existing immutability guard compares IDs/checksums/dependencies. No reconciliation was required.
 * **Kubernetes:** chart constraint `>=1.30.0-0 <1.31.0-0`; certification remains pending.
-* **Elasticsearch:** exact candidate `9.4.2`; unvalidated.
+* **Elasticsearch:** exact candidate `9.5.5`; unvalidated.
 * **Runtimes:** release workflow Python 3.13; Console Node 22. Other CI runtimes are not support claims.
 * **Helm:** chart API v2, client 3.17 profile is unvalidated; values schema declares draft-07 contract and schema version 1.0.
 * **OIDC:** Authorization Code + PKCE S256 contract with issuer, audience and signing-key validation; hosted conformance pending.

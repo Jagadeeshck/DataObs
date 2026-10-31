@@ -7,7 +7,7 @@ import sys
 evidence = json.load(open(sys.argv[1], encoding="utf-8"))
 actual = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
 assert evidence["final_sha"] == actual
-assert evidence["elasticsearch_version"] == "9.4.2"
+assert evidence["elasticsearch_version"] == "9.5.5"
 assert evidence["terminal_migration"] == "0021_lineage_analysis_explorer"
 required = (
     "api_contract",

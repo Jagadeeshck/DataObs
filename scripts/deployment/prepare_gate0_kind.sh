@@ -42,7 +42,7 @@ chmod 600 "$work/es.env"
 docker run -d --name dataobs-gate0-es --network kind --env-file "$work/es.env" \
   -e discovery.type=single-node -e xpack.security.enabled=true \
   -e xpack.security.http.ssl.enabled=false -e ES_JAVA_OPTS='-Xms1g -Xmx1g' \
-  docker.elastic.co/elasticsearch/elasticsearch:9.4.2
+  docker.elastic.co/elasticsearch/elasticsearch:9.5.5
 es_ip=$(docker inspect dataobs-gate0-es --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')
 # Local HTTP is an explicit disposable smoke profile, not TLS certification.
 ready=false

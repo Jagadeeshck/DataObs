@@ -57,7 +57,7 @@ jobs:
             docker compose -f tests/integration/docker-compose.test.yml logs --no-color mock-webhook
             exit 1
           fi
-      - name: Require Elasticsearch 9.4.2
+      - name: Require Elasticsearch 9.5.5
         run: |
           curl -fsS http://127.0.0.1:9200 > artifacts/e2e-signal-path/elasticsearch.json
           python - <<'PY'
@@ -65,7 +65,7 @@ jobs:
           from pathlib import Path
 
           body = json.loads(Path("artifacts/e2e-signal-path/elasticsearch.json").read_text())
-          assert body["version"]["number"] == "9.4.2"
+          assert body["version"]["number"] == "9.5.5"
           PY
       - name: Execute Data Product migration and mapping certification
         env:
@@ -88,7 +88,7 @@ jobs:
           from elasticsearch import Elasticsearch
 
           es = Elasticsearch("http://127.0.0.1:9200")
-          assert es.info()["version"]["number"] == "9.4.2"
+          assert es.info()["version"]["number"] == "9.5.5"
 
           fields = {}
           checks = {

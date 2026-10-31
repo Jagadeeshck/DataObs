@@ -46,5 +46,5 @@ execution requests require only `preview_id`, never incident or target revisions
 ## Migration and certification
 
 Starting and ending terminal migration: `0030_team1_multi_broker_messaging_runtime`. Migration added: no. Released
-migrations modified: no. Elasticsearch 9.4.2, Kibana 9.4.2, Playwright, and axe certification were not run because a
+migrations modified: no. Elasticsearch 9.5.5, Kibana 9.5.5, Playwright, and axe certification were not run because a
 hosted stack and credentials were not available; no real-stack pass is claimed.

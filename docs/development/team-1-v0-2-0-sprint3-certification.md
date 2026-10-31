@@ -134,7 +134,7 @@ Kafka offsets, lease expiry, checkpoints, pathway watermark/replay, bounded trav
 
 This matrix must be updated with the new PR-head workflow URLs before the PR is promoted.
 
-| Capability | Unit/domain | ES 9.4.2 | Kafka real stack | Tenant isolation | Browser/API | Independent evidence | Status |
+| Capability | Unit/domain | ES 9.5.5 | Kafka real stack | Tenant isolation | Browser/API | Independent evidence | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Stream Observer | pending PR head | pending | pending | pending | API pending | pending | BLOCKED |
 | Kafka Cluster 360 | pending PR head | pending | NOT_APPLICABLE | pending | pending | pending | BLOCKED |

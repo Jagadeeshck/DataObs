@@ -61,7 +61,7 @@ Machine-local JUnit, logs and measured Kafka JSON are under `/workspace/team1-re
 
 PASS here denotes the particular tested dimension only. BLOCKED in the final status means no release certification exists. NOT_APPLICABLE denotes a dimension that does not apply, not an unexecuted required check. Console contract cells refer to focused domain/component checks, not full browser certification.
 
-| Capability | Implementation | Unit tests | ES 9.4.2 | Kafka real-stack | Tenant isolation | Console contract | Hosted exact-SHA | Status | Blocker |
+| Capability | Implementation | Unit tests | ES 9.5.5 | Kafka real-stack | Tenant isolation | Console contract | Hosted exact-SHA | Status | Blocker |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Kafka cluster/topic inventory | PASS | PASS | BLOCKED | PASS | PASS | PASS | BLOCKED | BLOCKED | Shared migrations/projection mappings; hosted proof |
 | Consumer groups and lag | PASS | PASS | BLOCKED | PASS | PASS | PASS | BLOCKED | BLOCKED | Shared mappings; durable projection/checkpoint proof |
@@ -79,7 +79,7 @@ PASS here denotes the particular tested dimension only. BLOCKED in the final sta
 
 ### Shared clean-install gate — Team 0/2
 
-Merge the approved shared fix from #310/#311 before rebasing this PR. Then run clean Elasticsearch **9.4.2**, the full released chain and a second idempotent apply, followed by all Team 1 integration/API persistence gates. No released migration edits, checksum changes, index deletion or migration bypass is permitted. Until that occurs, Elasticsearch capability rows remain BLOCKED.
+Merge the approved shared fix from #310/#311 before rebasing this PR. Then run clean Elasticsearch **9.5.5**, the full released chain and a second idempotent apply, followed by all Team 1 integration/API persistence gates. No released migration edits, checksum changes, index deletion or migration bypass is permitted. Until that occurs, Elasticsearch capability rows remain BLOCKED.
 
 ### Projection mapping handoff — Team 0 with Team 1
 

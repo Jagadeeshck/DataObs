@@ -24,7 +24,7 @@ Latest main at branch creation: `df3a1d7` (merge of PR #113). Release readiness 
 | API | absent | typed routes | FastAPI monitor lifecycle/history/health routes | generated-client gate pending |
 | Migration | through 0012 | resources absent | forward-only `0013_monitor_runtime_completion`, reusing 0007 | migration gates pending |
 | Security | informal | runtime threat model | documented controls and explicit development-auth blocker | security gate pending |
-| Real stack | absent | Elasticsearch 9.4.2 evidence | certification scenario remains required | **not yet evidenced** |
+| Real stack | absent | Elasticsearch 9.5.5 evidence | certification scenario remains required | **not yet evidenced** |
 | Hosted CI | absent | retained run/artifacts | jobs/run URL remain required | **not yet evidenced** |
 
 ## Evidence posture

@@ -126,7 +126,7 @@ def test_backup_restore_evidence_validator_is_fail_closed(tmp_path: Path):
         "restore_duration_seconds": 2.0,
         "duration_seconds": 60.0,
         "status": "pass",
-        "elasticsearch_version": "9.4.2",
+        "elasticsearch_version": "9.5.5",
         "terminal_migration": "0033_team1_stream_schema_intelligence_runtime",
         "tenant_isolation": "pass",
         "redaction_status": "pass",

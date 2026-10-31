@@ -1,6 +1,6 @@
 # PostgreSQL vertical slice demo
 
-This demo runs PostgreSQL, Elasticsearch 9.4.2, Kibana, the DataObs API and the scanner. It validates the Elasticsearch-native flow from scanner metadata collection to current-state APIs and append-only investigation streams.
+This demo runs PostgreSQL, Elasticsearch 9.5.5, Kibana, the DataObs API and the scanner. It validates the Elasticsearch-native flow from scanner metadata collection to current-state APIs and append-only investigation streams.
 
 ```mermaid
 flowchart LR

@@ -7,7 +7,7 @@ const seriousOrCritical = async (page: Page) =>
     ["serious", "critical"].includes(violation.impact ?? ""),
   );
 
-test.describe("v0.2.0 critical Console journeys", () => {
+test.describe("v1.0.0 critical Console journeys", () => {
   test.beforeEach(async ({ page }) => mockCriticalJourneys(page));
 
   test("asset inventory opens Asset 360 without losing evidence truth", async ({
@@ -117,7 +117,7 @@ test.describe("v0.2.0 critical Console journeys", () => {
     expect(await seriousOrCritical(page)).toEqual([]);
   });
 
-  test("System information displays the v0.2.0 Console release", async ({
+  test("System information displays the v1.0.0 Console release", async ({
     page,
   }) => {
     await page.goto("/administration/system");
@@ -125,7 +125,7 @@ test.describe("v0.2.0 critical Console journeys", () => {
       page.getByRole("heading", { name: "System information", exact: true }),
     ).toBeVisible();
     await expect(
-      page.getByText("Version: 0.2.0", { exact: true }),
+      page.getByText("Version: 1.0.0", { exact: true }),
     ).toBeVisible();
   });
 
@@ -150,7 +150,7 @@ test.describe("v0.2.0 critical Console journeys", () => {
   });
 });
 
-test.describe("v0.2.0 security and trusted-context acceptance", () => {
+test.describe("v1.0.0 security and trusted-context acceptance", () => {
   test("URL tenant/environment values cannot override trusted request scope", async ({
     page,
   }) => {

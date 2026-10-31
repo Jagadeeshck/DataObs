@@ -54,7 +54,7 @@ def test_explicit_legacy_alias_is_accepted_but_mixed_nonidentical_is_ambiguous()
         "required_conclusion": "success",
         "mandatory_for_beta": True,
         "evidence_schema_version": "1.0",
-        "expected_elasticsearch_version": "9.4.2",
+        "expected_elasticsearch_version": "9.5.5",
         "accepted_events": ["workflow_dispatch"],
         "required_test_categories": ["security"],
     }
@@ -72,7 +72,7 @@ def test_explicit_legacy_alias_is_accepted_but_mixed_nonidentical_is_ambiguous()
         "schema_version": "1.0",
         "producer_sha": SHA,
         "terminal_migration": "m",
-        "elasticsearch_version": "9.4.2",
+        "elasticsearch_version": "9.5.5",
         "test_summaries": [{"category": "security"}],
         "tool_versions": {},
         "workflow_file": "proof.yml",

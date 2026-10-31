@@ -22,7 +22,7 @@ from scripts.operations.snapshot_common import snapshot_resources
 
 pytestmark = pytest.mark.skipif(
     os.getenv("RUN_BETA_BACKUP_RESTORE") != "1",
-    reason="requires destructive real Elasticsearch 9.4.2 certification service",
+    reason="requires destructive real Elasticsearch 9.5.5 certification service",
 )
 
 
@@ -39,7 +39,7 @@ def test_beta_backup_restore_exact_state_and_tenant_isolation() -> None:
     started = time.monotonic()
     url = os.environ.get("ELASTICSEARCH_URL", "http://localhost:9200")
     es = make_client()
-    assert es.info()["version"]["number"] == "9.4.2"
+    assert es.info()["version"]["number"] == "9.5.5"
     subprocess.run(
         ["python", "-m", "packages.elastic_store.cli", "apply"],
         check=True,
@@ -122,7 +122,7 @@ def test_beta_backup_restore_exact_state_and_tenant_isolation() -> None:
         "restore_duration_seconds": round(restore_duration, 6),
         "schema_version": "1.0",
         "status": "pass",
-        "elasticsearch_version": "9.4.2",
+        "elasticsearch_version": "9.5.5",
         "terminal_migration": migrations()[-1].migration_id,
         "resources": {name: {"count": after[name][0], "sha256": after[name][1]} for name in after},
         "tenants": ["tenant-a", "tenant-b"],

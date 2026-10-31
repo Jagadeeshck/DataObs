@@ -12,7 +12,7 @@ as `available` only after its source probe succeeds; otherwise it is `partial`, 
 | Schema Registry | REST subjects, versions and compatibility | Unit boundary only |
 | OTel Java/Python | Existing messaging semantic attributes | Not run |
 | JMX / Elastic metrics | Optional correlation source | Not configured |
-| Elasticsearch / Kibana | Target 9.4.2 | Not run |
+| Elasticsearch / Kibana | Target 9.5.5 | Not run |
 
 AWS MSK IAM is unsupported unless an explicit feature flag and compatible official library are installed. Non-Kafka
 adapters remain explicitly unimplemented.

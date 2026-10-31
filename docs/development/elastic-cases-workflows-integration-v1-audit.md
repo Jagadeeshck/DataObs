@@ -5,7 +5,7 @@
 * **Audited SHA:** `70f77d85b17776fe2222d591788f145269479057` (local merge of PR #229; it contains PR #230).
 * **Terminal migration:** dynamically reported as `0027_platform_environment_tenant_multicluster_lifecycle` before changes.
 * **History reviewed:** local merge commits/diffs for PRs #187, #202, #209, #217, #219, #230 and later available Team 0/Team 5 merges. GitHub review-comment retrieval was attempted with `gh pr view 230 --comments`; the environment has no GitHub credential, so the audit is limited to merged code, commit history, and the existing PR #230 closure audit.
-* **Target:** Elasticsearch/Kibana 9.4.2. Documentation lookup was attempted but the documentation search service returned HTTP 401. Selected GA endpoints follow the pinned contract: create `POST /api/workflows/workflow`, read/update `/api/workflows/workflow/{id}`, run `/api/workflows/workflow/{id}/run`, execution `/api/workflows/executions/{executionId}`, and inventory `/api/workflows/workflow/{workflowId}/executions`. Cancellation is not enabled because its exact contract could not be independently certified.
+* **Target:** Elasticsearch/Kibana 9.5.5. Documentation lookup was attempted but the documentation search service returned HTTP 401. Selected GA endpoints follow the pinned contract: create `POST /api/workflows/workflow`, read/update `/api/workflows/workflow/{id}`, run `/api/workflows/workflow/{id}/run`, execution `/api/workflows/executions/{executionId}`, and inventory `/api/workflows/workflow/{workflowId}/executions`. Cancellation is not enabled because its exact contract could not be independently certified.
 
 The prior Workflow client exposed a generic path request, followed redirects, returned response text in errors, used 9.3-style paths/import, and mixed credentials. The prior deployer only validated/printed a pack. Execution sync copied statuses and provider structures without an explicit compatibility map. No production Case client/service existed.
 
@@ -37,4 +37,4 @@ The initial workflow is `dataobs-incident-case-triage-v1`. Allowed steps are `ca
 
 ## Remaining gaps
 
-Authoritative target resolution/reload, execution heartbeats, Elasticsearch Case-link persistence, uncertain-create remote reconciliation, Safe Remediation Case/Workflow executors and bindings, APIs/UI, telemetry, cancellation certification, hosted browser/accessibility evidence, and licensed 9.4.2 real-stack certification remain.
+Authoritative target resolution/reload, execution heartbeats, Elasticsearch Case-link persistence, uncertain-create remote reconciliation, Safe Remediation Case/Workflow executors and bindings, APIs/UI, telemetry, cancellation certification, hosted browser/accessibility evidence, and licensed 9.5.5 real-stack certification remain.

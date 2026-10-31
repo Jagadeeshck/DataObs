@@ -70,6 +70,6 @@ remain opt-in and no default was changed.
 
 ## Certification and migrations
 
-Elasticsearch 9.4.2, Kibana 9.4.2, and browser certification were **not run** because no hosted stack or credentials
+Elasticsearch 9.5.5, Kibana 9.5.5, and browser certification were **not run** because no hosted stack or credentials
 were supplied. Internal strict-envelope tests are not represented as real-stack evidence. Starting and ending
 terminal migration is `0029_team2_data_intelligence_reconciliation`; no released migration or checksum is changed.

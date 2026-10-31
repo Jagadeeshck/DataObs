@@ -7,7 +7,7 @@ Date: 2026-10-26. Baseline: `ed923635b85ee38fa966a73d499883a260b9a535`.
 Today's achievable target is a reproducible **local evaluation stack**, not a
 production release or supported-platform certification. It consists of:
 
-1. Elasticsearch 9.4.2 with persisted local storage and bounded readiness.
+1. Elasticsearch 9.5.5 with persisted local storage and bounded readiness.
 2. The released 33-migration graph applied before the API starts.
 3. The DataObs 0.2.0 API using Elasticsearch as its authoritative store.
 4. The built Console served by unprivileged Nginx and proxying `/api/` to the API.

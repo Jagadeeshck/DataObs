@@ -40,7 +40,7 @@ Release readiness remains **blocked**. A hosted workflow has not yet run; the ta
 | Lineage tab | placeholder | evidence states | not complete | pending | pending |
 | Dependencies tab | placeholder | graph/table/editor | not complete | pending | pending |
 | Revisions tab | placeholder | signed API page | not complete | pending | pending |
-| Elasticsearch | partial repository | real 9.4.2 certification | core lifecycle persistence implemented | local unit only | pending |
+| Elasticsearch | partial repository | real 9.5.5 certification | core lifecycle persistence implemented | local unit only | pending |
 | browser | absent | Playwright journey | not complete | pending | pending |
 | axe | absent | accessibility journey | not complete | pending | pending |
 | security | foundation | executable matrix | raw keys remain hashed; full matrix incomplete | unit | pending |

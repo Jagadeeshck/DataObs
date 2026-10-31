@@ -11,7 +11,7 @@ no `origin`; the local `main` checkpoint was nevertheless exactly the expected
 | --- | --- |
 | Application / chart | `0.2.0` / `0.2.0` |
 | Python / Node / pnpm | `3.14.4` / `24.15.0` / `10.28.1` locally; CI declares Python 3.11, Node 22 and pnpm 10.28.1 |
-| Elasticsearch target | server `9.4.2`; client is now constrained to compatible `9.4.x` |
+| Elasticsearch target | server `9.5.5`; client is now constrained to compatible `9.4.x` |
 | Terminal migration | `0033_team1_stream_schema_intelligence_runtime` (33 migrations, dynamically discovered) |
 | Release / security / platforms | `NO_GO` / `INCOMPLETE` / `[]` |
 | Main push workflows | 25 triggered: 4 passed, 21 failed, 0 cancelled (downstream skipped jobs are not separate defects) |
@@ -66,9 +66,9 @@ useful canaries, not proof that downstream release or security certification pas
   All history-dependent jobs retain full-depth checkout.
 * **Elasticsearch readiness:** the bounded cluster-health and indices probe remains before application interaction;
   it retries transient disconnects and exits nonzero on timeout. No sleep replaces readiness.
-* **Version decision:** the product server remains `9.4.2`. Allowing any 9.x client made hosted resolution
+* **Version decision:** the product server remains `9.5.5`. Allowing any 9.x client made hosted resolution
   nondeterministic (9.5.0 was observed), so both canonical and POC requirements constrain the client to
-  `==9.4.1`, the latest published 9.4 Python client compatible with the Elasticsearch 9.4.2 server target.
+  `==9.4.1`, the latest published 9.4 Python client compatible with the Elasticsearch 9.5.5 server target.
 
 ## Genuine product defects
 

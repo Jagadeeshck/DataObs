@@ -5,7 +5,7 @@
 GitHub Actions began producing real hosted runs after repository Actions configuration was corrected. The starting
 `main` snapshot was `ab84da5` and the active terminal migration was
 `0033_team1_stream_schema_intelligence_runtime`. Workflows consistently target Python 3.12 for the repaired shared
-path, Node 22, pnpm 10.28.1, and Elasticsearch 9.4.2.
+path, Node 22, pnpm 10.28.1, and Elasticsearch 9.5.5.
 
 This checkout has no remote and no authenticated GitHub CLI session. The public Actions API was rate limited (HTTP
 403), so the run total, conclusion counts, raw logs, and post-change hosted canary results could not be independently

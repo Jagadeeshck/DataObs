@@ -27,7 +27,7 @@ The authoritative product truth remains:
 | Release | `NO_GO` |
 | Security | `INCOMPLETE` |
 | Supported platforms | `[]` |
-| Elasticsearch server | `9.4.2` |
+| Elasticsearch server | `9.5.5` |
 | Terminal migration | `0033_team1_stream_schema_intelligence_runtime` |
 | Published GitHub releases/tags | none observed at assessment time |
 
@@ -86,7 +86,7 @@ The next delivery item should be narrowly titled:
 It should fix only shared release infrastructure in this order:
 
 1. reproduce and repair the Helm lint failure in the deployment-packaging job;
-2. reproduce the migration-apply failures against a clean Elasticsearch 9.4.2
+2. reproduce the migration-apply failures against a clean Elasticsearch 9.5.5
    instance and determine whether they share one mapping/migration defect;
 3. repair backup/restore evidence-envelope generation without weakening exact
    SHA, run-attempt, checksum, or independent-verification requirements;
@@ -120,7 +120,7 @@ and a complete rerun.
 ### Gate 2 — certify one bounded platform
 
 The first realistic target is the already documented small/development profile:
-Kubernetes `1.30.x`, external secured Elasticsearch `9.4.2`, Python `3.13`,
+Kubernetes `1.30.x`, external secured Elasticsearch `9.5.5`, Python `3.13`,
 Node `22`, external OIDC with Authorization Code + PKCE S256, and the packaged
 components only. Embedded Elasticsearch, embedded identity, Collection Manager,
 demos, and POCs remain excluded.

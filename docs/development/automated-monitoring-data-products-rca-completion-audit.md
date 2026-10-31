@@ -17,7 +17,7 @@ is not counted as an implementation.
 | Monitors as Code | Domain fields only | Validate/plan/apply/export/drift are absent | Implement schema, compiler, state repository, and CLI | Not run; blocking |
 | API | Existing product query routes | Requested monitor/product/RCA route sets are incomplete | Add typed scoped routes, ETags, pagination, and regenerate OpenAPI | Not run; blocking |
 | Console | Existing Command Center, Asset 360, and Pathway screens | Monitor Center, Data Product 360, and RCA Workbench are absent | Build browser-tested screens against the real API | Not run; blocking |
-| Elasticsearch migration | `0007` resource declarations | No forward-only executable `0008` or Elasticsearch 9.4.2 upgrade evidence | Add complete strict mappings/transforms without modifying `0001`–`0007` | Not run; blocking |
+| Elasticsearch migration | `0007` resource declarations | No forward-only executable `0008` or Elasticsearch 9.5.5 upgrade evidence | Add complete strict mappings/transforms without modifying `0001`–`0007` | Not run; blocking |
 | Real-stack validation | No returned workflow run for PR #93 head | PostgreSQL, Kafka, Elasticsearch, Playwright/axe, and leakage scans did not run | Run the completion compose stack and all blocking CI jobs | Not run; blocking |
 
 ## Gate status

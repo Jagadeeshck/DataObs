@@ -4,8 +4,8 @@ Audited 2026-07-21 against Compose files, Dockerfiles, lockfiles, and CI. Image 
 
 | Component | Image/package | Exact version | Compatibility reason | License note | Evidence |
 |---|---|---:|---|---|---|
-| Elasticsearch | `docker.elastic.co/elasticsearch/elasticsearch` | 9.4.2 | Required server target | Elastic License 2.0 | certification Compose |
-| Kibana | `docker.elastic.co/kibana/kibana` | 9.4.2 | Must match Elasticsearch | Elastic License 2.0 | certification Compose |
+| Elasticsearch | `docker.elastic.co/elasticsearch/elasticsearch` | 9.5.5 | Required server target | Elastic License 2.0 | certification Compose |
+| Kibana | `docker.elastic.co/kibana/kibana` | 9.5.5 | Must match Elasticsearch | Elastic License 2.0 | certification Compose |
 | PostgreSQL | `postgres` | 16.9-alpine | Existing 16.x vertical slice | PostgreSQL | certification Compose |
 | Kafka KRaft | `bitnami/kafka` | 3.9 | Existing real-stack 3.9 line | Apache-2.0 components; image terms apply | certification Compose |
 | Kafka Connect | `confluentinc/cp-kafka-connect` | 7.9.0 | Compatible Confluent platform family | Confluent Community License/image terms | certification Compose |

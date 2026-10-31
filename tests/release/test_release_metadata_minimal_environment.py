@@ -26,7 +26,7 @@ def guarded_import(name, *args, **kwargs):
 builtins.__import__ = guarded_import
 from scripts.release.release_metadata import ELASTICSEARCH_VERSION, terminal_migration
 
-assert ELASTICSEARCH_VERSION == "9.4.2"
+assert ELASTICSEARCH_VERSION == "9.5.5"
 assert terminal_migration() == "0033_team1_stream_schema_intelligence_runtime"
 """.format(root=str(ROOT))
     result = subprocess.run(

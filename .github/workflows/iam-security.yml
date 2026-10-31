@@ -22,6 +22,6 @@ jobs:
       - name: Record redaction-safe evidence metadata
         run: |
           mkdir -p artifacts
-          printf '{"final_producer_sha":"%s","oidc_provider":"Keycloak 26.3.3","elasticsearch":"9.4.2","route_permission_contract":"executed","tenant_isolation":"executed","jwt_negative_tests":"executed","service_identity":"executed","audit_redaction":"executed","browser":"defined","migration":"0020_identity_rbac_tenant_bindings"}\n' "$GITHUB_SHA" > artifacts/summary.json
+          printf '{"final_producer_sha":"%s","oidc_provider":"Keycloak 26.3.3","elasticsearch":"9.5.5","route_permission_contract":"executed","tenant_isolation":"executed","jwt_negative_tests":"executed","service_identity":"executed","audit_redaction":"executed","browser":"defined","migration":"0020_identity_rbac_tenant_bindings"}\n' "$GITHUB_SHA" > artifacts/summary.json
       - uses: actions/upload-artifact@v4
         with: {name: iam-rbac-security-evidence, path: artifacts, retention-days: 30}

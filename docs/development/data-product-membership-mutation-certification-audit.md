@@ -41,7 +41,7 @@ Release readiness remains **blocked**. No migration `0016` is required. Hosted e
 | Lineage proposal generation | Foundation/scaffolding | Required by closure prompt | Not complete | Not yet certified | Not available |
 | Dependencies editing | Foundation/scaffolding | Required by closure prompt | Not complete | Not yet certified | Not available |
 | Revisions pagination | Foundation/scaffolding | Required by closure prompt | Not complete | Not yet certified | Not available |
-| Elasticsearch 9.4.2 | Foundation/scaffolding | Required by closure prompt | Not complete | Not yet certified | Not available |
+| Elasticsearch 9.5.5 | Foundation/scaffolding | Required by closure prompt | Not complete | Not yet certified | Not available |
 | Playwright | Foundation/scaffolding | Required by closure prompt | Not complete | Not yet certified | Not available |
 | axe | Foundation/scaffolding | Required by closure prompt | Not complete | Not yet certified | Not available |
 | security | Foundation/scaffolding | Required by closure prompt | Not complete | Not yet certified | Not available |

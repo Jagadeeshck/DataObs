@@ -1,1 +1,1 @@
-from .service import CollectionManagerService
+from .service import CollectionManagerService  # noqa: F401

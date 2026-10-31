@@ -1,7 +1,23 @@
 FROM python:3.11-slim
 WORKDIR /app
+
+# Upgrade base-image bundled setuptools/wheel/jaraco.context in place to remediate
+# Trivy CVE-2026-23949 (jaraco.context) and CVE-2026-24049 (wheel). pip handles
+# removal of the old dist-info/RECORD entries so no orphaned vulnerable metadata remains.
+RUN pip install --no-cache-dir --upgrade "setuptools>=70.0.0" "wheel>=0.46.2" "jaraco.context>=6.1.0"
+
 COPY requirements.txt pyproject.toml ./
 RUN pip install --no-cache-dir -r requirements.txt psycopg[binary] pyyaml
-COPY . .
+
+# Copy only the required source paths (not the entire repo context)
+COPY packages packages
+COPY services services
+COPY src src
+COPY config config
+
+# Non-root user for security
+RUN addgroup --system dataobs && adduser --system --ingroup dataobs dataobs
+USER dataobs
+
 ENTRYPOINT ["python", "-m", "services.scanner_worker.cli"]
 CMD ["--config", "config/postgres-scanner.example.yaml", "run"]

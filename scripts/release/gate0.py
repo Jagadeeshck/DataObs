@@ -2,12 +2,9 @@
 """Dispatch or verify existing Gate 0 producers; never authorize publication."""
 
 import argparse
-import io
 import json
-import os
 import subprocess
 import sys
-import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -17,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
 from scripts.certification.provenance import expected_certification_sha  # noqa: E402
-from scripts.release.verify_beta_candidate import validate_evidence, verify_entry  # noqa: E402
+from scripts.release.verify_beta_candidate import verify_entry  # noqa: E402
 
 
 def api(path, method="GET", fields=None):

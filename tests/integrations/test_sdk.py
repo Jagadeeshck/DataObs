@@ -9,7 +9,6 @@ import pytest
 from packages.collectors.sdk import (
     Capability,
     CollectionMode,
-    CollectionRequest,
     CredentialReference,
     CredentialReferenceType,
     DiscoveryRequest,

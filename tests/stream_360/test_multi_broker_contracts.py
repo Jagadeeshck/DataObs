@@ -4,7 +4,7 @@ import pytest
 from pydantic import ValidationError
 
 from packages.streaming.adapters import ADAPTERS, get_adapter
-from packages.streaming.contracts import MessagingBacklog, MessagingSystem, ResourceKind, SqsFacet
+from packages.streaming.contracts import MessagingBacklog, MessagingSystem, SqsFacet
 from packages.streaming.identity import canonical_messaging_id
 
 NOW = datetime(2026, 1, 1, tzinfo=timezone.utc)

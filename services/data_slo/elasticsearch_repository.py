@@ -7,7 +7,7 @@ from hashlib import sha256
 
 from elasticsearch import ConflictError, NotFoundError
 
-from packages.domain_model.slo import DataReliabilitySLODefinition, DataReliabilitySLOEvaluation
+from packages.domain_model.slo import DataReliabilitySLODefinition
 
 from .models import DefinitionRevision, RuntimeState
 from .repository import DefinitionConflict, FenceLost

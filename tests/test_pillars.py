@@ -1,5 +1,4 @@
 from src.core.pillars import (
-    LEGACY_PILLAR_ALIASES,
     PILLAR_REGISTRY,
     CapabilityStatus,
     Pillar,

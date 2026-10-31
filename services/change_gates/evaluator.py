@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-from dataclasses import asdict
 from hashlib import sha256
 
 from .changed_models import detect_changes

@@ -9,7 +9,6 @@ from __future__ import annotations
 import argparse
 import json
 import signal
-import time
 from threading import Event
 
 from src.api.app import create_app

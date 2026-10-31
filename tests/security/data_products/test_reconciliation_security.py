@@ -13,7 +13,6 @@ from services.data_products.operation_state import (
     DataProductOperationPlan,
     DataProductOperationResultEnvelope,
     DataProductOperationState,
-    OperationClaimConflict,
 )
 from services.data_products.reconciliation import _checksum
 

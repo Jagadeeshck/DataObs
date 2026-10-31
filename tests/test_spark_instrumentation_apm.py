@@ -18,12 +18,9 @@ without PySpark, a real APM server, or the OTel SDK installed.
 
 from __future__ import annotations
 
-import logging
 import sys
 import types
 from unittest.mock import MagicMock, patch
-
-import pytest
 
 # ── Minimal stubs ────────────────────────────────────────────────────────────
 
@@ -59,7 +56,6 @@ def _make_mock_spark():
 
 def _make_mock_apm(enabled: bool = False):
     """Return a minimal ApmTelemetry mock that satisfies the context manager protocol."""
-    import contextlib
     from unittest.mock import MagicMock
 
     apm = MagicMock()

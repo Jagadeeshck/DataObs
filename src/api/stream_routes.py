@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from typing import Any, Callable, Literal
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request

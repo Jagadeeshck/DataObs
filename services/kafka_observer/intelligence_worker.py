@@ -5,7 +5,6 @@ from __future__ import annotations
 import logging
 import random
 import time
-from datetime import datetime, timedelta, timezone
 
 from services.kafka_observer.intelligence_runtime import IntelligenceRuntime
 from services.kafka_observer.reliability_runtime import StaleWriter

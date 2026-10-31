@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from dataclasses import asdict
-
 from .models import SchemaVersion, stable_id, utc_now
 
 _WIDENING = {("smallint", "integer"), ("integer", "bigint"), ("float", "double")}

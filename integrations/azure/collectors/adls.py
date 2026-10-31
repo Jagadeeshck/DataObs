@@ -1,4 +1,3 @@
-from datetime import datetime, timezone
 
 from ..normalisation import observation, resource_id, safe, value
 from ..pagination import bounded

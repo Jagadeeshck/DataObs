@@ -4,8 +4,6 @@ import hashlib
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 
-from packages.streaming.redaction import redact_mapping
-
 
 @dataclass(frozen=True)
 class CollectionError:

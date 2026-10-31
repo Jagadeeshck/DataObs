@@ -9,10 +9,8 @@ Resolves: https://github.com/Jagadeeshck/DataObs/issues/30
 
 from __future__ import annotations
 
-import statistics
 import warnings
 from dataclasses import dataclass
-from typing import Sequence
 
 from opentelemetry import metrics, trace
 

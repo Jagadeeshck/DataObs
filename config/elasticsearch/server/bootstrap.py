@@ -25,7 +25,6 @@ import os
 import sys
 from pathlib import Path
 
-import boto3
 from elasticsearch import Elasticsearch
 from elasticsearch import exceptions as es_exceptions
 

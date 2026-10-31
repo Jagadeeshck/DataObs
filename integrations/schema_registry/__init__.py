@@ -1,1 +1,1 @@
-from .client import SchemaRegistryClient
+from .client import SchemaRegistryClient  # noqa: F401

@@ -3,11 +3,10 @@ from __future__ import annotations
 from dataclasses import asdict
 from typing import Any, Callable
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, Field
 
 from services.incident_manager.automation.catalogue import CATALOGUE
-from services.incident_manager.automation.contracts import ApprovalState
 from services.incident_manager.automation.coordinator import AutomationCoordinator, Expired, PolicyDenied
 from services.incident_manager.automation.elasticsearch_repository import ElasticsearchAutomationRepository
 from services.incident_manager.automation.repository import Conflict, InMemoryAutomationRepository

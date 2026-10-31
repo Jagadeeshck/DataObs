@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import importlib
 from contextlib import contextmanager
-from typing import Any, Callable, Iterator
+from typing import Any, Iterator
 
 from .configuration import SnowflakeConfiguration
 from .credentials import CredentialResolver

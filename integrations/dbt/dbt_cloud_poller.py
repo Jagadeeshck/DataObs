@@ -17,7 +17,7 @@ Resolves: https://github.com/Jagadeeshck/DataObs/issues/29
 from __future__ import annotations
 
 import time
-from typing import Any, Optional
+from typing import Any
 
 import httpx
 from opentelemetry import trace

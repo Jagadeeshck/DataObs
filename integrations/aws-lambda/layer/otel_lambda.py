@@ -7,7 +7,6 @@ Resolves: https://github.com/Jagadeeshck/DataObs/issues/28
 from __future__ import annotations
 
 import functools
-import json
 import os
 from typing import Any, Callable
 

@@ -14,12 +14,9 @@ without an OTel collector, and without PySpark installed.
 
 from __future__ import annotations
 
-import importlib
-import os
 import sys
 from pathlib import Path
 
-import pytest
 import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[1]

@@ -15,7 +15,6 @@ Resolves: https://github.com/Jagadeeshck/DataObs/issues/31
 from __future__ import annotations
 
 import argparse
-import os
 import subprocess
 from pathlib import Path
 

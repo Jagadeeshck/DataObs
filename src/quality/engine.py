@@ -39,8 +39,7 @@ from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
-from src.quality.checks.registry import build_check, supported_check_types
-from src.quality.freshness import FreshnessMonitor
+from src.quality.checks.registry import build_check
 from src.quality.runner import QualityRunner
 
 # ---------------------------------------------------------------------------

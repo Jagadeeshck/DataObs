@@ -14,7 +14,6 @@ from packages.agent_sdk.models import (
     ScanTask,
     SchemaScanRequest,
     SecretReference,
-    canonicalize_schema,
     diff_schemas,
     schema_fingerprint,
 )

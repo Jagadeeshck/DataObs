@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 from packages.domain_model import Asset, Source, Tenant, deterministic_id
 from src.core.pillars import Pillar

@@ -8,7 +8,7 @@ large migration of the legacy rule/quality APIs.
 from __future__ import annotations
 
 from collections import deque
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List
 
 from elasticsearch import ConflictError, NotFoundError
 

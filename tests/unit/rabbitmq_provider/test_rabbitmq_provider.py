@@ -6,7 +6,6 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from integrations.rabbitmq.authentication import parse_authentication
-from integrations.rabbitmq.client import RabbitMqManagementClient
 from integrations.rabbitmq.collectors import collect_vhost
 from integrations.rabbitmq.configuration import parse_configuration
 from integrations.rabbitmq.normalisation import binding_fields, queue_fields

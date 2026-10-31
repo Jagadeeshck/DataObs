@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
 from .. import sql
-from ..normalisation import observation, safe, value
+from ..normalisation import observation, safe
 
 SAFE = {
     "jobs": (

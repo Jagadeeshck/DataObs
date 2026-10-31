@@ -15,10 +15,8 @@ from __future__ import annotations
 import csv
 import io
 import json
-from typing import Any, Dict, List
+from typing import Dict, List
 from unittest.mock import MagicMock, patch
-
-import pytest
 
 
 def _make_csv(rows: List[Dict[str, str]], headers: List[str] = None) -> bytes:

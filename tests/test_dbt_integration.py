@@ -49,7 +49,6 @@ from integrations.dbt.dbt_cloud_poller import DbtCloudPoller  # noqa: E402
 from integrations.dbt.parse_run_results import (  # noqa: E402
     _REQUIRED_METADATA_FIELDS,
     _REQUIRED_RESULT_FIELDS,
-    _REQUIRED_TOP_LEVEL,
     _SUPPORTED_SCHEMA_VERSIONS,
     _resolve_collection_name,
     _resolve_db_system,

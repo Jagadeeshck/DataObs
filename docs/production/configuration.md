@@ -12,13 +12,18 @@ Set `DATAOBS_ENV` to one of: `development`, `test`, `poc`, `production`.
 ## Production requirements
 In `DATAOBS_ENV=production`:
 - `API_TOKEN` required.
-- `DATAOBS_ALLOW_UNAUTHENTICATED_DEV` must be false.
+- `DATAOBS_ALLOW_UNAUTHENTICATED_DEV` must be false (hard startup failure if true).
 - `DATAOBS_STORE_BACKEND=memory` is rejected.
 - `ELASTICSEARCH_URL` required.
 - Elasticsearch auth required (`ELASTICSEARCH_API_KEY` or user/password).
 - Rejects weak defaults like `changeme`, `dataobs_poc_elastic`, `dataobs_poc_kibana`.
 - `DATAOBS_TENANT_ID` must be explicit (not `default`).
 - TLS verification must remain enabled.
+
+> **Security warning:** `DATAOBS_ALLOW_UNAUTHENTICATED_DEV=true` bypasses all authentication and must
+> never be set in a shared, staging, or production environment. It is only permitted with
+> `DATAOBS_ENV=development` and `DATAOBS_AUTH_PROVIDER=local`. The API will emit a prominent
+> `WARNING` log line on startup when this flag is active.
 
 ## Legacy env vars kept
 `API_TOKEN`, `API_HOST`, `API_PORT`, `ELASTICSEARCH_URL`, `ELASTICSEARCH_USER`, `ELASTICSEARCH_PASSWORD`, `DATAOBS_STORE_BACKEND`, `DATAOBS_TENANT_ID`, `LOG_LEVEL`.

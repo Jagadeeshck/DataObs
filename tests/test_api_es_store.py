@@ -6,8 +6,7 @@ All Elasticsearch client calls are mocked — no live ES cluster required.
 
 from __future__ import annotations
 
-import os
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock
 
 import pytest
 

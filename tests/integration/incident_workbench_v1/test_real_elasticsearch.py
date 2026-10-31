@@ -13,14 +13,25 @@ pytestmark = pytest.mark.skipif(
 )
 
 
+def _delete_dataobs_indices(client: Elasticsearch) -> None:
+    indices = client.indices.get(
+        index="dataobs-*",
+        allow_no_indices=True,
+        ignore_unavailable=True,
+        expand_wildcards="all",
+    )
+    for index_name in sorted(indices):
+        client.indices.delete(index=index_name)
+
+
 @pytest.fixture()
 def repository():
     client = Elasticsearch(os.getenv("ELASTICSEARCH_URL", "http://localhost:9200"))
-    client.options(ignore_status=[404]).indices.delete(index="dataobs-*", expand_wildcards="all")
+    _delete_dataobs_indices(client)
     apply(client)
     assert status(client)["ready"] is True
     yield ElasticsearchIncidentRepository(client)
-    client.options(ignore_status=[404]).indices.delete(index="dataobs-*", expand_wildcards="all")
+    _delete_dataobs_indices(client)
 
 
 def _event(identifier="event-1", tenant="tenant", environment="prod"):

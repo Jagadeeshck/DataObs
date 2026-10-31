@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate and independently verify Team 2 Sprint 4 E2E evidence."""
+"""Generate and independently verify Team 2 Sprint 6 E2E evidence."""
 
 from __future__ import annotations
 
@@ -29,7 +29,7 @@ EXPECTED_MAPPING = {
 
 
 class EvidenceError(ValueError):
-    """The retained Sprint 4 evidence is incomplete or inconsistent."""
+    """The retained Sprint 6 evidence is incomplete or inconsistent."""
 
 
 def _head() -> str:
@@ -146,10 +146,7 @@ def _validate(root: Path, expected_sha: str) -> dict[str, int]:
             raise EvidenceError(f"{name} JUnit contains no tests")
         if summary["failures"] or summary["errors"] or summary["skipped"]:
             raise EvidenceError(f"{name} JUnit is not skip-free and successful: {summary}")
-    return {
-        key: signal_junit[key] + migration_junit[key]
-        for key in signal_junit
-    }
+    return {key: signal_junit[key] + migration_junit[key] for key in signal_junit}
 
 
 def generate(args: argparse.Namespace) -> None:
@@ -195,7 +192,7 @@ def generate(args: argparse.Namespace) -> None:
         )
         + "\n"
     )
-    print(f"Team 2 Sprint 4 evidence generated for {expected_sha}")
+    print(f"Team 2 Sprint 6 evidence generated for {expected_sha}")
 
 
 def verify(args: argparse.Namespace) -> None:
@@ -219,7 +216,7 @@ def verify(args: argparse.Namespace) -> None:
     if evidence.get("producer_sha") != args.expected_sha or evidence.get("status") != "pass":
         raise EvidenceError("evidence envelope is not an exact-SHA pass")
     _validate(root, args.expected_sha)
-    print(f"Team 2 Sprint 4 evidence independently verified for {args.expected_sha}")
+    print(f"Team 2 Sprint 6 evidence independently verified for {args.expected_sha}")
 
 
 def parser() -> argparse.ArgumentParser:

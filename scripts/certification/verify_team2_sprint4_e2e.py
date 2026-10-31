@@ -146,10 +146,7 @@ def _validate(root: Path, expected_sha: str) -> dict[str, int]:
             raise EvidenceError(f"{name} JUnit contains no tests")
         if summary["failures"] or summary["errors"] or summary["skipped"]:
             raise EvidenceError(f"{name} JUnit is not skip-free and successful: {summary}")
-    return {
-        key: signal_junit[key] + migration_junit[key]
-        for key in signal_junit
-    }
+    return {key: signal_junit[key] + migration_junit[key] for key in signal_junit}
 
 
 def generate(args: argparse.Namespace) -> None:

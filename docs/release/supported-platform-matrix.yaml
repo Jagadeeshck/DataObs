@@ -4,7 +4,7 @@ unvalidated:
   - dataobs_version: "0.2.0-rc.1"
     kubernetes_version: "1.30.x"
     helm_version: "pending hosted capture"
-    elasticsearch_version: "9.4.2"
+    elasticsearch_version: "9.5.5"
     python_version: "3.13"
     node_version: "22"
     browser_console_test_environment: "pending Playwright hosted capture"

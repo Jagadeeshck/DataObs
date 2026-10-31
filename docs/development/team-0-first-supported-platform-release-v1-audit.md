@@ -19,7 +19,7 @@ existing prerelease convention as `0.2.0-rc.1`. The current and final decision i
 
 | Subject | Retained state | Classification |
 |---|---|---|
-| Supported-platform matrix | `supported: []`; Kubernetes 1.30.x / ES 9.4.2 candidate unvalidated | PENDING |
+| Supported-platform matrix | `supported: []`; Kubernetes 1.30.x / ES 9.5.5 candidate unvalidated | PENDING |
 | HA profiles | development, standard-ha, production-ha have harness definitions but no retained hosted results | PENDING |
 | Capacity profiles | small, medium, large have scenario definitions but no retained hosted results | PENDING |
 | Hosted core platform | workflow/plan exists; no artifact, run ID, attempt, checksum, or exact-SHA envelope retained | PENDING |

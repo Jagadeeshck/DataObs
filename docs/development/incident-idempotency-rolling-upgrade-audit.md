@@ -18,7 +18,7 @@ Baseline main SHA: `236bd43` (merge of PR #105). Migrations 0001–0012 are pres
 | Rolling deployment | Different IDs possible | One stable create target | v1 helper | compatibility test |
 | Retry exhaustion | Domain conflict/409 | Preserve finding and redact | save precedes bounded loop | API OCC tests |
 | Sequence-number behaviour | Exact replay advanced it | No-op keeps `_seq_no` | update only when changed | unit and ES integration evidence |
-| Hosted CI evidence | ES 9.4.2 gate existed | Upload replay/concurrency evidence with no softened failure | workflow gate | Hosted URL/artefacts pending; do not claim pass |
+| Hosted CI evidence | ES 9.5.5 gate existed | Upload replay/concurrency evidence with no softened failure | workflow gate | Hosted URL/artefacts pending; do not claim pass |
 
 ## PR #105 review closure
 

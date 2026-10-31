@@ -26,7 +26,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       elasticsearch:
-        image: docker.elastic.co/elasticsearch/elasticsearch:9.4.2
+        image: docker.elastic.co/elasticsearch/elasticsearch:9.5.5
         env: {discovery.type: single-node, xpack.security.enabled: 'false'}
         ports: ['9200:9200']
     steps:
@@ -64,7 +64,7 @@ jobs:
         with: {fetch-depth: 0}
       - run: |
           mkdir evidence
-          printf '{"producer_sha":"%s","workflow":"stream-anomaly-retention-intelligence-v1.yml","run_id":"%s","run_attempt":"%s","event":"%s","elasticsearch":"9.4.2","terminal_migration":"0026_stream_anomaly_retention_intelligence","status":"functional_unvalidated"}\n' "$GITHUB_SHA" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" "$GITHUB_EVENT_NAME" > evidence/envelope.json
+          printf '{"producer_sha":"%s","workflow":"stream-anomaly-retention-intelligence-v1.yml","run_id":"%s","run_attempt":"%s","event":"%s","elasticsearch":"9.5.5","terminal_migration":"0026_stream_anomaly_retention_intelligence","status":"functional_unvalidated"}\n' "$GITHUB_SHA" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" "$GITHUB_EVENT_NAME" > evidence/envelope.json
           sha256sum evidence/envelope.json > evidence/checksums.txt
       - uses: actions/upload-artifact@v4
         with: {name: stream-anomaly-retention-intelligence-v1-evidence, path: evidence, retention-days: 90}

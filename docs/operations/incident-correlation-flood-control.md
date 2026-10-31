@@ -8,7 +8,7 @@ All accepted findings and incidents remain stored. Flood control only changes no
 
 ## Certification
 
-Unit and focused repository tests do not certify Elasticsearch restart persistence or strict-mapping compatibility. Run the opt-in Elasticsearch 9.4.2 suite before production enablement and record its output; do not infer success from mocked clients.
+Unit and focused repository tests do not certify Elasticsearch restart persistence or strict-mapping compatibility. Run the opt-in Elasticsearch 9.5.5 suite before production enablement and record its output; do not infer success from mocked clients.
 
 ## Runtime v1 production contract
 

@@ -151,7 +151,7 @@ def test_verifier_rejects_artifact_mutated_after_manifest(tmp_path):
         "schema_version": "1.0",
         "scenario": "certification-test",
         "commit_sha": commit,
-        "elasticsearch_version": "9.4.2",
+        "elasticsearch_version": "9.5.5",
         "started_at": "2026-01-01T00:00:00Z",
         "completed_at": "2026-01-01T00:00:01Z",
         "test_names": ["test_certification"],
@@ -169,7 +169,7 @@ def test_verifier_rejects_artifact_mutated_after_manifest(tmp_path):
                     {
                         "schema_version": "1.0",
                         "commit_sha": commit,
-                        "elasticsearch_version": "9.4.2",
+                        "elasticsearch_version": "9.5.5",
                         "started_at": "2026-01-01T00:00:00Z",
                         "completed_at": "2026-01-01T00:00:01Z",
                         "scenario_count": 1,
@@ -196,7 +196,7 @@ def test_verifier_rejects_artifact_mutated_after_manifest(tmp_path):
                     {
                         "schema_version": "1.0",
                         "commit_sha": commit,
-                        "elasticsearch_version": "9.4.2",
+                        "elasticsearch_version": "9.5.5",
                         "started_at": "2026-01-01T00:00:00Z",
                         "completed_at": "2026-01-01T00:00:01Z",
                         "files_scanned": 1,

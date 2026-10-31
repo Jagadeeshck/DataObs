@@ -42,7 +42,7 @@ This audit records observed hosted evidence and the focused Team 2 fixes. It doe
 | Job/Run projection and isolation | Job certify job passed at starting head | Exact-head pass + independent verification |
 | Lineage cycles/truncation/partial evidence | Lineage backend suite passed at starting head | Exact-head pass |
 | Data Reliability SLO formulas | Implementation exists; workflow bootstrap prevented test execution | Exact-head pass |
-| Data Product reliability/reconciliation | Unit/contracts passed; clean-install mapping blocked ES jobs | ES 9.4.2 clean-install/repeat/upgrade pass |
+| Data Product reliability/reconciliation | Unit/contracts passed; clean-install mapping blocked ES jobs | ES 9.5.5 clean-install/repeat/upgrade pass |
 | Console Quality/Lineage journeys | Shared Playwright suite currently red | Team 5 coordinated final-head browser/axe pass |
 
 ## Cross-team boundaries
@@ -63,7 +63,7 @@ The Data Product clean-install fix touches the shared Elasticsearch registry but
 
 - No production-ready claim based on local/unit results alone.
 - No browser or accessibility certification while the shared Playwright suite is red.
-- No Data Product ES certification until clean-install, repeat apply and reconciliation pass on Elasticsearch 9.4.2.
+- No Data Product ES certification until clean-install, repeat apply and reconciliation pass on Elasticsearch 9.5.5.
 - No SLO certification until the focused tests actually execute.
 - No evidence promotion unless the independent verifier accepts the final-head artifact.\n- The focused Quality workflow must not be cited as end-to-end signal-path proof while its container-backed test is skipped; use the exact-head `e2e-signal-path` artifact from CI.
 - No autonomous remediation, new quality engine, new connector, or migration rewrite.

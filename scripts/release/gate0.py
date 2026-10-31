@@ -52,7 +52,7 @@ def main():
             "artifact": source["artifact"] + ("-" + sha if source.get("artifact_sha_suffix") else ""),
             "mandatory_for_beta": True,
             "evidence_schema_version": "1.0",
-            "expected_elasticsearch_version": "9.4.2",
+            "expected_elasticsearch_version": "9.5.5",
             "required_conclusion": "success",
             "accepted_events": ["push", "workflow_dispatch", "pull_request"],
         }

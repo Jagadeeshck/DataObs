@@ -139,7 +139,7 @@ def _validate_scenario(name: str, value: dict) -> None:
         raise ValueError(f"hosted commit SHA mismatch: {name}")
     if not value["test_names"] or not value["assertion_summary"] or value["result"] != "passed":
         raise ValueError(f"scenario is empty or not passed: {name}")
-    if value["elasticsearch_version"] != "9.4.2":
+    if value["elasticsearch_version"] != "9.5.5":
         raise ValueError(f"wrong Elasticsearch version: {name}")
     start = datetime.fromisoformat(value["started_at"].replace("Z", "+00:00"))
     complete = datetime.fromisoformat(value["completed_at"].replace("Z", "+00:00"))
@@ -155,7 +155,7 @@ def _validate_report_provenance(name: str, value: dict, *, require_elasticsearch
         raise ValueError(f"invalid commit SHA: {name}")
     if value["commit_sha"] != certification_commit_sha():
         raise ValueError(f"hosted commit SHA mismatch: {name}")
-    if require_elasticsearch and value.get("elasticsearch_version") != "9.4.2":
+    if require_elasticsearch and value.get("elasticsearch_version") != "9.5.5":
         raise ValueError(f"wrong Elasticsearch version: {name}")
     try:
         start = datetime.fromisoformat(value["started_at"].replace("Z", "+00:00"))
@@ -359,7 +359,7 @@ def main() -> int:
         ),
         "started_at": os.getenv("CERTIFICATION_STARTED_AT", now),
         "completed_at": now,
-        "versions": {"elasticsearch": "9.4.2", "python": sys.version.split()[0]},
+        "versions": {"elasticsearch": "9.5.5", "python": sys.version.split()[0]},
         "profiles": [profile],
         "capabilities": {},
         "security": {"status": "complete", "evidence": "security-report.json"},

@@ -78,14 +78,14 @@ def test_poc_elastic_stack_version_pins_are_consistent():
     root_compose_text = (repo / "docker-compose.yml").read_text()
     example_env_text = (repo / ".env.example").read_text()
 
-    assert "ELK_VERSION=9.4.2" in env_text
-    assert "ELK_VERSION=9.4.2" in example_env_text
-    assert "docker.elastic.co/elasticsearch/elasticsearch:${ELK_VERSION:-9.4.2}" in compose_text
-    assert "docker.elastic.co/kibana/kibana:${ELK_VERSION:-9.4.2}" in compose_text
-    assert "docker.elastic.co/elastic-agent/elastic-agent:${ELK_VERSION:-9.4.2}" in compose_text
-    assert "ELK_VERSION: ${ELK_VERSION:-9.4.2}" in compose_text
-    assert "docker.elastic.co/elasticsearch/elasticsearch:${ELK_VERSION:-9.4.2}" in root_compose_text
-    assert "docker.elastic.co/kibana/kibana:${ELK_VERSION:-9.4.2}" in root_compose_text
+    assert "ELK_VERSION=9.5.5" in env_text
+    assert "ELK_VERSION=9.5.5" in example_env_text
+    assert "docker.elastic.co/elasticsearch/elasticsearch:${ELK_VERSION:-9.5.5}" in compose_text
+    assert "docker.elastic.co/kibana/kibana:${ELK_VERSION:-9.5.5}" in compose_text
+    assert "docker.elastic.co/elastic-agent/elastic-agent:${ELK_VERSION:-9.5.5}" in compose_text
+    assert "ELK_VERSION: ${ELK_VERSION:-9.5.5}" in compose_text
+    assert "docker.elastic.co/elasticsearch/elasticsearch:${ELK_VERSION:-9.5.5}" in root_compose_text
+    assert "docker.elastic.co/kibana/kibana:${ELK_VERSION:-9.5.5}" in root_compose_text
 
 
 def test_poc_elastic_stack_has_no_stale_active_version_references():

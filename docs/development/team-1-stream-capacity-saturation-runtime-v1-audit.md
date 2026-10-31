@@ -8,5 +8,5 @@ runtime uses the existing Elasticsearch bootstrap/pattern mechanism. The termina
 Reviewed streaming contracts/capabilities, intelligence domain and runtime/repository/worker/observers, the retention
 forecaster, multi-broker runtime, product query surfaces, Team 4 Kinesis/SQS adapters, migration graph, release
 metadata, and capability ledger. Reused `RetentionForecast`, `PartitionSkew`, measurement methods, leases, fencing,
-bounded evaluation evidence, OCC projection, and checkpoint ordering. Hosted exact-SHA ES 9.4.2 and scale evidence
+bounded evaluation evidence, OCC projection, and checkpoint ordering. Hosted exact-SHA ES 9.5.5 and scale evidence
 remain validation gates rather than claims.

@@ -16,7 +16,7 @@ def _fixture(tmp_path: Path) -> Path:
     )
     manifest = {
         "repository": "Jagadeeshck/DataObs",
-        "target_elasticsearch_version": "9.4.2",
+        "target_elasticsearch_version": "9.5.5",
         "terminal_migration": terminal_migration(),
         "capabilities": [
             {
@@ -26,7 +26,7 @@ def _fixture(tmp_path: Path) -> Path:
                 "artifact": "proof-evidence",
                 "mandatory_for_beta": True,
                 "evidence_schema_version": "1.0",
-                "expected_elasticsearch_version": "9.4.2",
+                "expected_elasticsearch_version": "9.5.5",
                 "accepted_events": ["workflow_dispatch"],
                 "required_test_categories": ["unit"],
             }

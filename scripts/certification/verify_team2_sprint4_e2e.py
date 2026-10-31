@@ -10,7 +10,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
 
-ELASTICSEARCH_VERSION = "9.4.2"
+ELASTICSEARCH_VERSION = "9.5.5"
 ARTIFACT_NAME = "e2e-signal-path"
 REQUIRED_SCENARIOS = {
     "failed complete path",
@@ -96,7 +96,7 @@ def _validate(root: Path, expected_sha: str) -> dict[str, int]:
     if signal.get("commit_sha") != expected_sha:
         raise EvidenceError("signal-path commit SHA does not match exact certification SHA")
     if signal.get("elasticsearch_version") != ELASTICSEARCH_VERSION:
-        raise EvidenceError("signal path did not execute against Elasticsearch 9.4.2")
+        raise EvidenceError("signal path did not execute against Elasticsearch 9.5.5")
     if signal.get("tenant") != "signal-tenant-a" or signal.get("environment") != "production":
         raise EvidenceError("signal path scope is not the expected tenant/environment")
     if set(signal.get("scenarios", [])) != REQUIRED_SCENARIOS:
@@ -130,7 +130,7 @@ def _validate(root: Path, expected_sha: str) -> dict[str, int]:
         raise EvidenceError("complete-path notification evidence is incomplete")
 
     if mapping.get("elasticsearch_version") != ELASTICSEARCH_VERSION:
-        raise EvidenceError("mapping proof did not execute against Elasticsearch 9.4.2")
+        raise EvidenceError("mapping proof did not execute against Elasticsearch 9.5.5")
     if mapping.get("fields") != EXPECTED_MAPPING:
         raise EvidenceError("Data Product or reliability mapping proof is incorrect")
 

@@ -125,7 +125,7 @@ Explainable asset-level aggregation of canonical reliability and observability e
 
 - **State:** `functional_unvalidated`
 - **Release readiness:** `blocked`
-- **Next gate:** Add the forward migration and complete API, Console, ES 9.4.2, browser, axe, scale, and independent exact-head certification.
+- **Next gate:** Add the forward migration and complete API, Console, ES 9.5.5, browser, axe, scale, and independent exact-head certification.
 
 ### `data.pathways` — Lineage and Pathway Explorer
 
@@ -325,7 +325,7 @@ Evidence-led status for finding ingest, correlation, lifecycle, and timeline.
 
 - **State:** `functional_unvalidated`
 - **Release readiness:** `blocked`
-- **Next gate:** Run the final-head Elasticsearch 9.4.2 integration job and retain the redaction-safe e2e-signal-path artifact.
+- **Next gate:** Run the final-head Elasticsearch 9.5.5 integration job and retain the redaction-safe e2e-signal-path artifact.
 
 ### `incidents.replay` — Incident mapping, OCC, and bounded replay
 
@@ -349,7 +349,7 @@ Deterministic evidence-first incident fingerprints, bounded historical candidate
 
 - **State:** `functional_unvalidated`
 - **Release readiness:** `blocked`
-- **Next gate:** Complete the production vertical slice and certify against Elasticsearch 9.4.2 and the Console.
+- **Next gate:** Complete the production vertical slice and certify against Elasticsearch 9.5.5 and the Console.
 
 ### `integration.cloud` — Cloud, warehouse, and messaging providers
 
@@ -381,7 +381,7 @@ Evidence-led status for opentelemetry ingestion standard.
 
 - **State:** `functional_unvalidated`
 - **Release readiness:** `blocked`
-- **Next gate:** Run the final-head Elasticsearch 9.4.2 integration job and retain the redaction-safe e2e-signal-path artifact.
+- **Next gate:** Run the final-head Elasticsearch 9.5.5 integration job and retain the redaction-safe e2e-signal-path artifact.
 
 ### `integration.presto` — Presto SQL engine collector v1
 
@@ -437,7 +437,7 @@ Evidence-led status for migration framework.
 
 - **State:** `functional_unvalidated`
 - **Release readiness:** `blocked`
-- **Next gate:** Retain final-head migration/OCC and rolling-upgrade evidence from Elasticsearch 9.4.2.
+- **Next gate:** Retain final-head migration/OCC and rolling-upgrade evidence from Elasticsearch 9.5.5.
 
 ### `platform.self_observability` — Self-observability
 
@@ -453,7 +453,7 @@ Evidence-led status for rolling-upgrade correctness.
 
 - **State:** `functional_unvalidated`
 - **Release readiness:** `blocked`
-- **Next gate:** Retain final-head migration/OCC and rolling-upgrade evidence from Elasticsearch 9.4.2.
+- **Next gate:** Retain final-head migration/OCC and rolling-upgrade evidence from Elasticsearch 9.5.5.
 
 ### `platform.environment_tenant_multicluster_lifecycle_v1` — Environment tenant and multi-cluster lifecycle v1
 

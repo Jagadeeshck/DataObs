@@ -4,7 +4,7 @@
 
 The auditable checkout is `043a4e368d40f0fe04d8d48610b1af613985357b` (merge of PR #212). This container has no Git remote, so fetching `origin` and inspecting hosted PR metadata was impossible; the merge commit for PR #208 (`b8e6289`) and every file in its first-parent diff were inspected locally. The merge-marker guard passed. The executable registry dynamically reported `0024_job_run_reliability_runtime`; therefore the correction is forward-only migration `0025_stream_pathway_reliability_production_closure`, depending on 0024. Migrations 0023 and 0024 are unchanged.
 
-No Elasticsearch service is available in this checkout. Consequently 9.4.2 migration application and live mapping inspection remain hosted acceptance gates, not locally claimed certification.
+No Elasticsearch service is available in this checkout. Consequently 9.5.5 migration application and live mapping inspection remain hosted acceptance gates, not locally claimed certification.
 
 ## Confirmed defects and acceptance matrix
 

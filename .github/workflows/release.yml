@@ -184,7 +184,7 @@ jobs:
               "product_version": os.environ["GITHUB_REF_NAME"].removeprefix("v"),
               "git_commit_sha": os.environ["GITHUB_SHA"],
               "build_timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-              "elastic_stack_compatibility": "9.4.2",
+              "elastic_stack_compatibility": "9.5.5",
               "migration_range": {"first": migration["ordered_migration_ids"][0], "latest": migration["terminal_migration"]},
               "openapi_version": json.load(open("openapi.json"))["info"]["version"],
               "console_version": json.load(open("ui/dataobs-console/package.json"))["version"],

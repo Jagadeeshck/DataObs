@@ -74,7 +74,7 @@ jobs:
     timeout-minutes: 45
     services:
       elasticsearch:
-        image: docker.elastic.co/elasticsearch/elasticsearch:9.4.2
+        image: docker.elastic.co/elasticsearch/elasticsearch:9.5.5
         env:
           discovery.type: single-node
           xpack.security.enabled: 'false'
@@ -186,7 +186,7 @@ jobs:
           for path in sorted(root.glob('*')):
             inventory.append({'name':path.name,'sha256':hashlib.sha256(path.read_bytes()).hexdigest()})
           status='pass' if os.environ.get('CERTIFY_STATUS')=='success' else 'fail'
-          envelope={'schema_version':'1.0','repository':os.environ['GITHUB_REPOSITORY'],'producer_sha':os.environ['TARGET_SHA'],'workflow_file':'beta-1-release-candidate.yml','workflow_run_id':os.environ['GITHUB_RUN_ID'],'workflow_run_attempt':os.environ['GITHUB_RUN_ATTEMPT'],'event':os.environ['GITHUB_EVENT_NAME'],'generated_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'tool_versions':{'python':platform.python_version(),'node':subprocess.run(['node','--version'],capture_output=True,text=True).stdout.strip(),'helm':subprocess.run(['helm','version','--short'],capture_output=True,text=True).stdout.strip()},'elasticsearch_version':'9.4.2','terminal_migration':__import__('packages.elastic_store.manifest',fromlist=['migrations']).migrations()[-1].migration_id,'test_summaries':[{'category':category,'status':status} for category in ('security','certification','release')],'artifact_inventory':inventory,'redaction_status':'pass','status':status}
+          envelope={'schema_version':'1.0','repository':os.environ['GITHUB_REPOSITORY'],'producer_sha':os.environ['TARGET_SHA'],'workflow_file':'beta-1-release-candidate.yml','workflow_run_id':os.environ['GITHUB_RUN_ID'],'workflow_run_attempt':os.environ['GITHUB_RUN_ATTEMPT'],'event':os.environ['GITHUB_EVENT_NAME'],'generated_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'tool_versions':{'python':platform.python_version(),'node':subprocess.run(['node','--version'],capture_output=True,text=True).stdout.strip(),'helm':subprocess.run(['helm','version','--short'],capture_output=True,text=True).stdout.strip()},'elasticsearch_version':'9.5.5','terminal_migration':__import__('packages.elastic_store.manifest',fromlist=['migrations']).migrations()[-1].migration_id,'test_summaries':[{'category':category,'status':status} for category in ('security','certification','release')],'artifact_inventory':inventory,'redaction_status':'pass','status':status}
           (root/'evidence.json').write_text(json.dumps(envelope,indent=2)+'\n')
           (root/'environment.json').write_text(json.dumps(envelope['tool_versions'],indent=2)+'\n')
           for name in ('deployment-smoke-report.json','upgrade-rollback-report.json','sbom-index.json','vulnerability-scan-summary.json','candidate-release-manifest.json','provenance.json'):
@@ -284,7 +284,7 @@ jobs:
           common={'schema_version':'1.0','repository':os.environ['GITHUB_REPOSITORY'],'producer_sha':os.environ['TARGET_SHA'],'candidate_version':os.environ['CANDIDATE_VERSION'],'generated_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'redaction_status':'pass','terminal_migration':terminal}
           pathlib.Path('evidence/sbom-index.json').write_text(json.dumps({**common,'status':'pass','sboms':sboms},indent=2)+'\n')
           pathlib.Path('evidence/vulnerability-scan-summary.json').write_text(json.dumps({**common,'status':'pass','policy':'critical findings fail build-scan before registry authentication'},indent=2)+'\n')
-          pathlib.Path('evidence/candidate-release-manifest.json').write_text(json.dumps({**common,'status':'pass','publish_requested':os.environ.get('DRY_RUN','true')!='true','terminal_migration':terminal,'elasticsearch_version':'9.4.2','images':'local candidates; registry digests are resolved only by the protected publish stage'},indent=2)+'\n')
+          pathlib.Path('evidence/candidate-release-manifest.json').write_text(json.dumps({**common,'status':'pass','publish_requested':os.environ.get('DRY_RUN','true')!='true','terminal_migration':terminal,'elasticsearch_version':'9.5.5','images':'local candidates; registry digests are resolved only by the protected publish stage'},indent=2)+'\n')
           provenance=[{'name':path,'sha256':hashlib.sha256(pathlib.Path(path).read_bytes()).hexdigest()} for path in sorted(glob.glob('image-evidence/**/provenance.json',recursive=True))]
           pathlib.Path('evidence/provenance.json').write_text(json.dumps({**common,'status':'pass','materials':provenance},indent=2)+'\n')
           PY

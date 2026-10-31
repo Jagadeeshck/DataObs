@@ -1,6 +1,6 @@
 # DataObs POC — Setup & Run Guide
 
-> **Elastic Stack:** 9.4.2
+> **Elastic Stack:** 9.5.5
 > **APM Server:** Built into Elasticsearch 9.x via Elastic Agent — **no separate `apm-server` container**.
 
 This guide gets DataObs running end-to-end locally in **under 10 minutes** using three dedicated files that don't touch the main stack config at all:
@@ -73,9 +73,9 @@ the matching Elasticsearch, Kibana, Fleet Server, and Elastic Agent images
 exist in Elastic's registry:
 
 ```bash
-docker manifest inspect docker.elastic.co/elasticsearch/elasticsearch:9.4.2
-docker manifest inspect docker.elastic.co/kibana/kibana:9.4.2
-docker manifest inspect docker.elastic.co/elastic-agent/elastic-agent:9.4.2
+docker manifest inspect docker.elastic.co/elasticsearch/elasticsearch:9.5.5
+docker manifest inspect docker.elastic.co/kibana/kibana:9.5.5
+docker manifest inspect docker.elastic.co/elastic-agent/elastic-agent:9.5.5
 ```
 
 If any manifest check fails, stop and resolve the image/tag availability issue
@@ -114,7 +114,7 @@ docker compose -f docker-compose.poc.yml --env-file .env.poc.local up -d
 ## Step 2 — Start the infrastructure
 
 The POC boots a **single-node Elasticsearch** instance (`es01`) running ES
-9.4.2 with `discovery.type=single-node`. Single-node mode skips the cluster
+9.5.5 with `discovery.type=single-node`. Single-node mode skips the cluster
 bootstrap check that — on ES 9.x with security enabled — would otherwise
 require transport TLS / certificate setup, which is overkill for a local
 POC. Pipeline, Kibana and Fleet all write to this one node.
@@ -154,9 +154,9 @@ docker compose -f docker-compose.poc.yml --env-file .env.poc ps
 
 ---
 
-### Upgrading local POC volumes from 9.4.0 to 9.4.2
+### Upgrading local POC volumes from 9.4.0 to 9.5.5
 
-Users moving an existing local POC from Elastic Stack 9.4.0 to 9.4.2 should
+Users moving an existing local POC from Elastic Stack 9.4.0 to 9.5.5 should
 reset the local demo volumes, pull the refreshed images, and then start the
 stack again:
 
@@ -327,8 +327,8 @@ docker compose -f docker-compose.poc.yml --env-file .env.poc.local \
 
 | Service | RAM (approx) |
 |---|---|
-| Elasticsearch 9.4.2 | 1.5 GB |
-| Kibana 9.4.2 | 1 GB |
+| Elasticsearch 9.5.5 | 1.5 GB |
+| Kibana 9.5.5 | 1 GB |
 | Fleet Server | 256 MB |
 | Elastic Agent (APM) | 512 MB |
 | OTel Collector | 256 MB |

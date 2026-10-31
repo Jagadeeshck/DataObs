@@ -62,7 +62,7 @@ jobs:
     timeout-minutes: 30
     services:
       elasticsearch:
-        image: docker.elastic.co/elasticsearch/elasticsearch:9.4.2
+        image: docker.elastic.co/elasticsearch/elasticsearch:9.5.5
         env: {discovery.type: single-node, xpack.security.enabled: 'false'}
         ports: ['9200:9200']
         options: >-
@@ -96,7 +96,7 @@ jobs:
     timeout-minutes: 20
     services:
       elasticsearch:
-        image: docker.elastic.co/elasticsearch/elasticsearch:9.4.2
+        image: docker.elastic.co/elasticsearch/elasticsearch:9.5.5
         env: {discovery.type: single-node, xpack.security.enabled: 'false'}
         ports: ['9200:9200']
         options: >-

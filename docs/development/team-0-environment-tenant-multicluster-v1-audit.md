@@ -5,7 +5,7 @@
 * Main SHA: `ee8bb0363df503e60c85136f6d46ecb6ce606633`.
 * Executable terminal migration: `0026_stream_anomaly_retention_intelligence`.
 * Helm chart/application: `0.2.0` / `0.2.0`; declared Kubernetes target `>=1.30.0-0 <1.31.0-0`.
-* Supported matrix: no supported entries; Elasticsearch `9.4.2`, Kubernetes `1.30.x`, and the Kind topology are `unvalidated`.
+* Supported matrix: no supported entries; Elasticsearch `9.5.5`, Kubernetes `1.30.x`, and the Kind topology are `unvalidated`.
 * Release decision: `NO_GO`, manifest `not_published`.
 
 ## Scope audited

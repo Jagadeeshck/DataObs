@@ -4,7 +4,7 @@
 
 The audited base is `ee8bb038a7349374cfef078cad7d7105786722a8`, the merge commit for PR #224. The checkout has no configured Git remote, so this commit is the latest locally auditable `main` state and hosted PR status cannot be independently queried. Merge-marker validation passed. The executable registry terminal is `0026_stream_anomaly_retention_intelligence`.
 
-Migration 0026 was inspected without modification. Its five mutable indices, four data-stream contracts, strict mappings, and 90/180/365-day lifecycle retention are sufficient; no 0027 migration is warranted. Local static inspection confirms the aliases/contracts. Elasticsearch 9.4.2 execution is delegated to the opt-in real-stack workflow because Docker is unavailable in this execution environment.
+Migration 0026 was inspected without modification. Its five mutable indices, four data-stream contracts, strict mappings, and 90/180/365-day lifecycle retention are sufficient; no 0027 migration is warranted. Local static inspection confirms the aliases/contracts. Elasticsearch 9.5.5 execution is delegated to the opt-in real-stack workflow because Docker is unavailable in this execution environment.
 
 PR #224 supplied dependency-free algorithms, capabilities, mappings, API discovery placeholders, and the initial Console page. It did not supply a historical repository, durable runtime/worker, detector CRUD, real projections, renewable leases, runtime health, or inventory pagination.
 
@@ -38,7 +38,7 @@ Queries are scope/resource/time filtered, date-histogram downsampled, sorted by 
 | Detector CRUD | Missing | No lifecycle API | Draft, ETag, If-Match, enable/disable/delete |
 | Resource 360 integration | Links only | Rich panels pending | API contracts documented; panel expansion remains |
 | Browser evidence | Initial page | Full scenarios pending | Workflow hook retained; hosted evidence required |
-| Elasticsearch evidence | Migration contract | Local Docker unavailable | 9.4.2 service workflow and opt-in suite gate |
+| Elasticsearch evidence | Migration contract | Local Docker unavailable | 9.5.5 service workflow and opt-in suite gate |
 
 ## Reliability and Team 3 audit
 

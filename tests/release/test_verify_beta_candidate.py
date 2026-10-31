@@ -13,7 +13,7 @@ ENTRY = {
     "required_conclusion": "success",
     "mandatory_for_beta": True,
     "evidence_schema_version": "1.0",
-    "expected_elasticsearch_version": "9.4.2",
+    "expected_elasticsearch_version": "9.5.5",
 }
 
 
@@ -37,7 +37,7 @@ def evidence(**changes):
         "schema_version": "1.0",
         "producer_sha": SHA,
         "terminal_migration": "0021_lineage_analysis_explorer",
-        "elasticsearch_version": "9.4.2",
+        "elasticsearch_version": "9.5.5",
         "test_summaries": [{"category": "security", "passed": 10}],
         "tool_versions": {"python": "3.13"},
         "workflow_file": "beta-1-release-candidate.yml",

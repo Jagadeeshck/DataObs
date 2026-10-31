@@ -44,4 +44,4 @@ Team 3 changes are restricted to incident automation services, incident API comp
 
 ## Certification
 
-Status remains `functional_unvalidated`: local tests are not independent exact-head hosted evidence. The Elasticsearch 9.4.2 and hosted browser/axe suites require external services and retained artifacts before any Beta/production claim.
+Status remains `functional_unvalidated`: local tests are not independent exact-head hosted evidence. The Elasticsearch 9.5.5 and hosted browser/axe suites require external services and retained artifacts before any Beta/production claim.

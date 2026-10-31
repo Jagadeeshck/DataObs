@@ -3,7 +3,7 @@
 - **Team / task:** Team 4 — Integrations and Collection; `Team 4: Build AWS Kinesis and SQS Messaging Collectors v1`.
 - **Audited base SHA:** `39b7757a8cce5634bf84f17da53d745f59eefc6b`.
 - **Terminal migration:** dynamically derived as `0032_team2_data_slo_production_runtime` with `python scripts/release/current_terminal_migration.py`.
-- **Migration doctor:** local execution could not connect to Elasticsearch at `localhost:9200`; CI supplies Elasticsearch 9.4.2 and runs doctor. Migration immutability passed for all 31 released migrations.
+- **Migration doctor:** local execution could not connect to Elasticsearch at `localhost:9200`; CI supplies Elasticsearch 9.5.5 and runs doctor. Migration immutability passed for all 31 released migrations.
 - **Provider before change:** `provider_type=aws`, version `2`; registry was RDS, Glue, Athena, EMR Serverless, S3, Lambda, SageMaker, MWAA, Redshift, and Redshift Serverless. Version policy does not prohibit a contract bump, so v3 adds Kinesis and SQS.
 - **CloudWatch:** the existing `CloudWatchAdapter` and closed `METRIC_REGISTRY` use `GetMetricData`, bounded queries/lookback/period, retain measured zero, and emit missing values as `None`. Messaging composes the existing service and CloudWatch clients without changing other collectors.
 - **Existing Kinesis/SQS code:** Team 1 already supplied canonical contracts and provider adapters, but Team 4 had no provider collectors. The Kinesis adapter accepts stream/shard resources; the SQS adapter accepts queue/dead-letter-queue resources and forces approximate backlog semantics.

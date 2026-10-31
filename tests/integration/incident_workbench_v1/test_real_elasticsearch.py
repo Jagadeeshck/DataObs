@@ -1,4 +1,4 @@
-"""Opt-in strict-mapping certification; requires a disposable Elasticsearch 9.4.2 node."""
+"""Opt-in strict-mapping certification; requires a disposable Elasticsearch 9.5.5 node."""
 
 import os
 
@@ -9,7 +9,7 @@ from packages.elastic_store.registry import apply, status
 from services.incident_manager.elasticsearch_repository import ElasticsearchIncidentRepository
 
 pytestmark = pytest.mark.skipif(
-    os.getenv("RUN_INTEGRATION_TESTS") != "1", reason="requires isolated Elasticsearch 9.4.2"
+    os.getenv("RUN_INTEGRATION_TESTS") != "1", reason="requires isolated Elasticsearch 9.5.5"
 )
 
 

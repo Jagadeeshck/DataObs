@@ -7,7 +7,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       elasticsearch:
-        image: docker.elastic.co/elasticsearch/elasticsearch:9.4.2
+        image: docker.elastic.co/elasticsearch/elasticsearch:9.5.5
         env: {discovery.type: single-node, xpack.security.enabled: "false", ES_JAVA_OPTS: -Xms1g -Xmx1g}
         ports: ["9200:9200"]
         options: --health-cmd "curl -fsS http://localhost:9200/_cluster/health" --health-interval 10s --health-timeout 5s --health-retries 30
@@ -48,6 +48,6 @@ jobs:
       - name: Exact-commit evidence
         run: |
           TERMINAL_MIGRATION="$(python -m scripts.release.release_metadata)"
-          printf '{"producer_sha":"%s","repository":"%s","workflow":"%s","run_id":"%s","elasticsearch_version":"9.4.2","feature_migration":"0023_stream_pathway_reliability_runtime","terminal_migration":"%s","runtime_states":["healthy","breaching","recovering","no_data","stale"],"tenant_isolation":true,"browser_accessibility":"tested","generated_at":"%s"}\n' "$GITHUB_SHA" "$GITHUB_REPOSITORY" "$GITHUB_WORKFLOW" "$GITHUB_RUN_ID" "$TERMINAL_MIGRATION" "$(date -u +%FT%TZ)" > evidence/result.json
+          printf '{"producer_sha":"%s","repository":"%s","workflow":"%s","run_id":"%s","elasticsearch_version":"9.5.5","feature_migration":"0023_stream_pathway_reliability_runtime","terminal_migration":"%s","runtime_states":["healthy","breaching","recovering","no_data","stale"],"tenant_isolation":true,"browser_accessibility":"tested","generated_at":"%s"}\n' "$GITHUB_SHA" "$GITHUB_REPOSITORY" "$GITHUB_WORKFLOW" "$GITHUB_RUN_ID" "$TERMINAL_MIGRATION" "$(date -u +%FT%TZ)" > evidence/result.json
       - uses: actions/upload-artifact@v4
         with: {name: stream-pathway-reliability-runtime-v1-evidence, path: evidence/, retention-days: 30}

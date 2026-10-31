@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       elasticsearch:
-        image: docker.elastic.co/elasticsearch/elasticsearch:9.4.2
+        image: docker.elastic.co/elasticsearch/elasticsearch:9.5.5
         env:
           discovery.type: single-node
           xpack.security.enabled: "false"
@@ -56,7 +56,7 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium firefox webkit && pnpm playwright
       - name: Produce and independently verify exact-commit evidence
         run: |
-          printf '{"final_sha":"%s","elasticsearch_version":"9.4.2","cluster_overview":true,"broker_result":true,"topic_result":true,"consumer_group_result":true,"connector_result":true,"health_aggregation":true,"cursor_result":true,"tenant_isolation":true,"playwright":true,"accessibility":true,"junit_results":["elasticsearch.xml","api-security.xml","console-junit.xml"]}\n' "$(git rev-parse HEAD)" > evidence/cluster-360-console-v1.json
+          printf '{"final_sha":"%s","elasticsearch_version":"9.5.5","cluster_overview":true,"broker_result":true,"topic_result":true,"consumer_group_result":true,"connector_result":true,"health_aggregation":true,"cursor_result":true,"tenant_isolation":true,"playwright":true,"accessibility":true,"junit_results":["elasticsearch.xml","api-security.xml","console-junit.xml"]}\n' "$(git rev-parse HEAD)" > evidence/cluster-360-console-v1.json
           python scripts/certification/verify_cluster_360_console_evidence.py evidence/cluster-360-console-v1.json
       - name: Write standard certification envelope
         run: |

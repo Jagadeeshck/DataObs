@@ -37,7 +37,7 @@ Migrations `0001` through `0015` remain immutable. The `0015_data_product_360_pr
 | browser | no Data Product suite | production Playwright journeys | remains blocked | no hosted claim |
 | accessibility | no retained axe report | full axe matrix | semantic table, tabs, status and alerts | local checks only |
 | security | PR #116 mapping controls | end-to-end matrix | signed cursor and trusted-scope API boundary | threat model |
-| Elasticsearch | 9.4.2 resources in 0015 | full integration matrix | no schema mutation | migration check |
+| Elasticsearch | 9.5.5 resources in 0015 | full integration matrix | no schema mutation | migration check |
 | hosted CI | unavailable in local environment | run URL/artifacts | remains blocked | no evidence claimed |
 
 ## Architecture
@@ -81,4 +81,4 @@ stateDiagram-v2
 
 ## Readiness decision
 
-The Console intentionally renders unavailable sections as unavailable and reliability without evidence as **unknown**, never healthy. Production membership, SLO persistence, browser/axe certification, Elasticsearch 9.4.2 integration, and hosted artifact retention still require evidence; therefore capability validation and production readiness are not promoted. Durable explainable RCA remains the next milestone only after these blockers close.
+The Console intentionally renders unavailable sections as unavailable and reliability without evidence as **unknown**, never healthy. Production membership, SLO persistence, browser/axe certification, Elasticsearch 9.5.5 integration, and hosted artifact retention still require evidence; therefore capability validation and production readiness are not promoted. Durable explainable RCA remains the next milestone only after these blockers close.

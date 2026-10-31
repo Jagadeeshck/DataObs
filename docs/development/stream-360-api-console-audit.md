@@ -21,4 +21,4 @@ Kafka Observer supplies measured Kafka evidence. Stream 360 product-query servic
 
 ## Gate decision
 
-This work must remain draft. The collector/model artifacts are not treated as completed product screens. Real Elasticsearch 9.4.2, Kafka, approval, Playwright, axe, leakage, and hosted CI evidence remain release blockers; DataObs is not production-ready.
+This work must remain draft. The collector/model artifacts are not treated as completed product screens. Real Elasticsearch 9.5.5, Kafka, approval, Playwright, axe, leakage, and hosted CI evidence remain release blockers; DataObs is not production-ready.

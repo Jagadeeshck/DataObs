@@ -11,7 +11,7 @@ from services.incident_manager.elasticsearch_repository import ElasticsearchInci
 from services.incident_manager.service import IncidentManagerService
 
 pytestmark = pytest.mark.skipif(
-    os.getenv("RUN_INTEGRATION_TESTS") != "1", reason="requires isolated Elasticsearch 9.4.2"
+    os.getenv("RUN_INTEGRATION_TESTS") != "1", reason="requires isolated Elasticsearch 9.5.5"
 )
 
 

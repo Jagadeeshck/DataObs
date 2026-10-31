@@ -13,7 +13,7 @@ not invent conclusions for inaccessible runs. The hosted canaries remain unexecu
 | Team Delivery Foundation | backend validation | Black | `tests/test_settings.py would be reformatted` | Repository formatting and combined diagnostics | CI-FMT | Yes: format is preserved and Ruff, Black, Mypy, and Pytest are separate named steps | Hosted canary not run | Yes |
 | Team Delivery Foundation | console validation | high-severity dependency audit | vulnerable transitive `js-yaml` selected below the currently patched `4.3.1` | Scoped override took precedence over the safe global resolution | CI-CONSOLE-AUDIT | Yes: deterministic `4.3.1` override and regenerated frozen lockfile | Hosted canary not run | Yes |
 | IAM OIDC and tenant security | `iam-security` | migration immutability | `HEAD^` unavailable after shallow checkout | Insufficient Git history | CI-GIT-HISTORY | Yes: full history for IAM and every migration-immutability caller | Hosted canary not run | Yes |
-| Kafka Cluster 360 Console v1 | `verify` | apply migrations | `elastic_transport.ConnectionError` / `RemoteDisconnected` after service health passed | Service health did not prove application-client readiness | CI-ES-READINESS | Yes: bounded helper immediately precedes application interaction; all Elasticsearch 9.4.2 jobs are covered | Hosted canary not run | Yes |
+| Kafka Cluster 360 Console v1 | `verify` | apply migrations | `elastic_transport.ConnectionError` / `RemoteDisconnected` after service health passed | Service health did not prove application-client readiness | CI-ES-READINESS | Yes: bounded helper immediately precedes application interaction; all Elasticsearch 9.5.5 jobs are covered | Hosted canary not run | Yes |
 | Team 4 RabbitMQ messaging collector v1 | `validate` | Pytest collection | `ModuleNotFoundError: pydantic` / `ModuleNotFoundError: elasticsearch` | CI tooling installed without runtime dependencies | CI-PY-DEPS | Yes: canonical runtime plus CI requirement bootstrap | Hosted canary not run | Yes |
 
 ## Shared fixes and regression coverage
@@ -26,7 +26,7 @@ not invent conclusions for inaccessible runs. The hosted canaries remain unexecu
   `requirements.txt` as well. CI-only static jobs remain permitted to install tooling alone.
 - **CI-GIT-HISTORY:** Every checkout in a migration-immutability workflow fetches complete history. Missing or invalid
   bases continue to fail in the unchanged checker.
-- **CI-ES-READINESS:** Every job launching Elasticsearch 9.4.2 and running repository tests or migration checks calls
+- **CI-ES-READINESS:** Every job launching Elasticsearch 9.5.5 and running repository tests or migration checks calls
   the bounded readiness helper first. The helper retries transient disconnects and validates both cluster health and
   the indices API. No startup sleep or `continue-on-error` replaces the gate.
 

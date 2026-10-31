@@ -9,7 +9,7 @@
 * Ledger: generated checksums updated; typed-route family matching replaces the erroneous literal `/quality/*` requirement.
 * OpenAPI/client: unchanged because this patch does not falsely claim missing API implementation.
 * Local tests: pending final validation record in commit/PR.
-* Elasticsearch 9.4.2, browser, axe, hosted URL/artifact, and independent verification: not executed/not retained locally; production readiness is explicitly not claimed.
+* Elasticsearch 9.5.5, browser, axe, hosted URL/artifact, and independent verification: not executed/not retained locally; production readiness is explicitly not claimed.
 * Remaining limitations: dedicated Lineage/Contract workers, full Contract/adaptive APIs, requested Console pages, combined browser flow, and hosted exact-commit certification remain open.
 * Rollback: stop writers, export projections, preserve immutable evidence, snapshot mutable indices, and remove only 0029 aliases/resources after review.
 * Divergent migration state: follow `docs/operations/team2-migration-reconciliation.md`; never automatically rewrite state.

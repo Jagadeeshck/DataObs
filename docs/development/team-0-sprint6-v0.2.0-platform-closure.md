@@ -92,7 +92,7 @@ integrated candidate SHA before Gate 0 can become green.
 4. Run the canonical Gate 0 verifier and require `GATE_0_GREEN`.
 5. Dispatch the canonical Beta capability manifest on that same SHA and
    independently verify run attempts, retained artifacts, digests, mandatory
-   suites, Elasticsearch 9.4.2, and terminal migration identity.
+   suites, Elasticsearch 9.5.5, and terminal migration identity.
 6. Freeze `0.2.0-rc.1` only after all mandatory evidence passes.
 7. Run protected supported-platform, security, SBOM/provenance/signature, and
    independent release verification.

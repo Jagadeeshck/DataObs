@@ -24,7 +24,7 @@ pending external execution. No capability is promoted by this audit.
 `elasticsearch_repository.py` is the supported import path and owns only the
 precision-safe reconciliation overrides plus an intentional `__all__`
 compatibility contract. The wrapper must not re-export helper modules or
-implementation-only types. Contract and Elasticsearch 9.4.2 integration tests
+implementation-only types. Contract and Elasticsearch 9.5.5 integration tests
 protect method availability, microsecond eligibility and claim boundaries,
 deterministic `search_after`, mapped event ordering, immediate dependency
 visibility, and tenant/environment scoping.

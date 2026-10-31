@@ -29,5 +29,5 @@ number is guessed and no released migration is edited. Elasticsearch resources
 already named by PR #269 have real repository readers/writers, but their registry
 reconciliation remains blocked until the terminal migration can be established.
 
-Capability status remains `functional_unvalidated`; promotion requires ES 9.4.2,
+Capability status remains `functional_unvalidated`; promotion requires ES 9.5.5,
 browser/axe, scale, and independent exact-head certification.

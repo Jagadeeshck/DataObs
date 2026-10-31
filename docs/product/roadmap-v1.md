@@ -15,13 +15,13 @@ No delivery dates are implied. The capability ledger, not issue or PR titles, de
 
 ## Phase B — Unified real-stack certification
 
-### Elasticsearch/Kibana 9.4.2, PostgreSQL, Kafka, OpenLineage, and Console certification
+### Elasticsearch/Kibana 9.5.5, PostgreSQL, Kafka, OpenLineage, and Console certification
 - **Current state:** components range from foundation to functional unvalidated.
 - **Entry criteria:** Phase A exits and a reproducible version-pinned environment exists.
 - **Deliverables:** unified stack, Console journey, browser/accessibility/security scenarios.
 - **Evidence gate:** retained real-stack and hosted CI artifacts for all named components.
 - **Exit criteria:** applicable browser, accessibility, security, and upgrade dimensions pass.
-- **Dependencies:** Elasticsearch/Kibana 9.4.2 and test data services.
+- **Dependencies:** Elasticsearch/Kibana 9.5.5 and test data services.
 - **Non-goals:** additional providers or messaging systems.
 
 ## Phase C — Complete the existing core product

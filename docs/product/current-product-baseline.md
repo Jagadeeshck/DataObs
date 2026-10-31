@@ -10,7 +10,7 @@ The canonical six-pillar model remains the product target. A route, API, workflo
 
 ## 2. Target Elastic Stack
 
-Certification definitions pin Elasticsearch and Kibana **9.4.2**. Compatibility with other versions is not certified by this baseline.
+Certification definitions pin Elasticsearch and Kibana **9.5.5**. Compatibility with other versions is not certified by this baseline.
 
 ## 3. Storage migrations
 
@@ -38,7 +38,7 @@ The Console implements `/quality`, `/quality/monitors`, `/quality/monitors/new` 
 
 OpenLineage ingestion validates, bounds and redacts incoming events before append-only persistence and projection into canonical jobs, runs, attempts, tasks and Spark stages. The Console includes Jobs Inventory, Job 360, Run 360, run comparison and bounded dataset and column lineage exploration. Lineage responses disclose confidence, evidence coverage, partial or missing state, cycle handling and truncation rather than inferring unobserved relationships.
 
-These capabilities remain `functional_unvalidated` pending final-head Elasticsearch 9.4.2, PostgreSQL, browser, accessibility and independent-verification evidence.
+These capabilities remain `functional_unvalidated` pending final-head Elasticsearch 9.5.5, PostgreSQL, browser, accessibility and independent-verification evidence.
 
 Team 2's integrated scope additionally includes Data Reliability SLOs, error budgets and burn-rate evaluation, the production SLO runtime, dbt intelligence, CI/CD change gates, and the Asset Trust and Reliability Score with its production-runtime foundation. These implementations retain missing-versus-zero semantics and remain unvalidated rather than production-ready.
 
@@ -121,7 +121,7 @@ FinOps, Business Observability, AI and Agent Observability, unrestricted custom 
 
 ## 14. Next milestone
 
-The next milestone is a clean integration repair followed by exact-commit Beta 1 certification against Elasticsearch 9.4.2. Development may continue after the repair branch is merged, but release status must remain blocked until the hosted evidence matrix is complete and independently verified.
+The next milestone is a clean integration repair followed by exact-commit Beta 1 certification against Elasticsearch 9.5.5. Development may continue after the repair branch is merged, but release status must remain blocked until the hosted evidence matrix is complete and independently verified.
 
 ## SQL engine integrations
 

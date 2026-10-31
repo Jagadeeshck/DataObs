@@ -27,7 +27,7 @@ jobs:
       - name: Create ephemeral local-demo credentials
         run: |
           umask 077
-          printf 'ELASTIC_PASSWORD=%s\nDATAOBS_API_TOKEN=%s\nELASTICSEARCH_VERSION=9.4.2\nDATAOBS_VERSION=0.2.0\n' \
+          printf 'ELASTIC_PASSWORD=%s\nDATAOBS_API_TOKEN=%s\nELASTICSEARCH_VERSION=9.5.5\nDATAOBS_VERSION=0.2.0\n' \
             "$(openssl rand -hex 24)" "$(openssl rand -hex 24)" > .env.mvp
       - name: Validate Compose model
         run: ./scripts/demo_mvp.sh config
@@ -48,7 +48,7 @@ jobs:
               "status": "pass",
               "scope": "local_demo_smoke",
               "application_version": "0.2.0",
-              "elasticsearch_version": "9.4.2",
+              "elasticsearch_version": "9.5.5",
               "terminal_migration": migrations()[-1].migration_id,
               "independent_verification": False,
               "release_authorization": False,

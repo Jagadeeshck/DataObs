@@ -92,7 +92,7 @@ open http://localhost:5601
 curl http://localhost:8080/health
 ```
 
-DataObs already runs Elasticsearch 9.x and Kibana on the default local ports. The root compose uses `elasticsearch:${ELK_VERSION:-9.4.2}` and exposes Elasticsearch on `9200:9200`; Kibana is exposed on `5601:5601`.
+DataObs already runs Elasticsearch 9.x and Kibana on the default local ports. The root compose uses `elasticsearch:${ELK_VERSION:-9.5.5}` and exposes Elasticsearch on `9200:9200`; Kibana is exposed on `5601:5601`.
 
 ## Configure SkillRadar APM to send traces to DataObs
 

@@ -21,7 +21,7 @@ PR #95 is merge commit `1a837e8`; it added a job/run foundation whose OpenLineag
 | Console routes | Console/pathway routes exist | Stream 360 screens are not complete | Add screens only after backed APIs | browser validation pending |
 | SSE | Console live-update foundation exists | Stream events not fully projected | Tenant-scoped typed events with bounded replay | pending browser stack |
 | Migration immutability | Checksummed forward migrations | 0009 absent before this milestone | Append 0009 only | migration unit test |
-| Real containers | Existing integration Compose is not three-broker Stream demo | Definition-of-done unmet | Run Elasticsearch 9.4.2 + 3 broker KRaft stack | pending environment |
+| Real containers | Existing integration Compose is not three-broker Stream demo | Definition-of-done unmet | Run Elasticsearch 9.5.5 + 3 broker KRaft stack | pending environment |
 | GitHub Actions | General Python/Console jobs exist | Dedicated blocking Stream jobs absent | Add only when reproducible stack exists | pending CI |
 
 This audit deliberately does **not** claim a completed Kafka vertical slice or production readiness.

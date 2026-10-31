@@ -12,7 +12,7 @@ Latest available `main` at branch creation was `12322a3`; the local history reco
 | Coverage | Counts and view summaries only | Counts do not express health, maturity, or gaps | Category-aware coverage states, numerator/denominator, gaps and recommendations | Partial-coverage test |
 | Data Products | Not first-class | No durable membership or reliability formula | Typed products, evidence-backed members, SLOs and weighted observed-only score | Missing-evidence reliability test |
 | RCA | Incident correlation and pathway investigation exist | No ranked hypothesis engine | Deterministic weighted factors with supporting, contradicting and missing evidence; ranking never confirms | Deterministic contradiction test |
-| Browser/real stack | Prior audits record validation unavailable | No defensible browser or PostgreSQL/Kafka/ES 9.4.2 evidence | Keep PR draft until container integration, Playwright and axe pass | Not executed in this environment |
+| Browser/real stack | Prior audits record validation unavailable | No defensible browser or PostgreSQL/Kafka/ES 9.5.5 evidence | Keep PR draft until container integration, Playwright and axe pass | Not executed in this environment |
 | Migration immutability | 0001–0006 checksums are history-sensitive | Editing them breaks upgrades | Append 0007 only; retain `dataobs-monitors-v1` | Manifest regression test |
 
 This slice is intentionally not represented as production-ready. API persistence, complete schedulers, Console routes, real-stack validation, alert/workflow packs, and all operational adapters remain required before release.

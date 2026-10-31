@@ -42,6 +42,6 @@ An incompatible registry result plus a bound consumer is only `potentially_expos
 supported-version mismatch; `degradation_observed` requires independent schema-error evidence. No causal or RCA claim
 is emitted. Registry compatibility and Team 2 contract compliance stay separate.
 
-This local change does not claim hosted certification. Elasticsearch 9.4.2 vertical-slice, scale, Console,
+This local change does not claim hosted certification. Elasticsearch 9.5.5 vertical-slice, scale, Console,
 Pathway/Data Product query-adapter, Playwright and axe evidence remain unverified and capabilities must remain
 `functional_unvalidated` until exact-SHA hosted evidence exists.

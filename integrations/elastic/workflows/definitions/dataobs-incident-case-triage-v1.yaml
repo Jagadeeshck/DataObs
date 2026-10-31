@@ -2,7 +2,7 @@ id: dataobs-incident-case-triage-v1
 name: DataObs incident Case triage
 version: 1.0.0
 description: Append bounded, reviewed DataObs triage context to an already-linked Case.
-supportedKibanaVersion: 9.4.2
+supportedKibanaVersion: 9.5.5
 risk: low
 approvalRequired: false
 caseOwner: observability

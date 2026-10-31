@@ -20,7 +20,7 @@ The last merged Team 2 release-stabilization head was `6c8df8157e367644ae5c585db
 | Data Quality Console | FAIL — legacy `/rules` crossed tenant boundaries | Fix Team 2 legacy rule scope and retain the existing security regression |
 | Lineage Console | Backend/Console PASS; browser FAIL | Re-run after merged Team 5 browser fixes; shared browser failures remain Team 5-owned |
 | Data Product hosted certification | FAIL — clean-install Data Product mapping ownership conflict | Preserve the released 0015 contract during first index creation; Team 0 review required |
-| Data Product reconciliation | FAIL — same mapping family | Same correction and real ES 9.4.2 re-run |
+| Data Product reconciliation | FAIL — same mapping family | Same correction and real ES 9.5.5 re-run |
 | Full quality signal path | Not executed because shared CI prerequisites failed | Must execute with `RUN_INTEGRATION_TESTS=1`; retain `e2e-signal-path` |
 
 ## Corrections in this branch
@@ -71,7 +71,7 @@ The API remains asynchronous; queued is not completed.
 
 Populate final run/artifact IDs after hosted execution.
 
-| Capability | Domain tests | Integration | ES 9.4.2 | PostgreSQL | Tenant/RBAC | Browser/a11y | Independent verification | Current state |
+| Capability | Domain tests | Integration | ES 9.5.5 | PostgreSQL | Tenant/RBAC | Browser/a11y | Independent verification | Current state |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Monitor authoring/lifecycle | pending final head | n/a | pending | n/a | pending | pending | pending | functional_unvalidated |
 | Monitor scheduling/lease/checkpoint | pending final head | pending where applicable | pending | n/a | pending | n/a | pending | functional_unvalidated |

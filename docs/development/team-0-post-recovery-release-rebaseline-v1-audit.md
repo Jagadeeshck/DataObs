@@ -14,7 +14,7 @@ Audit time: 2026-10-12 UTC. This is an active baseline record, not hosted certif
 | Application / chart | `0.2.0` / `0.2.0` |
 | Executable terminal migration | `0033_team1_stream_schema_intelligence_runtime` |
 | Migration graph | valid, 33 migrations, one terminal leaf |
-| Elasticsearch server target / Python client | `9.4.2` / `elasticsearch[async]==9.4.1` |
+| Elasticsearch server target / Python client | `9.5.5` / `elasticsearch[async]==9.4.1` |
 | Hosted CI Python / Node / pnpm | Python `3.12` (Foundation), Node `22`, pnpm `10.28.1` |
 | Local audit Python / Node / pnpm | Python `3.14.4`, Node `24.15.0`, pnpm `10.28.1` |
 | Security posture / security gate | `INCOMPLETE` / `INCOMPLETE` |

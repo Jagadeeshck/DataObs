@@ -10,7 +10,7 @@
   "images": [],
   "terminal_migration": "0030_team1_multi_broker_messaging_runtime",
   "kubernetes_support_profile": "unvalidated 1.30.x",
-  "elasticsearch_support_profile": "unvalidated 9.4.2",
+  "elasticsearch_support_profile": "unvalidated 9.5.5",
   "oidc_profile": "Authorization Code + PKCE S256; hosted conformance pending",
   "ha_profile": "development; unvalidated",
   "capacity_profile": "small; unvalidated",

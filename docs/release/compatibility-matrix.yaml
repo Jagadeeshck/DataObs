@@ -4,7 +4,7 @@ release_state: unvalidated
 evidence: docs/release/supported-platform-matrix.yaml
 dimensions:
   elasticsearch:
-    - {exact: 9.4.2, state: compatible_but_unvalidated, patch_policy: exact_only, evidence: pending_hosted_capture}
+    - {exact: 9.5.5, state: compatible_but_unvalidated, patch_policy: exact_only, evidence: pending_hosted_capture}
     - {minimum: 8.0.0, maximum: 8.99.99, state: incompatible, reason: unsupported_major}
   kubernetes:
     - {minimum: 1.30.0, maximum: 1.30.99, state: compatible_but_unvalidated, evidence: pending_hosted_capture}

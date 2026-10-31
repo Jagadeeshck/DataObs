@@ -44,7 +44,7 @@ proof remains the complete Data Product mutation fault matrix.
   bundles; full-profile structural verification retains its non-empty profile-aware control policy.
 - workflow event / run ID / URL / six job conclusions: pending a real `pull_request` run
 - artifact ID/name/retention: pending / `data-product-foundation-evidence` / 30 days
-- Elasticsearch version: `9.4.2` required; hosted result pending
+- Elasticsearch version: `9.5.5` required; hosted result pending
 - independent final-head verification and manifest SHA-256: pending retained artifact download
 - full reconciliation certified: false
 - release readiness: blocked
@@ -63,7 +63,7 @@ remain unresolved until the exact-final-head retained ZIP passes independent ver
 - final head SHA / synthetic merge SHA: pending hosted branch / `bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb` (local regression contrast)
 - workflow event / run ID / URL / six job conclusions: pending a real `pull_request` run
 - artifact ID/name/retention: pending / `data-product-foundation-evidence` / 30 days
-- Elasticsearch version: `9.4.2` required; hosted result pending
+- Elasticsearch version: `9.5.5` required; hosted result pending
 - JUnit, seven scenarios, eight controls, sentinel counts, manifest SHA-256, independent verification: pending retained artifact
 - full reconciliation certified: false
 - release readiness: blocked
@@ -82,7 +82,7 @@ pull-request run succeeds and its retained artifact passes independent verificat
 - workflow event / run ID / URL: pending a real `pull_request` run
 - six job conclusions: pending
 - artifact ID/name/retention: pending / `data-product-foundation-evidence` / 30 days
-- Elasticsearch version: `9.4.2` required; hosted result pending
+- Elasticsearch version: `9.5.5` required; hosted result pending
 - JUnit summaries, seven scenario results, eight security controls, sentinel counts: hosted result pending
 - manifest SHA-256 and independent verifier result: pending artifact download
 - migrations `0001`–`0017`: checksum-identical at `bf29ef9`; no migration source or ledger entry is changed by this patch
@@ -113,7 +113,7 @@ API, Product 360, SLO, RCA, or AI-agent thread is eligible for resolution from t
 
 Latest main after PR #147: `5b26bf1`. Migrations `0001`–`0017` remain immutable. Release readiness remains **blocked** and this is foundation evidence, not complete reconciliation certification.
 
-| Foundation capability | Current main after PR #147 | Required final behaviour | Unit/contract | Elasticsearch 9.4.2 | Security | Hosted artifact |
+| Foundation capability | Current main after PR #147 | Required final behaviour | Unit/contract | Elasticsearch 9.5.5 | Security | Hosted artifact |
 |---|---|---|---|---|---|---|
 | migration JUnit ownership | produced but unowned | separately owned `migrations.xml` | covered | required | n/a | pending |
 | migration JUnit validation | ignored | nonempty, zero failure/error/skip | covered | required | n/a | pending |
@@ -138,7 +138,7 @@ After this gate, the next task is the complete Data Product mutation fault matri
 
 Latest main baseline after PR #144: `864b1fa`. Migrations `0001`–`0017` remain immutable released history. The authoritative manifest is `certification-evidence.json`; `manifest.json` is its byte-identical compatibility alias. Neither manifest may list itself, and the verifier excludes both only after validating their presence and equality. Hosted columns remain pending until a retained successful pull-request run exists.
 
-| Capability | Current main after PR #144 | Required final behaviour | Unit/property | Elasticsearch 9.4.2 | Security | Hosted artifact |
+| Capability | Current main after PR #144 | Required final behaviour | Unit/property | Elasticsearch 9.5.5 | Security | Hosted artifact |
 |---|---|---|---|---|---|---|
 | PR144 scenario-producer P1 | environment variable only | each executable suite emits only its own passed evidence | contract pending | pending | pending | pending |
 | PR144 alias-manifest P1 | alias treated as unlisted input | byte-identical alias excluded from artifact inventory | covered | n/a | n/a | pending |
@@ -158,7 +158,7 @@ Release readiness remains **blocked**. The next milestone remains **Data Product
 
 Latest main baseline: `efae25f` (merge of PR #143). Migrations `0001`–`0017` remain immutable released history. Scenario producers, real-stack execution, and hosted proof are tracked separately: local tests never promote a hosted cell. Release readiness remains **blocked**.
 
-| Capability | Current main after PR #143 | Required final behaviour | Unit/property | Elasticsearch 9.4.2 | Security | Hosted artifact |
+| Capability | Current main after PR #143 | Required final behaviour | Unit/property | Elasticsearch 9.5.5 | Security | Hosted artifact |
 |---|---|---|---|---|---|---|
 | PR143 evidence-producer P1 | inventory without producers | executing tests own every artifact; deterministic assembly | covered | pending | pending | pending |
 | PR143 superseded-edge P2 | domain exception escaped with claim running | typed race, authenticated newer revision, terminal superseded outcome | covered | pending | pending | pending |
@@ -178,9 +178,9 @@ The next milestone is **Data Product APIs, Product 360, browser/security, and fi
 
 > PR #142 removed duplicate dependency recovery and added chunked repair and workflow scaffolding, but it did not add or run the real fault matrix, did not migrate indices in the new workflow, did not enforce retained evidence, and left edge-ordering, historical-tombstone, immutable-replay, reservation-only, migration, security, and hosted-proof gaps. This PR closes and proves the runtime.
 
-Latest main baseline: `68e21f0` (merge of PR #142). Migrations `0001`–`0017` are immutable released history; this change does not edit them. Release readiness remains **blocked** until the draft pull request has a successful pull-request-triggered Elasticsearch 9.4.2, security, evidence, and thread-resolution run.
+Latest main baseline: `68e21f0` (merge of PR #142). Migrations `0001`–`0017` are immutable released history; this change does not edit them. Release readiness remains **blocked** until the draft pull request has a successful pull-request-triggered Elasticsearch 9.5.5, security, evidence, and thread-resolution run.
 
-| Capability | Current main after PR #142 | Required final behaviour | Unit/property | Elasticsearch 9.4.2 | Security | Hosted artifact |
+| Capability | Current main after PR #142 | Required final behaviour | Unit/property | Elasticsearch 9.5.5 | Security | Hosted artifact |
 |---|---|---|---|---|---|---|
 | dependency edge OCC ordering | blind OCC replacement | revision-order classification and realtime conflict reread | covered | pending | pending | pending |
 | historical tombstone handling | all documents required current graph | only current mutation documents require current graph | covered | pending | pending | pending |
@@ -214,7 +214,7 @@ does not contain a second recovery implementation. Repairs use 200-edge claim-fe
 verify the complete edge and tombstone snapshot, and persist the detailed immutable result
 before generic completion. Pending event time is the canonical takeover timestamp.
 
-| Capability | Current main after PR #141 | Required final behaviour | Unit/property | Elasticsearch 9.4.2 | Security | Hosted artifact |
+| Capability | Current main after PR #141 | Required final behaviour | Unit/property | Elasticsearch 9.5.5 | Security | Hosted artifact |
 |---|---|---|---|---|---|---|
 | dependency authoritative recovery | duplicate direct recovery | coordinator only | covered | pending | pending | pending |
 | dependency product token recovery | partial | OCC target or fail closed | covered | pending | pending | pending |
@@ -250,7 +250,7 @@ it never deletes mapped fields or reindexes data.
 
 > PR #134 added typed results, limited renewal, manual membership creation and partial plan wiring, but proposal, exclusion, dependency and lifecycle handlers still did not apply missing projection steps; synchronous workflows left generic state incomplete; terminal replay/history contained P1 defects; production idempotency repair and hosted Elasticsearch evidence remained absent. This PR closes those blockers.
 
-> PR #131 implemented Elasticsearch operation-state and immutable-history persistence primitives only. This PR wires every scoped mutation to those primitives, implements operation-specific repair handlers, and certifies crash recovery and stale-worker fencing against Elasticsearch 9.4.2.
+> PR #131 implemented Elasticsearch operation-state and immutable-history persistence primitives only. This PR wires every scoped mutation to those primitives, implements operation-specific repair handlers, and certifies crash recovery and stale-worker fencing against Elasticsearch 9.5.5.
 
 > PR #132 introduced generic reconciliation envelopes and dispatch scaffolding, but all operation kinds still used one non-repairing DurablePlanHandler and mutation services did not create the new operation state. This PR implements concrete projection-aware handlers and wires every scoped mutation into the runtime.
 
@@ -258,7 +258,7 @@ it never deletes mapped fields or reindexes data.
 
 Release readiness remains **blocked**. Hosted artifact cells remain pending until the draft PR workflow produces downloadable evidence; local tests are not represented as hosted certification.
 
-| Capability | PR #140 defect | Required final behaviour | Unit/property | Elasticsearch 9.4.2 | Security | Hosted artifact |
+| Capability | PR #140 defect | Required final behaviour | Unit/property | Elasticsearch 9.5.5 | Security | Hosted artifact |
 |---|---|---|---|---|---|---|
 | dependency durable-plan execution | recovery only inspected the projection | apply the scoped detailed plan and verify the complete snapshot | covered | pending | pending | pending |
 | dependency token/partial-write recovery | target token caused retry | idempotently apply missing upserts and tombstones | covered | pending | pending | pending |
@@ -269,7 +269,7 @@ Release readiness remains **blocked**. Hosted artifact cells remain pending unti
 | claim renewal and stale-worker fencing | incomplete phase coverage | assert/renew/checkpoint at terminal boundaries | covered | pending | pending | pending |
 | hosted manifest and review-thread closure | no retained run | retain real JUnit/scenario/security artifacts before resolution | n/a | pending | pending | pending |
 
-| Capability | Current main defect | Required behaviour | Unit/property | Elasticsearch 9.4.2 | Security | Hosted artifact |
+| Capability | Current main defect | Required behaviour | Unit/property | Elasticsearch 9.5.5 | Security | Hosted artifact |
 |---|---|---|---|---|---|---|
 | terminal outcome replay | PR #135 partial baseline | operation-specific, claim-fenced repair | covered | pending | pending | pending |
 | terminal-state repair | PR #135 partial baseline | operation-specific, claim-fenced repair | pending | pending | pending | pending |
@@ -387,13 +387,13 @@ persisted, due-time-filtered retry schedule, and non-accept proposal replay uses
 the durable UTC `payload.applied_at` rather than envelope persistence time.
 
 This remains an implementation-only gate. Release readiness is **blocked** and
-the next gate is **real Elasticsearch 9.4.2 reconciliation, security, and hosted
+the next gate is **real Elasticsearch 9.5.5 reconciliation, security, and hosted
 artifact certification**; no Product 360, Impact, SLO, reliability, coverage,
 RCA, or production-readiness capability is promoted here.
 # Hosted certification foundation
 
 The pull-request gate uses the explicit `data-product-runtime-foundation`
-profile on Elasticsearch 9.4.2. Its retained scenarios prove migration,
+profile on Elasticsearch 9.5.5. Its retained scenarios prove migration,
 mapping, operation-state query, discriminator, baseline persistence isolation,
 and positive sentinel redaction infrastructure. The profile promotes no
 product capability: `capabilities` remains empty, release readiness remains
@@ -407,9 +407,9 @@ matrix; Product 360 and the other production-readiness tracks remain out of
 scope.
 # Hosted foundation truth audit after PR #146
 
-PR #146 created the foundation profile and test-owned evidence plumbing, but several scenarios recorded success without executing the claimed behaviour, the workflow invoked an unsupported migration command, security controls were over-reported, and no pull-request-triggered retained proof existed. This PR makes the foundation evidence semantically true and proves it on Elasticsearch 9.4.2.
+PR #146 created the foundation profile and test-owned evidence plumbing, but several scenarios recorded success without executing the claimed behaviour, the workflow invoked an unsupported migration command, security controls were over-reported, and no pull-request-triggered retained proof existed. This PR makes the foundation evidence semantically true and proves it on Elasticsearch 9.5.5.
 
-| Foundation capability | Current main after PR #146 | Required final behaviour | Unit/contract | Elasticsearch 9.4.2 | Security | Hosted artifact |
+| Foundation capability | Current main after PR #146 | Required final behaviour | Unit/contract | Elasticsearch 9.5.5 | Security | Hosted artifact |
 |---|---|---|---|---|---|---|
 | Migration CLI and clean/upgrade/repeat paths | Unsupported command and pre-migrated inspection | Supported `apply`; destructive clean install; bounded 0016 upgrade; two repeat applies | Migration selection and workflow parser | Dedicated migration module | N/A | migration JSON and JUnit |
 | Mapping and retry eligibility | Mapping inspected; GET-only retry evidence | Installed strict mapping and injected, timezone-aware query instant | Query construction/parity | Boundary selection before limit | N/A | mapping/retry JSON |
@@ -424,7 +424,7 @@ Release readiness remains **blocked**. No product capability is promoted. After 
 
 PR #148 completed most foundation implementation, but its manifest rejected intentional unit-suite skips, its mixed-resource test failed before execution because of a noncanonical result checksum, its stale-worker test could pass because the replacement claim was already expired, and no hosted retained proof existed. This PR closes those blockers and completes the foundation gate.
 
-| Foundation capability | PR #148 state | Correct final behaviour | Local contract | Elasticsearch 9.4.2 | Hosted artifact |
+| Foundation capability | PR #148 state | Correct final behaviour | Local contract | Elasticsearch 9.5.5 | Hosted artifact |
 |---|---|---|---|---|---|
 | JUnit skip policy by suite | One zero-skip rule | Explicit policy for every owned XML | Exact inventory/policy equality | Real-stack XML requires zero skips | Manifest policy and summaries |
 | Unit opt-in skip accounting | Intentional skips rejected | Only two named opt-in reasons, non-empty and bounded | Positive and unknown-reason negatives | N/A | `unit.xml` summary |
@@ -436,7 +436,7 @@ PR #148 completed most foundation implementation, but its manifest rejected inte
 | Live worker-B claim | Fixed January 2026 expiry | Expiry is safely beyond wall clock | Expired replacement is not acceptable proof | Positive assert/checkpoint/renew | `claim-expiry-boundaries.json` |
 | Stale worker-A owner/generation fencing | Could share expiry failure | All six paths reject stale owner/generation | Named fencing assertions | OCC generation two remains owned by B | Claim scenario assertions |
 | Worker-B positive ownership proof | Missing | Assert, checkpoint, renew, and post-stale assert succeed | Named positive assertions | Live expiry/checkpoint re-read | Claim scenario assertions |
-| Pull-request workflow | No run | Final-head `pull_request` run; all six jobs succeed | Workflow job contract | Service image is 9.4.2 | Run URL and job conclusions |
+| Pull-request workflow | No run | Final-head `pull_request` run; all six jobs succeed | Workflow job contract | Service image is 9.5.5 | Run URL and job conclusions |
 | Retained ZIP download | Not done | Download named retained artifact to a clean directory | Exact inventory verifier | N/A | Artifact ID/name/retention |
 | Hash and manifest verification | Not independently done | Byte-identical aliases and every artifact hash verified | Fail-closed verifier tests | Version/provenance checked | Manifest SHA-256 |
 | Review-thread closure | Hosted proof absent | Resolve only eligible foundation threads after proof | Exact references retained | Test/job evidence cited | Thread replies include run/artifact |
@@ -451,7 +451,7 @@ GitHub credentials or configured Git remote, so it cannot inspect or change the
 repository Actions policy, dispatch the diagnostic workflow, push this branch,
 or create and keep open the required draft pull request. The hosted foundation
 therefore remains pending: no diagnostic or pull-request run, Elasticsearch
-9.4.2 result, retained artifact, or independent artifact verification is
+9.5.5 result, retained artifact, or independent artifact verification is
 claimed by this attempt.
 
 Release readiness remains **blocked**, `full_reconciliation_certified` remains

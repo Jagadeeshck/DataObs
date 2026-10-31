@@ -35,7 +35,7 @@ second terminal, but do not display environment files or credentials.
 ## Ten-minute walkthrough
 
 1. **0:00–1:00 — Scope.** State that this is the local evaluation MVP using
-   Elasticsearch 9.4.2, DataObs 0.2.0, and the current 33-migration graph.
+   Elasticsearch 9.5.5, DataObs 0.2.0, and the current 33-migration graph.
 2. **1:00–3:00 — Command Center.** Show the seeded `acme-retail / production`
    context and explain that incomplete sources remain explicit rather than being
    rendered as healthy.

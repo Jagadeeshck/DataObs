@@ -554,7 +554,7 @@ export function SystemInformation() {
         <article>
           <h2>Console</h2>
           <p>Status: Running</p>
-          <p>Version: 0.2.0</p>
+          <p>Version: 1.0.0</p>
         </article>
         <article>
           <h2>Certification</h2>

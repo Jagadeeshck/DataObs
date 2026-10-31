@@ -38,7 +38,7 @@ def security_client():
     assert os.getenv("DATA_PRODUCT_CERTIFICATION_PROFILE") == "data-product-runtime-foundation"
     assert os.getenv("DATA_PRODUCT_EVIDENCE_DIR")
     client = Elasticsearch(os.environ["ELASTICSEARCH_URL"])
-    assert client.info()["version"]["number"] == "9.4.2"
+    assert client.info()["version"]["number"] == "9.5.5"
     return client
 
 

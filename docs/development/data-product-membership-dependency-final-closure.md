@@ -18,7 +18,7 @@ Release readiness remains **blocked**. Hosted evidence and the PR #118 thread re
 | impact context | typed summary | evidence composition | bounded metadata contract; unavailable evidence remains explicit | contract tests | Pending draft CI |
 | API routes/OpenAPI/generated client | CRUD only | product surface | revisions, members, proposals, decisions and dependency reads | OpenAPI drift | Pending draft CI |
 | Members/Lineage/Dependencies/Revisions tabs | placeholders | API views | API-backed accessible evidence tables | Playwright spec | Pending draft CI |
-| Elasticsearch 9.4.2/browser/axe/security | not certified | retained evidence | focused jobs added; claims wait for real results | local gates | Pending draft CI |
+| Elasticsearch 9.5.5/browser/axe/security | not certified | retained evidence | focused jobs added; claims wait for real results | local gates | Pending draft CI |
 | PR #118 thread resolution | unresolved | hosted immutable replay proof | deliberately unresolved until hosted proof exists | N/A | Pending |
 
 No migration `0016` was required; migrations `0001`–`0015` remain immutable.

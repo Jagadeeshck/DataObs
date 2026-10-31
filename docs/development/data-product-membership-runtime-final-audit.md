@@ -43,7 +43,7 @@ Release readiness remains **blocked**. Hosted evidence is deliberately recorded 
 | Lineage route/actions | Missing/incomplete | PR #121 thread unresolved | Pending real traversal route | Pending | Pending |
 | Dependencies editor | Incomplete | Full mutation UX absent | Pending | Playwright pending | Pending |
 | Revisions pagination / next-page behavior | Cursor fixed, UX incomplete | Append/focus/dedup proof absent | Pending | Playwright pending | Pending |
-| Elasticsearch 9.4.2 | Not certified | Service unavailable locally/hosted | Dedicated job required | Pending | Pending |
+| Elasticsearch 9.5.5 | Not certified | Service unavailable locally/hosted | Dedicated job required | Pending | Pending |
 | Playwright / axe / security | Not certified | Production-stack journeys absent | Dedicated gates required | Pending | Pending |
 | hosted CI | Not run | No run URL or manifest | Dedicated jobs required | N/A | Pending |
 | PR #121 threads | Five unresolved | Evidence threshold not met | Do not resolve prematurely | Pending | Pending |

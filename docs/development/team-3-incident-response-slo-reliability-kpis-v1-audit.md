@@ -21,4 +21,4 @@
 
 ## Scope and certification
 
-This change intentionally contains no escalation/staleness orchestration. The canonical Team 2 error-budget and burn functions are imported rather than duplicated. Real Elasticsearch 9.4.2 certification was not run because no cluster was supplied.
+This change intentionally contains no escalation/staleness orchestration. The canonical Team 2 error-budget and burn functions are imported rather than duplicated. Real Elasticsearch 9.5.5 certification was not run because no cluster was supplied.

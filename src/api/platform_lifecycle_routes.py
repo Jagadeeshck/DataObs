@@ -203,7 +203,7 @@ def create_platform_lifecycle_router(require_auth: Callable[..., Any]) -> APIRou
             matrix["dataobs_version"],
             "3.17.0",
             "1.30.0",
-            "9.4.2",
+            "9.5.5",
             "3.13.0",
             "22.0.0",
             "dataobs-oidc-v1",
@@ -213,7 +213,7 @@ def create_platform_lifecycle_router(require_auth: Callable[..., Any]) -> APIRou
             terminal,
         )
         desired = PlatformProfile(
-            target, "3.17.0", "1.30.0", "9.4.2", "3.13.0", "22.0.0", "dataobs-oidc-v1", "1.0.0", "1.0.0", "1", terminal
+            target, "3.17.0", "1.30.0", "9.5.5", "3.13.0", "22.0.0", "dataobs-oidc-v1", "1.0.0", "1.0.0", "1", terminal
         )
         result = assess_upgrade(current, desired, {})
         return {

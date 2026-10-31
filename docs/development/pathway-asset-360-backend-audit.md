@@ -14,6 +14,6 @@ Baseline: merged commit `eb2077238070508ea990e839a863295cecdf3ebb` (PR #88 merge
 | Browser/API contract generation | OpenAPI TypeScript generation is present. | Drift was not a blocking proof in PR #88. | Generate from committed OpenAPI and fail CI on diff. | `pnpm api:generate`, typecheck. |
 | Playwright execution | Command Center/Flow Map scenarios exist. | PR #88 did not prove a real browser against Elasticsearch in its execution environment. | Run against the container demo without fixture interception. | Not claimed until container run succeeds. |
 | Accessibility execution | Semantic shell and an axe scenario exist. | New graph/table alternatives require checks. | Provide semantic tables, route list alternatives, focus visibility and reduced motion. | Automated browser axe proof remains required. |
-| Container-backed validation | Console demo compose exists. | No successful execution evidence was available in PR #88. | Extend a real Elasticsearch 9.4.2 demo and preserve failure artifacts. | Not claimed in this audit. |
+| Container-backed validation | Console demo compose exists. | No successful execution evidence was available in PR #88. | Extend a real Elasticsearch 9.5.5 demo and preserve failure artifacts. | Not claimed in this audit. |
 
 This audit does not claim DataObs is production-ready.

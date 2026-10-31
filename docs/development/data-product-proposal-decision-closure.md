@@ -16,6 +16,6 @@ No migration 0017 required. Migrations 0001–0016 remain immutable. The stable 
 | proposal decision reconciliation | absent | bounded repair handlers | reconciler | focused | CI gate | history | scoped | pending |
 | API / OpenAPI/client | discarded inputs | typed concurrency and replay | routes/generated schema | drift | contract | typed UI | errors redacted | pending |
 | Members UI actions / decision history | absent | accessible actions and states | Console components | UI | stack | Playwright/axe gate | XSS-safe rendering | pending |
-| Elasticsearch 9.4.2 / Playwright / axe / security / hosted artifacts | absent | retained focused evidence | workflow | gate | gate | gate | gate | pending |
+| Elasticsearch 9.5.5 / Playwright / axe / security / hosted artifacts | absent | retained focused evidence | workflow | gate | gate | gate | gate | pending |
 
 This document records only the proposal/exclusion slice and does not certify the dependency vertical or production readiness.

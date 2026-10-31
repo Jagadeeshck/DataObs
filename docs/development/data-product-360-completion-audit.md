@@ -2,7 +2,7 @@
 
 > A Protocol, in-memory adapter, embedded list, or reliability helper is not a complete Data Product capability.
 
-Release readiness remains **blocked** until hosted Elasticsearch 9.4.2, browser, axe, and security evidence is attached to the draft PR. PR #114 is present in the base history at `8f4443a`; migrations 0001–0013 are treated as immutable.
+Release readiness remains **blocked** until hosted Elasticsearch 9.5.5, browser, axe, and security evidence is attached to the draft PR. PR #114 is present in the base history at `8f4443a`; migrations 0001–0013 are treated as immutable.
 
 | Capability | Existing implementation | Missing production surface | Implementation | Evidence |
 |---|---|---|---|---|

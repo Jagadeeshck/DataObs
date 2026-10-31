@@ -2,7 +2,7 @@ schema_version: '1.0'
 release: beta-1
 release_candidate: rc1
 repository: Jagadeeshck/DataObs
-target_elasticsearch_version: 9.4.2
+target_elasticsearch_version: 9.5.5
 terminal_migration: 0033_team1_stream_schema_intelligence_runtime
 orchestration_model: two-phase
 capabilities:
@@ -13,7 +13,7 @@ capabilities:
   required_conclusion: success
   mandatory_for_beta: true
   evidence_schema_version: '1.0'
-  expected_elasticsearch_version: 9.4.2
+  expected_elasticsearch_version: 9.5.5
   accepted_events:
   - workflow_dispatch
   required_test_categories:
@@ -27,7 +27,7 @@ capabilities:
   required_conclusion: success
   mandatory_for_beta: true
   evidence_schema_version: '1.0'
-  expected_elasticsearch_version: 9.4.2
+  expected_elasticsearch_version: 9.5.5
   accepted_events:
   - workflow_dispatch
   required_test_categories:
@@ -42,7 +42,7 @@ capabilities:
   required_conclusion: success
   mandatory_for_beta: true
   evidence_schema_version: '1.0'
-  expected_elasticsearch_version: 9.4.2
+  expected_elasticsearch_version: 9.5.5
   accepted_events:
   - workflow_dispatch
   required_test_categories:
@@ -56,7 +56,7 @@ capabilities:
   required_conclusion: success
   mandatory_for_beta: true
   evidence_schema_version: '1.0'
-  expected_elasticsearch_version: 9.4.2
+  expected_elasticsearch_version: 9.5.5
   accepted_events:
   - workflow_dispatch
   required_test_categories:
@@ -70,7 +70,7 @@ capabilities:
   required_conclusion: success
   mandatory_for_beta: true
   evidence_schema_version: '1.0'
-  expected_elasticsearch_version: 9.4.2
+  expected_elasticsearch_version: 9.5.5
   accepted_events:
   - workflow_dispatch
   required_test_categories:
@@ -83,7 +83,7 @@ capabilities:
   required_conclusion: success
   mandatory_for_beta: true
   evidence_schema_version: '1.0'
-  expected_elasticsearch_version: 9.4.2
+  expected_elasticsearch_version: 9.5.5
   accepted_events:
   - workflow_dispatch
   required_test_categories:
@@ -98,7 +98,7 @@ capabilities:
   required_conclusion: success
   mandatory_for_beta: true
   evidence_schema_version: '1.0'
-  expected_elasticsearch_version: 9.4.2
+  expected_elasticsearch_version: 9.5.5
   accepted_events:
   - workflow_dispatch
   required_test_categories:
@@ -112,7 +112,7 @@ capabilities:
   required_conclusion: success
   mandatory_for_beta: true
   evidence_schema_version: '1.0'
-  expected_elasticsearch_version: 9.4.2
+  expected_elasticsearch_version: 9.5.5
   accepted_events:
   - workflow_dispatch
   required_test_categories:
@@ -126,7 +126,7 @@ capabilities:
   required_conclusion: success
   mandatory_for_beta: true
   evidence_schema_version: '1.0'
-  expected_elasticsearch_version: 9.4.2
+  expected_elasticsearch_version: 9.5.5
   accepted_events:
   - workflow_dispatch
   required_test_categories:
@@ -140,7 +140,7 @@ capabilities:
   required_conclusion: success
   mandatory_for_beta: true
   evidence_schema_version: '1.0'
-  expected_elasticsearch_version: 9.4.2
+  expected_elasticsearch_version: 9.5.5
   accepted_events:
   - workflow_dispatch
   required_test_categories:
@@ -154,7 +154,7 @@ capabilities:
   required_conclusion: success
   mandatory_for_beta: true
   evidence_schema_version: '1.0'
-  expected_elasticsearch_version: 9.4.2
+  expected_elasticsearch_version: 9.5.5
   accepted_events:
   - workflow_dispatch
   required_test_categories:
@@ -168,7 +168,7 @@ capabilities:
   required_conclusion: success
   mandatory_for_beta: true
   evidence_schema_version: '1.0'
-  expected_elasticsearch_version: 9.4.2
+  expected_elasticsearch_version: 9.5.5
   accepted_events:
   - workflow_dispatch
   required_test_categories:
@@ -182,7 +182,7 @@ capabilities:
   required_conclusion: success
   mandatory_for_beta: true
   evidence_schema_version: '1.0'
-  expected_elasticsearch_version: 9.4.2
+  expected_elasticsearch_version: 9.5.5
   accepted_events:
   - workflow_dispatch
   required_test_categories:
@@ -196,7 +196,7 @@ capabilities:
   required_conclusion: success
   mandatory_for_beta: true
   evidence_schema_version: '1.0'
-  expected_elasticsearch_version: 9.4.2
+  expected_elasticsearch_version: 9.5.5
   accepted_events:
   - workflow_dispatch
   required_test_categories:
@@ -210,7 +210,7 @@ capabilities:
   required_conclusion: success
   mandatory_for_beta: true
   evidence_schema_version: '1.0'
-  expected_elasticsearch_version: 9.4.2
+  expected_elasticsearch_version: 9.5.5
   accepted_events:
   - workflow_dispatch
   required_test_categories:
@@ -225,7 +225,7 @@ capabilities:
   required_conclusion: success
   mandatory_for_beta: true
   evidence_schema_version: '1.0'
-  expected_elasticsearch_version: 9.4.2
+  expected_elasticsearch_version: 9.5.5
   accepted_events:
   - workflow_dispatch
   required_test_categories:
@@ -241,7 +241,7 @@ capabilities:
   optional_reason: AWS collection is implemented, but live AWS certification and a
     packaged Collection Manager workload remain outside the supported Beta package.
   evidence_schema_version: '1.0'
-  expected_elasticsearch_version: 9.4.2
+  expected_elasticsearch_version: 9.5.5
   accepted_events:
   - workflow_dispatch
   required_test_categories:
@@ -255,7 +255,7 @@ capabilities:
   required_conclusion: success
   mandatory_for_beta: true
   evidence_schema_version: '1.0'
-  expected_elasticsearch_version: 9.4.2
+  expected_elasticsearch_version: 9.5.5
   accepted_events:
   - workflow_dispatch
   required_test_categories:

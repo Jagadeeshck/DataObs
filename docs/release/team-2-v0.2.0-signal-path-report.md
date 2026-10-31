@@ -34,7 +34,7 @@ Quality Monitoring run `41120485805` and Job/Run run `41120485697` are independe
 
 `.github/workflows/team-2-sprint4-e2e-proof.yml` runs the existing production-representative integration stack with:
 
-- Elasticsearch 9.4.2;
+- Elasticsearch 9.5.5;
 - the repository API image;
 - the repository OTel Collector test configuration;
 - the repository mock webhook for delivery outcomes.
@@ -77,7 +77,7 @@ The signal-path test must prove all of the following in the same real-stack exec
 The independent verifier rejects the artifact unless:
 
 - producer SHA is exactly the final branch head;
-- Elasticsearch version is exactly 9.4.2;
+- Elasticsearch version is exactly 9.5.5;
 - both retained JUnit files contain executed tests;
 - failures, errors and **skips are all zero**;
 - all required scenarios are present;
@@ -101,7 +101,7 @@ Populate only after the final Sprint 4 PR head completes:
 - Workflow run: pending
 - Producer job: pending
 - Independent verifier: pending
-- Elasticsearch version: must be 9.4.2
+- Elasticsearch version: must be 9.5.5
 - `e2e-signal-path` artifact: pending
 - Data Product migration proof: pending
 - OTel correlation: pending

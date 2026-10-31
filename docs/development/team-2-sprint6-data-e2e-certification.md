@@ -11,8 +11,8 @@
 | --- | ---: | --- | --- |
 | Data Quality Monitoring | 41141189152 | PASS including independent verification | Preserve |
 | Job/Run backend | 41141189135 | PASS including independent verification | Preserve |
-| Data Product foundation | 41141189206 | Real ES 9.4.2, security and unit PASS; contracts fail Black | Format Team 2-owned certification files only |
-| Data Product reconciliation | 41141189111 | Real ES 9.4.2, security and unit PASS; contracts fail Black | Same focused formatting correction |
+| Data Product foundation | 41141189206 | Real ES 9.5.5, security and unit PASS; contracts fail Black | Format Team 2-owned certification files only |
+| Data Product reconciliation | 41141189111 | Real ES 9.5.5, security and unit PASS; contracts fail Black | Same focused formatting correction |
 | Team 2 E2E | 41141189113 | ES healthy; Collector readiness probe resets until timeout | Enable the Collector health extension in the canonical integration fixture |
 | Quality Console | 41141189097 | Team 2 backend passed; Console static gate stopped at `global.css` Prettier | Team 5 shared Console blocker |
 | Lineage Console | 41141189087 | Team 2 backend passed; Console static gate stopped at `global.css` Prettier | Team 5 shared Console blocker |
@@ -74,7 +74,7 @@ The independent verifier continues to require zero failures, zero errors and zer
 
 It also requires:
 
-- Elasticsearch exactly 9.4.2;
+- Elasticsearch exactly 9.5.5;
 - exact producer SHA;
 - OTel execution/trace correlation;
 - replay resolves to the same incident;

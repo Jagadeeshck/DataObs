@@ -21,7 +21,7 @@ docker run -d --name dataobs-gate0-secured-es --env-file "$work/es.env" \
   -e discovery.type=single-node -e xpack.security.enabled=true \
   -e xpack.security.http.ssl.enabled=true \
   -e xpack.security.http.ssl.key=certs/server.key -e xpack.security.http.ssl.certificate=certs/server.crt \
-  -e ES_JAVA_OPTS='-Xms1g -Xmx1g' docker.elastic.co/elasticsearch/elasticsearch:9.4.2
+  -e ES_JAVA_OPTS='-Xms1g -Xmx1g' docker.elastic.co/elasticsearch/elasticsearch:9.5.5
 export ELASTICSEARCH_URL=https://localhost:9200 ELASTICSEARCH_USER=elastic ELASTICSEARCH_PASSWORD="$password" ELASTICSEARCH_CA_CERTS="$work/certs/server.crt"
 python - <<'PY'
 import os, time
@@ -29,7 +29,7 @@ from packages.elastic_store.client import make_client
 es = make_client()
 for _ in range(90):
     try:
-        assert es.info()['version']['number'] == '9.4.2'
+        assert es.info()['version']['number'] == '9.5.5'
         assert es.cluster.health(wait_for_status='yellow', timeout='2s')['status'] in {'yellow', 'green'}
         break
     except Exception:

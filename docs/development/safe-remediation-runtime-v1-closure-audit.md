@@ -59,4 +59,4 @@ No released migration was edited and no forward migration was required. Starting
 * Capability-ledger validation reports the pre-existing unrelated missing `/quality/*` Console route.
 * Console API generation, typecheck, lint, formatting and 52-test Vitest suite passed. The generated schema was not committed because the baseline OpenAPI artifact regenerates broad unrelated Team 5 changes and makes the existing quality feature fail project build. Console build/bundle validation remains blocked by those pre-existing quality exports/types, not incident automation.
 * A browser screenshot was attempted, but the installed Playwright package had no browser and the environment denied the Chromium download with HTTP 403. The development server also reports the same unrelated quality-module export failures.
-* Elasticsearch 9.4.2 was not available, so the opt-in real-stack certification was not reported as passed.
+* Elasticsearch 9.5.5 was not available, so the opt-in real-stack certification was not reported as passed.

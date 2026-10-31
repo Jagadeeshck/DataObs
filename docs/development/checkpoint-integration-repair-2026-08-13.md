@@ -50,7 +50,7 @@ Local output is local validation only, never hosted certification.
 
 ## Security and hosted blockers
 
-Workflow least privilege validates locally with `contents: read`. SECF-002 hosted tenant-isolation evidence and SECF-003 independently verified exact-SHA signature evidence remain absent. Browser, Kubernetes, OIDC, SBOM/provenance/signing, HA/DR, upgrade/rollback and Elasticsearch 9.4.2 hosted certification are not inferred from local checks.
+Workflow least privilege validates locally with `contents: read`. SECF-002 hosted tenant-isolation evidence and SECF-003 independently verified exact-SHA signature evidence remain absent. Browser, Kubernetes, OIDC, SBOM/provenance/signing, HA/DR, upgrade/rollback and Elasticsearch 9.5.5 hosted certification are not inferred from local checks.
 
 ## Final branch identity
 

@@ -8,7 +8,7 @@ of a contract, calculation helper, or HTTP client is not treated as an executabl
 | Kafka Observer | One-shot inventory service and process-local checkpoint | No durable scheduling, leases, or independent collection cadences | Durable Elasticsearch checkpoints/leases and bounded scheduler | Unit tests in this change; real stack pending |
 | Inventory | Read-only Admin client foundation | Full scale and authorization scenarios unproven | Exercise cluster/topic/partition/group collection on three brokers | Pending container gate |
 | Offsets and intelligence | Lag, drain-time, retention helpers | History was two-point and confidence fixed | Persist history and use robust bounded slope/rate methods | Unit tests; integration pending |
-| Storage | `0009` projections | Observer checkpoint/lease resources absent | Forward-only `0010`; never edit `0001`–`0009` | Pending Elasticsearch 9.4.2 gate |
+| Storage | `0009` projections | Observer checkpoint/lease resources absent | Forward-only `0010`; never edit `0001`–`0009` | Pending Elasticsearch 9.5.5 gate |
 | Kafka Connect | Small REST and normalization boundary | Durable collector, changes, and approval verification incomplete | Complete safe collector/action lifecycle | Pending |
 | Schema Registry | Small REST and compatibility boundary | Complete collection and semantic impact incomplete | Add typed collection, semantic rules, and evidence links | Pending |
 | Product query API | No complete Stream 360 API | Required resources and actions unavailable | Add scoped Elasticsearch-backed routes and generated contracts | Pending |

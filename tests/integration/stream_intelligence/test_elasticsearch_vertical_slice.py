@@ -1,4 +1,4 @@
-"""Opt-in Elasticsearch 9.4.2 mapping contract for Stream Intelligence."""
+"""Opt-in Elasticsearch 9.5.5 mapping contract for Stream Intelligence."""
 
 import os
 
@@ -9,11 +9,11 @@ pytestmark = pytest.mark.integration
 
 
 @pytest.mark.skipif(
-    os.getenv("RUN_STREAM_INTELLIGENCE_ELASTICSEARCH_TESTS") != "1", reason="requires Elasticsearch 9.4.2"
+    os.getenv("RUN_STREAM_INTELLIGENCE_ELASTICSEARCH_TESTS") != "1", reason="requires Elasticsearch 9.5.5"
 )
 def test_intelligence_resources_are_strict_and_scoped():
     es = Elasticsearch(os.getenv("ELASTICSEARCH_URL", "http://localhost:9200"))
-    assert es.info()["version"]["number"] == "9.4.2"
+    assert es.info()["version"]["number"] == "9.5.5"
     for index in (
         "dataobs-stream-detector-definitions-v1",
         "dataobs-stream-anomaly-current-v1",

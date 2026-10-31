@@ -57,7 +57,7 @@ checksum is `47a6f9ba7de57a4336972b18fa75da7430c4f621e71f76c02f80c77062823a69`; 
 simulation cover registration, mappings, replay, append idempotency, OCC behavior, fencing, persistence-before-
 checkpoint, tenant isolation, and privacy.
 
-Elasticsearch 9.4.2 clean-install, upgrade from Team 2 0032, repeated live apply, migration-state checksum, runtime
+Elasticsearch 9.5.5 clean-install, upgrade from Team 2 0032, repeated live apply, migration-state checksum, runtime
 boot against migration-only resources, and environment isolation require the added hosted CI service and remain
 locally unverified because Docker/Elasticsearch are unavailable. This work does not claim production certification,
 does not contain capacity planning, and must not be treated as hosted evidence until the exact-SHA workflow passes.

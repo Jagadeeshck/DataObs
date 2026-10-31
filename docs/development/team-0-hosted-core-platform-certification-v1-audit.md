@@ -23,11 +23,11 @@ certification evidence.
 |---|---|---|
 | Terminal migration | `0029_team2_data_intelligence_reconciliation` | `python scripts/release/current_terminal_migration.py` (registry-derived) |
 | Helm chart / DataObs app | `0.2.0` / `0.2.0` | `helm/dataobs/Chart.yaml` |
-| Elasticsearch target | `9.4.2` | certification manifest and support matrix |
+| Elasticsearch target | `9.5.5` | certification manifest and support matrix |
 | Kubernetes range | `>=1.30.0-0 <1.31.0-0` | chart `kubeVersion` |
 | Release decision | `NO_GO` | current release process/status; no exact-SHA hosted evidence |
 | Supported platforms | none | `supported: []` |
-| Candidate platform | Kubernetes 1.30.x, ES 9.4.2, Python 3.13, Node 22 | unvalidated matrix entry |
+| Candidate platform | Kubernetes 1.30.x, ES 9.5.5, Python 3.13, Node 22 | unvalidated matrix entry |
 | HA profiles | `development`, `standard-ha`, `production-ha`: unvalidated | scale/HA audit and validator catalog |
 | Capacity profiles | `small`, `medium`, `large`: unvalidated | scale/HA audit and scenario catalog |
 
@@ -64,7 +64,7 @@ are:
 * a configured `origin` and a demonstrably latest clean `main`;
 * protected environment `team-0-hosted-certification-test` and an ephemeral,
   non-production multi-node Kubernetes context with TTL/resource ownership labels;
-* secured Elasticsearch 9.4.2 endpoint, CA and protected credentials, plus a
+* secured Elasticsearch 9.5.5 endpoint, CA and protected credentials, plus a
   disposable snapshot repository;
 * disposable OIDC Authorization Code + PKCE S256 issuer/client/test identities;
 * TLS ingress/DNS, an OTLP fault target, and protected infrastructure driver;

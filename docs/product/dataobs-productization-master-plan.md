@@ -15,7 +15,7 @@ The product must be comparable in user experience and core capability to Datadog
 
 Do not treat Elasticsearch, OpenSearch, Grafana Cloud, and other backends as equal alternatives. Elasticsearch/Kibana is the mandatory primary platform. OpenTelemetry and OpenLineage remain the vendor-neutral ingestion standards. Optional exporters may remain as integrations, but they must not dilute or complicate the default product architecture.
 
-Target Elastic Stack version: **9.4.2**.
+Target Elastic Stack version: **9.5.5**.
 
 ---
 
@@ -1006,7 +1006,7 @@ The foundation is complete only when:
 
 - all previous open issues are closed with traceable disposition;
 - the repository no longer presents itself as a POC/starter;
-- Elasticsearch 9.4.2 is the mandatory production backend;
+- Elasticsearch 9.5.5 is the mandatory production backend;
 - the six-pillar model is implemented in code and docs;
 - OpenTelemetry and OpenLineage ingestion is production hardened;
 - the Elasticsearch data model is versioned and migration controlled;

@@ -56,7 +56,7 @@ blockers:
   first_meaningful_error: null
   root_cause: No active security defect observed on audited main.
   root_cause_class: TEAM0_SECURITY_PLATFORM
-  resolution: Preserve unchanged secured ES 9.4.2 migration, OIDC/JWKS, RBAC and tenant A/B/C assertions and rerun on final exact SHA.
+  resolution: Preserve unchanged secured ES 9.5.5 migration, OIDC/JWKS, RBAC and tenant A/B/C assertions and rerun on final exact SHA.
   evidence_artifact: team-0-security-hardening-evidence
   artifact_id: 13008981762
   artifact_state: retained

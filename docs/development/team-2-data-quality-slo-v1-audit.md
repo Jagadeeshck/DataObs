@@ -10,6 +10,6 @@ Asset, job, contract, and dbt SLOs consume canonical evidence and never evaluate
 
 ## Delivery status and limitations
 
-This commit delivers and unit-tests the canonical model, interval evaluator, numerical safety, missing-evidence policies, exclusions, burn classification, deterministic identity, and Data Product child roll-up. It deliberately adds no Elasticsearch resources because no production repository is present in this slice. API, OCC repository/runtime, Console, browser/axe, Elasticsearch 9.4.2, scale, hosted workflow artifact, and independent verification remain **not implemented/not run**; therefore capability status remains `functional_unvalidated` and no production-readiness claim is made.
+This commit delivers and unit-tests the canonical model, interval evaluator, numerical safety, missing-evidence policies, exclusions, burn classification, deterministic identity, and Data Product child roll-up. It deliberately adds no Elasticsearch resources because no production repository is present in this slice. API, OCC repository/runtime, Console, browser/axe, Elasticsearch 9.5.5, scale, hosted workflow artifact, and independent verification remain **not implemented/not run**; therefore capability status remains `functional_unvalidated` and no production-readiness claim is made.
 
 Security contracts bind tenant/environment and prohibit raw evidence. Rollback is to stop callers of the additive shared model and revert this commit; no stored data or migration needs destructive rollback.

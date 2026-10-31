@@ -8,7 +8,7 @@ Base SHA: `6793b91` (merge of PR #94). The repository had no configured Git remo
 | RunEvent/JobEvent/DatasetEvent | partial legacy RunEvent parsing | Job/Dataset events absent | accept all three stable shapes | unit contract |
 | Unknown facets | no bounded durable contract | mapping explosion risk | preserve within 64 KiB `flattened` field | unit contract |
 | Duplicate/order | no deterministic lifecycle projection | replay and COMPLETE-before-START | canonical SHA-256 event IDs and terminal precedence | unit contract |
-| Job/run/task storage | protocol/model foundation only | durable job-specific resources absent | migration indices, streams and latest transforms | manifest tests; ES 9.4.2 pending |
+| Job/run/task storage | protocol/model foundation only | durable job-specific resources absent | migration indices, streams and latest transforms | manifest tests; ES 9.5.5 pending |
 | Job monitor APIs | shared monitor runtime exists from #94 | job links and runtime endpoints incomplete | reuse v2 monitor definitions; add job link projection | integration pending |
 | Incident/RCA | shared incident/RCA models exist | run evidence correlation incomplete | preserve incident/RCA references; service boundary | integration pending |
 | Spark | instrumentation helpers existed | event-log replay/stage analysis absent | bounded replay reader, aggregation and skew method | unit tests |

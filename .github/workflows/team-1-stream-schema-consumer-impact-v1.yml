@@ -33,7 +33,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       elasticsearch:
-        image: docker.elastic.co/elasticsearch/elasticsearch:9.4.2
+        image: docker.elastic.co/elasticsearch/elasticsearch:9.5.5
         env: {discovery.type: single-node, xpack.security.enabled: 'false'}
         ports: ['9200:9200']
     steps:
@@ -52,7 +52,7 @@ jobs:
     needs: [backend, elasticsearch-9-4-2]
     runs-on: ubuntu-latest
     steps:
-      - run: printf 'producer_sha=%s\nrun=%s\nattempt=%s\nelasticsearch=9.4.2\nterminal_migration=0030_team1_multi_broker_messaging_runtime\n' "$GITHUB_SHA" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" > evidence.txt
+      - run: printf 'producer_sha=%s\nrun=%s\nattempt=%s\nelasticsearch=9.5.5\nterminal_migration=0030_team1_multi_broker_messaging_runtime\n' "$GITHUB_SHA" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" > evidence.txt
       - run: sha256sum evidence.txt > checksums.txt
       - uses: actions/upload-artifact@v4
         with:

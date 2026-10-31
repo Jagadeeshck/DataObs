@@ -10,7 +10,7 @@ Create the referenced Elasticsearch, application, OIDC, scanner and Kafka Secret
 helm upgrade --install dataobs ./helm/dataobs -n dataobs --create-namespace -f helm/dataobs/values-production.yaml
 ```
 
-`values-minimal.yaml`, `values-external-otel.yaml`, and visibly non-production `values-development.yaml` are overlays on defaults. The external cluster must support Elasticsearch 9.4.2 APIs and grant runtime least privilege; the migration identity additionally manages templates, indices/data streams, aliases and mappings. No secret value belongs in values: only Secret names and keys are rendered.
+`values-minimal.yaml`, `values-external-otel.yaml`, and visibly non-production `values-development.yaml` are overlays on defaults. The external cluster must support Elasticsearch 9.5.5 APIs and grant runtime least privilege; the migration identity additionally manages templates, indices/data streams, aliases and mappings. No secret value belongs in values: only Secret names and keys are rendered.
 
 Digests take precedence over tags. NetworkPolicy is enabled and requires a compatible CNI; add explicit egress CIDRs for databases, Kafka, Connect, Schema Registry, OIDC, Elasticsearch and external OTel. API and Console have two replicas, rolling updates, topology configuration, PDBs and optional HPAs. OTel defaults to two replicas. Every worker defaults to one replica; despite leases in pathway/Kafka runtimes, horizontal and rollout-overlap safety is not certified.
 

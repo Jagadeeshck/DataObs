@@ -20,7 +20,7 @@ Released migrations and their checksums are immutable in this sprint.
 
 | Area | Exact-main evidence | State | Sprint 4 disposition |
 | --- | --- | --- | --- |
-| Elasticsearch migrations | Security run 41120485735, artifact 13008981762 | PASS on audited main | ES 9.4.2; first apply pass; second apply pass; 33 released checksums retained; terminal migration 0033. Must rerun on final candidate SHA. |
+| Elasticsearch migrations | Security run 41120485735, artifact 13008981762 | PASS on audited main | ES 9.5.5; first apply pass; second apply pass; 33 released checksums retained; terminal migration 0033. Must rerun on final candidate SHA. |
 | OIDC/JWKS/RBAC/tenant isolation | Security run 41120485735 and IAM run 41120485609 | PASS on audited main | Signed tenant A/B/C isolation, issuer/audience/expiry/JWKS rotation, TLS negative tests, deny-by-default route policy and service identity are covered. Must rerun unchanged on final candidate SHA. |
 | Kind/API startup | Deployment run 41120485485, artifact 13008748014 | FAIL | Migration Job completed and Console became healthy; API crashed because packaged runtime imported release-only `scripts.release.current_terminal_migration`. Runtime now derives terminal migration from `packages.elastic_store.manifest`. |
 | MVP | Run 41120485543, artifact 13007474274 | FAIL | Same packaged API `ModuleNotFoundError: scripts` after migration/seed progress. Covered by the same Team 0 runtime-boundary fix. |

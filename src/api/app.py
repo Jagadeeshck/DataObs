@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import logging
 import time
 import uuid
@@ -62,7 +61,7 @@ from src.api.stream_intelligence_routes import create_stream_intelligence_router
 from src.api.stream_routes import create_stream_router
 from src.config.settings import AppSettings, load_settings
 from src.core.enterprise_blueprint import enterprise_backlog
-from src.core.pillars import PILLAR_REGISTRY, canonical_pillar_value
+from src.core.pillars import PILLAR_REGISTRY
 from src.data_observability.openlineage import OpenLineageValidationError
 from src.data_observability.service import DataObservabilityService, OpenLineageConflictError
 from src.platform_lifecycle import PlatformLifecycleService

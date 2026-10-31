@@ -4,7 +4,7 @@ import csv
 from collections import Counter
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 from src.poc.spark_metrics import metric_doc
 

@@ -7,7 +7,6 @@ the current schema against the last known-good schema stored in Elasticsearch.
 
 from __future__ import annotations
 
-import json
 import logging
 from typing import Any, Dict, List
 

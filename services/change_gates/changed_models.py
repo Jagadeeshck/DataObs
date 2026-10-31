@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from hashlib import sha256
 from typing import Any
 
 from integrations.dbt.contracts import DbtArtifactEnvelope

@@ -16,8 +16,6 @@ from services.data_products.dependency_events import (
     MAX_DEPENDENCIES_PER_PRODUCT,
     DataProductDependencyMutationPlan,
     DataProductDependencyMutationResult,
-    DataProductDependencyOperation,
-    DataProductDependencyOperationResult,
     DependencyOperationPending,
     DependencyResultInconsistent,
     canonical_upstream_ids,

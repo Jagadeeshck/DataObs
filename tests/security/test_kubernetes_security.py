@@ -3,8 +3,6 @@ import json
 import sys
 from pathlib import Path
 
-import yaml
-
 sys.path.insert(0, str(Path(__file__).parents[2] / "scripts/security"))
 from validate_kubernetes_contracts import evidence, exceptions, scan
 from validate_kubernetes_images import check_image

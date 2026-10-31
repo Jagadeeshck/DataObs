@@ -1,11 +1,10 @@
-import asyncio
 import os
 from datetime import datetime, timezone
 from types import SimpleNamespace
 
 import pytest
 
-from integrations.aws.cloudwatch import KINESIS_METRICS, SQS_METRICS, CloudWatchAdapter, metric_definition
+from integrations.aws.cloudwatch import SQS_METRICS, CloudWatchAdapter, metric_definition
 from integrations.aws.configuration import parse_configuration
 from integrations.aws.services import kinesis, sqs
 from packages.collectors.sdk import EvidenceState, IntegrationContext, PartialFailure

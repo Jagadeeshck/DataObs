@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, Mapping
+from typing import Mapping
 
 from packages.collectors.sdk import ResourceObservation
 

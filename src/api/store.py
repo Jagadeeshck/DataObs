@@ -8,7 +8,6 @@ compatibility stores.
 from __future__ import annotations
 
 import logging
-import os
 import uuid
 from collections import deque
 from datetime import datetime, timezone
@@ -408,7 +407,6 @@ class LineageStore:
         return affected
 
 
-from src.api.es_store import get_store  # noqa: E402
 
 
 # Data Observability MVP methods are attached dynamically to preserve the legacy store surface.

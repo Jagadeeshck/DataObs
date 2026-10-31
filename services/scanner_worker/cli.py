@@ -31,7 +31,7 @@ def load_config(path):
 
 
 def _json(obj):
-    if is_dataclass(obj):
+    if is_dataclass(obj) and not isinstance(obj, type):
         return asdict(obj)
     if hasattr(obj, "__dict__"):
         return obj.__dict__

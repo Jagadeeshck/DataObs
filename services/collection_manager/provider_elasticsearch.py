@@ -8,7 +8,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Sequence, cast
 
-from packages.collectors.sdk import CollectionCheckpoint, IntegrationConfiguration, IntegrationContext, PaginationCursor
+from packages.collectors.sdk import CollectionCheckpoint, IntegrationContext, PaginationCursor
 from packages.collectors.sdk.errors import CheckpointConflictError, InternalCollectorError
 
 CHECKPOINT_INDEX = "dataobs-provider-checkpoints-v1"

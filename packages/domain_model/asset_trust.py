@@ -6,7 +6,7 @@ from datetime import datetime
 from hashlib import sha256
 from typing import Literal
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import Field, model_validator
 
 from .base import DomainModel, utc_now
 

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from dataclasses import asdict
 from typing import Protocol
 
 from .models import LineageEdge, SchemaVersion

@@ -9,12 +9,11 @@ from typing import Literal, Sequence
 from packages.domain_model.base import utc_now
 from packages.domain_model.data_product import (
     DataProductMembership,
-    DataProductMembershipDecision,
     DataProductMembershipGenerationResult,
     DataProductMembershipProposal,
 )
 from services.data_products.events import ProductConsistencyError
-from services.data_products.idempotency import hash_key, new_record, request_fingerprint, scoped_record_id
+from services.data_products.idempotency import new_record, request_fingerprint, scoped_record_id
 from services.data_products.membership_events import MembershipMutation
 from services.data_products.reconciliation import (
     DataProductOperationService,

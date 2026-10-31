@@ -20,7 +20,7 @@ import types
 # Ensure the integration directory is importable without install.
 # ---------------------------------------------------------------------------
 from pathlib import Path
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 

@@ -1,1 +1,1 @@
-from .service import IncidentManagerService
+from .service import IncidentManagerService  # noqa: F401

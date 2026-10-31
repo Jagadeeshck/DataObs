@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Deterministically render capability documentation."""
 
-from collections import Counter, defaultdict
+from collections import Counter
 from pathlib import Path
 
 import yaml

@@ -32,6 +32,7 @@ COPY --from=builder /install /usr/local
 COPY src ./src
 COPY packages ./packages
 COPY services ./services
+COPY integrations ./integrations
 COPY config ./config
 # Platform lifecycle routes import the release migration report at API startup.
 # Keep the runtime surface narrow by copying only the required release helpers.

@@ -40,12 +40,16 @@ def test_generic_ci_summary_is_exact_sha_and_digest_bound(tmp_path: Path, monkey
         "errors": [],
     }
     (tmp_path / "job-results.json").write_text(json.dumps(results))
+    extra = tmp_path / "production-image-sboms"
+    extra.mkdir()
+    (extra / "sbom-index.json").write_text('{"status":"pass"}')
 
     manifest = build(tmp_path, "kafka", sha)
 
     assert manifest["target_sha"] == sha
     assert manifest["status"] == "pass"
     assert set(manifest["required_jobs"]) == {"contracts", "kafka"}
+    assert any(item["path"] == "production-image-sboms/sbom-index.json" for item in manifest["artifact_inventory"])
     assert verify(tmp_path, sha) == []
 
     (tmp_path / "kafka" / "results.xml").write_text(

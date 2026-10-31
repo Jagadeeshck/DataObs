@@ -793,8 +793,8 @@ jobs:
           python scripts/certification/validate_job_results.py "$REQUESTED_SCOPE" "$JOB_RESULTS" | tee artifacts/job-results.json
           python scripts/certification/redact_artifacts.py artifacts
           python scripts/certification/verify_artifacts.py artifacts --sentinels-only
-          python scripts/certification/build_manifest.py artifacts
-          python scripts/certification/verify_artifacts.py artifacts
+          python scripts/certification/ci_summary_manifest.py build artifacts --scope "$REQUESTED_SCOPE" --sha "$GITHUB_SHA"
+          python scripts/certification/ci_summary_manifest.py verify artifacts --expected-sha "$GITHUB_SHA"
       - uses: actions/upload-artifact@v4
         with: {name: certification-summary, path: artifacts, retention-days: 30}
 

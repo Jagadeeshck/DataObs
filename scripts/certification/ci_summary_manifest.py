@@ -79,7 +79,13 @@ def _junit(path: Path) -> dict[str, Any] | None:
 
 
 def _inventory(root: Path, required_jobs: set[str]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    files = _required_files(root, required_jobs)
+    _required_files(root, required_jobs)
+    required_prefixes = {ARTIFACT_DIRS[job] + "/" for job in required_jobs}
+    files = sorted(
+        path
+        for path in root.rglob("*")
+        if path.is_file() and path.name != MANIFEST
+    )
     inventory: list[dict[str, Any]] = []
     junit: list[dict[str, Any]] = []
     for path in files:
@@ -101,9 +107,10 @@ def _inventory(root: Path, required_jobs: set[str]) -> tuple[list[dict[str, Any]
                 "sha256": hashlib.sha256(raw).hexdigest(),
             }
         )
-        summary = _junit(path)
-        if summary is not None:
-            junit.append({"path": relative, **summary})
+        if any(relative.startswith(prefix) for prefix in required_prefixes):
+            summary = _junit(path)
+            if summary is not None:
+                junit.append({"path": relative, **summary})
     for job in required_jobs - {"browser"}:
         prefix = ARTIFACT_DIRS[job] + "/"
         if not any(item["path"].startswith(prefix) for item in junit):

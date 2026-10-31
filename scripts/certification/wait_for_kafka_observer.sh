@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 deadline=$((SECONDS + ${CERTIFICATION_READY_TIMEOUT_SECONDS:-300}))
-compose=(docker compose -f docker-compose.certification.yml --profile cert-kafka)
+compose=(docker compose -f docker-compose.certification.yml --profile cert-kafka --profile kafka-observer)
+${compose[@]} up -d --build kafka-observer
 while (( SECONDS < deadline )); do
   container="$(${compose[@]} ps -q kafka-observer)"
   if [[ -z "$container" ]] || [[ "$(docker inspect -f '{{.State.Running}}' "$container" 2>/dev/null || true)" != true ]]; then

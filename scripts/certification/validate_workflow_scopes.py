@@ -58,8 +58,12 @@ def validate(text: str) -> list[str]:
         if "if: always()" not in body:
             errors.append(f"{job_id} teardown must use if: always()")
     kafka = _job(text, JOB_IDS["kafka"])
+    migration = kafka.find("./scripts/certification/apply_migrations.sh")
+    observer = kafka.find("./scripts/certification/wait_for_kafka_observer.sh")
     if not (0 <= kafka.find("create_topics.sh") < kafka.find("Run live assertions")):
         errors.append("Kafka setup must precede Kafka tests")
+    if not (0 <= migration < observer < kafka.find("Run live assertions")):
+        errors.append("Kafka observer must start only after migrations and before live assertions")
     browser = _job(text, JOB_IDS["browser"])
     if "Start production Console stack" not in browser:
         errors.append("browser job does not start production Console")

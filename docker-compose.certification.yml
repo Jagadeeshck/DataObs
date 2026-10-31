@@ -135,7 +135,7 @@ services:
     depends_on: [kafka-1, kafka-2, kafka-3]
   kafka-observer:
     build: {context: ., dockerfile: Dockerfile.kafka-observer}
-    profiles: [kafka, cert-kafka, full]
+    profiles: [kafka-observer]
     command: [run, --config, /app/certification/config/kafka-observer.yaml]
     volumes: [./certification/config/kafka-observer.yaml:/app/certification/config/kafka-observer.yaml:ro]
     environment: {ELASTICSEARCH_URL: http://elasticsearch:9200}

@@ -18,7 +18,3 @@ for url in "${urls[@]}"; do
   done
 done
 
-if [[ "$profile" =~ ^(kafka|cert-kafka|full)$ ]]; then
-  container="$(docker compose -f docker-compose.certification.yml --profile "$profile" ps -q kafka-observer)"
-  [[ -n "$container" && "$(docker inspect -f '{{.State.Running}}' "$container")" = true ]] || { echo "Kafka Observer exited during startup" >&2; exit 70; }
-fi

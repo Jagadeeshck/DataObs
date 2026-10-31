@@ -107,7 +107,9 @@ def test_backup_restore_evidence_validator_is_fail_closed(tmp_path: Path):
     junit = tmp_path / "report.xml"
     report = tmp_path / "report.json"
     junit.write_text(
-        "<testsuite tests='1' failures='0'><testcase name='test_beta_backup_restore_exact_state_and_tenant_isolation'/></testsuite>"
+        "<testsuite tests='1' failures='0'>"
+        "<testcase name='test_beta_backup_restore_exact_state_and_tenant_isolation'/>"
+        "</testsuite>"
     )
     good = {
         "commit_sha": certification_commit_sha(),
@@ -148,7 +150,11 @@ def test_backup_restore_evidence_validator_is_fail_closed(tmp_path: Path):
     for xml in [
         "<broken",
         "<testsuite tests='0'/>",
-        "<testsuite><testcase name='test_beta_backup_restore_exact_state_and_tenant_isolation'><skipped/></testcase></testsuite>",
+        (
+            "<testsuite>"
+            "<testcase name='test_beta_backup_restore_exact_state_and_tenant_isolation'><skipped/></testcase>"
+            "</testsuite>"
+        ),
     ]:
         junit.write_text(xml)
         with pytest.raises(Exception):

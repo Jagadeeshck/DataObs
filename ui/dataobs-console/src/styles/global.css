@@ -2610,7 +2610,6 @@ progress {
   }
 }
 
-
 /* Team 5 Sprint 4 browser certification closure. */
 .data-status a {
   color: var(--cyan);
@@ -2653,5 +2652,16 @@ progress {
 
   .refresh-controls {
     flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 560px) {
+  .hero-metrics {
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .hero-metrics > div {
+    min-width: 0;
   }
 }

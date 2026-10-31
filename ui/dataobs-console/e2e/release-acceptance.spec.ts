@@ -76,7 +76,9 @@ test("stale and unavailable API responses remain understandable", async ({
   );
   await page.goto("/");
   await expect(
-    page.getByText("Operational evidence is unavailable.", { exact: true }),
+    page
+      .getByRole("status")
+      .filter({ hasText: "Operational evidence is unavailable." }),
   ).toBeVisible();
   await expect(
     page.getByRole("navigation", { name: "Product navigation" }),

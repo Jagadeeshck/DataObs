@@ -1,4 +1,3 @@
-
 import pytest
 
 from services.product_query.stream_pagination import CursorCodec, CursorState, InvalidCursor

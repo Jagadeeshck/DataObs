@@ -81,11 +81,7 @@ def _junit(path: Path) -> dict[str, Any] | None:
 def _inventory(root: Path, required_jobs: set[str]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     _required_files(root, required_jobs)
     required_prefixes = {ARTIFACT_DIRS[job] + "/" for job in required_jobs}
-    files = sorted(
-        path
-        for path in root.rglob("*")
-        if path.is_file() and path.name != MANIFEST
-    )
+    files = sorted(path for path in root.rglob("*") if path.is_file() and path.name != MANIFEST)
     inventory: list[dict[str, Any]] = []
     junit: list[dict[str, Any]] = []
     for path in files:

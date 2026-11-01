@@ -1,4 +1,3 @@
-
 from .base import ProductEntity
 from .identity import deterministic_id
 

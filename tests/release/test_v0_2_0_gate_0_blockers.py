@@ -225,7 +225,7 @@ def test_packaged_runtimes_do_not_depend_on_release_script_modules():
 
 def test_certification_migrations_default_to_published_elasticsearch_endpoint():
     script = (ROOT / "scripts/certification/apply_migrations.sh").read_text()
-    assert 'ELASTICSEARCH_URL:-http://127.0.0.1:19200' in script
+    assert "ELASTICSEARCH_URL:-http://127.0.0.1:19200" in script
     workflow = (ROOT / ".github/workflows/ci.yml").read_text()
     assert "./scripts/certification/apply_migrations.sh" in workflow
     assert "./scripts/certification/apply_migrations.sh\n          ./bin/dataobs elastic status" not in workflow

@@ -407,8 +407,6 @@ class LineageStore:
         return affected
 
 
-
-
 # Data Observability MVP methods are attached dynamically to preserve the legacy store surface.
 def _matches(doc: Dict[str, Any], filters: Dict[str, Any]) -> bool:
     q = filters.get("q")

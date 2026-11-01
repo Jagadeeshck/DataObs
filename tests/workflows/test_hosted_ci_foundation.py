@@ -59,7 +59,7 @@ def test_console_uses_pinned_toolchain_and_generated_diff_gate():
 
 
 def test_elasticsearch_client_pin_is_published_and_checked_for_resolution():
-    requirement = "elasticsearch[async]==9.4.1"
+    requirement = "elasticsearch[async]==9.5.0"
     assert requirement in (ROOT / "requirements.txt").read_text()
     assert requirement in (ROOT / "requirements-poc.txt").read_text()
     backend = (WORKFLOWS / "reusable-backend-validation.yml").read_text()

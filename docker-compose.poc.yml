@@ -18,8 +18,8 @@
 #     "latest", which Fleet's splitPkgKey rejects.
 #  4. Spark/pipeline data is bulk-indexed into well-defined POC indices
 #     (dataobs-poc-*) with explicit mappings via es-setup, plus the
-#     data-observability indices used by Soda/Monte-Carlo/Acceldata
-#     style monitors (assets/quality/freshness/volume/schema/lineage/alerts).
+#     DataObs observability indices for assets, quality, freshness,
+#     volume, schema, lineage and alerts.
 #  5. Verification script `scripts/verify_poc.sh` + Make-style helpers
 #     so the user can confirm indices, schemas and document counts.
 # ============================================================

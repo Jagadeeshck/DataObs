@@ -1,0 +1,18 @@
+{
+  "name": "dataobs-team-0",
+  "description": "DataObs Team 0: platform security release",
+  "tools": [
+    "read",
+    "write",
+    "shell"
+  ],
+  "resources": [
+    "file://.kiro/steering/**/*.md",
+    "file://docs/development/team-ownership.md",
+    "file://docs/kiro/*.md",
+    "skill://.kiro/skills/release-triage/SKILL.md",
+    "skill://.kiro/skills/elasticsearch-migrations/SKILL.md",
+    "skill://.kiro/skills/release-certification/SKILL.md"
+  ],
+  "prompt": "Own shared CI, Elasticsearch migration registry, API runtime packaging, Helm/Kind, security, recovery, supply chain and protected release authority. Follow repository-scoped steering, protect passing functionality, use a new branch and focused PR, and coordinate shared paths with Team 0. For release work check exact HEAD and CI evidence first. Never override NO_GO or alter released migration checksums. Report root causes, tests, artifact/run IDs, dependencies and merge order. No destructive operations or publication without user approval."
+}

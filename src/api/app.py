@@ -293,7 +293,7 @@ def _paginate(items: List[Dict[str, Any]], limit: int, offset: int) -> Dict[str,
 def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle | None = None) -> FastAPI:
     resolved_settings = settings or settings_from_env()
     resolved_bundle = store_bundle or create_store_bundle(resolved_settings)
-    app = FastAPI(title="DataObs API", version="1.1.0")
+    app = FastAPI(title="DataObs API", version="1.0.0")
     validate_policy()
     cors = resolved_settings.cors
     app.add_middleware(

@@ -1,0 +1,30 @@
+name: Team 0 Layer B ML anomaly migrations v1
+on:
+  pull_request:
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  layer-b-migration-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.13'}
+      - run: pip install -r requirements.txt pytest pyyaml jsonschema
+      - name: Migration graph, terminal leaf and numeric collision guard
+        run: |
+          python scripts/release/validate_migration_graph.py --output migration-graph-report.json
+          python scripts/release/current_terminal_migration.py --json
+      - name: Released chain immutability (0001-0033 checksums unchanged)
+        run: python scripts/check_migration_immutability.py --base-ref "$(python scripts/resolve_ci_base.py)"
+      - name: Helm and release-manifest terminal synchronization
+        run: python scripts/release/check_helm_migration_consistency.py
+      - name: Helm values schema is valid Draft 7
+        run: python -c "import json; from jsonschema import Draft7Validator; Draft7Validator.check_schema(json.load(open('helm/dataobs/values.schema.json')))"
+      - name: Active production readiness is synchronized
+        run: python scripts/release/render_current_production_readiness.py --check
+      - name: Additive migration reconciliation tests
+        run: pytest -q tests/elastic_store/test_layer_b_additive_migrations.py tests/elastic_store/test_migrations.py tests/elastic_store/test_schema_runtime_migration_reconciliation.py tests/release/test_beta_rc1_release_contract.py
+      - name: Scaffold-only certification note (no GO authority)
+        run: echo "Scaffold gate. Not a release GO, not a supported/healthy claim. Terminal 0035 additive on 0033."

@@ -1201,7 +1201,7 @@
           }
         },
         "terminalMigration": {
-          "const": "0033_team1_stream_schema_intelligence_runtime"
+          "const": "0035_asset_semantic_search"
         }
       }
     },

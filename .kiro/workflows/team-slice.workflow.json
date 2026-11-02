@@ -1,0 +1,22 @@
+{
+  "name": "team-slice",
+  "description": "Run one DataObs team on a single owned work slice: branch, implement minimal change with tests, verify, open a focused PR, report the handoff contract. Does not merge. Cheapest unit of parallel delivery.",
+  "inputs": {
+    "team_agent": {
+      "description": "The team agent to run, e.g. dataobs-team-1, dataobs-team-2, dataobs-team-5.",
+      "required": true
+    },
+    "task": {
+      "description": "The concrete owned task with exit criteria and the exact files/paths in scope.",
+      "required": true
+    }
+  },
+  "nodes": [
+    {
+      "id": "deliver-slice",
+      "type": "agent",
+      "agent": "${team_agent}",
+      "prompt": "Deliver this owned slice: ${task}\n\nBranch <team>/<short-topic> from latest main. Implement the minimal owned change with the smallest proving tests. Verify with the smallest targeted gate (ruff/black or pnpm typecheck/lint/test as applicable) — do not re-run gates that already pass. Commit to the branch and open one focused PR. Report the handoff contract: owner, exact files, root cause/contract, tests + result, evidence, shared-path impact, dependencies, merge order. Do NOT merge, publish, or edit other teams' files. Follow credit-efficiency and parallel-delivery steering."
+    }
+  ]
+}

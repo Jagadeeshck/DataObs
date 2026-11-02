@@ -1394,6 +1394,15 @@
             "title": "Creation Source",
             "type": "string"
           },
+          "detection_mode": {
+            "default": "manual",
+            "enum": [
+              "manual",
+              "auto"
+            ],
+            "title": "Detection Mode",
+            "type": "string"
+          },
           "environment": {
             "default": "default",
             "title": "Environment",

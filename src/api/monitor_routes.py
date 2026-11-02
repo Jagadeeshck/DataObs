@@ -150,6 +150,11 @@ def repo(request: Request):
     return value
 
 
+def ml_registry(request: Request):
+    """Optional ML detector registry; None on the memory backend (no ML persistence)."""
+    return getattr(request.app.state, "ml_detector_registry", None)
+
+
 def scope(request):
     return request.state.tenant_id, getattr(request.app.state.settings, "environment", "default")
 
@@ -300,6 +305,11 @@ def create_monitor(body: MonitorDefinition, request: Request, response: Response
         raise HTTPException(422, str(exc)) from exc
     except Exception as exc:
         translate(exc)
+    # Provision a native ES ML detector when the monitor opts into auto detection.
+    # Never fail the create on ML errors — the registry records honest provisioning state.
+    registry = ml_registry(request)
+    if value.detection_mode == "auto" and registry is not None:
+        registry.register(value)
     response.headers["ETag"] = value.etag
     return value
 
@@ -377,7 +387,13 @@ for prefix in ("/monitors", "/quality/monitors"):
 def archive(monitor_id: str, request: Request, if_match: str | None = Header(None)):
     if not if_match:
         raise HTTPException(428, "If-Match is required")
-    return repo(request).archive_monitor(*scope(request), monitor_id, expected_etag=if_match)
+    tenant, environment = scope(request)
+    result = repo(request).archive_monitor(tenant, environment, monitor_id, expected_etag=if_match)
+    # Tear down any bound ML detector. Idempotent; never blocks archival.
+    registry = ml_registry(request)
+    if registry is not None:
+        registry.deregister(tenant, environment, monitor_id)
+    return result
 
 
 @router.get("/quality/monitors/{monitor_id}/history")

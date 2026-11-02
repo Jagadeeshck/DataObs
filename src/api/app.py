@@ -344,6 +344,14 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
         if resolved_settings.store_backend.lower() == "elasticsearch"
         else None
     )
+    # Asset catalog search over the 0035 projection. ES backend only; None otherwise
+    # so the endpoint reports the search surface as unavailable rather than faking results.
+    if resolved_settings.store_backend.lower() == "elasticsearch":
+        from services.product_query.asset_search_repository import AssetSearchRepository
+
+        app.state.asset_search_repository = AssetSearchRepository(make_es_client(resolved_settings))
+    else:
+        app.state.asset_search_repository = None
     app.state.monitor_repository = (
         ElasticsearchMonitorRepository(make_es_client(resolved_settings))
         if resolved_settings.store_backend.lower() == "elasticsearch"
@@ -1381,6 +1389,54 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
             offset=offset,
         )
         return {"assets": assets, "count": len(assets)}
+
+    @app.get("/api/v1/assets/search", dependencies=[Depends(require_auth)])
+    async def search_asset_catalog(
+        request: Request,
+        q: str | None = None,
+        asset_type: str | None = None,
+        owner_team: str | None = None,
+        classification: str | None = None,
+        business_service: str | None = None,
+        limit: int = Query(25, ge=1, le=100),
+        offset: int = Query(0, ge=0),
+    ) -> Dict[str, Any]:
+        """Keyword catalog search over the 0035 asset-search projection.
+
+        Tenant/environment-scoped. Honest states: data_status is complete (incl. a
+        measured zero), unavailable (projection absent), or error. Never fabricates
+        results when the search surface is missing.
+        """
+        repository = getattr(request.app.state, "asset_search_repository", None)
+        environment = getattr(request.app.state.settings, "environment", "default")
+        if repository is None:
+            return {
+                "items": [],
+                "total": 0,
+                "data_status": "unavailable",
+                "facets": {},
+                "warnings": ["asset search is not configured on this backend"],
+            }
+        result = repository.search(
+            request.state.tenant_id,
+            environment,
+            text=q,
+            filters={
+                "asset_type": asset_type,
+                "owner_team": owner_team,
+                "classification": classification,
+                "business_service": business_service,
+            },
+            limit=limit,
+            offset=offset,
+        )
+        return {
+            "items": result.items,
+            "total": result.total,
+            "data_status": result.data_status,
+            "facets": result.facets,
+            "warnings": result.warnings,
+        }
 
     @app.get("/api/data-observability/assets/{asset_id:path}/lineage", dependencies=[Depends(require_auth)])
     async def dataobs_get_lineage(

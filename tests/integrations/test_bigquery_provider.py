@@ -1,4 +1,3 @@
-
 import pytest
 
 from integrations.bigquery.authentication import parse_authentication

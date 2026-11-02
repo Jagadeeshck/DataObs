@@ -158,7 +158,7 @@ In Kibana:
 * **Observability → Logs / Infrastructure** for container + host
   signals.
 * **Discover → `dataobs-quality` / `dataobs-lineage` / etc.** for the
-  Soda/Monte-Carlo/Acceldata-style data observability docs.
+  DataObs data observability indices.
 
 ## Optional: standalone OTel Collector (`--profile otel`)
 

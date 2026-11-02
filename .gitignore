@@ -5,9 +5,11 @@
 #   .env                   — top-level local
 #   .env.local             — top-level local override
 #   .env.*.local           — per-stack local override (e.g. .env.poc.local)
+#   .env.mvp               — local MVP stack credentials (NEVER commit)
 .env
 .env.local
 .env.*.local
+.env.mvp
 *.env
 config/dataobs.yaml
 certification/runtime-secrets/*
@@ -68,3 +70,10 @@ ui/dataobs-console/playwright-report/
 .DS_Store
 Thumbs.db
 /migration-graph-report.json
+
+# macOS / editor duplicate-file artifacts (e.g. "foo 2.py", "bar 2.yml").
+# These are accidental copies and must never be committed.
+* [0-9].py
+* [0-9].yml
+* [0-9].yaml
+* [0-9].md

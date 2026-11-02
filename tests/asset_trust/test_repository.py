@@ -1,4 +1,3 @@
-
 import pytest
 
 from packages.domain_model.asset_trust import AssetTrustPolicy

@@ -1,22 +1,53 @@
-# Requirements — first supported DataObs release (week ending 2026-11-06)
+# Requirements — DataObs v1.0.0 first supported release (week ending 2026-11-06)
 
 ## Purpose
-Deliver the smallest evidence-backed and supportable DataObs distribution while preserving the six-pillar roadmap. Current v1.0.0 / ES 9.5.5 source announcement is not itself a successful release.
 
-### Functional requirements
-- R1: Secure, tenant-scoped API and Console package can be installed, started, and used via one documented supported deployment profile.
-- R2: First release demonstrates an end-to-end observed signal → context → finding → canonical incident → authorized retrieval journey. Include Streams/Pathways, Jobs/Run, Quality, Lineage and Data Products only as the bounded certified matrix allows.
-- R3: Missing/unknown/stale/partial/zero evidence is accurately reported and traceable to source.
-- R4: Provider support statements match actual packaged and hosted-certified runtimes, not registration or mocks.
-- R5: Production safety: OIDC/JWKS/RBAC, tenant/environment isolation, least privilege, audited and approval-bound actions.
+Deliver the smallest evidence-backed, supportable DataObs distribution while establishing
+the Elastic Enterprise foundation for post-release capability layers. Current v1.0.0 /
+ES 9.5.5 source declaration is not itself a successful release.
 
-### Nonfunctional requirements
-- R6: Exact-SHA complete CI: shared checks, real ES migration (first and repeat), Kubernetes/Helm smoke, Compose MVP, destructive backup/restore, browser/a11y, security, SBOM/signatures/provenance.
-- R7: One internally consistent version and support matrix, including Elasticsearch and Python client compatibility.
-- R8: Independently verified artifact digest/run/SHA/attempt, supported platform, security PASS and protected authority GO before publication.
-- R9: No edits to released migrations or downgrades of security/mandatory checks.
+## Platform and license
 
-### Acceptance
-Given a clean supported environment, when operator follows release install docs, then API+Console start, safe authenticated tenant flows work, migrations repeat safely, E2E journeys are correct, destructive restore succeeds, browser/a11y suites pass and the release authority produces independently verified GO.
+DataObs v1.0.0 targets **Elasticsearch 9.5.5 Enterprise** license. All `xpack.*`
+features (ML, Watcher, FLS, CCS, Transform, ESRE, Fleet) are available in the target
+environment. Local development uses the 30-day trial license.
 
-**If any acceptance fails: NO_GO; an internal evaluation build may be documented but not called a supported release.**
+## Functional requirements
+
+- **R1**: Secure, tenant-scoped API and Console can be installed, started, and used via
+  one documented supported deployment profile (Helm on Kubernetes with external ES, and
+  Docker Compose MVP for local).
+- **R2**: End-to-end observed signal journey: quality check → OTel → Collector → ES →
+  finding → deduplicated incident → authorized retrieval.
+- **R3**: Streams/Pathways, Jobs/Run, Data Products included only within the certified
+  matrix — not claimed beyond hosted-evidence scope.
+- **R4**: Missing/unknown/stale/partial/zero evidence accurately reported and traceable.
+- **R5**: Provider support statements match actual packaged and certified runtimes only.
+- **R6**: Production safety: OIDC/JWKS/RBAC, tenant/environment isolation enforced at
+  API and Elasticsearch layers, least privilege, approval-bound notifications.
+
+## Non-functional requirements
+
+- **R7**: Exact-SHA complete CI: shared checks, real ES 9.5.5 migration (first and
+  repeat), Kubernetes/Helm smoke, Compose MVP clean start, destructive backup/restore,
+  browser/a11y, security, SBOM/signatures/provenance.
+- **R8**: One consistent version matrix: DataObs 1.0.0, ES/Kibana 9.5.5,
+  elasticsearch[async]==9.5.0, Helm chart 1.0.0.
+- **R9**: Independently verified artifact digest/run/SHA, supported platform, security
+  PASS, and protected authority GO before publication.
+- **R10**: No competitor product names in any public-facing file (code, docs, comments,
+  tests, configs). Internal references live in `.kiro/strategy/` only.
+- **R11**: Elastic Enterprise features (ML, Watcher, etc.) documented in
+  `.kiro/strategy/elastic-enterprise-features.md` before implementation.
+
+## Acceptance criteria
+
+Given a clean supported environment, when operator follows `RELEASE.md` install docs:
+- API and Console start cleanly, migrations apply safely on repeat runs
+- Authenticated tenant flows work (OIDC → RBAC → scoped data)
+- E2E quality signal path produces a findable incident
+- Destructive restore recovers to identical state
+- Browser/a11y suites pass (zero serious/critical axe violations)
+- Release authority returns GO with verified artifacts
+
+**Any acceptance failure = NO_GO.**

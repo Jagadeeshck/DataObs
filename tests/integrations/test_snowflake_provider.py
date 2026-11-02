@@ -1,4 +1,3 @@
-
 import pytest
 
 from integrations.snowflake.configuration import parse_configuration

@@ -1,5 +1,5 @@
 """
-Monte Carlo-style automated anomaly detection on metric histograms.
+Automated anomaly detection on metric histograms.
 
 Uses bootstrap confidence intervals and histogram bucket drift to detect
 anomalies in DataObs quality metric time series without manual thresholds.

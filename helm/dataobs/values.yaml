@@ -85,7 +85,7 @@ api:
   replicaCount: 2
   image:
     repository: jagadeeshck/dataobs-api
-    tag: 0.2.0
+    tag: 1.0.0
     digest: ''
     pullPolicy: IfNotPresent
   resources:
@@ -186,7 +186,7 @@ console:
   replicaCount: 2
   image:
     repository: jagadeeshck/dataobs-console
-    tag: 0.2.0
+    tag: 1.0.0
     digest: ''
     pullPolicy: IfNotPresent
   resources:
@@ -214,7 +214,7 @@ console:
   observability:
     enabled: false
     serviceName: dataobs-console
-    serviceVersion: 0.2.0
+    serviceVersion: 1.0.0
     deploymentEnvironment: unknown
     otlpHttpEndpoint: /otel/v1/traces
     traceSampleRatio: 0.1
@@ -274,7 +274,7 @@ qualityWorker:
   replicaCount: 1
   image:
     repository: jagadeeshck/dataobs-quality-worker
-    tag: 0.2.0
+    tag: 1.0.0
     digest: ''
     pullPolicy: IfNotPresent
   resources:
@@ -307,7 +307,7 @@ scannerWorker:
   replicaCount: 1
   image:
     repository: jagadeeshck/dataobs-scanner-worker
-    tag: 0.2.0
+    tag: 1.0.0
     digest: ''
     pullPolicy: IfNotPresent
   resources:
@@ -351,7 +351,7 @@ monitorRuntime:
   replicaCount: 1
   image:
     repository: jagadeeshck/dataobs-monitor-runtime
-    tag: 0.2.0
+    tag: 1.0.0
     digest: ''
     pullPolicy: IfNotPresent
   resources:
@@ -385,7 +385,7 @@ pathwayWorker:
   replicaCount: 1
   image:
     repository: jagadeeshck/dataobs-pathway-worker
-    tag: 0.2.0
+    tag: 1.0.0
     digest: ''
     pullPolicy: IfNotPresent
   resources:
@@ -419,7 +419,7 @@ kafkaObserver:
   replicaCount: 1
   image:
     repository: jagadeeshck/dataobs-kafka-observer
-    tag: 0.2.0
+    tag: 1.0.0
     digest: ''
     pullPolicy: IfNotPresent
   resources:
@@ -471,7 +471,7 @@ otelCollector:
   replicaCount: 2
   image:
     repository: otel/opentelemetry-collector-contrib
-    tag: 0.2.0
+    tag: 1.0.0
     digest: ''
     pullPolicy: IfNotPresent
   resources:
@@ -512,7 +512,7 @@ migrationJob:
   enabled: true
   image:
     repository: jagadeeshck/dataobs-api
-    tag: 0.2.0
+    tag: 1.0.0
     digest: ''
     pullPolicy: IfNotPresent
   command:

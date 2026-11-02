@@ -1,4 +1,3 @@
-
 import pytest
 
 from integrations.databricks.configuration import parse_configuration, validate_workspace_host

@@ -1,8 +1,8 @@
 """
 Data-observability document emitter for the POC pipeline.
 
-Translates the patterns from Soda, Monte Carlo and Acceldata into a small
-set of Elasticsearch indices the user can browse in Kibana Discover:
+Emits structured documents into Elasticsearch indices covering the core
+DataObs observability dimensions:
 
   dataobs-assets       — data asset catalog entries
   dataobs-quality      — quality / contract check results

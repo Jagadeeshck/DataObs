@@ -1,4 +1,3 @@
-
 from ..normalisation import observation, resource_id, safe, value
 from ..pagination import bounded
 

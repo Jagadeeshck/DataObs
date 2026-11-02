@@ -32,8 +32,9 @@ elasticsearch:
   # APM / observability indices (auto-created by Elastic APM Server)
   apm_traces_index: traces-apm-*
   apm_metrics_index: metrics-apm-*
-  # Data-observability indices (Soda / Monte Carlo / Acceldata patterns).
-  # See config/elasticsearch/poc-templates.json for the full mappings.
+  # Data-observability indices used by DataObs quality, freshness,
+  # volume, schema and lineage monitors. See config/elasticsearch/poc-templates.json
+  # for the full mappings.
   indices:
     raw:          dataobs-poc-raw
     curated:      dataobs-poc-curated

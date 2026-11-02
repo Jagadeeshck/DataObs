@@ -4,7 +4,7 @@
 * **Assessed main source:** `c3d3dfe63b2d8227612dc867988db268c8b7424f`
 * **Candidate frozen:** no; current HEAD assessment is emitted in the Gate 0 workflow artifact
 * **Terminal migration:** `0033_team1_stream_schema_intelligence_runtime`
-* **Application / chart:** `0.2.0` / `0.2.0`
+* **Application / chart:** `1.0.0` / `1.0.0`
 * **Release decision:** **NO_GO**
 * **Supported platforms:** none (`supported: []`)
 

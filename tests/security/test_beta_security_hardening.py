@@ -1,4 +1,3 @@
-
 import pytest
 
 from services.security.audit_repository import SECURITY_EVENT_DATA_STREAM

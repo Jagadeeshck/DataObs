@@ -1,4 +1,3 @@
-
 import pytest
 
 from packages.pathways.investigation import (

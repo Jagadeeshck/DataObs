@@ -80,6 +80,36 @@ class ElasticsearchMLManager:
             },
         )
 
+    def stop_job(self, job_id: str) -> None:
+        """Stop the datafeed and close the job. Idempotent and tolerant."""
+
+        datafeed_id = f"datafeed-{job_id}"
+        try:
+            self.es.ml.stop_datafeed(datafeed_id=datafeed_id, force=True)
+        except Exception:
+            # Datafeed may already be stopped or absent; closing the job is what matters.
+            pass
+        self.es.ml.close_job(job_id=job_id, force=True)
+
+    def delete_job(self, job_id: str) -> None:
+        """Fully remove a job and its datafeed. Used on monitor delete/disable.
+
+        Stops the datafeed first (required before deletion), then deletes the
+        datafeed and the job. Tolerant of partially-created resources so that
+        monitor teardown never fails on an already-absent job.
+        """
+
+        datafeed_id = f"datafeed-{job_id}"
+        try:
+            self.es.ml.stop_datafeed(datafeed_id=datafeed_id, force=True)
+        except Exception:
+            pass
+        try:
+            self.es.ml.delete_datafeed(datafeed_id=datafeed_id, force=True)
+        except Exception:
+            pass
+        self.es.ml.delete_job(job_id=job_id, force=True)
+
 
 DEFAULT_DATAOBS_ML_JOBS = [
     MLJobConfig(

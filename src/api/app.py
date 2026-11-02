@@ -349,6 +349,14 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
         if resolved_settings.store_backend.lower() == "elasticsearch"
         else None
     )
+    # ML anomaly-detector registry (detection_mode: auto). Only on the ES backend;
+    # None otherwise so monitor routes degrade gracefully without ML persistence.
+    if resolved_settings.store_backend.lower() == "elasticsearch":
+        from services.monitoring.ml_detector_registry import MLDetectorRegistry
+
+        app.state.ml_detector_registry = MLDetectorRegistry(make_es_client(resolved_settings))
+    else:
+        app.state.ml_detector_registry = None
     target_incidents = IncidentRepositoryTargetReader(incident_repo)
     from services.incident_manager.automation.targets import TargetAuthorityRegistry
 

@@ -212,6 +212,10 @@ class MonitorDefinition(ProductEntity):
     etag: str
     last_applied_checksum: str | None = None
     state: MonitorState = MonitorState.DRAFT
+    # Rule-free native Elasticsearch ML anomaly detection. "manual" (default) uses the
+    # configured threshold/baseline; "auto" provisions an ES ML detector job bound to
+    # this monitor (requires an Elastic Enterprise ML license at runtime).
+    detection_mode: Literal["manual", "auto"] = "manual"
 
 
 class MonitorObservation(DomainModel):

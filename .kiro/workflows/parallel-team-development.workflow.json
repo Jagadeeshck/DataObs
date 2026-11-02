@@ -27,37 +27,37 @@
           "id": "team-0-slice",
           "type": "agent",
           "agent": "dataobs-team-0",
-          "prompt": "Deliver only Team 0's slice of '${milestone}' from the coordinator brief. Branch team-0/<topic> from main. Shared platform/security/release, migrations (additive only, next free ID), Helm, CI. Implement the minimal owned change with tests. Verify ruff/black/mypy and smallest proving test set. Commit to the branch, open a focused PR, report the handoff contract. Do NOT merge, publish, or edit other teams' files. Follow credit-efficiency and parallel-delivery steering."
+          "prompt": "Deliver only Team 0's slice of '${milestone}' from the coordinator brief. Create an ISOLATED worktree: git worktree add -b team-0/<topic> /tmp/dataobs-team-0 32528b7, then cd there (never checkout in the shared tree). Shared platform/security/release, migrations (additive only, next free ID), Helm, CI. Implement the minimal owned change with tests. Verify ruff/black/mypy and smallest proving test set. Commit to the branch, open a focused PR, report the handoff contract. Do NOT merge, publish, or edit other teams' files. Follow credit-efficiency and parallel-delivery steering."
         },
         {
           "id": "team-1-slice",
           "type": "agent",
           "agent": "dataobs-team-1",
-          "prompt": "Deliver only Team 1's slice of '${milestone}' (Kafka observer, pathways, stream/pathway API and Console features). Branch team-1/<topic> from main. Minimal owned change with unit + tenant-isolation tests. Verify targeted tests, ruff/black. Commit, open a focused PR, report the handoff contract. Coordinate shared browser work with Team 5 via the brief; do NOT edit Team 5 files. Do NOT merge. Follow credit-efficiency and parallel-delivery steering."
+          "prompt": "Deliver only Team 1's slice of '${milestone}' (Kafka observer, pathways, stream/pathway API and Console features). Create an ISOLATED worktree: git worktree add -b team-1/<topic> /tmp/dataobs-team-1 32528b7, then cd there (never checkout in the shared tree). Minimal owned change with unit + tenant-isolation tests. Verify targeted tests, ruff/black. Commit, open a focused PR, report the handoff contract. Coordinate shared browser work with Team 5 via the brief; do NOT edit Team 5 files. Do NOT merge. Follow credit-efficiency and parallel-delivery steering."
         },
         {
           "id": "team-2-slice",
           "type": "agent",
           "agent": "dataobs-team-2",
-          "prompt": "Deliver only Team 2's slice of '${milestone}' (quality/monitor/job/run/lineage/Data Product). Branch team-2/<topic> from main. Minimal owned change with unit tests; preserve missing-vs-zero semantics. Verify targeted tests, ruff/black. Commit, open a focused PR, report the handoff contract. Flag any shared src/api or domain_model touch for Team 0 review; do NOT edit other teams' files. Do NOT merge. Follow credit-efficiency and parallel-delivery steering."
+          "prompt": "Deliver only Team 2's slice of '${milestone}' (quality/monitor/job/run/lineage/Data Product). Create an ISOLATED worktree: git worktree add -b team-2/<topic> /tmp/dataobs-team-2 32528b7, then cd there (never checkout in the shared tree). Minimal owned change with unit tests; preserve missing-vs-zero semantics. Verify targeted tests, ruff/black. Commit, open a focused PR, report the handoff contract. Flag any shared src/api or domain_model touch for Team 0 review; do NOT edit other teams' files. Do NOT merge. Follow credit-efficiency and parallel-delivery steering."
         },
         {
           "id": "team-3-slice",
           "type": "agent",
           "agent": "dataobs-team-3",
-          "prompt": "Deliver only Team 3's slice of '${milestone}' (incidents, correlation, notifications, approval-bound automation). Branch team-3/<topic> from main. Minimal owned change with OCC/idempotency/append tests; mock external pager/ticket sends. Verify targeted tests, ruff/black. Commit, open a focused PR, report the handoff contract. Do NOT merge or edit other teams' files. Follow credit-efficiency and parallel-delivery steering."
+          "prompt": "Deliver only Team 3's slice of '${milestone}' (incidents, correlation, notifications, approval-bound automation). Create an ISOLATED worktree: git worktree add -b team-3/<topic> /tmp/dataobs-team-3 32528b7, then cd there (never checkout in the shared tree). Minimal owned change with OCC/idempotency/append tests; mock external pager/ticket sends. Verify targeted tests, ruff/black. Commit, open a focused PR, report the handoff contract. Do NOT merge or edit other teams' files. Follow credit-efficiency and parallel-delivery steering."
         },
         {
           "id": "team-4-slice",
           "type": "agent",
           "agent": "dataobs-team-4",
-          "prompt": "Deliver only Team 4's slice of '${milestone}' (provider SDK, collection manager, scanners, non-Kafka/non-dbt integrations). Branch team-4/<topic> from main. Minimal owned change with checkpoint-correctness tests; make no unsupported-connector claims. Verify targeted tests, ruff/black. Commit, open a focused PR, report the handoff contract. Do NOT merge or edit other teams' files. Follow credit-efficiency and parallel-delivery steering."
+          "prompt": "Deliver only Team 4's slice of '${milestone}' (provider SDK, collection manager, scanners, non-Kafka/non-dbt integrations). Create an ISOLATED worktree: git worktree add -b team-4/<topic> /tmp/dataobs-team-4 32528b7, then cd there (never checkout in the shared tree). Minimal owned change with checkpoint-correctness tests; make no unsupported-connector claims. Verify targeted tests, ruff/black. Commit, open a focused PR, report the handoff contract. Do NOT merge or edit other teams' files. Follow credit-efficiency and parallel-delivery steering."
         },
         {
           "id": "team-5-slice",
           "type": "agent",
           "agent": "dataobs-team-5",
-          "prompt": "Deliver only Team 5's slice of '${milestone}' (Console shell, navigation, auth presentation, shared components, browser/axe harness). Branch team-5/<topic> from main. Minimal owned change with vitest + Playwright/axe as applicable. Verify pnpm typecheck/lint/format/test/build. Commit, open a focused PR, report the handoff contract. Do NOT merge or edit backend domain files. Follow credit-efficiency and parallel-delivery steering."
+          "prompt": "Deliver only Team 5's slice of '${milestone}' (Console shell, navigation, auth presentation, shared components, browser/axe harness). Create an ISOLATED worktree: git worktree add -b team-5/<topic> /tmp/dataobs-team-5 32528b7, then cd there (never checkout in the shared tree). Minimal owned change with vitest + Playwright/axe as applicable. Verify pnpm typecheck/lint/format/test/build. Commit, open a focused PR, report the handoff contract. Do NOT merge or edit backend domain files. Follow credit-efficiency and parallel-delivery steering."
         }
       ]
     },

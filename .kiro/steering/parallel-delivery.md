@@ -43,6 +43,11 @@ Each merge invalidates prior SHA-based evidence. Re-run mandatory gates on the n
 - Dependencies and required merge order.
 
 ## Working in a workflow run
-- When launched as a workflow step, do the owned slice, commit to the team branch,
-  and report via the step summary. Do not merge, publish, or start another team's work.
+- Teams share ONE repo working tree. In a parallel run you MUST isolate with a private
+  git worktree — never `git checkout` in the shared tree (a concurrent checkout clobbers
+  your uncommitted work):
+  `git worktree add -b team-<n>/<topic> /tmp/dataobs-team-<n> <base-sha>` then `cd` there.
+- Use a uniquely-named branch; do not reuse a generic name another team might also pick.
+- Do the owned slice, commit to the team branch, and report via the step summary. Do not
+  merge, publish, or start another team's work.
 - Signal `success` only when the slice's exit criteria are met and verified.

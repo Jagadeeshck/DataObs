@@ -18,6 +18,7 @@ from packages.domain_model.monitor import MonitorDefinition, MonitorState
 from services.monitoring.capabilities import capability_documents, validate_monitor_definition
 from services.monitoring.repository import ConsistencyError, VersionConflict
 from services.monitoring.staleness import monitor_staleness
+from src.quality.checks.templates import template_catalog
 
 router = APIRouter(prefix="/api/v1", tags=["monitoring"])
 
@@ -173,6 +174,21 @@ def translate(exc):
 @router.get("/quality/capabilities")
 def capabilities():
     return {"schema_version": "v1", "items": capability_documents()}
+
+
+@router.get("/quality/templates")
+def quality_templates(request: Request):
+    """Return the built-in quality check templates the Console offers as starting points.
+
+    This is a static, curated catalog over the already-registered built-in checks;
+    it reports no operational evidence, so the read is always complete.
+    """
+    items = template_catalog()
+    return {
+        "schema_version": "v1",
+        "items": items,
+        **evidence(request, coverage=["quality_check_templates"]),
+    }
 
 
 @router.get("/quality/monitors")

@@ -49,6 +49,7 @@ from services.security.role_binding_repository import (
     RoleBindingNotFound,
 )
 from src.api.data_product_routes import create_data_product_router
+from src.api.es_store import get_store
 from src.api.incident_automation_routes import create_incident_automation_router
 from src.api.incident_routes import create_incident_workbench_router
 from src.api.incident_runtime_routes import create_incident_runtime_router
@@ -56,7 +57,7 @@ from src.api.monitor_routes import router as monitor_router
 from src.api.pathway_routes import create_pathway_router
 from src.api.platform_lifecycle_routes import create_platform_lifecycle_router
 from src.api.reliability_routes import create_reliability_router
-from src.api.store import StoreProtocol, get_store
+from src.api.store import StoreProtocol
 from src.api.stream_intelligence_routes import create_stream_intelligence_router
 from src.api.stream_routes import create_stream_router
 from src.config.settings import AppSettings, load_settings

@@ -91,6 +91,7 @@ export interface MonitorDefinition {
   etag: string;
   state: string;
   creation_source?: string;
+  detection_mode?: "manual" | "auto";
   [key: string]: unknown;
 }
 export interface Observation {

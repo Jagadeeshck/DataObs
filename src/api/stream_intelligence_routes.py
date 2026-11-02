@@ -11,6 +11,7 @@ from typing import Any, Callable
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response
 from pydantic import BaseModel, ConfigDict, Field
 
+from packages.pathways.stream_templates import STREAM_DETECTOR_TEMPLATES, list_templates
 from packages.streaming.capacity import capacity_recommendations, simulate_capacity
 from packages.streaming.intelligence import CAPABILITIES, METHODS, DetectorDefinition
 from services.kafka_observer.intelligence_repository import ElasticsearchIntelligenceRepository
@@ -65,6 +66,25 @@ def create_stream_intelligence_router(get_es: Callable[..., Any], require_auth: 
             "unavailable_capabilities": [
                 {"metric": "message_payload_analysis", "reason": "raw payload access is prohibited"}
             ],
+        }
+
+    @router.get("/stream-intelligence/templates")
+    def templates(category: str | None = Query(None)) -> dict[str, Any]:
+        """Enumerate stream detector authoring templates (presets, not detectors).
+
+        Templates are static descriptors; an unsupported capability is reported as
+        ``capability_status: unknown`` rather than silently dropped or claimed
+        supported. Empty results for an unknown category are distinct from a
+        measured zero of running detectors.
+        """
+        selected = list_templates(category)
+        categories = sorted({template.category for template in STREAM_DETECTOR_TEMPLATES})
+        if category is not None and category not in categories:
+            return {"items": [], "categories": categories, "data_status": "unknown", "requested_category": category}
+        return {
+            "items": [template.descriptor() for template in selected],
+            "categories": categories,
+            "data_status": "descriptor",
         }
 
     def page(

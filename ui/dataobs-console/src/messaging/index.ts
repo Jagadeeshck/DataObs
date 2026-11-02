@@ -6,3 +6,4 @@ export * from "./formatters";
 export * from "./privacy";
 export * from "./navigation";
 export * from "./facets";
+export * from "./streamTemplatePicker";

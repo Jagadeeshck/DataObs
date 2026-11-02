@@ -2008,5 +2008,8 @@ def create_app(*, settings: AppSettings | None = None, store_bundle: StoreBundle
     app.include_router(create_incident_workbench_router(require_auth))
     app.include_router(create_incident_automation_router(require_auth))
     app.include_router(create_incident_runtime_router(require_auth))
+    from src.api.watcher_routes import create_watcher_router
+
+    app.include_router(create_watcher_router(get_incident_manager, require_auth))
 
     return app

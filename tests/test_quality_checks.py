@@ -464,3 +464,96 @@ def test_distribution_drift_check_returns_standard_check_result():
     assert result.status == "PASS"
     assert result.details["column"] == "total_amount"
     assert result.to_es_doc()["check_type"] == "distribution_drift"
+
+
+# ---------------------------------------------------------------------------
+# MLAnomalyCheck — native Elasticsearch ML-backed, rule-free anomaly detection
+# ---------------------------------------------------------------------------
+
+
+class _FakeMLAnomalyES:
+    """ES stub returning a scripted .ml-anomalies-* search response."""
+
+    def __init__(self, hits):
+        self._hits = hits
+
+    def search(self, index, **kwargs):
+        return {"hits": {"hits": self._hits}}
+
+
+def test_ml_anomaly_check_flags_high_score_record():
+    from src.quality.checks.ml_anomaly_check import MLAnomalyCheck
+
+    hits = [
+        {
+            "_source": {
+                "record_score": 92.4,
+                "actual": [1500.0],
+                "typical": [120.0],
+                "detector_description": "high_mean(row_count)",
+                "timestamp": 1730000000000,
+            }
+        }
+    ]
+    check = MLAnomalyCheck(es_client=_FakeMLAnomalyES(hits))
+    result = check.run({"dataset": "orders", "ml_job_id": "job-orders", "severity": "high"}, connection=None)
+
+    assert result.check_type == "ml_anomaly"
+    assert result.status == "FAIL"
+    assert result.severity == "critical"  # score 92.4 → critical band, above the 'high' floor
+    assert result.metric_value == 92.4
+    assert result.details["ml_job_id"] == "job-orders"
+    assert result.details["detection_mode"] == "auto"
+
+
+def test_ml_anomaly_check_passes_when_no_anomalies():
+    from src.quality.checks.ml_anomaly_check import MLAnomalyCheck
+
+    check = MLAnomalyCheck(es_client=_FakeMLAnomalyES([]))
+    result = check.run({"dataset": "orders", "ml_job_id": "job-orders"}, connection=None)
+
+    assert result.status == "PASS"
+    assert result.severity == "low"
+
+
+def test_ml_anomaly_check_warns_when_ml_unavailable():
+    from src.quality.checks.ml_anomaly_check import MLAnomalyCheck
+
+    class _BrokenES:
+        def search(self, index, **kwargs):
+            raise RuntimeError("ml plugin disabled")
+
+    check = MLAnomalyCheck(es_client=_BrokenES())
+    result = check.run({"dataset": "orders", "ml_job_id": "job-orders"}, connection=None)
+
+    # Never a false PASS when detection could not run.
+    assert result.status == "WARN"
+    assert "unavailable" in result.message.lower()
+
+
+def test_ml_anomaly_check_errors_without_job_id():
+    from src.quality.checks.ml_anomaly_check import MLAnomalyCheck
+
+    check = MLAnomalyCheck(es_client=_FakeMLAnomalyES([]))
+    result = check.run({"dataset": "orders"}, connection=None)
+
+    assert result.status == "ERROR"
+
+
+def test_ml_anomaly_severity_banding():
+    from src.quality.checks.ml_anomaly_check import severity_for_score
+
+    assert severity_for_score(95) == "critical"
+    assert severity_for_score(80) == "high"
+    assert severity_for_score(60) == "medium"
+    assert severity_for_score(10) == "low"
+
+
+def test_registry_exposes_ml_anomaly():
+    from src.quality.checks.registry import build_check, supported_check_types
+
+    assert "ml_anomaly" in supported_check_types()
+    with pytest.raises(ValueError, match="require an Elasticsearch client"):
+        build_check("ml_anomaly")
+    built = build_check("ml_anomaly", es_client=_FakeMLAnomalyES([]))
+    assert built.check_type == "ml_anomaly"

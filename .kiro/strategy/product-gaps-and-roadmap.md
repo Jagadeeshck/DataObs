@@ -63,18 +63,26 @@ Everything else may ship as `experimental`.
 
 ## Layer B — Immediate post-v1.0.0 (Q4 2026)
 
-### B1. Elastic ML anomaly detection on quality monitors
-**Why it matters:** closes the biggest product gap vs enterprise SaaS observability tools.
-Auto-detect anomalies without writing rules — ML job per monitor on ES.
+### B1. Elastic ML anomaly detection on quality monitors — IN PROGRESS
+**Why it matters:** closes the biggest product gap vs enterprise observability tools.
+Auto-detect anomalies without writing rules — native ES ML job per monitor.
 
-**Implementation plan:**
-1. New migration `0034_ml_anomaly_detector_jobs`: index to track ML job IDs per monitor/tenant
-2. `src/quality/checks/ml_anomaly_check.py`: create/start/stop ML anomaly detector jobs
-3. `packages/elastic_store/migrations/0034_*.py`: migration definition
-4. `src/api/monitor_routes.py`: `auto_detect: bool` flag on monitor create/update
-5. `ui/dataobs-console/src/features/quality/MonitorForm.tsx`: auto-detect toggle
-6. Map ML anomaly score → finding severity → existing incident pipeline
-7. Certification: hosted ES with ML enabled, anomaly detected from synthetic data series
+**Progress (2026-10-31):**
+- ✅ `src/analytics/elasticsearch_ml.py`: `ElasticsearchMLManager` with ensure/start/
+  **stop/delete** job lifecycle (stop+delete added for monitor teardown)
+- ✅ `src/quality/checks/ml_anomaly_check.py`: `MLAnomalyCheck` conforming to `BaseCheck`;
+  reads ES anomaly records → canonical `CheckResult` → existing finding/incident pipeline.
+  Honest WARN (never false PASS) when ML is unavailable.
+- ✅ Registered as check type `ml_anomaly` in `src/quality/checks/registry.py`
+- ✅ Unit tests in `tests/test_quality_checks.py` (6 tests: flag, pass, warn, error,
+  severity banding, registry)
+
+**Remaining:**
+1. Migration `0034_ml_anomaly_detector_jobs`: index to track ML job IDs per monitor/tenant
+2. `src/api/monitor_routes.py`: `detection_mode: auto` flag on monitor create/update;
+   create/start ML job on activate, stop/delete on deactivate
+3. `ui/dataobs-console/src/features/quality/`: auto-detect toggle
+4. Certification: hosted ES with ML enabled, anomaly detected from synthetic data series
 
 **ES API used:** `PUT /_ml/anomaly_detectors/<id>`, `POST /_ml/anomaly_detectors/<id>/_open`
 **License:** Elastic Enterprise (X-Pack ML)

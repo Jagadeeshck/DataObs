@@ -14,6 +14,7 @@ from elasticsearch import Elasticsearch
 
 from .base import BaseCheck
 from .distribution_drift_check import DistributionDriftCheck
+from .ml_anomaly_check import MLAnomalyCheck
 from .null_check import NullCheck
 from .referential_integrity_check import ReferentialIntegrityCheck
 from .row_count_check import RowCountCheck
@@ -23,6 +24,7 @@ from .value_range_check import ValueRangeCheck
 
 CHECK_REGISTRY: Dict[str, Type[BaseCheck]] = {
     "distribution_drift": DistributionDriftCheck,
+    "ml_anomaly": MLAnomalyCheck,
     "null_check": NullCheck,
     "referential_integrity": ReferentialIntegrityCheck,
     "row_count": RowCountCheck,
@@ -63,6 +65,10 @@ def build_check(
         return SchemaCheck(es_client)
     if check_type == "row_count":
         return RowCountCheck(es_client)
+    if check_type == "ml_anomaly":
+        if es_client is None:
+            raise ValueError("ml_anomaly checks require an Elasticsearch client")
+        return MLAnomalyCheck(es_client)
     if check_type == "distribution_drift":
         cfg = dict(config or {})
         return DistributionDriftCheck(

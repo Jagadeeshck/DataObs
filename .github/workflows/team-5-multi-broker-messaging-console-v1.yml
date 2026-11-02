@@ -36,6 +36,8 @@ jobs:
         run: pnpm test && pnpm messaging:check
       - name: Visualization, build, bundle and performance contracts
         run: pnpm visualization:check && pnpm build && pnpm bundle:check && pnpm performance:check
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium firefox webkit
       - name: Playwright and Axe journeys
         run: pnpm playwright
       - name: Repository security, boundaries, artifacts, docs, capability and migration gates

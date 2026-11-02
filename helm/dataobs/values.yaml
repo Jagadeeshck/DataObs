@@ -520,7 +520,7 @@ migrationJob:
   - -m
   - packages.elastic_store.cli
   - apply
-  terminalMigration: 0033_team1_stream_schema_intelligence_runtime
+  terminalMigration: 0035_asset_semantic_search
   activeDeadlineSeconds: 900
   backoffLimit: 2
   ttlSecondsAfterFinished: 86400

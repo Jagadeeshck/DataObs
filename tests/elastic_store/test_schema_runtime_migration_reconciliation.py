@@ -10,12 +10,17 @@ from packages.elastic_store.manifest import (
 from scripts.release import current_terminal_migration
 
 
-def test_team1_schema_runtime_migration_is_registered_once_and_terminal():
+def test_team1_schema_runtime_migration_is_registered_once_and_still_linear():
     registry = migrations()
     assert registry.count(TEAM1_STREAM_SCHEMA_INTELLIGENCE_RUNTIME_MIGRATION) == 1
-    assert registry[-2].migration_id == "0032_team2_data_slo_production_runtime"
-    assert registry[-1].migration_id == "0033_team1_stream_schema_intelligence_runtime"
-    assert registry[-1].dependencies == [registry[-2].migration_id]
+    # 0033 remains released and immutable; Layer B additive migrations 0034/0035
+    # are appended after it in a strictly linear chain.
+    ids = [migration.migration_id for migration in registry]
+    index_0033 = ids.index("0033_team1_stream_schema_intelligence_runtime")
+    assert ids[index_0033 - 1] == "0032_team2_data_slo_production_runtime"
+    assert registry[index_0033].dependencies == ["0032_team2_data_slo_production_runtime"]
+    assert ids[index_0033 + 1] == "0034_ml_anomaly_detector_jobs"
+    assert ids[-1] == "0035_asset_semantic_search"
 
 
 def test_executable_registry_is_a_unique_linear_numeric_sequence():

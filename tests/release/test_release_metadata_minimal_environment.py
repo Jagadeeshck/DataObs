@@ -27,7 +27,7 @@ builtins.__import__ = guarded_import
 from scripts.release.release_metadata import ELASTICSEARCH_VERSION, terminal_migration
 
 assert ELASTICSEARCH_VERSION == "9.5.5"
-assert terminal_migration() == "0033_team1_stream_schema_intelligence_runtime"
+assert terminal_migration() == "0035_asset_semantic_search"
 """.format(root=str(ROOT))
     result = subprocess.run(
         [sys.executable, "-I", "-c", script],
@@ -79,7 +79,7 @@ runpy.run_module("packages.elastic_store.cli", run_name="__main__")
 """
     result = subprocess.run([sys.executable, "-c", script], cwd=ROOT, capture_output=True, text=True)
     assert result.returncode == 0, result.stderr
-    assert '"migration_id": "0033_team1_stream_schema_intelligence_runtime"' in result.stdout
+    assert '"migration_id": "0035_asset_semantic_search"' in result.stdout
 
 
 def test_backup_restore_validator_is_directly_executable() -> None:

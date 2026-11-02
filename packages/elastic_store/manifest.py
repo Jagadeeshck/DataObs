@@ -2689,6 +2689,108 @@ TEAM1_STREAM_SCHEMA_INTELLIGENCE_RUNTIME_MIGRATION = Migration(
 )
 
 
+ML_ANOMALY_DETECTOR_PROPERTIES = {
+    "dynamic": "strict",
+    "properties": {
+        **{
+            key: {"type": "keyword"}
+            for key in [
+                "tenant_id",
+                "environment",
+                "monitor_id",
+                "ml_job_id",
+                "datafeed_id",
+                "detection_mode",
+                "detector_function",
+                "detector_field",
+                "index_pattern",
+                "job_state",
+                "datafeed_state",
+                "provisioning_state",
+                "availability_state",
+                "last_error_code",
+                "worker_id",
+                "lease_status",
+            ]
+        },
+        **{
+            key: {"type": "date"}
+            for key in ["created_at", "updated_at", "activated_at", "deactivated_at", "heartbeat_at", "lease_expiry"]
+        },
+        **{key: {"type": "long"} for key in ["fencing_token", "bucket_span_seconds"]},
+        **{key: {"type": "double"} for key in ["anomaly_score"]},
+        **{key: {"type": "keyword"} for key in ["influencers", "reason_codes", "missing_inputs"]},
+        "configured": {"type": "boolean"},
+    },
+}
+
+ASSET_SEMANTIC_SEARCH_PROPERTIES = {
+    "dynamic": "strict",
+    "properties": {
+        **{
+            key: {"type": "keyword"}
+            for key in [
+                "tenant_id",
+                "environment",
+                "asset_id",
+                "asset_type",
+                "source_id",
+                "integration_id",
+                "database",
+                "schema",
+                "table",
+                "owner_team",
+                "business_service",
+                "classification",
+                "index_state",
+                "availability_state",
+            ]
+        },
+        "display_name": {
+            "type": "text",
+            "fields": {"keyword": {"type": "keyword", "ignore_above": 256}},
+        },
+        "description": {"type": "match_only_text"},
+        "search_text": {"type": "text"},
+        "tags": {"type": "keyword"},
+        "terms": {"type": "keyword"},
+        **{key: {"type": "date"} for key in ["created_at", "updated_at", "indexed_at"]},
+        "reason_codes": {"type": "keyword"},
+        "missing_inputs": {"type": "keyword"},
+    },
+}
+
+ML_ANOMALY_DETECTOR_JOBS_MIGRATION = Migration(
+    "0034_ml_anomaly_detector_jobs",
+    "Add strict metadata-only registry for native Elasticsearch ML anomaly-detection jobs bound to quality monitors",
+    "v1",
+    dependencies=["0033_team1_stream_schema_intelligence_runtime"],
+    rollback_strategy="stop and delete ML jobs/datafeeds via the ML manager, snapshot state, then remove only the 0034 alias/template after human review",
+    operations={
+        "mutable_indices": ["dataobs-ml-anomaly-detectors-v1"],
+        "mapping_updates": {"dataobs-ml-anomaly-detectors-v1": ML_ANOMALY_DETECTOR_PROPERTIES},
+        "data_stream_contracts": {
+            "logs-dataobs.ml-anomaly-detector-event-*": {
+                "retention": "365d",
+                "properties": ML_ANOMALY_DETECTOR_PROPERTIES["properties"],
+            }
+        },
+    },
+)
+
+ASSET_SEMANTIC_SEARCH_MIGRATION = Migration(
+    "0035_asset_semantic_search",
+    "Add strict asset catalog semantic-search projection for Console global search and catalog browse groundwork",
+    "v1",
+    dependencies=["0034_ml_anomaly_detector_jobs"],
+    rollback_strategy="disable the asset-search projection writer, snapshot state, then remove only the 0035 alias/template after human review",
+    operations={
+        "mutable_indices": ["dataobs-asset-search-current-v1"],
+        "mapping_updates": {"dataobs-asset-search-current-v1": ASSET_SEMANTIC_SEARCH_PROPERTIES},
+    },
+)
+
+
 def migrations() -> List[Migration]:
     return [
         FOUNDATION_MIGRATION,
@@ -2724,6 +2826,8 @@ def migrations() -> List[Migration]:
         POST_INCIDENT_REVIEW_ANALYTICS_MIGRATION,
         TEAM2_DATA_SLO_PRODUCTION_RUNTIME_MIGRATION,
         TEAM1_STREAM_SCHEMA_INTELLIGENCE_RUNTIME_MIGRATION,
+        ML_ANOMALY_DETECTOR_JOBS_MIGRATION,
+        ASSET_SEMANTIC_SEARCH_MIGRATION,
     ]
 
 

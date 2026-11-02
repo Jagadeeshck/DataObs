@@ -12,8 +12,14 @@ A tight, credit-efficient procedure for delivering one owned slice. Obey
 - If the brief names the files, go straight to them. Do not scan the whole repo.
 - If you must explore, delegate ONE context-gatherer pass; treat its output as your reads.
 
-## 2. Branch
-- `git checkout -b team-<n>/<short-topic>` from latest `main`. Never work on `main`.
+## 2. Isolated worktree + branch (REQUIRED for parallel runs)
+- All teams share one repo. **Never `git checkout` in the shared working tree** during a
+  parallel run — a concurrent team's checkout will clobber your uncommitted work.
+- Create a private worktree and branch in one step:
+  `git worktree add -b team-<n>/<short-topic> /tmp/dataobs-team-<n> <base-sha>`
+- `cd /tmp/dataobs-team-<n>` and do all work there. Never work on `main`.
+- When done and committed, the branch is visible in the shared repo automatically; leave
+  the worktree for the coordinator to remove, or `git worktree remove` it yourself.
 
 ## 3. Implement the minimal change
 - Edit only owned files. Use `str_replace` with small anchors.

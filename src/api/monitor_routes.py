@@ -503,6 +503,57 @@ def incidents(monitor_id: str, request: Request):
     }
 
 
+@router.get("/quality/monitors/{monitor_id}/ml-detector")
+def ml_detector(monitor_id: str, request: Request):
+    """Read the native ES ML anomaly detector bound to this monitor.
+
+    Honest states, never fabricated: when auto detection was never requested or the
+    registry is unavailable the response is explicitly not_configured/unavailable
+    rather than a fake 'healthy'. provisioning_state is provisioning | active | error |
+    deactivated; availability_state is available | unavailable | unknown.
+    """
+    tenant, environment = scope(request)
+    require_monitor(request, monitor_id)
+    registry = ml_registry(request)
+    if registry is None:
+        return {
+            "detection_mode": "manual",
+            "provisioning_state": "not_configured",
+            "availability_state": "unavailable",
+            **evidence(
+                request,
+                "not_configured",
+                warnings=["ML detector registry is unavailable on this backend"],
+                missing=["ml_detector"],
+                coverage=[],
+            ),
+        }
+    record = registry.get(tenant, environment, monitor_id)
+    if record is None:
+        return {
+            "detection_mode": "manual",
+            "provisioning_state": "not_configured",
+            "availability_state": "unknown",
+            **evidence(
+                request,
+                "not_configured",
+                missing=["ml_detector"],
+                coverage=[],
+            ),
+        }
+    return {
+        "detection_mode": record.get("detection_mode", "auto"),
+        "ml_job_id": record.get("ml_job_id"),
+        "provisioning_state": record.get("provisioning_state"),
+        "availability_state": record.get("availability_state"),
+        "detector_function": record.get("detector_function"),
+        "detector_field": record.get("detector_field"),
+        "last_error_code": record.get("last_error_code"),
+        "updated_at": record.get("updated_at"),
+        **evidence(request, coverage=["ml_detector"]),
+    }
+
+
 @router.get("/quality/monitors/{monitor_id}/suppressions")
 @router.get("/monitors/{monitor_id}/suppressions", deprecated=True)
 def suppressions(monitor_id: str, request: Request):

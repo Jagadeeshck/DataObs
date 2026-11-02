@@ -1,0 +1,62 @@
+{
+  "name": "parallel-certification",
+  "description": "After a candidate SHA is frozen, dispatch Teams 1-5 domain certification concurrently against the same exact SHA, then have the release coordinator independently verify every artifact and produce a GO/NO_GO recommendation. No publication without user approval.",
+  "inputs": {
+    "candidate_sha": {
+      "description": "The exact frozen candidate SHA to certify. All evidence must reference this SHA.",
+      "required": true
+    }
+  },
+  "nodes": [
+    {
+      "id": "preflight",
+      "type": "agent",
+      "agent": "dataobs-team-0",
+      "effort": "high",
+      "prompt": "Gate 0 preflight on frozen SHA ${candidate_sha}. Confirm app/chart/Console/client versions all 1.0.0 and Elasticsearch 9.5.5; migration immutability holds; required shared CI is green on exactly this SHA. If anything fails, report NO_GO and stop — do not proceed to domain certification. Output the preflight result and the exact SHA every downstream team must certify against."
+    },
+    {
+      "id": "parallel-domain-cert",
+      "type": "parallel",
+      "nodes": [
+        {
+          "id": "cert-team-1",
+          "type": "agent",
+          "agent": "dataobs-team-1",
+          "prompt": "Certify Team 1 domain on exactly SHA ${candidate_sha}: Kafka observer + pathway intelligence with real Kafka + Elasticsearch, replay/leases/fencing, tenant isolation, and Stream/Cluster/Connector/Schema 360 Console (Playwright + axe, coordinated with Team 5). Retain producer and verifier metadata, JUnit, and a no-mandatory-skips statement. Report PASS/FAIL per capability with artifact/run IDs. Do not mark PASS without hosted exact-SHA evidence."
+        },
+        {
+          "id": "cert-team-2",
+          "type": "agent",
+          "agent": "dataobs-team-2",
+          "prompt": "Certify Team 2 domain on exactly SHA ${candidate_sha}: quality signal path (monitor to OTel to ES to finding to incident to retrieval), job/run + lineage, Data Products membership + reconciliation, with real Elasticsearch and browser/axe where applicable. Retain evidence, JUnit, no-mandatory-skips statement. Report PASS/FAIL per capability with artifact/run IDs."
+        },
+        {
+          "id": "cert-team-3",
+          "type": "agent",
+          "agent": "dataobs-team-3",
+          "prompt": "Certify Team 3 domain on exactly SHA ${candidate_sha}: incident OCC, dedup, append-only audit, and notification safe-outcome semantics with mocked external sends, plus approval-bound automation. Retain evidence, JUnit, no-mandatory-skips statement. Report PASS/FAIL with artifact/run IDs."
+        },
+        {
+          "id": "cert-team-4",
+          "type": "agent",
+          "agent": "dataobs-team-4",
+          "prompt": "Certify Team 4 domain on exactly SHA ${candidate_sha}: Integration SDK and a truthful provider capability matrix. Mark Collection Manager and any unpackaged provider experimental — no supported-connector claims without packaged runtime + live evidence. Retain evidence, JUnit, no-mandatory-skips statement. Report PASS/FAIL with artifact/run IDs."
+        },
+        {
+          "id": "cert-team-5",
+          "type": "agent",
+          "agent": "dataobs-team-5",
+          "prompt": "Certify Team 5 on exactly SHA ${candidate_sha}: Console production build, bundle budget, and release-critical Playwright + axe journeys on the real API with zero serious/critical violations. Retain evidence, JUnit, no-mandatory-skips statement. Report PASS/FAIL with artifact/run IDs."
+        }
+      ]
+    },
+    {
+      "id": "independent-verify",
+      "type": "agent",
+      "agent": "dataobs-release-coordinator",
+      "effort": "high",
+      "prompt": "Independently verify every certification artifact from the parallel step against SHA ${candidate_sha}: artifact digest matches its producing run; producer_sha equals the frozen SHA; run id/attempt present and not a failure-hiding rerun; elasticsearch_version is 9.5.5; no mandatory test category skipped. Then verify platform/security/supply-chain (SBOM, provenance, signatures, digest-pinned install) status. Produce a single GO/NO_GO recommendation with the evidence matrix and any blockers. Do NOT publish — GO requires protected release authority and explicit user approval."
+    }
+  ]
+}

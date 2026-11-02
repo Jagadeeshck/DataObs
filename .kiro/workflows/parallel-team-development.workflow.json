@@ -1,0 +1,72 @@
+{
+  "name": "parallel-team-development",
+  "description": "Run all DataObs teams concurrently on their owned work slices, each on its own branch, then hand verified PRs to the release coordinator for ordered integration. Teams never merge or touch each other's files.",
+  "inputs": {
+    "milestone": {
+      "description": "The milestone or task set to deliver (e.g. 'Layer B post-1.0.0 features' or 'Gate 2 domain certification').",
+      "required": true
+    },
+    "base_sha": {
+      "description": "The main SHA every team branches from. Defaults to current main HEAD.",
+      "required": false
+    }
+  },
+  "nodes": [
+    {
+      "id": "coordinator-scope",
+      "type": "agent",
+      "agent": "dataobs-release-coordinator",
+      "effort": "high",
+      "prompt": "Scope the milestone '${milestone}' into one concrete, independent work slice per team (Team 1-5, and Team 0 shared prerequisites). For each slice state: owner, exact owned files/paths, exit criteria, shared-contract touches that need Team 0 review, and dependencies/merge order. Confirm base SHA ${base_sha} (or current main HEAD if blank) and that no slice edits another team's files. Output the per-team slice briefs as your summary. Do NOT write code in this step."
+    },
+    {
+      "id": "parallel-teams",
+      "type": "parallel",
+      "nodes": [
+        {
+          "id": "team-0-slice",
+          "type": "agent",
+          "agent": "dataobs-team-0",
+          "prompt": "Deliver only Team 0's slice of '${milestone}' from the coordinator brief. Branch team-0/<topic> from main. Shared platform/security/release, migrations (additive only, next free ID), Helm, CI. Implement the minimal owned change with tests. Verify ruff/black/mypy and smallest proving test set. Commit to the branch, open a focused PR, report the handoff contract. Do NOT merge, publish, or edit other teams' files. Follow credit-efficiency and parallel-delivery steering."
+        },
+        {
+          "id": "team-1-slice",
+          "type": "agent",
+          "agent": "dataobs-team-1",
+          "prompt": "Deliver only Team 1's slice of '${milestone}' (Kafka observer, pathways, stream/pathway API and Console features). Branch team-1/<topic> from main. Minimal owned change with unit + tenant-isolation tests. Verify targeted tests, ruff/black. Commit, open a focused PR, report the handoff contract. Coordinate shared browser work with Team 5 via the brief; do NOT edit Team 5 files. Do NOT merge. Follow credit-efficiency and parallel-delivery steering."
+        },
+        {
+          "id": "team-2-slice",
+          "type": "agent",
+          "agent": "dataobs-team-2",
+          "prompt": "Deliver only Team 2's slice of '${milestone}' (quality/monitor/job/run/lineage/Data Product). Branch team-2/<topic> from main. Minimal owned change with unit tests; preserve missing-vs-zero semantics. Verify targeted tests, ruff/black. Commit, open a focused PR, report the handoff contract. Flag any shared src/api or domain_model touch for Team 0 review; do NOT edit other teams' files. Do NOT merge. Follow credit-efficiency and parallel-delivery steering."
+        },
+        {
+          "id": "team-3-slice",
+          "type": "agent",
+          "agent": "dataobs-team-3",
+          "prompt": "Deliver only Team 3's slice of '${milestone}' (incidents, correlation, notifications, approval-bound automation). Branch team-3/<topic> from main. Minimal owned change with OCC/idempotency/append tests; mock external pager/ticket sends. Verify targeted tests, ruff/black. Commit, open a focused PR, report the handoff contract. Do NOT merge or edit other teams' files. Follow credit-efficiency and parallel-delivery steering."
+        },
+        {
+          "id": "team-4-slice",
+          "type": "agent",
+          "agent": "dataobs-team-4",
+          "prompt": "Deliver only Team 4's slice of '${milestone}' (provider SDK, collection manager, scanners, non-Kafka/non-dbt integrations). Branch team-4/<topic> from main. Minimal owned change with checkpoint-correctness tests; make no unsupported-connector claims. Verify targeted tests, ruff/black. Commit, open a focused PR, report the handoff contract. Do NOT merge or edit other teams' files. Follow credit-efficiency and parallel-delivery steering."
+        },
+        {
+          "id": "team-5-slice",
+          "type": "agent",
+          "agent": "dataobs-team-5",
+          "prompt": "Deliver only Team 5's slice of '${milestone}' (Console shell, navigation, auth presentation, shared components, browser/axe harness). Branch team-5/<topic> from main. Minimal owned change with vitest + Playwright/axe as applicable. Verify pnpm typecheck/lint/format/test/build. Commit, open a focused PR, report the handoff contract. Do NOT merge or edit backend domain files. Follow credit-efficiency and parallel-delivery steering."
+        }
+      ]
+    },
+    {
+      "id": "coordinator-integrate",
+      "type": "agent",
+      "agent": "dataobs-release-coordinator",
+      "effort": "high",
+      "prompt": "Collect the team PRs from the parallel step. Review each handoff contract. Sequence integration per parallel-delivery merge order (Team 0 shared first, Team 5 shell, then Team 2/Team 1, conditional Team 3/4). Do NOT merge automatically — produce an ordered integration plan with the exact merge sequence, shared-path conflicts to resolve, which teams must review which PRs, and the mandatory gates to re-run after each merge. Report NO_GO blockers if any slice failed its exit criteria. Wait for user approval before any merge or publish."
+    }
+  ]
+}

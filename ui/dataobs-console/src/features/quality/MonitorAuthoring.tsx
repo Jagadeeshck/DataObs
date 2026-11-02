@@ -27,6 +27,7 @@ export function MonitorAuthoring() {
     managed_by: "console-user",
     severity: "medium",
     consecutive: "1",
+    detection_mode: "manual",
   });
   const [parameters, setParameters] = useState<Record<string, string>>({});
   useEffect(() => {
@@ -90,6 +91,7 @@ export function MonitorAuthoring() {
     managed_by: form.managed_by,
     state: "draft",
     creation_source: "UI",
+    detection_mode: form.detection_mode,
   });
   const validate = () => {
     if (!form.name || !cap)
@@ -285,6 +287,27 @@ export function MonitorAuthoring() {
               onChange={(e) => set("interval", e.target.value)}
             />
           </label>
+          <fieldset>
+            <legend>Anomaly detection</legend>
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={form.detection_mode === "auto"}
+                onChange={(e) =>
+                  set("detection_mode", e.target.checked ? "auto" : "manual")
+                }
+              />
+              Automatic detection (no rules)
+            </label>
+            <p className="field-hint">
+              Learns this metric&apos;s normal behavior with native
+              Elasticsearch machine learning and flags anomalies without manual
+              thresholds. Requires an Elastic Enterprise ML license. If
+              unavailable, the monitor is created and its detector state is
+              reported as unavailable &mdash; it is never silently treated as
+              healthy.
+            </p>
+          </fieldset>
           <label>
             Threshold mode
             <select

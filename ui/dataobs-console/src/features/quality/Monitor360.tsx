@@ -5,6 +5,7 @@ import {
   qualityApi,
   type Evaluation,
   type Finding,
+  type MlDetector,
   type MonitorDefinition,
   type Observation,
   type Suppression,
@@ -254,7 +255,13 @@ export function Monitor360() {
         ))}
       </div>
       <div id="monitor-panel" role="tabpanel" tabIndex={0}>
-        {tab === "overview" && <Overview monitor={monitor} />}{" "}
+        {tab === "overview" && (
+          <Overview
+            monitor={monitor}
+            tenant={tenant}
+            environment={environment}
+          />
+        )}{" "}
         {tab === "configuration" && (
           <pre className="review-json">{JSON.stringify(monitor, null, 2)}</pre>
         )}
@@ -352,7 +359,27 @@ export function Monitor360() {
     </section>
   );
 }
-function Overview({ monitor }: { monitor: MonitorDefinition }) {
+function Overview({
+  monitor,
+  tenant,
+  environment,
+}: {
+  monitor: MonitorDefinition;
+  tenant: string;
+  environment: string;
+}) {
+  const [detector, setDetector] = useState<MlDetector>();
+  const [detectorError, setDetectorError] = useState("");
+  const isAuto = monitor.detection_mode === "auto";
+  useEffect(() => {
+    if (!isAuto) return;
+    const c = new AbortController();
+    qualityApi
+      .mlDetector(tenant, environment, monitor.id, c.signal)
+      .then((x) => setDetector(x.data))
+      .catch((e: Error) => setDetectorError(e.message));
+    return () => c.abort();
+  }, [isAuto, tenant, environment, monitor.id]);
   return (
     <dl className="stream-facts">
       <div>
@@ -366,6 +393,31 @@ function Overview({ monitor }: { monitor: MonitorDefinition }) {
         <dt>Schedule</dt>
         <dd>
           {monitor.schedule.interval} · {monitor.schedule.timezone}
+        </dd>
+      </div>
+      <div>
+        <dt>Detection</dt>
+        <dd>
+          {isAuto ? (
+            detectorError ? (
+              `Automatic — detector state unavailable: ${detectorError}`
+            ) : detector ? (
+              <>
+                Automatic (ES ML) ·{" "}
+                <span className={`state state-${detector.provisioning_state}`}>
+                  {detector.provisioning_state}
+                </span>{" "}
+                / {detector.availability_state}
+                {detector.last_error_code
+                  ? ` · ${detector.last_error_code}`
+                  : ""}
+              </>
+            ) : (
+              "Automatic — loading detector state…"
+            )
+          ) : (
+            "Manual thresholds"
+          )}
         </dd>
       </div>
       <div>

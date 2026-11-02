@@ -91,7 +91,23 @@ export interface MonitorDefinition {
   etag: string;
   state: string;
   creation_source?: string;
+  detection_mode?: "manual" | "auto";
   [key: string]: unknown;
+}
+export interface MlDetector {
+  detection_mode: "manual" | "auto";
+  provisioning_state:
+    | "not_configured"
+    | "provisioning"
+    | "active"
+    | "error"
+    | "deactivated";
+  availability_state: "available" | "unavailable" | "unknown";
+  ml_job_id?: string;
+  detector_function?: string;
+  detector_field?: string;
+  last_error_code?: string;
+  updated_at?: string;
 }
 export interface Observation {
   execution_id: string;
@@ -261,6 +277,12 @@ export const qualityApi = {
         e,
         `/monitors/${encodeURIComponent(id)}/${encodeURIComponent(section)}`,
       ),
+      { signal: s },
+    ),
+  mlDetector: (t: string, e: string, id: string, s?: AbortSignal) =>
+    request<MlDetector>(
+      t,
+      path(e, `/monitors/${encodeURIComponent(id)}/ml-detector`),
       { signal: s },
     ),
   coverage: (t: string, e: string, s?: AbortSignal) =>

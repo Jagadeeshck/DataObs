@@ -111,13 +111,13 @@ def _incident_priority_items(incidents: list[dict[str, Any]], limit: int = 50) -
             {
                 "id": inc.get("incident_id") or inc.get("id") or inc.get("_id", "unknown"),
                 "problem": inc.get("title") or inc.get("summary") or "Open incident",
-                "entity": inc.get("primary_entity") or inc.get("entity") or "unknown",
+                "entity": inc.get("primary_resource") or inc.get("primary_entity") or inc.get("entity") or "unknown",
                 "service": inc.get("pillar") or inc.get("service") or "data",
                 "owner": inc.get("owner") or inc.get("assignee"),
                 "started": inc.get("opened_at") or inc.get("created_at"),
                 "severity": severity,
                 "impact": inc.get("impact_summary") or inc.get("impact"),
-                "automation": inc.get("automation_status"),
+                "automation": inc.get("notification_state") or inc.get("automation_status"),
             }
         )
     items.sort(key=lambda x: _SEVERITY_RANK.get(x["severity"], 0), reverse=True)
@@ -171,7 +171,10 @@ def aggregate_summary(
     # ── Data Pipeline pillar: lineage + stream health ───────────────────────
     pipeline_observed = availability.get("lineage", bool(lineage)) or availability.get("streams", bool(streams))
     stream_bad = sum(
-        1 for s in streams if str(s.get("health", s.get("status", ""))).lower() in {"critical", "degraded", "breaching"}
+        1
+        for s in streams
+        if str(s.get("status", s.get("health_state", s.get("health", "")))).lower()
+        in {"critical", "degraded", "breaching"}
     )
     pipeline_total = len(lineage) + len(streams)
     pipeline_pillar = _pillar(
@@ -188,7 +191,9 @@ def aggregate_summary(
     # ── Platform pillar: stream clusters / infra signals ────────────────────
     platform_observed = availability.get("streams", bool(streams))
     cluster_bad = sum(
-        1 for s in streams if str(s.get("cluster_health", s.get("health", ""))).lower() in {"critical", "degraded"}
+        1
+        for s in streams
+        if str(s.get("status", s.get("health_state", s.get("cluster_health", "")))).lower() in {"critical", "degraded"}
     )
     platform_pillar = _pillar(
         "platform",

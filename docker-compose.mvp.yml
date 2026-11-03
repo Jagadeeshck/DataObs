@@ -45,10 +45,10 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.api
-    command: ["python", "/app/seed_console_demo.py"]
+    command: ["python", "/app/seed_demo_estate.py"]
     environment: *api-environment
     volumes:
-      - ./scripts/seed_console_demo.py:/app/seed_console_demo.py:ro
+      - ./scripts/seed_demo_estate.py:/app/seed_demo_estate.py:ro
     depends_on:
       migrations:
         condition: service_completed_successfully

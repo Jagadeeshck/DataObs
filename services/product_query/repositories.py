@@ -38,6 +38,16 @@ class ElasticsearchConsoleRepository:
         )
         if docs:
             return docs[0]
+        # No durable projection yet — project once on read so the estate view reflects
+        # real per-pillar collection immediately, not an empty shell. The background
+        # worker keeps it fresh thereafter. Project-on-read failures fall through to the
+        # honest "no projection available" response below.
+        try:
+            from services.command_center.projector import CommandCenterProjector
+
+            return CommandCenterProjector(self.es).project(tenant, environment)
+        except Exception:
+            pass
         return {
             "tenant_id": tenant,
             "environment": environment,

@@ -59,6 +59,24 @@ services:
       - no-new-privileges:true
     restart: "no"
 
+  command-center-projector:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    command: ["python", "-m", "services.command_center.cli", "run", "--interval", "30"]
+    environment: *api-environment
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      migrations:
+        condition: service_completed_successfully
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+
   api:
     build:
       context: .

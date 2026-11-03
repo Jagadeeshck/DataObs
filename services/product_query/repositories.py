@@ -27,27 +27,28 @@ class ElasticsearchConsoleRepository:
     def command_center(
         self, tenant: str, environment: str, start: datetime | None, end: datetime | None
     ) -> dict[str, Any]:
-        docs = self._search(
-            "dataobs-command-center-summary-v1-read",
-            tenant,
-            environment,
-            size=1,
-            start=start,
-            end=end,
-            sort=[{"@timestamp": "desc"}],
-        )
-        if docs:
-            return docs[0]
-        # No durable projection yet — project once on read so the estate view reflects
-        # real per-pillar collection immediately, not an empty shell. The background
-        # worker keeps it fresh thereafter. Project-on-read failures fall through to the
-        # honest "no projection available" response below.
+        # Project fresh from the per-pillar read-models on every read. The projection is
+        # cheap and this guarantees the estate view reflects current collection — never a
+        # stale or empty cached summary left by an earlier seed/run. The background worker
+        # keeps the durable summary warm for other consumers; this read never depends on it.
         try:
             from services.command_center.projector import CommandCenterProjector
 
             return CommandCenterProjector(self.es).project(tenant, environment)
         except Exception:
-            pass
+            # Projector unavailable — fall back to the latest durable summary if present,
+            # else the honest "no projection available" response below.
+            docs = self._search(
+                "dataobs-command-center-summary-v1-read",
+                tenant,
+                environment,
+                size=1,
+                start=start,
+                end=end,
+                sort=[{"@timestamp": "desc"}],
+            )
+            if docs:
+                return docs[0]
         return {
             "tenant_id": tenant,
             "environment": environment,

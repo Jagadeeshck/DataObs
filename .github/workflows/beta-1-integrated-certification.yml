@@ -21,7 +21,7 @@ jobs:
           git fetch origin main --no-tags
           git merge-base --is-ancestor HEAD origin/main
           python scripts/release/current_terminal_migration.py --json
-          python scripts/release/validate_certification_manifest.py docs/release/beta-1-certification-manifest.yaml
+          python scripts/release/validate_certification_manifest.py --manifest docs/release/beta-1-certification-manifest.yaml
   dispatch-capability-evidence:
     needs: preflight
     runs-on: ubuntu-latest

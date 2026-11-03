@@ -63,7 +63,7 @@ def seed_tenant(es, tenant: str, environment: str, *, degraded: bool) -> None:
                 "classification": "internal",
                 "business_service": "retail-orders",
                 "description": f"{aid} {fqn} {atype} retail orders",
-                "tags": ["retail", atype],
+                "tags": {"domain": "retail", "asset_type": atype},
                 "observed_at": _iso(now),
             },
         )

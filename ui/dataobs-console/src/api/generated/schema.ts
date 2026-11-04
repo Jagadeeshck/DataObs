@@ -211,6 +211,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/assets/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Search Asset Catalog
+         * @description Keyword catalog search over the 0035 asset-search projection.
+         *
+         *     Tenant/environment-scoped. Honest states: data_status is complete (incl. a
+         *     measured zero), unavailable (projection absent), or error. Never fabricates
+         *     results when the search surface is missing.
+         */
+        get: operations["search_asset_catalog_api_v1_assets_search_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/assets/{asset_id}": {
         parameters: {
             query?: never;
@@ -3632,6 +3656,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/quality/monitors/{monitor_id}/ml-detector": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ml Detector
+         * @description Read the native ES ML anomaly detector bound to this monitor.
+         *
+         *     Honest states, never fabricated: when auto detection was never requested or the
+         *     registry is unavailable the response is explicitly not_configured/unavailable
+         *     rather than a fake 'healthy'. provisioning_state is provisioning | active | error |
+         *     deactivated; availability_state is available | unavailable | unknown.
+         */
+        get: operations["ml_detector_api_v1_quality_monitors__monitor_id__ml_detector_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/quality/monitors/{monitor_id}/observations": {
         parameters: {
             query?: never;
@@ -3764,6 +3813,29 @@ export interface paths {
         };
         /** Runtime Health */
         get: operations["runtime_health_api_v1_quality_runtime_health_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/quality/templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Quality Templates
+         * @description Return the built-in quality check templates the Console offers as starting points.
+         *
+         *     This is a static, curated catalog over the already-registered built-in checks;
+         *     it reports no operational evidence, so the read is always complete.
+         */
+        get: operations["quality_templates_api_v1_quality_templates_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -6382,6 +6454,12 @@ export interface components {
              */
             creation_source: "UI" | "API" | "YAML" | "recommendation" | "import";
             /**
+             * Detection Mode
+             * @default manual
+             * @enum {string}
+             */
+            detection_mode: "manual" | "auto";
+            /**
              * Environment
              * @default default
              */
@@ -7450,6 +7528,49 @@ export interface operations {
                 asset_type?: string | null;
                 owner_team?: string | null;
                 source?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    search_asset_catalog_api_v1_assets_search_get: {
+        parameters: {
+            query?: {
+                q?: string | null;
+                asset_type?: string | null;
+                owner_team?: string | null;
+                classification?: string | null;
+                business_service?: string | null;
+                limit?: number;
+                offset?: number;
             };
             header?: {
                 authorization?: string | null;
@@ -15862,6 +15983,41 @@ export interface operations {
             };
         };
     };
+    ml_detector_api_v1_quality_monitors__monitor_id__ml_detector_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path: {
+                monitor_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     observations_api_v1_quality_monitors__monitor_id__observations_get: {
         parameters: {
             query?: {
@@ -16155,6 +16311,39 @@ export interface operations {
         };
     };
     runtime_health_api_v1_quality_runtime_health_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "X-DataObs-Tenant"?: string | null;
+                "X-DataObs-Environment"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    quality_templates_api_v1_quality_templates_get: {
         parameters: {
             query?: never;
             header?: {

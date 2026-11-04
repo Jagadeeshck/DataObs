@@ -50,8 +50,12 @@ export const streamTemplatesApi = {
     category?: StreamTemplateCategory,
     signal?: AbortSignal,
   ) =>
-    request<StreamTemplateCatalog>(templatesPath(environment, category), tenant, {
-      environment,
-      signal,
-    }).then((result) => result.data),
+    request<StreamTemplateCatalog>(
+      templatesPath(environment, category),
+      tenant,
+      {
+        environment,
+        signal,
+      },
+    ).then((result) => result.data),
 };

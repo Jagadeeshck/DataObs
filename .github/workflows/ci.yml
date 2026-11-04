@@ -572,6 +572,7 @@ jobs:
       - name: Run live assertions
         env:
           RUN_CERTIFICATION_TESTS: "1"
+          DATAOBS_API_TOKEN: dataobs-certification-token
           CERTIFICATION_POSTGRES_DSN: postgresql://dataobs_fixture@127.0.0.1:15432/orders
           KAFKA_BOOTSTRAP_SERVERS: 127.0.0.1:19092
           CONNECT_URL: http://127.0.0.1:18083
@@ -642,6 +643,10 @@ jobs:
           curl -fsS http://127.0.0.1:19200/_mapping >/dev/null
           curl -fsS http://127.0.0.1:19200/_alias >/dev/null
       - name: Seed deterministic Kafka fixtures
+        env:
+          KAFKA_BOOTSTRAP_SERVERS: 127.0.0.1:19092
+          CONNECT_URL: http://127.0.0.1:18083
+          SCHEMA_REGISTRY_URL: http://127.0.0.1:18081
         run: |
           ./scripts/certification/kafka/create_topics.sh
           ./scripts/certification/kafka/register_schemas.sh
@@ -652,6 +657,7 @@ jobs:
       - name: Run live assertions
         env:
           RUN_CERTIFICATION_TESTS: "1"
+          DATAOBS_API_TOKEN: dataobs-certification-token
           CERTIFICATION_POSTGRES_DSN: postgresql://dataobs_fixture@127.0.0.1:15432/orders
           KAFKA_BOOTSTRAP_SERVERS: 127.0.0.1:19092
           CONNECT_URL: http://127.0.0.1:18083
@@ -688,6 +694,7 @@ jobs:
       - name: Run live assertions
         env:
           RUN_CERTIFICATION_TESTS: "1"
+          DATAOBS_API_TOKEN: dataobs-certification-token
           CERTIFICATION_POSTGRES_DSN: postgresql://dataobs_fixture@127.0.0.1:15432/orders
           KAFKA_BOOTSTRAP_SERVERS: 127.0.0.1:19092
           CONNECT_URL: http://127.0.0.1:18083

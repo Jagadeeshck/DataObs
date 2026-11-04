@@ -39,7 +39,7 @@ services:
   api:
     build: {context: ., dockerfile: Dockerfile.api}
     profiles: [core, postgres, kafka, jobs, browser-infra, security-infra, cert-core, cert-migrations, cert-postgres, cert-kafka, cert-jobs, cert-product, cert-browser, cert-security, full-backend, full]
-    environment: {DATAOBS_STORE_BACKEND: elasticsearch, ELASTICSEARCH_URL: http://elasticsearch:9200, DATAOBS_ALLOW_UNAUTHENTICATED_DEV: "true", API_PORT: "8080", OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317}
+    environment: {DATAOBS_STORE_BACKEND: elasticsearch, ELASTICSEARCH_URL: http://elasticsearch:9200, DATAOBS_ALLOW_UNAUTHENTICATED_DEV: "true", DATAOBS_DEVELOPMENT_TENANT_ID: tenant-alpha, DATAOBS_DEVELOPMENT_ENVIRONMENT: staging, API_TOKEN: "${DATAOBS_CERT_API_TOKEN:-dataobs-certification-token}", API_PORT: "8080", OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317}
     ports: ["127.0.0.1:18000:8080"]
     networks: [certification-public, certification-control]
     depends_on: {elasticsearch: {condition: service_healthy}, otel-collector: {condition: service_healthy}}

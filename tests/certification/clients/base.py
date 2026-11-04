@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import time
 import uuid
 from urllib.error import HTTPError, URLError
@@ -25,6 +26,9 @@ class HttpClient:
             "X-DataObs-Environment": self.environment,
             "X-Request-ID": str(uuid.uuid4()),
         }
+        token = os.getenv("DATAOBS_API_TOKEN")
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
         data = None
         if body is not None:
             data = json.dumps(body).encode()

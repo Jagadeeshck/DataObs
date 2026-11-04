@@ -19,7 +19,14 @@ def test_workflow_yaml():
 def test_mvp_compose_has_ordered_migrations_and_no_secret_defaults():
     text = (ROOT / "docker-compose.mvp.yml").read_text()
     compose = yaml.safe_load(text)
-    assert set(compose["services"]) == {"elasticsearch", "migrations", "demo-seed", "api", "console"}
+    assert set(compose["services"]) == {
+        "elasticsearch",
+        "migrations",
+        "demo-seed",
+        "api",
+        "console",
+        "command-center-projector",
+    }
     api_dependencies = compose["services"]["api"]["depends_on"]
     assert api_dependencies["migrations"]["condition"] == "service_completed_successfully"
     assert api_dependencies["demo-seed"]["condition"] == "service_completed_successfully"

@@ -9,7 +9,7 @@ jobs:
       - uses: actions/setup-python@v5
         with: {python-version: '3.14'}
       - run: pip install -r requirements.txt -r requirements-presto.txt ruff black mypy pip-audit
-      - run: '! git grep -nE "^(<<<<<<<|=======|>>>>>>>)"'
+      - run: '! git grep -nE "^(<{7}|={7}|>{7})(\s|$)"'
       - run: python -m compileall integrations/sql_engine integrations/presto integrations/trino services/collection_manager
       - run: ruff check integrations/sql_engine integrations/presto tests/integrations/test_presto_provider.py tests/integrations/test_presto_client_compatibility.py
       - run: black --check integrations/sql_engine integrations/presto tests/integrations/test_presto_provider.py tests/integrations/test_presto_client_compatibility.py

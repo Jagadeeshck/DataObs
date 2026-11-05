@@ -526,7 +526,7 @@ class ElasticsearchIntelligenceRepository:
             size=size,
             filters=filters,
             after=after,
-            sort=[{"evaluated_at": "desc"}, {"_id": "asc"}],
+            sort=[{"evaluated_at": "desc"}, {"evaluation_id": "asc"}],
         )
 
     def summary_counts(self, tenant: str, environment: str) -> dict[str, int]:

@@ -136,7 +136,7 @@ class ElasticsearchMonitorRepository:
         return [
             MonitorDefinition.model_validate(h["_source"])
             for h in self._search(
-                MONITORS_ALIAS, tenant_id, environment, limit=limit, sort=[{"updated_at": "desc"}, {"_id": "asc"}]
+                MONITORS_ALIAS, tenant_id, environment, limit=limit, sort=[{"updated_at": "desc"}, {"id": "asc"}]
             )
         ]
 
@@ -156,7 +156,7 @@ class ElasticsearchMonitorRepository:
             index=index,
             query={"bool": {"filter": filters}},
             size=limit,
-            sort=sort or [{"@timestamp": "desc"}, {"_id": "asc"}],
+            sort=sort or [{"@timestamp": "desc"}, {"id": "asc"}],
         )["hits"]["hits"]
 
     def list_definition_history(self, tenant_id, environment, monitor_id, *, limit):
@@ -168,7 +168,7 @@ class ElasticsearchMonitorRepository:
                 environment,
                 limit=limit,
                 extra=[{"term": {"monitor_id": monitor_id}}],
-                sort=[{"revision": "desc"}, {"_id": "asc"}],
+                sort=[{"revision": "desc"}],
             )
         ]
 
@@ -181,7 +181,7 @@ class ElasticsearchMonitorRepository:
                 environment,
                 limit=limit,
                 extra=[{"term": {"state": "enabled"}}, {"range": {"next_scheduled_for": {"lte": before.isoformat()}}}],
-                sort=[{"next_scheduled_for": "asc"}, {"_id": "asc"}],
+                sort=[{"next_scheduled_for": "asc"}, {"monitor_id": "asc"}],
             )
         ]
 
@@ -273,7 +273,7 @@ class ElasticsearchMonitorRepository:
                 environment,
                 limit=limit,
                 extra=[{"term": {"monitor_id": monitor_id}}, {"range": {"observed_at": {"lt": before.isoformat()}}}],
-                sort=[{"observed_at": "asc"}, {"_id": "asc"}],
+                sort=[{"observed_at": "asc"}],
             )
         ]
 
@@ -307,7 +307,7 @@ class ElasticsearchMonitorRepository:
                 environment,
                 limit=limit,
                 extra=[{"term": {"monitor_id": monitor_id}}],
-                sort=[{"created_at": "desc"}, {"_id": "asc"}],
+                sort=[{"created_at": "desc"}, {"baseline_version": "asc"}],
             )
         ]
 
@@ -359,7 +359,7 @@ class ElasticsearchMonitorRepository:
                 environment,
                 limit=limit,
                 extra=[{"term": {"monitor_id": monitor_id}}],
-                sort=[{"evaluated_at": "desc"}, {"_id": "asc"}],
+                sort=[{"evaluated_at": "desc"}, {"evaluation_id": "asc"}],
             )
         ]
 
@@ -448,7 +448,7 @@ class ElasticsearchMonitorRepository:
         return [
             h["_source"]
             for h in self._search(
-                RECOMMENDATIONS, tenant_id, environment, limit=limit, sort=[{"updated_at": "desc"}, {"_id": "asc"}]
+                RECOMMENDATIONS, tenant_id, environment, limit=limit, sort=[{"updated_at": "desc"}, {"id": "asc"}]
             )
         ]
 

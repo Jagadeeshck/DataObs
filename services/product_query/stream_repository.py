@@ -249,7 +249,7 @@ class StreamRepository:
             "index": STREAM_ALIASES[resource],
             "size": size,
             "query": query,
-            "sort": [{field: {"order": direction, "missing": "_last"}}, {"_id": "asc"}],
+            "sort": [{field: {"order": direction, "missing": "_last"}}, {"id": "asc"}],
             "source": SAFE_SOURCE,
             "request_timeout": self.timeout,
         }
@@ -399,7 +399,7 @@ class StreamRepository:
             "size": size,
             "source": RELATED_SAFE_SOURCE[resource],
             "query": query,
-            "sort": [{field: {"order": direction, "missing": "_last"}}, {"_id": "asc"}],
+            "sort": [{field: {"order": direction, "missing": "_last"}}, {"id": "asc"}],
             "request_timeout": self.timeout,
         }
         if search_after is not None:
@@ -575,7 +575,7 @@ class StreamRepository:
                     ]
                 }
             },
-            sort=[{"@timestamp": "asc"}, {"_id": "asc"}],
+            sort=[{"@timestamp": "asc"}, {"id": "asc"}],
             request_timeout=self.timeout,
         )
         return [hit.get("_source", {}) for hit in response["hits"]["hits"]]

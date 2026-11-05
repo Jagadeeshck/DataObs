@@ -157,7 +157,7 @@ class StreamInvestigationRepository:
                     ]
                 }
             },
-            sort=[{"@timestamp": "asc"}, {"_id": "asc"}],
+            sort=[{"@timestamp": "asc"}],
             request_timeout=5,
         )
         return [hit["_source"] for hit in result.get("hits", {}).get("hits", [])]

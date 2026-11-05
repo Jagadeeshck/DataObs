@@ -120,7 +120,7 @@ class ElasticsearchReliabilityRepository:
                     ]
                 }
             },
-            sort=[{"evaluated_at": "desc"}, {"_id": "asc"}],
+            sort=[{"evaluated_at": "desc"}, {"evaluation_id": "asc"}],
             source=list(Evaluation.__dataclass_fields__),
         )
         hits = response["hits"]["hits"]

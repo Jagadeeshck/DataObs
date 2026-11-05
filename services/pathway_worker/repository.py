@@ -158,7 +158,7 @@ class ElasticsearchPathwayRepository:
                         ]
                     }
                 },
-                "sort": [{"@timestamp": "asc"}, {"_id": "asc"}],
+                "sort": [{"@timestamp": "asc"}, {"_shard_doc": "asc"}],
                 "size": page_size,
             }
             if after:

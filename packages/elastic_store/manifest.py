@@ -2790,6 +2790,28 @@ ASSET_SEMANTIC_SEARCH_MIGRATION = Migration(
     },
 )
 
+# B21: the OpenLineage ingest path writes flat fields (event_id,
+# content_fingerprint, producer, schema_url, job_namespace, job_name,
+# input_assets, output_assets, source_event_time, safe_facets, unknown_facets)
+# to the strict logs-dataobs.openlineage-* data stream. The bound priority-500
+# template built by registry._ensure_data_stream_template lacked them, so every
+# valid event failed with strict_dynamic_mapping_exception (HTTP 500). This
+# additive forward migration re-applies that data-stream template with the new
+# OPENLINEAGE_PROPERTIES mapped explicitly - it never weakens dynamic:strict and
+# never edits a released migration. Re-declaring the openlineage data-stream
+# pattern repaints the governing template so new backing indices accept the
+# fields; the current backing index is rolled over operationally after apply.
+OPENLINEAGE_STRICT_MAPPING_FIELDS_MIGRATION = Migration(
+    "0036_openlineage_strict_mapping_fields",
+    "Map the OpenLineage ingest flat fields on the strict logs-dataobs.openlineage-* data-stream template so valid events stop failing strict dynamic mapping",
+    "v1",
+    dependencies=["0035_asset_semantic_search"],
+    rollback_strategy="stop OpenLineage ingest writers, snapshot state, then roll back the openlineage data-stream template to the 0035 property set after human review; backing indices retain their additive fields",
+    operations={
+        "data_streams": ["logs-dataobs.openlineage-*"],
+    },
+)
+
 
 def migrations() -> List[Migration]:
     return [
@@ -2828,6 +2850,7 @@ def migrations() -> List[Migration]:
         TEAM1_STREAM_SCHEMA_INTELLIGENCE_RUNTIME_MIGRATION,
         ML_ANOMALY_DETECTOR_JOBS_MIGRATION,
         ASSET_SEMANTIC_SEARCH_MIGRATION,
+        OPENLINEAGE_STRICT_MAPPING_FIELDS_MIGRATION,
     ]
 
 

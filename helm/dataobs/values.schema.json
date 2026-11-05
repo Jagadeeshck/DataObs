@@ -1201,7 +1201,7 @@
           }
         },
         "terminalMigration": {
-          "const": "0035_asset_semantic_search"
+          "const": "0036_openlineage_strict_mapping_fields"
         }
       }
     },

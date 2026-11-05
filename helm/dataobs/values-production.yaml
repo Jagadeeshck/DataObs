@@ -500,7 +500,7 @@ migrationJob:
   - packages.elastic_store.cli
   - apply
   # Kept in sync with packages.elastic_store.registry by render_helm_values.py/CI.
-  terminalMigration: 0035_asset_semantic_search
+  terminalMigration: 0036_openlineage_strict_mapping_fields
   activeDeadlineSeconds: 900
   backoffLimit: 2
   ttlSecondsAfterFinished: 86400

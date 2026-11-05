@@ -37,7 +37,10 @@ def point_value(point):
         if candidate is not None:
             return float(candidate)
     distribution = getattr(value, "distribution_value", None)
-    return float(distribution.mean) if distribution is not None and getattr(distribution, "count", 0) else None
+    if distribution is None:
+        return None
+    count = getattr(distribution, "count", None)
+    return float(distribution.mean) if count else None
 
 
 def collect_metric_series(

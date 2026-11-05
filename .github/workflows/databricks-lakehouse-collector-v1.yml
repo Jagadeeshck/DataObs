@@ -16,7 +16,7 @@ jobs:
       - run: mypy --ignore-missing-imports integrations/databricks
       - run: pytest -q tests/packages/collectors tests/services/collection_manager tests/integrations/test_databricks_provider.py tests/integrations/test_aws_provider.py tests/integrations/test_aws_provider_v2.py tests/integrations/test_snowflake_provider.py tests/integrations/databases/postgres
       - run: pip-audit -r requirements-databricks.txt
-      - run: git diff --check && ! git grep -nE '^(<<<<<<<|=======|>>>>>>>)'
+      - run: git diff --check && ! git grep -nE '^(<{7}|={7}|>{7})(\s|$)'
       - run: python scripts/release/check_release_metadata.py
       - run: python scripts/product/validate_capability_ledger.py
       - run: python scripts/docs/check_links.py

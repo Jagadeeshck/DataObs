@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   buildRoutePath,
   visibleRoutes,
@@ -25,6 +25,7 @@ export function QuickFind() {
   const trigger = useRef<HTMLButtonElement>(null);
   const input = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
+  const location = useLocation();
   const controller = useMemo(() => new SearchController(searchProviders), []);
   const [entities, setEntities] = useState<SearchResult[]>([]);
   const [searching, setSearching] = useState(false);
@@ -145,6 +146,11 @@ export function QuickFind() {
   useEffect(() => {
     if (open) queueMicrotask(() => input.current?.focus());
   }, [open]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- a completed navigation must always dismiss the overlay
+    setOpen(false);
+    setQuery("");
+  }, [location.key]);
   const close = () => {
     setOpen(false);
     setQuery("");

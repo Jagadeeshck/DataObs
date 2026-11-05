@@ -1730,11 +1730,13 @@ class ElasticsearchDataProductRepository:
                     ]
                 }
             },
+            # `operation_id` is the unique mapped keyword per revision-event envelope
+            # (same precedent as get_product_revision / list_pending_operations), so it
+            # is the deterministic tie-break instead of the ES 9.x fielddata-forbidden `_id`.
             "sort": [
                 {"revision": "desc"},
                 {"occurred_at": "desc"},
                 {"operation_id": "desc"},
-                {"_id": "desc"},
             ],
         }
         if search_after:

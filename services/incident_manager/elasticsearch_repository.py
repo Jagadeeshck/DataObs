@@ -141,7 +141,10 @@ class ElasticsearchIncidentRepository:
             index=alias,
             size=MAX_PAGE_SIZE,
             query={"bool": {"filter": self._scope(tenant_id, environment)}},
-            sort=[{"updated_at": "desc"}, {"_id": "asc"}],
+            # ES 9.x disallows fielddata on the `_id` metadata field, so sorting on
+            # it 500s. `id` is the mapped keyword document id on both the findings
+            # and incidents indices and is unique, giving a deterministic tie-break.
+            sort=[{"updated_at": "desc"}, {"id": "asc"}],
             seq_no_primary_term=model is Incident,
         )
         results = []

@@ -387,7 +387,10 @@ class ElasticsearchDataProductRepository:
                     ]
                 }
             },
-            sort=[{"occurred_at": "asc"}, {"_id": "asc"}],
+            # ES 9.x forbids fielddata on `_id`; the history envelope has no unique
+            # top-level keyword, so tie-break on the mapped flattened `document.event_id`
+            # which uniquely identifies each immutable history event.
+            sort=[{"occurred_at": "asc"}, {"document.event_id": "asc"}],
         )
         events = []
         for hit in response["hits"]["hits"]:
@@ -654,7 +657,12 @@ class ElasticsearchDataProductRepository:
                     ]
                 }
             },
-            sort=[{"expires_at": "asc"}, {"_id": "asc"}],
+            # ES 9.x forbids fielddata on `_id`. The idempotency index has no unique
+            # mapped keyword in source (its record_id lives only in the ES metadata
+            # `_id`), so tie-break on the mapped `resource_id`/`created_at` keywords for
+            # a stable, non-`_id` order. See commit notes: a fully unique mapped key here
+            # would require a Team 0 additive migration, which is out of scope for B15.
+            sort=[{"expires_at": "asc"}, {"resource_id": "asc"}, {"created_at": "asc"}],
         )
         return [DataProductIdempotencyRecord.model_validate(hit["_source"]) for hit in response["hits"]["hits"]]
 
@@ -697,7 +705,10 @@ class ElasticsearchDataProductRepository:
                     ]
                 }
             },
-            sort=[{"id": "asc"}, {"_id": "asc"}],
+            # `id` is the mapped keyword product id and is unique within tenant+env,
+            # so it is already a deterministic sort key; the `_id` tie-break (forbidden
+            # for fielddata in ES 9.x) is redundant and dropped.
+            sort=[{"id": "asc"}],
         )
         return [DataProduct.model_validate(hit["_source"]) for hit in response["hits"]["hits"]]
 
@@ -716,7 +727,9 @@ class ElasticsearchDataProductRepository:
             "index": PRODUCTS,
             "size": limit,
             "query": {"bool": {"filter": [{"term": {"tenant_id": tenant_id}}, {"term": {"environment": environment}}]}},
-            "sort": [{"id": "asc"}, {"_id": "asc"}],
+            # `id` is the unique mapped keyword product id within tenant+env, so it is a
+            # deterministic search_after cursor on its own; drop the redundant `_id` key.
+            "sort": [{"id": "asc"}],
         }
         if search_after:
             body["search_after"] = list(search_after)
@@ -1066,7 +1079,10 @@ class ElasticsearchDataProductRepository:
             product_id,
             limit=limit,
             search_after=search_after,
-            sort=({"updated_at": "desc"}, {"membership_id": "asc"}, {"_id": "asc"}),
+            # `membership_id` is unique within tenant+env+product_id, so it is already a
+            # deterministic search_after key; the `_id` tie-break is redundant (and ES 9.x
+            # forbids fielddata on `_id`), so it is dropped.
+            sort=({"updated_at": "desc"}, {"membership_id": "asc"}),
         )
         return DataProductMembershipPage(items=items, has_more=more, search_after=after)
 
@@ -1143,7 +1159,10 @@ class ElasticsearchDataProductRepository:
                     ]
                 }
             },
-            sort=[{"proposal_revision": "desc"}, {"_id": "desc"}],
+            # Within a single proposal_id each document has a distinct proposal_revision,
+            # so `proposal_revision desc` deterministically selects the latest revision;
+            # the `_id` tie-break (forbidden fielddata in ES 9.x) is redundant and dropped.
+            sort=[{"proposal_revision": "desc"}],
         )
         hits = response["hits"]["hits"]
         return DataProductMembershipProposal.model_validate(hits[0]["_source"]) if hits else None
@@ -1165,11 +1184,13 @@ class ElasticsearchDataProductRepository:
             product_id,
             limit=limit,
             search_after=search_after,
+            # (proposal_id, proposal_revision) is unique per document and both keys are
+            # already in the sort, so the ordering is deterministic without the ES 9.x
+            # fielddata-forbidden `_id` tie-break, which is dropped.
             sort=(
                 {"created_at": "desc"},
                 {"proposal_revision": "desc"},
                 {"proposal_id": "asc"},
-                {"_id": "asc"},
             ),
         )
         return DataProductMembershipProposalPage(items=items, has_more=more, search_after=after)
@@ -1198,7 +1219,9 @@ class ElasticsearchDataProductRepository:
                     ]
                 }
             },
-            sort=[{"proposal_revision": "desc"}, {"_id": "desc"}],
+            # Single proposal_id query: proposal_revision is unique per document, so it is
+            # a deterministic selector on its own; drop the redundant ES 9.x-forbidden `_id`.
+            sort=[{"proposal_revision": "desc"}],
         )
         hits = response["hits"]["hits"]
         if not hits:
@@ -1293,7 +1316,9 @@ class ElasticsearchDataProductRepository:
                     ]
                 }
             },
-            sort=[{"occurred_at": "asc"}, {"decision_id": "asc"}, {"_id": "asc"}],
+            # decision_id is the unique mapped keyword per decision document, so it is a
+            # deterministic tie-break on its own; the ES 9.x fielddata-forbidden `_id` is dropped.
+            sort=[{"occurred_at": "asc"}, {"decision_id": "asc"}],
         )
         return tuple(
             DataProductMembershipDecision.model_validate(self._decision_from_source(hit["_source"]))
@@ -1317,7 +1342,10 @@ class ElasticsearchDataProductRepository:
             product_id,
             limit=limit,
             search_after=search_after,
-            sort=({"decided_at": "desc"}, {"decision_id": "asc"}, {"_id": "asc"}),
+            # decision_id uniquely identifies each decision document and is already in the
+            # sort, giving a deterministic search_after key without the `_id` tie-break,
+            # which ES 9.x forbids for fielddata and is therefore dropped.
+            sort=({"decided_at": "desc"}, {"decision_id": "asc"}),
         )
         return DataProductMembershipDecisionPage(items=items, has_more=more, search_after=after)
 
@@ -1530,7 +1558,11 @@ class ElasticsearchDataProductRepository:
                             ]
                         }
                     },
-                    sort=[{"product_id": "asc"}, {"upstream_product_id": "asc"}, {"_id": "asc"}],
+                    # Each current-state edge is uniquely keyed by (product_id,
+                    # upstream_product_id); both are mapped keywords already in the sort,
+                    # so the search_after cursor is deterministic without the ES 9.x
+                    # fielddata-forbidden `_id` tie-break, which is dropped.
+                    sort=[{"product_id": "asc"}, {"upstream_product_id": "asc"}],
                     search_after=after,
                 )
                 hits = response["hits"]["hits"]
@@ -1637,7 +1669,10 @@ class ElasticsearchDataProductRepository:
                     ]
                 }
             },
-            sort=[{"occurred_at": "desc"}, {"_id": "desc"}],
+            # operation_id is the unique mapped keyword for a revision-event envelope
+            # (matching list_reconcilable_operations); use it as the deterministic
+            # tie-break instead of the ES 9.x fielddata-forbidden `_id`.
+            sort=[{"occurred_at": "desc"}, {"operation_id": "desc"}],
         )
         hits = response["hits"]["hits"]
         return DataProduct.model_validate(hits[0]["_source"]["document"]) if hits else None
@@ -1662,7 +1697,10 @@ class ElasticsearchDataProductRepository:
             index=OPERATIONS,
             size=limit,
             query={"bool": {"filter": filters}},
-            sort=[{"occurred_at": "asc"}, {"_id": "asc"}],
+            # Pending revision-event envelopes are uniquely keyed by operation_id (mapped
+            # keyword), matching list_reconcilable_operations; use it as the deterministic
+            # tie-break instead of the ES 9.x fielddata-forbidden `_id`.
+            sort=[{"occurred_at": "asc"}, {"operation_id": "asc"}],
         )
         return [
             DataProductRevisionEvent.model_validate({k: v for k, v in hit["_source"].items() if k != "document"})
@@ -1692,11 +1730,13 @@ class ElasticsearchDataProductRepository:
                     ]
                 }
             },
+            # `operation_id` is the unique mapped keyword per revision-event envelope
+            # (same precedent as get_product_revision / list_pending_operations), so it
+            # is the deterministic tie-break instead of the ES 9.x fielddata-forbidden `_id`.
             "sort": [
                 {"revision": "desc"},
                 {"occurred_at": "desc"},
                 {"operation_id": "desc"},
-                {"_id": "desc"},
             ],
         }
         if search_after:

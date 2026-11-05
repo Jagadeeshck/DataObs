@@ -16,7 +16,12 @@ const { state, MockApiError } = vi.hoisted(() => {
     }
   }
   const state: { impl: (...args: unknown[]) => Promise<unknown> } = {
-    impl: async () => ({ items: [], next_cursor: null, data_status: "unknown", warnings: [] }),
+    impl: async () => ({
+      items: [],
+      next_cursor: null,
+      data_status: "unknown",
+      warnings: [],
+    }),
   };
   return { state, MockApiError };
 });

@@ -31,11 +31,22 @@ export interface PickerViewModel {
   requestedCategory?: string;
 }
 
-const CATEGORY_ORDER: StreamTemplateCategory[] = ["freshness", "lag", "throughput"];
+const CATEGORY_ORDER: StreamTemplateCategory[] = [
+  "freshness",
+  "lag",
+  "throughput",
+];
 
 function orderCategories(categories: string[]): string[] {
-  const known = CATEGORY_ORDER.filter((category) => categories.includes(category));
-  const extra = categories.filter((category) => !CATEGORY_ORDER.includes(category as StreamTemplateCategory)).sort();
+  const known = CATEGORY_ORDER.filter((category) =>
+    categories.includes(category),
+  );
+  const extra = categories
+    .filter(
+      (category) =>
+        !CATEGORY_ORDER.includes(category as StreamTemplateCategory),
+    )
+    .sort();
   return [...known, ...extra];
 }
 
@@ -43,9 +54,16 @@ function orderCategories(categories: string[]): string[] {
  * Build the picker view model from a loaded catalog, or from `null`/`undefined`
  * when the catalog is unavailable (not loaded or failed).
  */
-export function buildPicker(catalog: StreamTemplateCatalog | null | undefined): PickerViewModel {
+export function buildPicker(
+  catalog: StreamTemplateCatalog | null | undefined,
+): PickerViewModel {
   if (!catalog) {
-    return { status: "unavailable", categories: [], groups: [], unsupported: [] };
+    return {
+      status: "unavailable",
+      categories: [],
+      groups: [],
+      unsupported: [],
+    };
   }
 
   const categories = orderCategories(catalog.categories ?? []);

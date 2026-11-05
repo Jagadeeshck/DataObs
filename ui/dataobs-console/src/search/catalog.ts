@@ -136,7 +136,8 @@ export function rankAssets(
 
   const ranked = assets.map((asset, index) => {
     const fields = perAssetTokens[index];
-    const fieldLength = fields.reduce((sum, f) => sum + f.tokens.length, 0) || 1;
+    const fieldLength =
+      fields.reduce((sum, f) => sum + f.tokens.length, 0) || 1;
     const matchedFields = new Set<string>();
     let score = 0;
     for (const term of terms) {
@@ -151,9 +152,7 @@ export function rankAssets(
           termFrequency +
           BM25_K1 * (1 - BM25_B + (BM25_B * fieldLength) / avgFieldLength);
         score +=
-          field.boost *
-          idf *
-          ((termFrequency * (BM25_K1 + 1)) / denominator);
+          field.boost * idf * ((termFrequency * (BM25_K1 + 1)) / denominator);
       }
     }
     return { asset, score, matchedFields: [...matchedFields] };

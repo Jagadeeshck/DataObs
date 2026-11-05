@@ -20,7 +20,7 @@ jobs:
       - run: python scripts/validate_capability_ledger.py && python scripts/check_generated_artifacts.py
       - run: python scripts/check_docs_links.py
       - run: pip-audit -r requirements-bigquery.txt
-      - run: git diff --check && ! git grep -nE '^(<<<<<<<|=======|>>>>>>>)'
+      - run: git diff --check && ! git grep -nE '^(<{7}|={7}|>{7})(\s|$)'
       - name: Evidence envelope and independent verification
         run: |
           mkdir -p evidence-out

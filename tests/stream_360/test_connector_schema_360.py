@@ -192,7 +192,7 @@ def test_schema_reads_are_fixed_scoped_bounded_and_source_allowlisted():
     repo.search(SUBJECTS, "tenant-a", "prod", subject_id="subject", size=100_000)
     request = es.requests[-1]
     assert request["size"] == 200 and request["source"] is SAFE_SOURCE
-    assert request["sort"][-1] == {"_id": "asc"}
+    assert request["sort"][-1] == {"event_id": "asc"}
     assert request["query"]["bool"]["filter"][:2] == [
         {"term": {"tenant_id": "tenant-a"}},
         {"term": {"environment": "prod"}},

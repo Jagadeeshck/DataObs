@@ -73,10 +73,10 @@ class ElasticsearchDataSLORepository:
             "index": DEFINITIONS,
             "size": limit,
             "query": {"bool": {"filter": [{"term": {"tenant_id": tenant_id}}, {"term": {"environment": environment}}]}},
-            "sort": [{"slo_id": "asc"}, {"_id": "asc"}],
+            "sort": [{"slo_id": "asc"}],
         }
         if after:
-            body["search_after"] = [after, scoped_id(tenant_id, environment, after)]
+            body["search_after"] = [after]
         return [
             DataReliabilitySLODefinition.model_validate(h["_source"])
             for h in self.client.search(**body)["hits"]["hits"]

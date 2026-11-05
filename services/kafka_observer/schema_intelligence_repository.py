@@ -212,7 +212,7 @@ class ElasticsearchSchemaIntelligenceRepository:
             index=index,
             size=min(max(size, 1), self.MAX_PAGE),
             query={"bool": {"filter": filters}},
-            sort=[{"observed_at": "desc"}, {"event_id": "asc"}, {"_id": "asc"}],
+            sort=[{"observed_at": "desc"}, {"event_id": "asc"}],
             source=SAFE_SOURCE,
             timeout="5s",
         )

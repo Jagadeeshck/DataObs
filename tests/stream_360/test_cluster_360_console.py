@@ -33,7 +33,7 @@ def test_cluster_related_query_is_isolated_bounded_and_safe():
     assert {"term": {"tenant_id": "tenant-a"}} in filters
     assert {"term": {"environment": "prod"}} in filters
     assert {"term": {"cluster_id.keyword": "cluster-a"}} in filters
-    assert request["sort"][-1] == {"_id": "asc"}
+    assert request["sort"][-1] == {"id": "asc"}
 
 
 def test_related_search_after_and_topic_filters_are_forwarded():

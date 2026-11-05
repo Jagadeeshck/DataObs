@@ -75,7 +75,7 @@ def test_pathway_repository_only_accepts_allowlisted_bounded_literal_queries():
     )
     request = es.requests[-1]
     assert request["search_after"] == ["name", "id"]
-    assert request["sort"][-1] == {"_id": "asc"}
+    assert request["sort"][-1] == {"pathway_id": "asc"}
     assert "wildcard" not in repr(request["query"])
     assert request["query"]["bool"]["filter"][-1]["multi_match"]["query"] == "orders*?"
     repo.get_many("dataobs-pathway-nodes-v1-read", [str(i) for i in range(500)], "tenant-a", "prod")

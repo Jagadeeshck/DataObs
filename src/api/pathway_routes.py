@@ -114,7 +114,7 @@ class PathwayRepository:
             "size": size,
             "source": SAFE_FIELDS,
             "query": {"bool": {"filter": clauses}},
-            "sort": [{sort_field: "asc"}, {"_id": "asc"}],
+            "sort": [{sort_field: "asc"}],
         }
         if after:
             body["search_after"] = after
@@ -144,7 +144,7 @@ class PathwayRepository:
                     ]
                 }
             },
-            sort=[{"node_id": "asc"}, {"edge_id": "asc"}, {"_id": "asc"}],
+            sort=[{"node_id": "asc"}, {"edge_id": "asc"}],
         )
         return [hit.get("_source", {}) for hit in response["hits"]["hits"]]
 

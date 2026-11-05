@@ -267,6 +267,7 @@ class MemoryDataProductRepository:
         if record.operation_id is None:
             record = record.model_copy(update={"operation_id": expected_operation_id})
             self.idempotency[record_id] = record
+        desired: tuple[str, int | None, str | None, str | None]
         if outcome == "completed":
             result = final_result_or_error
             desired = ("completed", result.revision, result.etag, None)
@@ -661,17 +662,57 @@ class MemoryDataProductRepository:
         self.proposals[(tenant_id, environment, product_id, proposal_id, current.proposal_revision)] = updated
         return updated.model_copy(deep=True)
 
-    def accept_membership_proposal(self, *args, **kwargs):
-        return self._transition_membership_proposal(*args, "accepted", **kwargs)
+    def accept_membership_proposal(
+        self,
+        tenant_id: str,
+        environment: str,
+        product_id: str,
+        proposal_id: str,
+        *,
+        expected_revision: int | None = None,
+    ) -> DataProductMembershipProposal:
+        return self._transition_membership_proposal(
+            tenant_id, environment, product_id, proposal_id, "accepted", expected_revision=expected_revision
+        )
 
-    def reject_membership_proposal(self, *args, **kwargs):
-        return self._transition_membership_proposal(*args, "rejected", **kwargs)
+    def reject_membership_proposal(
+        self,
+        tenant_id: str,
+        environment: str,
+        product_id: str,
+        proposal_id: str,
+        *,
+        expected_revision: int | None = None,
+    ) -> DataProductMembershipProposal:
+        return self._transition_membership_proposal(
+            tenant_id, environment, product_id, proposal_id, "rejected", expected_revision=expected_revision
+        )
 
-    def expire_membership_proposal(self, *args, **kwargs):
-        return self._transition_membership_proposal(*args, "expired", **kwargs)
+    def expire_membership_proposal(
+        self,
+        tenant_id: str,
+        environment: str,
+        product_id: str,
+        proposal_id: str,
+        *,
+        expected_revision: int | None = None,
+    ) -> DataProductMembershipProposal:
+        return self._transition_membership_proposal(
+            tenant_id, environment, product_id, proposal_id, "expired", expected_revision=expected_revision
+        )
 
-    def supersede_membership_proposal(self, *args, **kwargs):
-        return self._transition_membership_proposal(*args, "superseded", **kwargs)
+    def supersede_membership_proposal(
+        self,
+        tenant_id: str,
+        environment: str,
+        product_id: str,
+        proposal_id: str,
+        *,
+        expected_revision: int | None = None,
+    ) -> DataProductMembershipProposal:
+        return self._transition_membership_proposal(
+            tenant_id, environment, product_id, proposal_id, "superseded", expected_revision=expected_revision
+        )
 
     def append_membership_decision(
         self, tenant_id: str, environment: str, product_id: str, decision: DataProductMembershipDecision

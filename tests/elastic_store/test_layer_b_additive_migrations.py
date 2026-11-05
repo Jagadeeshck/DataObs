@@ -105,12 +105,34 @@ def test_openlineage_strict_mapping_migration_is_additive_and_repaints_the_bound
     from packages.elastic_store.registry import OPENLINEAGE_PROPERTIES, _ensure_data_stream_template
 
     migration = OPENLINEAGE_STRICT_MAPPING_FIELDS_MIGRATION
-    # Additive forward migration: depends only on 0035 and only re-applies the
-    # bound openlineage data-stream template - it edits no released migration.
+    # Additive forward migration: depends only on 0035, re-applies the bound
+    # openlineage data-stream template, and additively maps the Team 2
+    # job-definition projection fields on the one strict current-state index the
+    # OpenLineage write path reaches - it edits no released migration.
     assert migration.migration_id == "0036_openlineage_strict_mapping_fields"
     assert migration.dependencies == ["0035_asset_semantic_search"]
-    assert set(migration.operations) == {"data_streams"}
+    assert set(migration.operations) == {"data_streams", "mapping_updates"}
     assert migration.operations["data_streams"] == ["logs-dataobs.openlineage-*"]
+
+    # The only strict index the live OpenLineage write path reaches beyond the
+    # stream is the job-definition current-state index; its mapping update is
+    # strict and purely additive.
+    mapping_updates = migration.operations["mapping_updates"]
+    assert set(mapping_updates) == {"dataobs-job-definitions-v1"}
+    contract = mapping_updates["dataobs-job-definitions-v1"]
+    assert contract["dynamic"] == "strict"
+    assert all(isinstance(definition, dict) and "type" in definition for definition in contract["properties"].values())
+    # Fields derived from _project_job (service.py) with their written value types.
+    job_def = contract["properties"]
+    assert job_def["namespace"] == {"type": "keyword"}
+    assert job_def["job_type"] == {"type": "keyword"}
+    assert job_def["producer"] == {"type": "keyword"}
+    assert job_def["inputs"] == {"type": "keyword"}
+    assert job_def["outputs"] == {"type": "keyword"}
+    assert job_def["evidence_coverage"] == {"type": "keyword"}
+    assert job_def["facets"] == {"type": "flattened"}
+    assert job_def["first_seen"] == {"type": "date"}
+    assert job_def["last_seen"] == {"type": "date"}
 
     # The exact flat fields the OpenLineage ingest path writes, mapped with the
     # types derived from the written values; dynamic:strict is preserved.

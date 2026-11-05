@@ -1,1 +1,64 @@
-{"contract":"fixture-only","provider_certified":false,"event_types":["START","RUNNING","COMPLETE","FAIL","ABORT"],"cases":["duplicate","out-of-order","unknown-bounded-facet","denied-oversized-facet","recovery-rerun"]}
+{
+  "contract": "fixture-only",
+  "provider_certified": false,
+  "events": [
+    {
+      "eventType": "START",
+      "eventTime": "2026-11-05T20:00:00.000Z",
+      "producer": "https://github.com/dataobs/certification",
+      "schemaURL": "https://openlineage.io/spec/1-0-5/OpenLineage.json",
+      "run": {
+        "runId": "cert-openlineage-run-0001",
+        "facets": {"nominalTime": {"nominalStartTime": "2026-11-05T20:00:00Z"}}
+      },
+      "job": {
+        "namespace": "airflow://certification",
+        "name": "certification.openlineage_ingest",
+        "facets": {"documentation": {"description": "Certification OpenLineage ingest fixture"}}
+      },
+      "inputs": [
+        {
+          "namespace": "postgres://certification",
+          "name": "public.orders",
+          "facets": {"schema": {"fields": [{"name": "order_id", "type": "int"}, {"name": "amount", "type": "double"}]}}
+        }
+      ],
+      "outputs": [
+        {
+          "namespace": "bigquery://certification",
+          "name": "analytics.orders_daily",
+          "facets": {}
+        }
+      ]
+    },
+    {
+      "eventType": "COMPLETE",
+      "eventTime": "2026-11-05T20:05:00.000Z",
+      "producer": "https://github.com/dataobs/certification",
+      "schemaURL": "https://openlineage.io/spec/1-0-5/OpenLineage.json",
+      "run": {
+        "runId": "cert-openlineage-run-0001",
+        "facets": {"nominalTime": {"nominalStartTime": "2026-11-05T20:00:00Z", "nominalEndTime": "2026-11-05T20:05:00Z"}}
+      },
+      "job": {
+        "namespace": "airflow://certification",
+        "name": "certification.openlineage_ingest",
+        "facets": {"documentation": {"description": "Certification OpenLineage ingest fixture"}}
+      },
+      "inputs": [
+        {
+          "namespace": "postgres://certification",
+          "name": "public.orders",
+          "facets": {"schema": {"fields": [{"name": "order_id", "type": "int"}, {"name": "amount", "type": "double"}]}}
+        }
+      ],
+      "outputs": [
+        {
+          "namespace": "bigquery://certification",
+          "name": "analytics.orders_daily",
+          "facets": {}
+        }
+      ]
+    }
+  ]
+}

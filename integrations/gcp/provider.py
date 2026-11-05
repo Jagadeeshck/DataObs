@@ -151,7 +151,7 @@ class GoogleCloudMessagingProvider:
                             points = list(getattr(series, "points", ()) or ())
                             value = point_value(points[0]) if points else None
                             kind = str(getattr(series, "metric_kind", "GAUGE")).rsplit(".", 1)[-1]
-                            region = labels.get("region", labels.get("location", ""))
+                            region = str(labels.get("region") or labels.get("location") or "")
                             yield metric(
                                 resource,
                                 metric_name,

@@ -33,8 +33,12 @@ body {
   background: white;
   color: #07101e;
 }
+/* When focused the skip link reveals just below the fixed header band so it is
+   visible and operable for keyboard users without painting over (and
+   intercepting pointer events for) the header's interactive controls at any
+   viewport. */
 .skip-link:focus {
-  top: 8px;
+  top: calc(var(--shell-header-height) + 4px);
 }
 .breadcrumbs {
   display: flex;
@@ -2368,7 +2372,7 @@ progress {
     display: block;
     position: fixed;
     z-index: 55;
-    inset: 0;
+    inset: 0 0 0 min(300px, 86vw);
     border: 0;
     background: rgb(0 0 0 / 0.55);
   }

@@ -22,9 +22,7 @@ export function ProductContextSelector() {
   const current = availableTenants.find((item) => item.id === tenant);
   return (
     <details className="context-selector">
-      <summary
-        aria-label={`Current context: ${current?.name ?? tenant} / ${environment}`}
-      >
+      <summary>
         <small>Tenant / Environment</small>
         <strong>
           {current?.name ?? tenant} / {environment}
@@ -123,8 +121,10 @@ export function UserMenu() {
       .toUpperCase() ?? "U";
   return (
     <details className="user-menu">
-      <summary aria-label={`User menu for ${name}`}>
-        <span className="avatar">{initials}</span>
+      <summary>
+        <span className="avatar" aria-hidden="true">
+          {initials}
+        </span>
         <span>{name}</span>
       </summary>
       <NavLink to="/logout">Sign out</NavLink>

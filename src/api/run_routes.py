@@ -6,6 +6,12 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 
 from services.job_observer.comparison import compare
 from services.job_observer.critical_path import calculate
+from src.security.permissions import Permission
+
+# Run actions require an execute authority; approval authority downgrades the
+# pending-approval gate. These mirror the scope strings the route previously read.
+_EXECUTE_PERMISSIONS = frozenset({Permission.JOBS_EXECUTE, Permission.WORKFLOWS_EXECUTE})
+_APPROVE_PERMISSION = Permission.WORKFLOWS_APPROVE
 
 COLLECTIONS = {
     "events": "_dataobs_lineage_events",
@@ -152,8 +158,8 @@ def create_run_router(service_dependency: Callable[..., Any], auth_dependency: C
     @router.get("/{run_id}/action-eligibility")
     def eligibility(run_id: str, request: Request, service: Any = Depends(service_dependency)):
         current = one(run_id, request, service)
-        scopes = set(request.state.principal.get("scopes", []))
-        executable = bool({"jobs:execute", "workflows:execute"} & scopes)
+        permissions = request.state.principal.permissions
+        executable = bool(_EXECUTE_PERMISSIONS & permissions)
         actions = ["request_rerun", "open_source_system", "create_incident", "attach_evidence"]
         if current.get("state") in {"running", "queued"}:
             actions.append("request_cancellation")
@@ -161,7 +167,7 @@ def create_run_router(service_dependency: Callable[..., Any], auth_dependency: C
             "run_id": run_id,
             "eligible": executable,
             "actions": actions if executable else [],
-            "approval_required": "workflows:approve" not in scopes,
+            "approval_required": _APPROVE_PERMISSION not in permissions,
             "reason": None if executable else "permission_denied",
         }
 
@@ -174,8 +180,8 @@ def create_run_router(service_dependency: Callable[..., Any], auth_dependency: C
         idempotency_key: str = Header(alias="Idempotency-Key"),
     ):
         current = one(run_id, request, service)
-        scopes = set(request.state.principal.get("scopes", []))
-        if not ({"jobs:execute", "workflows:execute"} & scopes):
+        permissions = request.state.principal.permissions
+        if not (_EXECUTE_PERMISSIONS & permissions):
             raise HTTPException(403, "jobs:execute or workflows:execute is required")
         supported = {
             "request_rerun",
@@ -197,7 +203,7 @@ def create_run_router(service_dependency: Callable[..., Any], auth_dependency: C
                 "environment": request.state.environment,
                 "run_id": current["run_id"],
                 "action": body["action"],
-                "status": "pending_approval" if "workflows:approve" not in scopes else "accepted",
+                "status": "pending_approval" if _APPROVE_PERMISSION not in permissions else "accepted",
                 "external_execution": False,
             }
         return requests[key]

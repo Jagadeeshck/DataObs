@@ -28,6 +28,8 @@ jobs:
         working-directory: ui/dataobs-console
       - run: pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm visualization:check
         working-directory: ui/dataobs-console
+      - run: pnpm exec playwright install --with-deps chromium firefox webkit
+        working-directory: ui/dataobs-console
       - run: pnpm build && pnpm bundle:check && pnpm performance:check && pnpm playwright
         working-directory: ui/dataobs-console
       - name: Repository guards

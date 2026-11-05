@@ -37,6 +37,8 @@ jobs:
       - run: pnpm performance:check
       - name: Chart and graph render contract benchmarks
         run: pnpm test -- src/visualization
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium firefox webkit
       - name: Playwright, axe, visual regression, reduced motion, keyboard
         run: pnpm playwright
       - name: Repository policy gates

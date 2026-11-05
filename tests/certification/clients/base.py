@@ -37,7 +37,13 @@ class HttpClient:
             with urlopen(
                 Request(self.base_url + path, data=data, headers=headers, method=method), timeout=10
             ) as response:
-                payload = response.read(2_000_000)
+                # Bounded read, but large enough for the full released schema: the
+                # strict `/_mapping` across all released indices is ~2.2 MB on a
+                # clean stack and grows with the schema. A tighter cap truncates
+                # valid JSON mid-stream, making json.loads fail and the client
+                # return a raw str — a false certification failure. 32 MiB keeps the
+                # read bounded while comfortably covering the real mapping surface.
+                payload = response.read(32 * 1024 * 1024)
                 status = response.status
         except HTTPError as error:
             payload = error.read(4096)

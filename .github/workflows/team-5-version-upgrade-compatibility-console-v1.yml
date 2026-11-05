@@ -29,6 +29,8 @@ jobs:
       - run: pnpm build
       - run: pnpm bundle:check
       - run: pnpm performance:check
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium firefox webkit
       - name: Playwright and Axe
         run: pnpm playwright
   repository:

@@ -33,7 +33,9 @@ def test_stream_filters_are_server_side_bounded_and_do_not_use_wildcards():
     assert {"range": {"maximum_lag": {"gt": 0}}} in filters
     assert request["query"]["bool"]["must"][0]["multi_match"]["query"] == "orders*?"
     assert "wildcard" not in repr(request["query"])
-    assert request["sort"][0]["maximum_lag"]["order"] == "desc"
+    # B22: "maximum_lag" sorts on the mapped numeric field lag_messages; the
+    # old "maximum_lag" sort field is unmapped and makes ES 9.5.5 500.
+    assert request["sort"][0]["lag_messages"]["order"] == "desc"
 
 
 def test_stream_search_after_is_forwarded_without_offset_pagination():

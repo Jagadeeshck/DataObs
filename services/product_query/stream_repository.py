@@ -234,17 +234,24 @@ class StreamRepository:
             filters.append({"range": {"maximum_lag": {"gt": 0}}})
         elif has_lag is False:
             filters.append({"range": {"maximum_lag": {"lte": 0}}})
+        # Sort on field names that actually exist in the shared strict Kafka
+        # mapping (packages/elastic_store registry/_mapping). Sorting on an
+        # unmapped field (e.g. the old "topic.keyword"/"health.keyword") makes
+        # ES 9.5.5 return "No mapping found ... in order to sort on" -> HTTP 400
+        # surfaced as a 500. The public sort enum is unchanged; only the
+        # internal ES field each key maps to is corrected. Direction and
+        # missing/_last semantics are preserved.
         sort_fields: dict[str, tuple[str, str]] = {
-            "topic": ("topic.keyword", "asc"),
+            "topic": ("topic_id", "asc"),
             "last_observed": ("observed_at", "desc"),
-            "maximum_lag": ("maximum_lag", "desc"),
-            "throughput": ("records_per_second", "desc"),
-            "retention_risk": ("retention_risk.keyword", "asc"),
-            "health": ("health.keyword", "asc"),
+            "maximum_lag": ("lag_messages", "desc"),
+            "throughput": ("throughput_messages_per_second", "desc"),
+            "retention_risk": ("retention_risk_state", "asc"),
+            "health": ("health_state", "asc"),
         }
         field, direction = sort_fields[sort]
         if resource != "streams" and sort == "topic":
-            field = "name.keyword"
+            field = "name"
         body: dict[str, Any] = {
             "index": STREAM_ALIASES[resource],
             "size": size,

@@ -3,7 +3,9 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ include "dataobs.fullname" . }}-quality-worker
-  labels: {{- include "dataobs.labels" . | nindent 4 }}
+  labels:
+    {{- include "dataobs.labels" . | nindent 4 }}
+    app.kubernetes.io/component: quality-worker
 spec:
   replicas: {{ .Values.qualityWorker.replicaCount }}
   revisionHistoryLimit: {{ .Values.global.revisionHistoryLimit }}

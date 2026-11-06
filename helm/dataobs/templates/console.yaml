@@ -3,7 +3,9 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ include "dataobs.fullname" . }}-console
-  labels: {{- include "dataobs.labels" . | nindent 4 }}
+  labels:
+    {{- include "dataobs.labels" . | nindent 4 }}
+    app.kubernetes.io/component: console
 spec:
   replicas: {{ .Values.console.replicaCount }}
   revisionHistoryLimit: {{ .Values.global.revisionHistoryLimit }}

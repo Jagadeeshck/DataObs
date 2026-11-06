@@ -3,7 +3,9 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ include "dataobs.fullname" . }}-scanner-worker
-  labels: {{- include "dataobs.labels" . | nindent 4 }}
+  labels:
+    {{- include "dataobs.labels" . | nindent 4 }}
+    app.kubernetes.io/component: scanner-worker
 spec:
   replicas: {{ .Values.scannerWorker.replicaCount }}
   revisionHistoryLimit: {{ .Values.global.revisionHistoryLimit }}

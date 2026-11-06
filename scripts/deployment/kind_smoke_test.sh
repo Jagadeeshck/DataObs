@@ -33,5 +33,13 @@ kubectl -n "$NS" wait --for=condition=available deployment -l app.kubernetes.io/
 kubectl -n "$NS" wait --for=condition=available deployment -l app.kubernetes.io/component=console --timeout=5m
 old=$(kubectl -n "$NS" get pod -l app.kubernetes.io/component=api -o jsonpath='{.items[0].metadata.name}')
 helm upgrade "$RELEASE" helm/dataobs -n "$NS" -f "$DATAOBS_SMOKE_VALUES" --set-string api.podAnnotations.smoke-revision="$(date +%s)" --wait --timeout 10m
-if kubectl -n "$NS" get pod "$old" >/dev/null 2>&1; then echo 'rollout did not replace API pod' >&2; exit 1; fi
+# The chart's api Deployment uses maxUnavailable:0/maxSurge:1 with a 30s
+# terminationGracePeriod, so `helm upgrade --wait` returns once the NEW pod is
+# Ready while the OLD pod is still gracefully Terminating. Wait for the old pod
+# to actually be deleted (covers the grace window) instead of checking once and
+# racing it — a single immediate `get pod` almost always still sees it.
+if kubectl -n "$NS" get pod "$old" >/dev/null 2>&1; then
+  kubectl -n "$NS" wait --for=delete "pod/$old" --timeout=90s \
+    || { echo 'rollout did not replace API pod' >&2; exit 1; }
+fi
 echo 'Local bounded smoke completed; this is not product certification.'

@@ -12,7 +12,11 @@ data:
 ---
 apiVersion: apps/v1
 kind: Deployment
-metadata: {name: {{ include "dataobs.fullname" . }}-otel-collector}
+metadata:
+  name: {{ include "dataobs.fullname" . }}-otel-collector
+  labels:
+    {{- include "dataobs.labels" . | nindent 4 }}
+    app.kubernetes.io/component: otel-collector
 spec:
   replicas: {{ .Values.otelCollector.replicaCount }}
   selector: {matchLabels: {app.kubernetes.io/name: {{ include "dataobs.name" . }}, app.kubernetes.io/instance: {{ .Release.Name }}, app.kubernetes.io/component: otel-collector}}

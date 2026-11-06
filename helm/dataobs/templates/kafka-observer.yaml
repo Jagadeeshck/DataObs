@@ -3,7 +3,9 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ include "dataobs.fullname" . }}-kafka-observer
-  labels: {{- include "dataobs.labels" . | nindent 4 }}
+  labels:
+    {{- include "dataobs.labels" . | nindent 4 }}
+    app.kubernetes.io/component: kafka-observer
 spec:
   replicas: {{ .Values.kafkaObserver.replicaCount }}
   revisionHistoryLimit: {{ .Values.global.revisionHistoryLimit }}

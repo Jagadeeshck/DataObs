@@ -16,6 +16,7 @@ from services.product_query.stream_pagination import CursorCodec, CursorState, I
 from services.product_query.stream_repository import StreamRepository
 from services.product_query.stream_sse import EventReplay
 from services.stream_observer.repository import MessagingRepository
+from src.security.permissions import Permission
 
 
 class CompareRequest(BaseModel):
@@ -33,13 +34,20 @@ class CompareRequest(BaseModel):
     baseline_end: datetime | None = None
 
 
+# All stream resources authorize on the STREAMS_READ permission carried by the
+# Principal. Connector/schema reads have no distinct Permission in the model; the
+# authoritative route policy already gates every stream resource on STREAMS_READ,
+# so the in-route check maps to the same permission rather than inventing scopes.
 READ_SCOPE = {
-    "streams": "streams:read",
-    "stream-clusters": "streams:read",
-    "consumer-groups": "streams:read",
-    "stream-connectors": "stream-connectors:read",
-    "schema-subjects": "stream-schemas:read",
+    "streams": Permission.STREAMS_READ,
+    "stream-clusters": Permission.STREAMS_READ,
+    "consumer-groups": Permission.STREAMS_READ,
+    "stream-connectors": Permission.STREAMS_READ,
+    "schema-subjects": Permission.STREAMS_READ,
 }
+# Administrator roles carry every permission; retain the explicit admin bypass that
+# the original scope check expressed via the "dataobs:admin" pseudo-scope.
+_ADMIN_ROLES = frozenset({"platform_admin", "tenant_admin"})
 RESOURCE = {
     "streams": "streams",
     "stream-clusters": "clusters",
@@ -139,10 +147,11 @@ def create_stream_router(get_es: Callable[..., Any], require_auth: Callable[...,
     def repo(es: Any = Depends(get_es)) -> StreamRepository:
         return StreamRepository(es.es, timeout=float(os.getenv("DATAOBS_STREAM_QUERY_TIMEOUT", "5")))
 
-    def scope(request: Request, required: str) -> None:
-        scopes = set(request.state.principal.get("scopes", []))
-        if "dataobs:admin" not in scopes and required not in scopes:
-            raise HTTPException(403, detail={"code": "insufficient_scope", "message": f"Required scope: {required}"})
+    def scope(request: Request, required: Permission) -> None:
+        principal = request.state.principal
+        if principal.roles & _ADMIN_ROLES or required in principal.permissions:
+            return
+        raise HTTPException(403, detail={"code": "insufficient_scope", "message": f"Required scope: {required.value}"})
 
     async def listing(
         root: str,

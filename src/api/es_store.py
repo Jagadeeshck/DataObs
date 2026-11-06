@@ -586,7 +586,16 @@ def _es_search(self, short: str, limit: int = 100, offset: int = 0, **filters: A
             must.append({"term": {k: v}})
     if filters.get("q"):
         must.append({"multi_match": {"query": filters["q"], "fields": ["name", "description", "job_name", "message"]}})
-    resp = self._es.search(index=_do_index(self, short), query={"bool": {"must": must}}, size=limit, from_=offset)
+    try:
+        resp = self._es.search(index=_do_index(self, short), query={"bool": {"must": must}}, size=limit, from_=offset)
+    except NotFoundError:
+        # Data-observability indices (quality-runs, assets, job-runs, columns,
+        # quality-checks) are created lazily on first write. A search before any
+        # write targets an index that does not exist yet — which is a measured
+        # zero, not an error. Returning [] keeps the honest-states contract and
+        # prevents a spurious 500 (e.g. OpenLineage asset-health update querying
+        # quality-runs before any quality run has been recorded).
+        return []
     return [h["_source"] for h in resp["hits"]["hits"]]
 
 

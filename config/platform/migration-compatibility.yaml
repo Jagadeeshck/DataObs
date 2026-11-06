@@ -1,10 +1,12 @@
 schema_version: "1"
-terminal_migration: 0035_asset_semantic_search
+terminal_migration: 0036_openlineage_strict_mapping_fields
 compatibility: application-backward-compatible
 notes: >-
-  The terminal migration adds a strict asset-catalog semantic-search projection for Console global search and
-  catalog-browse groundwork, built additively on the native Elasticsearch ML anomaly-detector job registry
-  (schema-intelligence runtime state remains in place). Both additive projections carry schema-intelligence
-  semantics for honest missing/stale/unknown reporting. Application rollback may disable the new projection and
-  anomaly-detector writers while retaining derived evidence. This contract never authorizes destructive reverse
-  migrations.
+  The terminal migration additively maps the OpenLineage ingest flat fields (event_id, content_fingerprint,
+  producer, schema_url, job_namespace, job_name, input_assets, output_assets, source_event_time, safe_facets,
+  unknown_facets) on the strict logs-dataobs.openlineage-* data-stream template so valid events stop failing the
+  strict dynamic mapping contract; it preserves dynamic:strict and never weakens it. It builds additively on the
+  asset-catalog semantic-search projection and the native Elasticsearch ML anomaly-detector job registry, and the
+  schema-intelligence runtime state remains in place for honest missing/stale/unknown reporting. Application
+  rollback may roll the openlineage template back to the prior property set while backing indices retain their
+  additive fields. This contract never authorizes destructive reverse migrations.

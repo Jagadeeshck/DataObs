@@ -2790,6 +2790,67 @@ ASSET_SEMANTIC_SEARCH_MIGRATION = Migration(
     },
 )
 
+# B21: the OpenLineage ingest path writes flat fields (event_id,
+# content_fingerprint, producer, schema_url, job_namespace, job_name,
+# input_assets, output_assets, source_event_time, safe_facets, unknown_facets)
+# to the strict logs-dataobs.openlineage-* data stream. The bound priority-500
+# template built by registry._ensure_data_stream_template lacked them, so every
+# valid event failed with strict_dynamic_mapping_exception (HTTP 500). This
+# additive forward migration re-applies that data-stream template with the new
+# OPENLINEAGE_PROPERTIES mapped explicitly - it never weakens dynamic:strict and
+# never edits a released migration. Re-declaring the openlineage data-stream
+# pattern repaints the governing template so new backing indices accept the
+# fields; the current backing index is rolled over operationally after apply.
+#
+# Fixing the stream is necessary but not sufficient: once the event lands, the
+# Team 2 OpenLineage projection (src/data_observability/service.py::_project_job
+# -> store.upsert_dataobs_job -> dataobs-job-definitions-v1) writes flat fields
+# that strict current-state index also lacked (namespace, job_type, producer,
+# facets, first_seen, last_seen, inputs, outputs, evidence_coverage), so the
+# POST still 500'd there. This migration additively maps EXACTLY those
+# projection-written fields on dataobs-job-definitions-v1 (types derived from the
+# written values). Scope is bounded to the strict indices the live OpenLineage
+# write path actually reaches, proven by following the code and the live failure
+# chain: the job-run/asset/column projections of the active store write to the
+# non-strict (dynamic:true) tenant-suffixed es_store indices
+# (dataobs-job-runs-v1-*, dataobs-assets-v1-*, dataobs-columns-v1-*), which
+# accept the fields dynamically and need no mapping change.
+# dataobs-job-definitions-v1 is a Team 2 domain contract: only Team 0 may add
+# migrations, so the mapping lives here but REQUIRES Team 2 + Team 0 review. No
+# released migration is edited and dynamic:strict is preserved.
+OPENLINEAGE_JOB_DEFINITION_PROJECTION_PROPERTIES: Dict[str, Any] = {
+    "dynamic": "strict",
+    "properties": {
+        **{
+            key: {"type": "keyword"}
+            for key in [
+                "namespace",
+                "job_type",
+                "producer",
+                "inputs",
+                "outputs",
+                "evidence_coverage",
+            ]
+        },
+        **{key: {"type": "date"} for key in ["first_seen", "last_seen"]},
+        "facets": {"type": "flattened"},
+    },
+}
+
+OPENLINEAGE_STRICT_MAPPING_FIELDS_MIGRATION = Migration(
+    "0036_openlineage_strict_mapping_fields",
+    "Map the OpenLineage ingest and job-projection flat fields on the strict openlineage data-stream template and the job-definition current-state index so valid events ingest end-to-end instead of failing strict dynamic mapping",
+    "v1",
+    dependencies=["0035_asset_semantic_search"],
+    rollback_strategy="stop OpenLineage ingest writers, snapshot state, then roll back the openlineage data-stream template to the 0035 property set after human review; the additive current-state index fields are retained because Elasticsearch cannot remove mapped fields",
+    operations={
+        "data_streams": ["logs-dataobs.openlineage-*"],
+        "mapping_updates": {
+            "dataobs-job-definitions-v1": OPENLINEAGE_JOB_DEFINITION_PROJECTION_PROPERTIES,
+        },
+    },
+)
+
 
 def migrations() -> List[Migration]:
     return [
@@ -2828,6 +2889,7 @@ def migrations() -> List[Migration]:
         TEAM1_STREAM_SCHEMA_INTELLIGENCE_RUNTIME_MIGRATION,
         ML_ANOMALY_DETECTOR_JOBS_MIGRATION,
         ASSET_SEMANTIC_SEARCH_MIGRATION,
+        OPENLINEAGE_STRICT_MAPPING_FIELDS_MIGRATION,
     ]
 
 

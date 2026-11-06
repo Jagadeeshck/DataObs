@@ -322,6 +322,34 @@ JOB_RUN_PROPERTIES: Dict[str, Any] = {
 }
 
 
+# OpenLineage ingest (src/data_observability/service.py::ingest_openlineage_event)
+# writes these flat fields to the logs-dataobs.openlineage-* data stream. The
+# shared strict data-stream template must map them explicitly; migration 0036
+# adds them additively so the bound template stops rejecting valid events with a
+# strict_dynamic_mapping_exception. Types mirror the exact written values:
+# keyword for stable ids/fingerprints/namespaces/qualified-name arrays and the
+# producer/schema URIs, date for the source event timestamp, and flattened for
+# the safe/unknown facet bags.
+OPENLINEAGE_PROPERTIES: Dict[str, Any] = {
+    **{
+        key: {"type": "keyword"}
+        for key in [
+            "event_id",
+            "content_fingerprint",
+            "producer",
+            "schema_url",
+            "job_namespace",
+            "job_name",
+            "input_assets",
+            "output_assets",
+        ]
+    },
+    "source_event_time": {"type": "date"},
+    "safe_facets": {"type": "flattened"},
+    "unknown_facets": {"type": "flattened"},
+}
+
+
 def _ensure_mutable_index(es: Elasticsearch, index: str) -> None:
     if not es.indices.exists(index=index):
         es.indices.create(index=index, mappings=_mapping(index))
@@ -335,6 +363,7 @@ def _ensure_data_stream_template(es: Elasticsearch, pattern: str) -> None:
         BASE_PROPERTIES
         | INCIDENT_AUTOMATION_PROPERTIES
         | KAFKA_PROPERTIES
+        | OPENLINEAGE_PROPERTIES
         | {
             **MONITORING_PROPERTIES,
             **JOB_RUN_PROPERTIES,

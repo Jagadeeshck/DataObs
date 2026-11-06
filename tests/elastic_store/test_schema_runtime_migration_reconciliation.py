@@ -13,14 +13,14 @@ from scripts.release import current_terminal_migration
 def test_team1_schema_runtime_migration_is_registered_once_and_still_linear():
     registry = migrations()
     assert registry.count(TEAM1_STREAM_SCHEMA_INTELLIGENCE_RUNTIME_MIGRATION) == 1
-    # 0033 remains released and immutable; Layer B additive migrations 0034/0035
-    # are appended after it in a strictly linear chain.
+    # 0033 remains released and immutable; Layer B additive migrations
+    # 0034/0035/0036 are appended after it in a strictly linear chain.
     ids = [migration.migration_id for migration in registry]
     index_0033 = ids.index("0033_team1_stream_schema_intelligence_runtime")
     assert ids[index_0033 - 1] == "0032_team2_data_slo_production_runtime"
     assert registry[index_0033].dependencies == ["0032_team2_data_slo_production_runtime"]
     assert ids[index_0033 + 1] == "0034_ml_anomaly_detector_jobs"
-    assert ids[-1] == "0035_asset_semantic_search"
+    assert ids[-1] == "0036_openlineage_strict_mapping_fields"
 
 
 def test_executable_registry_is_a_unique_linear_numeric_sequence():

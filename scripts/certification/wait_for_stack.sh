@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 profile="${1:-core}"; deadline=$((SECONDS + ${CERTIFICATION_READY_TIMEOUT_SECONDS:-300}))
 urls=(http://127.0.0.1:19200/_cluster/health)
-[[ "$profile" =~ ^(core|browser-infra|cert-browser|full)$ ]] && urls+=(http://127.0.0.1:18000/health http://127.0.0.1:18080/healthz http://127.0.0.1:18080/api/health)
+[[ "$profile" =~ ^(core|browser-infra|cert-browser|full)$ ]] && urls+=(http://127.0.0.1:18000/livez http://127.0.0.1:18080/healthz http://127.0.0.1:18080/api/v1/auth/config)
 [[ "$profile" =~ ^(kafka|cert-kafka|full)$ ]] && urls+=(http://127.0.0.1:18081/subjects http://127.0.0.1:18083/connectors)
 for url in "${urls[@]}"; do
   until curl --fail --silent --show-error "$url" >/dev/null; do

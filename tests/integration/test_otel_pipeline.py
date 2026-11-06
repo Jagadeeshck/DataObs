@@ -9,7 +9,7 @@ import requests
 
 
 @pytest.mark.integration
-def test_otel_span_reaches_elasticsearch(es_client: str) -> None:
+def test_otel_span_reaches_elasticsearch(es_client: str, otel_collector: None) -> None:
     payload = {
         "resourceSpans": [
             {

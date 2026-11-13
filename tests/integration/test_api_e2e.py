@@ -48,5 +48,5 @@ def test_rule_crud(api_client: str) -> None:
 
     list_resp = requests.get(f"{api_client}/rules", timeout=10)
     assert list_resp.status_code == 200
-    ids = [r.get("rule_id") or r.get("id") for r in list_resp.json()]
+    ids = [r.get("rule_id") or r.get("id") for r in list_resp.json()["rules"]]
     assert rule_id in ids

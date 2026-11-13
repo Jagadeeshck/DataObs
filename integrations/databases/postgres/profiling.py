@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from .connection import query_tag
 from .discovery import quote_ident
 
@@ -13,7 +15,7 @@ def _qtable(table: str) -> str:
 def profile_table(conn, table, columns, *, enable=False, top_values=False, scanner_id="scanner", task_id="task"):
     if not enable:
         return {"profiling": "disabled"}
-    metrics = {"raw_rows_persisted": False, "partial_success": False, "denied_columns": []}
+    metrics: dict[str, Any] = {"raw_rows_persisted": False, "partial_success": False, "denied_columns": []}
     qtable = _qtable(table)
     with conn.cursor() as cur:
         cur.execute("BEGIN READ ONLY")

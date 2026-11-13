@@ -25,15 +25,15 @@ def test_layer_b_migrations_are_appended_strictly_increasing_and_linear():
     # 0034/0035 stay appended after the released chain; B21 added 0036 as the
     # new strictly-increasing additive terminal.
     assert ids[-3:] == [
-        "0034_ml_anomaly_detector_jobs",
         "0035_asset_semantic_search",
         "0036_openlineage_strict_mapping_fields",
+        "0037_quality_signal_incident_mapping",
     ]
 
     prefixes = [int(migration_id.split("_", 1)[0]) for migration_id in ids]
     assert prefixes == sorted(prefixes)
     assert len(prefixes) == len(set(prefixes))
-    assert prefixes[-1] == 36
+    assert prefixes[-1] == 37
 
     # Strictly linear: each depends only on its immediate predecessor.
     for previous, migration in zip(registry, registry[1:]):
@@ -42,19 +42,19 @@ def test_layer_b_migrations_are_appended_strictly_increasing_and_linear():
 
 def test_graph_reports_single_terminal_leaf_0036():
     report = migration_report()
-    assert report["terminal_migration"] == "0036_openlineage_strict_mapping_fields"
-    assert report["migration_count"] == 36
+    assert report["terminal_migration"] == "0037_quality_signal_incident_mapping"
+    assert report["migration_count"] == 37
     graph = validate(migrations())
     assert graph["state"] == "valid"
-    assert graph["leaves"] == ["0036_openlineage_strict_mapping_fields"]
-    assert graph["terminal_migration"] == "0036_openlineage_strict_mapping_fields"
+    assert graph["leaves"] == ["0037_quality_signal_incident_mapping"]
+    assert graph["terminal_migration"] == "0037_quality_signal_incident_mapping"
 
 
 def test_released_chain_0001_to_0033_stays_immutable():
     registry = migrations()
     terminal_index = next(i for i, m in enumerate(registry) if m.migration_id == RELEASED_TERMINAL_ID)
-    # 0034/0035/0036 only ever appended after the released terminal; nothing before it moves.
-    assert terminal_index == len(registry) - 4
+    # 0034/0035/0036/0037 only ever appended after the released terminal; nothing before it moves.
+    assert terminal_index == len(registry) - 5
     assert len(registry[terminal_index].checksum) == 64
 
 

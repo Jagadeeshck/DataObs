@@ -127,7 +127,7 @@ def test_backup_restore_evidence_validator_is_fail_closed(tmp_path: Path):
         "duration_seconds": 60.0,
         "status": "pass",
         "elasticsearch_version": "9.5.5",
-        "terminal_migration": "0036_openlineage_strict_mapping_fields",
+        "terminal_migration": "0037_quality_signal_incident_mapping",
         "tenant_isolation": "pass",
         "redaction_status": "pass",
         "resources": {"dataobs-incidents-v1": {"count": 2, "sha256": "a" * 64}},

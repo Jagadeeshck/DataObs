@@ -27,7 +27,7 @@ builtins.__import__ = guarded_import
 from scripts.release.release_metadata import ELASTICSEARCH_VERSION, terminal_migration
 
 assert ELASTICSEARCH_VERSION == "9.5.5"
-assert terminal_migration() == "0036_openlineage_strict_mapping_fields"
+assert terminal_migration() == "0037_quality_signal_incident_mapping"
 """.format(root=str(ROOT))
     result = subprocess.run(
         [sys.executable, "-I", "-c", script],

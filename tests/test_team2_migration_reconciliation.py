@@ -29,11 +29,11 @@ class _ES:
 def test_reconciliation_is_forward_only_after_released_chain():
     chain = migrations()
     assert [migration.migration_id for migration in chain[-5:]] == [
-        "0032_team2_data_slo_production_runtime",
         "0033_team1_stream_schema_intelligence_runtime",
         "0034_ml_anomaly_detector_jobs",
         "0035_asset_semantic_search",
         "0036_openlineage_strict_mapping_fields",
+        "0037_quality_signal_incident_mapping",
     ]
     resources = next(
         migration.operations

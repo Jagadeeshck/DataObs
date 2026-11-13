@@ -2851,6 +2851,49 @@ OPENLINEAGE_STRICT_MAPPING_FIELDS_MIGRATION = Migration(
     },
 )
 
+QUALITY_SIGNAL_INCIDENT_MAPPING_MIGRATION = Migration(
+    "0037_quality_signal_incident_mapping",
+    "Map quality-signal context fields on the strict findings and incidents indices so "
+    "quality runner results (dataset, check_id, check_name, column, table, event_type, "
+    "check_type, check_severity, asset_id, environment) can be written as findings/incidents "
+    "without strict_dynamic_mapping_exception",
+    "v1",
+    dependencies=["0036_openlineage_strict_mapping_fields"],
+    rollback_strategy=(
+        "These are additive keyword fields; Elasticsearch cannot remove mapped fields. "
+        "Stop quality runner writes, snapshot, then human-review. The additive fields are "
+        "retained on the index after rollback."
+    ),
+    operations={
+        "mapping_updates": {
+            "dataobs-findings-v1": {
+                "dataset": {"type": "keyword"},
+                "check_id": {"type": "keyword"},
+                "check_name": {"type": "keyword"},
+                "column": {"type": "keyword"},
+                "table": {"type": "keyword"},
+                "event_type": {"type": "keyword"},
+                "check_type": {"type": "keyword"},
+                "check_severity": {"type": "keyword"},
+                "asset_id": {"type": "keyword"},
+                "environment": {"type": "keyword"},
+            },
+            "dataobs-incidents-v1": {
+                "dataset": {"type": "keyword"},
+                "check_id": {"type": "keyword"},
+                "check_name": {"type": "keyword"},
+                "column": {"type": "keyword"},
+                "table": {"type": "keyword"},
+                "event_type": {"type": "keyword"},
+                "check_type": {"type": "keyword"},
+                "check_severity": {"type": "keyword"},
+                "asset_id": {"type": "keyword"},
+                "environment": {"type": "keyword"},
+            },
+        },
+    },
+)
+
 
 def migrations() -> List[Migration]:
     return [
@@ -2890,6 +2933,7 @@ def migrations() -> List[Migration]:
         ML_ANOMALY_DETECTOR_JOBS_MIGRATION,
         ASSET_SEMANTIC_SEARCH_MIGRATION,
         OPENLINEAGE_STRICT_MAPPING_FIELDS_MIGRATION,
+        QUALITY_SIGNAL_INCIDENT_MAPPING_MIGRATION,
     ]
 
 

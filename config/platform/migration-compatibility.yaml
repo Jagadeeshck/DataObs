@@ -1,5 +1,5 @@
 schema_version: "1"
-terminal_migration: 0036_openlineage_strict_mapping_fields
+terminal_migration: 0037_quality_signal_incident_mapping
 compatibility: application-backward-compatible
 notes: >-
   The terminal migration additively maps the OpenLineage ingest flat fields (event_id, content_fingerprint,

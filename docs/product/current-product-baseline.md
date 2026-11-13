@@ -14,7 +14,7 @@ Certification definitions pin Elasticsearch and Kibana **9.5.5**. Compatibility 
 
 ## 3. Storage migrations
 
-The released forward-only migration registry spans `0001_product_foundation` through the executable terminal migration `0036_openlineage_strict_mapping_fields`. Previously released migrations remain immutable; corrections require a new additive migration. Registry checksum validation and comparison against the audited branch base are mandatory release gates.
+The released forward-only migration registry spans `0001_product_foundation` through the executable terminal migration `0037_quality_signal_incident_mapping`. Previously released migrations remain immutable; corrections require a new additive migration. Registry checksum validation and comparison against the audited branch base are mandatory release gates.
 
 ## 4. Streams and pathway observability
 

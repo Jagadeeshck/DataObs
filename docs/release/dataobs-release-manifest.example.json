@@ -6,7 +6,7 @@
   "created_at": "2026-08-01T00:00:00Z",
   "Elasticsearch_version": "9.5.5",
   "Kibana_version": "9.5.5",
-  "terminal_migration": "0036_openlineage_strict_mapping_fields",
+  "terminal_migration": "0037_quality_signal_incident_mapping",
   "components": {
     "api": {
       "image_repository": "jagadeeshck/dataobs-api",

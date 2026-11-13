@@ -12,11 +12,11 @@ ROOT = Path(__file__).parents[2]
 
 def test_terminal_migration_comes_from_ordered_registry():
     report = migration_report()
-    assert report["terminal_migration"] == "0036_openlineage_strict_mapping_fields"
-    assert report["migration_count"] == 36
+    assert report["terminal_migration"] == "0037_quality_signal_incident_mapping"
+    assert report["migration_count"] == 37
     assert report["ordered_migration_ids"][-2:] == [
-        "0035_asset_semantic_search",
         "0036_openlineage_strict_mapping_fields",
+        "0037_quality_signal_incident_mapping",
     ]
     assert len(report["registry_checksum"]) == 64
 
